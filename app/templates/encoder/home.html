@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Encoder Home</h1>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Pending</h5>
+        <p class="card-text">{{ pending }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Approved</h5>
+        <p class="card-text">{{ approved }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Rejected / Returned</h5>
+        <p class="card-text">{{ rejected }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+<a href="{{ url_for('encoder.submit') }}" class="btn btn-primary mb-3">+ Submit New Record</a>
+{% if records %}
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Date</th><th>Barangay</th><th>Volume</th><th>Method</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+        <tr>
+          <td>{{ r.record_date }}</td>
+          <td>{{ r.barangay }}</td>
+          <td>{{ r.production_volume }}</td>
+          <td>{{ r.production_method }}</td>
+          <td><span class="badge bg-{{ 'success' if r.status == 'approved' else 'warning' if r.status == 'pending' else 'danger' }}">{{ r.status }}</span></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="text-muted">You haven't submitted any records yet.</p>
+{% endif %}
+{% endblock %}

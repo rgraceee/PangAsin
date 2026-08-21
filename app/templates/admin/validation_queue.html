@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Validation Queue</h1>
+{% if records %}
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Municipality</th><th>Barangay</th><th>Volume</th><th>Method</th><th>Date</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+        <tr>
+          <td>{{ r.municipality.name }}</td>
+          <td>{{ r.barangay }}</td>
+          <td>{{ r.production_volume }}</td>
+          <td>{{ r.production_method }}</td>
+          <td>{{ r.record_date }}</td>
+          <td><a href="{{ url_for('validation.validation_detail', id=r.id) }}" class="btn btn-sm btn-primary">Review</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="text-muted">No pending submissions — you're caught up.</p>
+{% endif %}
+{% endblock %}

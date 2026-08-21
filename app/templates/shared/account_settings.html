@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Account Settings</h1>
+<div class="card">
+  <div class="card-body">
+    <p><strong>Name:</strong> {{ current_user.name }}</p>
+    <p><strong>Email:</strong> {{ current_user.email }}</p>
+    <p><strong>Role:</strong> {{ current_user.role }}</p>
+    {% if current_user.municipality %}
+      <p><strong>Municipality:</strong> {{ current_user.municipality.name }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

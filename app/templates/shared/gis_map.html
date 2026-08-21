@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>GIS Map</h1>
+<div id="map" style="height: 600px;"></div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  var map = L.map('map').setView([16.0, 120.0], 8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(map);
+  var data = {{ municipalities | tojson }};
+  data.forEach(function(m) {
+    var marker = L.marker([m.lat, m.lng]).addTo(map);
+    var popup = '<strong>' + m.name + '</strong><br>Production: ' + m.production + '<br>Records: ' + m.records_count;
+    marker.bindPopup(popup);
+  });
+</script>
+{% endblock %}

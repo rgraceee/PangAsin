@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Validation Detail</h1>
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title">Submitted Values</h5>
+    <p><strong>Municipality:</strong> {{ record.municipality.name }}</p>
+    <p><strong>Barangay:</strong> {{ record.barangay }}</p>
+    <p><strong>Volume:</strong> {{ record.production_volume }}</p>
+    <p><strong>Method:</strong> {{ record.production_method }}</p>
+    <p><strong>Area:</strong> {{ record.production_area }}</p>
+    <p><strong>Salt Beds:</strong> {{ record.num_salt_beds }}</p>
+  </div>
+</div>
+<div class="alert alert-warning">Auto-flags: duplicate records, negative values, missing required fields (placeholder checks).</div>
+<form method="post">
+  {{ form.hidden_tag() }}
+  <div class="mb-3">
+    {{ form.reviewer_comment.label(class="form-label") }}
+    {{ form.reviewer_comment(class="form-control") }}
+  </div>
+  <button type="submit" name="approve" class="btn btn-success">Approve</button>
+  <button type="submit" name="reject" class="btn btn-danger">Reject</button>
+  <button type="submit" name="return_btn" class="btn btn-warning">Return</button>
+</form>
+{% endblock %}

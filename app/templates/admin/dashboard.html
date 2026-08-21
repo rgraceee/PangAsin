@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin Dashboard</h1>
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Total Production</h5>
+        <p class="card-text">0 kg</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Total Salt Beds</h5>
+        <p class="card-text">0</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Production Area</h5>
+        <p class="card-text">0 ha</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Active Municipalities</h5>
+        <p class="card-text">7</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title">Decision Support Insight</h5>
+    {% if insights %}
+      {% for insight in insights %}
+        <div class="alert alert-{{ 'success' if insight.level == 'success' else 'warning' if insight.level == 'warning' else 'danger' }}">{{ insight.message }}</div>
+      {% endfor %}
+    {% else %}
+      <p class="text-muted">No insights available yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

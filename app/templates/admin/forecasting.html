@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Forecasting</h1>
+<p class="text-muted">Single-model disclaimer: This is a stub forecast. Replace with trained Random Forest model once real data is available.</p>
+<form method="get" class="row g-3 mb-3">
+  <div class="col-auto">
+    <select name="municipality_id" class="form-select" onchange="this.form.submit()">
+      <option value="">Select Municipality</option>
+      {% for m in municipalities %}
+        <option value="{{ m.id }}" {{ 'selected' if selected and selected.id == m.id }}>{{ m.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</form>
+{% if selected %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Readiness Badge</h5>
+      {% if readiness %}
+        {% if readiness.status == 'ready' %}
+          <span class="badge bg-success">Ready</span>
+        {% elif readiness.status == 'limited' %}
+          <span class="badge bg-warning text-dark">Limited</span>
+        {% else %}
+          <span class="badge bg-danger">Not Ready</span>
+        {% endif %}
+        <p class="mt-2">{{ readiness.reason }}</p>
+      {% endif %}
+    </div>
+  </div>
+  {% if forecast %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Forecast</h5>
+        <p>Trend: {{ forecast.trend_direction }}</p>
+        <p>Growth Rate: {{ forecast.growth_rate }}%</p>
+        <p>Forecast Production: {{ forecast.forecast_production }}</p>
+      </div>
+    </div>
+  {% endif %}
+  {% if insights %}
+    {% for insight in insights %}
+      <div class="alert alert-{{ 'success' if insight.level == 'success' else 'warning' if insight.level == 'warning' else 'danger' }}">{{ insight.message }}</div>
+    {% endfor %}
+  {% endif %}
+  <h5>Outlook Ranking</h5>
+  <table class="table table-striped">
+    <thead><tr><th>Municipality</th><th>Trend</th><th>Growth</th></tr></thead>
+    <tbody>
+      {% for item in outlooks %}
+        <tr>
+          <td>{{ item.municipality.name }}</td>
+          <td>{{ item.snapshot.trend_direction if item.snapshot else 'N/A' }}</td>
+          <td>{{ item.snapshot.growth_rate if item.snapshot else 'N/A' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

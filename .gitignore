@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+instance/
+.env
+.venv/
+venv/
+
+# Database
+*.db
+*.sqlite3
+
+# Migrations
+migrations/versions/*.py
+!migrations/versions/__init__.py
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

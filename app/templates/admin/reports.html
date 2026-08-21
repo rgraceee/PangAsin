@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Reports</h1>
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('reporting.generate_report') }}">
+      {{ form.hidden_tag() }}
+      <div class="row g-3">
+        <div class="col-md-4">
+          {{ form.report_type.label(class="form-label") }}
+          {{ form.report_type(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          {{ form.municipality_id.label(class="form-label") }}
+          {{ form.municipality_id(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          {{ form.format.label(class="form-label") }}
+          {{ form.format(class="form-select") }}
+        </div>
+        <div class="col-md-3">
+          {{ form.date_range_start.label(class="form-label") }}
+          {{ form.date_range_start(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+          {{ form.date_range_end.label(class="form-label") }}
+          {{ form.date_range_end(class="form-control") }}
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" name="generate" class="btn btn-primary">Generate</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+<h5>Generated Reports</h5>
+{% if reports %}
+  <table class="table table-striped">
+    <thead><tr><th>Type</th><th>Format</th><th>Status</th><th>Generated</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for r in reports %}
+        <tr>
+          <td>{{ r.report_type }}</td>
+          <td>{{ r.format }}</td>
+          <td>{{ r.status }}</td>
+          <td>{{ r.generated_at or 'N/A' }}</td>
+          <td><a href="{{ r.file_url or '#' }}" class="btn btn-sm btn-primary">Download</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="text-muted">No reports generated yet.</p>
+{% endif %}
+{% endblock %}

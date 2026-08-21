@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Municipality Analytics: {{ municipality.name }}</h1>
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title">Production History</h5>
+    <p class="text-muted">{{ records|length }} approved records.</p>
+  </div>
+</div>
+{% if insights %}
+  {% for insight in insights %}
+    <div class="alert alert-{{ 'success' if insight.level == 'success' else 'warning' if insight.level == 'warning' else 'danger' }}">{{ insight.message }}</div>
+  {% endfor %}
+{% endif %}
+{% endblock %}
