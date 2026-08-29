@@ -1,60 +1,134 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Forecasting</h1>
-<p class="text-muted">Single-model disclaimer: This is a stub forecast. Replace with trained Random Forest model once real data is available.</p>
-<form method="get" class="row g-3 mb-3">
-  <div class="col-auto">
-    <select name="municipality_id" class="form-select" onchange="this.form.submit()">
-      <option value="">Select Municipality</option>
-      {% for m in municipalities %}
-        <option value="{{ m.id }}" {{ 'selected' if selected and selected.id == m.id }}>{{ m.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-</form>
-{% if selected %}
-  <div class="card mb-3">
-    <div class="card-body">
-      <h5 class="card-title">Readiness Badge</h5>
-      {% if readiness %}
-        {% if readiness.status == 'ready' %}
-          <span class="badge bg-success">Ready</span>
-        {% elif readiness.status == 'limited' %}
-          <span class="badge bg-warning text-dark">Limited</span>
-        {% else %}
-          <span class="badge bg-danger">Not Ready</span>
-        {% endif %}
-        <p class="mt-2">{{ readiness.reason }}</p>
-      {% endif %}
-    </div>
-  </div>
-  {% if forecast %}
-    <div class="card mb-3">
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card">
       <div class="card-body">
-        <h5 class="card-title">Forecast</h5>
-        <p>Trend: {{ forecast.trend_direction }}</p>
-        <p>Growth Rate: {{ forecast.growth_rate }}%</p>
-        <p>Forecast Production: {{ forecast.forecast_production }}</p>
+        <h5 class="card-title">Model Selection</h5>
+        <form method="post" action="{{ url_for('forecasting.generate_forecast') }}" class="row g-2">
+          <div class="col-12">
+            <select name="municipality_id" class="form-select" required>
+              <option value="">Select Municipality</option>
+              {% for m in municipalities %}
+                <option value="{{ m.id }}" {{ 'selected' if selected and selected.id == m.id }}>{{ m.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <select name="model_name" class="form-select" required>
+              <option value="linear_regression">Linear Regression</option>
+              <option value="random_forest" {{ 'selected' if selected and request.args.get('model') == 'random_forest' }}>Random Forest</option>
+              <option value="arima">ARIMA</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary w-100">Generate Forecast</button>
+          </div>
+        </form>
       </div>
     </div>
+  </div>
+  {% if forecast_run %}
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Model Metrics</h5>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <div class="card border-primary">
+              <div class="card-body text-center">
+                <h6 class="card-title">MAE</h6>
+                <p class="fs-5">{{ "%.2f"|format(forecast_run.mae or 0) }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-info">
+              <div class="card-body text-center">
+                <h6 class="card-title">RMSE</h6>
+                <p class="fs-5">{{ "%.2f"|format(forecast_run.rmse or 0) }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-warning">
+              <div class="card-body text-center">
+                <h6 class="card-title">MAPE</h6>
+                <p class="fs-5">{{ "%.2f"|format(forecast_run.mape or 0) }}%</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-success">
+              <div class="card-body text-center">
+                <h6 class="card-title">R2</h6>
+                <p class="fs-5">{{ "%.2f"|format(forecast_run.r_squared or 0) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   {% endif %}
-  {% if insights %}
-    {% for insight in insights %}
-      <div class="alert alert-{{ 'success' if insight.level == 'success' else 'warning' if insight.level == 'warning' else 'danger' }}">{{ insight.message }}</div>
+</div>
+
+{% if forecast_results %}
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Trend Direction</h5>
+        <p class="fs-4 text-{{ 'success' if forecast_results[0].trend_direction == 'increasing' else 'danger' if forecast_results[0].trend_direction == 'declining' else 'warning' }}">
+          {{ forecast_results[0].trend_direction|upper }}
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Forecast Chart</h5>
+        <canvas id="forecastChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h5>Forecast Results by Period</h5>
+<table class="table table-striped">
+  <thead>
+    <tr><th>Period</th><th>Forecast Volume</th><th>Lower Bound</th><th>Upper Bound</th></tr>
+  </thead>
+  <tbody>
+    {% for result in forecast_results %}
+      <tr>
+        <td>{{ result.forecast_period }}</td>
+        <td>{{ "%.2f"|format(result.forecast_production) }}</td>
+        <td>{{ "%.2f"|format(result.lower_bound) }}</td>
+        <td>{{ "%.2f"|format(result.upper_bound) }}</td>
+      </tr>
     {% endfor %}
-  {% endif %}
-  <h5>Outlook Ranking</h5>
-  <table class="table table-striped">
-    <thead><tr><th>Municipality</th><th>Trend</th><th>Growth</th></tr></thead>
-    <tbody>
-      {% for item in outlooks %}
-        <tr>
-          <td>{{ item.municipality.name }}</td>
-          <td>{{ item.snapshot.trend_direction if item.snapshot else 'N/A' }}</td>
-          <td>{{ item.snapshot.growth_rate if item.snapshot else 'N/A' }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  </tbody>
+</table>
+{% endif %}
+
+{% if insights %}
+  {% for insight in insights %}
+    <div class="alert alert-{{ 'success' if insight.level == 'success' else 'warning' if insight.level == 'warning' else 'danger' }}">{{ insight.message }}</div>
+  {% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% if forecast_results %}
+<script>
+  new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: { labels: {{ forecast_labels|tojson }}, datasets: [{ label: 'Forecast', data: {{ forecast_data|tojson }}, borderColor: '#0d6efd' }] }
+  });
+</script>
 {% endif %}
 {% endblock %}

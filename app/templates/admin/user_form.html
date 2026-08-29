@@ -23,10 +23,12 @@
         {{ form.role.label(class="form-label") }}
         {{ form.role(class="form-select") }}
       </div>
-      <div class="mb-3">
-        {{ form.municipality_id.label(class="form-label") }}
-        {{ form.municipality_id(class="form-select") }}
-      </div>
+      {% if form.municipality_id %}
+        <div class="mb-3">
+          {{ form.municipality_id.label(class="form-label") }}
+          {{ form.municipality_id(class="form-select") }}
+        </div>
+      {% endif %}
       <div class="mb-3">
         {{ form.status.label(class="form-label") }}
         {{ form.status(class="form-select") }}

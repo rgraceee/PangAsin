@@ -1,43 +1,118 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Admin Dashboard</h1>
+<h1>Executive Dashboard</h1>
+<form method="get" class="row g-3 mb-3">
+  <div class="col-auto">
+    <select name="year" class="form-select">
+      <option value="">All Years</option>
+      {% for y in years %}
+        <option value="{{ y }}" {{ 'selected' if request.args.get('year') == y|string }}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="municipality_id" class="form-select">
+      <option value="">All Municipalities</option>
+      {% for m in municipalities %}
+        <option value="{{ m.id }}" {{ 'selected' if request.args.get('municipality_id') == m.id|string }}>{{ m.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="method" class="form-select">
+      <option value="">All Methods</option>
+      <option value="solar_evaporation" {{ 'selected' if request.args.get('method') == 'solar_evaporation' }}>Solar</option>
+      <option value="cooked" {{ 'selected' if request.args.get('method') == 'cooked' }}>Cooked</option>
+      <option value="hybrid" {{ 'selected' if request.args.get('method') == 'hybrid' }}>Hybrid</option>
+    </select>
+  </div>
+  <div class="col-auto d-flex align-items-end">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </div>
+</form>
 <div class="row g-3 mb-4">
   <div class="col-md-3">
-    <div class="card">
+    <div class="card border-success">
       <div class="card-body">
-        <h5 class="card-title">Total Production</h5>
-        <p class="card-text">0 kg</p>
+        <h5 class="card-title text-success">Total Production</h5>
+        <p class="card-text fs-3">{{ total_production }} kg</p>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card">
+    <div class="card border-info">
       <div class="card-body">
-        <h5 class="card-title">Total Salt Beds</h5>
-        <p class="card-text">0</p>
+        <h5 class="card-title text-info">Total Salt Beds</h5>
+        <p class="card-text fs-3">{{ total_salt_beds }}</p>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card">
+    <div class="card border-warning">
       <div class="card-body">
-        <h5 class="card-title">Production Area</h5>
-        <p class="card-text">0 ha</p>
+        <h5 class="card-title text-warning">Production Area</h5>
+        <p class="card-text fs-3">{{ production_area }} ha</p>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card">
+    <div class="card border-secondary">
       <div class="card-body">
-        <h5 class="card-title">Active Municipalities</h5>
-        <p class="card-text">7</p>
+        <h5 class="card-title text-secondary">Active Municipalities</h5>
+        <p class="card-text fs-3">{{ active_municipalities }}</p>
       </div>
     </div>
   </div>
 </div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-primary">
+      <div class="card-body">
+        <h5 class="card-title text-primary">Pending Validation</h5>
+        <p class="card-text fs-3">{{ pending_validation }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-success">
+      <div class="card-body">
+        <h5 class="card-title text-success">Forecast Availability</h5>
+        <p class="card-text fs-3">{{ forecast_availability }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-info">
+      <div class="card-body">
+        <h5 class="card-title text-info">Data Quality Score</h5>
+        <p class="card-text fs-3">{{ data_quality_score }}%</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Production Trend</h5>
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Municipality Comparison</h5>
+        <canvas id="municipalityChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="card mb-3">
   <div class="card-body">
-    <h5 class="card-title">Decision Support Insight</h5>
+    <h5 class="card-title">Decision Support Insights</h5>
     {% if insights %}
       {% for insight in insights %}
         <div class="alert alert-{{ 'success' if insight.level == 'success' else 'warning' if insight.level == 'warning' else 'danger' }}">{{ insight.message }}</div>
@@ -47,4 +122,18 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { labels: {{ trend_labels|tojson }}, datasets: [{ label: 'Production', data: {{ trend_data|tojson }}, borderColor: '#198754' }] }
+  });
+  new Chart(document.getElementById('municipalityChart'), {
+    type: 'bar',
+    data: { labels: {{ municipality_labels|tojson }}, datasets: [{ label: 'Volume', data: {{ municipality_data|tojson }}, backgroundColor: '#0d6efd' }] }
+  });
+</script>
 {% endblock %}

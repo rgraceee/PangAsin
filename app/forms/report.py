@@ -16,7 +16,6 @@ class ReportForm(FlaskForm):
     municipality_id = SelectField("Municipality (optional)", coerce=int, validators=[WTFormsOptional()])
     date_range_start = DateField("Date Range Start", validators=[WTFormsOptional()])
     date_range_end = DateField("Date Range End", validators=[WTFormsOptional()])
-    format = SelectField("Format", choices=[("pdf", "PDF"), ("excel", "Excel")], validators=[DataRequired()])
     generate = SubmitField("Generate")
 
     def __init__(self, *args, **kwargs):

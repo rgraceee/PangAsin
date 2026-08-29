@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Validation Queue</h1>
+<form method="get" class="row g-3 mb-3">
+  <div class="col-auto">
+    <select name="municipality_id" class="form-select">
+      <option value="">All Municipalities</option>
+      {% for m in municipalities %}
+        <option value="{{ m.id }}" {{ 'selected' if request.args.get('municipality_id') == m.id|string }}>{{ m.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="status" class="form-select">
+      <option value="">All Statuses</option>
+      <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pending</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </div>
+</form>
 {% if records %}
   <table class="table table-striped">
     <thead>

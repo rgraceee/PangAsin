@@ -4,8 +4,13 @@ from app.extensions import db, migrate, login_manager
 from app.models.user import User
 from app.models.municipality import Municipality
 from app.models.production_record import ProductionRecord
-from app.models.forecast_snapshot import ForecastSnapshot
 from app.models.report import Report
+from app.models.submission_batch import SubmissionBatch
+from app.models.validation_history import ValidationHistory
+from app.models.demand_benchmark import DemandBenchmark
+from app.models.forecast_run import ForecastRun
+from app.models.forecast_result import ForecastResult
+from app.models.report_file import ReportFile
 
 
 def create_app(config_class=Config):
@@ -26,6 +31,10 @@ def create_app(config_class=Config):
     from app.blueprints.analytics import analytics_bp
     from app.blueprints.forecasting import forecasting_bp
     from app.blueprints.reporting import reporting_bp
+    from app.blueprints.public_dashboard import public_dashboard_bp
+    from app.blueprints.trends import trends_bp
+    from app.blueprints.comparison import comparison_bp
+    from app.blueprints.map_insights import map_insights_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_access_bp)
@@ -37,6 +46,10 @@ def create_app(config_class=Config):
     app.register_blueprint(analytics_bp)
     app.register_blueprint(forecasting_bp)
     app.register_blueprint(reporting_bp)
+    app.register_blueprint(public_dashboard_bp)
+    app.register_blueprint(trends_bp)
+    app.register_blueprint(comparison_bp)
+    app.register_blueprint(map_insights_bp)
 
     @login_manager.user_loader
     def load_user(user_id):

@@ -3,31 +3,48 @@
 <h1>Encoder Home</h1>
 <div class="row g-3 mb-4">
   <div class="col-md-4">
-    <div class="card">
-      <div class="card-body">
+    <div class="card border-primary">
+      <div class="card-body text-center">
+        <h5 class="card-title">Total Records</h5>
+        <p class="card-text fs-3">{{ total }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-warning">
+      <div class="card-body text-center">
         <h5 class="card-title">Pending</h5>
-        <p class="card-text">{{ pending }}</p>
+        <p class="card-text fs-3">{{ pending }}</p>
       </div>
     </div>
   </div>
   <div class="col-md-4">
-    <div class="card">
-      <div class="card-body">
+    <div class="card border-success">
+      <div class="card-body text-center">
         <h5 class="card-title">Approved</h5>
-        <p class="card-text">{{ approved }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Rejected / Returned</h5>
-        <p class="card-text">{{ rejected }}</p>
+        <p class="card-text fs-3">{{ approved }}</p>
       </div>
     </div>
   </div>
 </div>
-<a href="{{ url_for('encoder.submit') }}" class="btn btn-primary mb-3">+ Submit New Record</a>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-danger">
+      <div class="card-body text-center">
+        <h5 class="card-title">Rejected</h5>
+        <p class="card-text fs-3">{{ rejected }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mb-3">
+  <a href="{{ url_for('encoder.submit') }}" class="btn btn-primary">+ New Record</a>
+  <a href="{{ url_for('encoder.upload') }}" class="btn btn-secondary">Upload Excel</a>
+  <a href="{{ url_for('encoder.submissions') }}" class="btn btn-outline-primary">My Submissions</a>
+</div>
+
+<h5>Recent Submissions</h5>
 {% if records %}
   <table class="table table-striped">
     <thead>

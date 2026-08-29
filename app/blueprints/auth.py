@@ -19,8 +19,11 @@ def login():
             login_user(user)
             user.last_login = datetime.utcnow()
             db.session.commit()
-            next_page = request.args.get("next")
-            return redirect(next_page or url_for("monitoring.landing"))
+            if user.role == "admin":
+                return redirect(url_for("admin_access.dashboard"))
+            if user.role == "encoder":
+                return redirect(url_for("encoder.home"))
+            return redirect(url_for("monitoring.landing"))
         flash("Invalid email or password, or account is inactive.", "danger")
     return render_template("auth/login.html", form=form)
 

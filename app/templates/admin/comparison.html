@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Municipality Comparison</h1>
+<div class="row g-3 mb-3">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-body">
+        <form method="get" class="row g-2">
+          <div class="col-auto">
+            <select name="municipality_ids" class="form-select" multiple size="5">
+              {% for m in municipalities %}
+                <option value="{{ m.id }}" {{ 'selected' if m.id|string in request.args.getlist('municipality_ids') }}>{{ m.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-auto d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">Compare</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if comparison_data %}
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Volume Comparison</h5>
+        <canvas id="volumeChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Efficiency Comparison</h5>
+        <canvas id="efficiencyChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% if comparison_data %}
+<script>
+  new Chart(document.getElementById('volumeChart'), {
+    type: 'bar',
+    data: { labels: {{ comparison_labels|tojson }}, datasets: [{ label: 'Production', data: {{ comparison_volumes|tojson }}, backgroundColor: '#198754' }] }
+  });
+  new Chart(document.getElementById('efficiencyChart'), {
+    type: 'bar',
+    data: { labels: {{ comparison_labels|tojson }}, datasets: [{ label: 'kg/ha', data: {{ comparison_efficiency|tojson }}, backgroundColor: '#0dcaf0' }] }
+  });
+</script>
+{% endif %}
+{% endblock %}

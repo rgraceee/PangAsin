@@ -5,10 +5,10 @@
   <div class="col-auto">
     <select name="status" class="form-select">
       <option value="">All Statuses</option>
+      <option value="draft" {{ 'selected' if status_filter == 'draft' }}>Draft</option>
       <option value="pending" {{ 'selected' if status_filter == 'pending' }}>Pending</option>
       <option value="approved" {{ 'selected' if status_filter == 'approved' }}>Approved</option>
       <option value="rejected" {{ 'selected' if status_filter == 'rejected' }}>Rejected</option>
-      <option value="returned" {{ 'selected' if status_filter == 'returned' }}>Returned</option>
     </select>
   </div>
   <div class="col-auto">
@@ -27,10 +27,10 @@
           <td>{{ r.barangay }}</td>
           <td>{{ r.production_volume }}</td>
           <td>{{ r.production_method }}</td>
-          <td><span class="badge bg-{{ 'success' if r.status == 'approved' else 'warning' if r.status == 'pending' else 'danger' }}">{{ r.status }}</span></td>
-          <td>{{ r.reviewer_comment or '' }}</td>
+          <td><span class="badge bg-{{ 'success' if r.status == 'approved' else 'warning' if r.status == 'pending' else 'secondary' if r.status == 'draft' else 'danger' }}">{{ r.status }}</span></td>
+          <td>{% set last = r.validation_histories | sort(attribute='created_at') | last %}{{ last.comment if last else '' }}</td>
           <td>
-            {% if r.status in ('rejected', 'returned') %}
+            {% if r.status in ('rejected', 'draft') %}
               <a href="{{ url_for('encoder.edit_record', id=r.id) }}" class="btn btn-sm btn-warning">Edit & Resubmit</a>
             {% endif %}
           </td>

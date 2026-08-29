@@ -1,36 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>PangAsin Dashboard</h1>
-<div class="row g-3 mb-4">
+<div class="text-center py-5">
+  <h1 class="display-4">Welcome to PangAsin</h1>
+  <p class="lead">Salt Production Monitoring and Decision Support System for Pangasinan</p>
+  <a href="/dashboard" class="btn btn-primary btn-lg mt-3">View Public Dashboard</a>
+</div>
+
+<div class="row g-3 mb-4 mt-4">
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Total Production</h5>
-        <p class="card-text">{{ "%.2f"|format(total_production) }} kg</p>
+    <div class="card border-success">
+      <div class="card-body text-center">
+        <h5 class="card-title text-success">Total Production</h5>
+        <p class="card-text fs-3">{{ "%.2f"|format(total_production) }} kg</p>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Municipalities</h5>
-        <p class="card-text">{{ municipalities_count }}</p>
+    <div class="card border-info">
+      <div class="card-body text-center">
+        <h5 class="card-title text-info">Active Municipalities</h5>
+        <p class="card-text fs-3">{{ municipalities_count }}</p>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Methods</h5>
-        <p class="card-text">Solar, Cooked, Hybrid</p>
+    <div class="card border-warning">
+      <div class="card-body text-center">
+        <h5 class="card-title text-warning">Production Methods</h5>
+        <p class="card-text fs-4">Solar, Cooked, Hybrid</p>
       </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Supply Sufficiency</h5>
-        <p class="card-text">Data collection in progress.</p>
+    <div class="card border-secondary">
+      <div class="card-body text-center">
+        <h5 class="card-title text-secondary">Approved Records</h5>
+        <p class="card-text fs-3">{{ records|length }}</p>
       </div>
     </div>
   </div>
@@ -48,36 +53,10 @@
   <div class="col-md-6">
     <div class="card">
       <div class="card-body">
-        <h5 class="card-title">Municipality Ranking</h5>
-        <canvas id="rankingChart"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
         <h5 class="card-title">Method Distribution</h5>
         <canvas id="methodChart"></canvas>
       </div>
     </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Supply vs Demand</h5>
-        <canvas id="supplyChart"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-body">
-    <h5 class="card-title">Map Preview</h5>
-    <p class="card-text"><a href="{{ url_for('gis_map.map_view') }}" class="btn btn-primary">View GIS Map</a></p>
   </div>
 </div>
 {% endblock %}
@@ -87,19 +66,11 @@
 <script>
   new Chart(document.getElementById('trendChart'), {
     type: 'line',
-    data: { labels: [], datasets: [{ label: 'Production', data: [] }] }
-  });
-  new Chart(document.getElementById('rankingChart'), {
-    type: 'bar',
-    data: { labels: [], datasets: [{ label: 'Volume', data: [] }] }
+    data: { labels: [], datasets: [{ label: 'Production', data: [], borderColor: '#198754' }] }
   });
   new Chart(document.getElementById('methodChart'), {
     type: 'doughnut',
-    data: { labels: [], datasets: [{ data: [] }] }
-  });
-  new Chart(document.getElementById('supplyChart'), {
-    type: 'bar',
-    data: { labels: [], datasets: [{ label: 'Local', data: [] }, { label: 'Demand', data: [] }] }
+    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#198754', '#0dcaf0', '#ffc107'] }] }
   });
 </script>
 {% endblock %}

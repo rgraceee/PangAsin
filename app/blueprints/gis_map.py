@@ -9,7 +9,7 @@ gis_map_bp = Blueprint("gis_map", __name__)
 
 @gis_map_bp.route("/map")
 def map_view():
-    municipalities = Municipality.query.all()
+    municipalities = Municipality.query.filter_by(status="active").all()
     data = []
     for m in municipalities:
         records = ProductionRecord.query.filter_by(municipality_id=m.id, status="approved").all()
@@ -17,8 +17,8 @@ def map_view():
         data.append({
             "id": m.id,
             "name": m.name,
-            "lat": 16.0 + (m.id * 0.1),
-            "lng": 120.0 + (m.id * 0.1),
+            "lat": float(m.latitude),
+            "lng": float(m.longitude),
             "production": production,
             "records_count": len(records),
         })

@@ -12,7 +12,7 @@
           <td>{{ r.report_type }}</td>
           <td>{{ r.format }}</td>
           <td>{{ r.generated_at }}</td>
-          <td><a href="{{ r.file_url or '#' }}" class="btn btn-sm btn-primary">Download</a></td>
+          <td><a href="{{ r.file_url or '#' }}" class="btn btn-sm btn-primary" target="_blank">Download</a></td>
         </tr>
       {% endfor %}
     </tbody>

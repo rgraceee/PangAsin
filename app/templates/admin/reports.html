@@ -14,10 +14,6 @@
           {{ form.municipality_id.label(class="form-label") }}
           {{ form.municipality_id(class="form-select") }}
         </div>
-        <div class="col-md-4">
-          {{ form.format.label(class="form-label") }}
-          {{ form.format(class="form-select") }}
-        </div>
         <div class="col-md-3">
           {{ form.date_range_start.label(class="form-label") }}
           {{ form.date_range_start(class="form-control") }}
@@ -36,15 +32,21 @@
 <h5>Generated Reports</h5>
 {% if reports %}
   <table class="table table-striped">
-    <thead><tr><th>Type</th><th>Format</th><th>Status</th><th>Generated</th><th>Action</th></tr></thead>
+    <thead><tr><th>Type</th><th>Status</th><th>Generated</th><th>Action</th></tr></thead>
     <tbody>
       {% for r in reports %}
         <tr>
           <td>{{ r.report_type }}</td>
-          <td>{{ r.format }}</td>
-          <td>{{ r.status }}</td>
-          <td>{{ r.generated_at or 'N/A' }}</td>
-          <td><a href="{{ r.file_url or '#' }}" class="btn btn-sm btn-primary">Download</a></td>
+          <td><span class="badge bg-{{ 'success' if r.status == 'generated' else 'warning' }}">{{ r.status }}</span></td>
+          <td>{{ r.generated_at.strftime('%Y-%m-%d %H:%M') if r.generated_at else 'N/A' }}</td>
+          <td>
+            <a href="{{ url_for('reporting.preview_report', id=r.id) }}" class="btn btn-sm btn-primary">Preview</a>
+            {% if r.report_files %}
+              {% for rf in r.report_files %}
+                <a href="{{ rf.file_url }}" class="btn btn-sm btn-success" target="_blank">{{ rf.file_format|upper }}</a>
+              {% endfor %}
+            {% endif %}
+          </td>
         </tr>
       {% endfor %}
     </tbody>

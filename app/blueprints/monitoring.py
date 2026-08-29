@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from app.models.production_record import ProductionRecord
+from app.models.municipality import Municipality
 from app.extensions import db
 
 monitoring_bp = Blueprint("monitoring", __name__)

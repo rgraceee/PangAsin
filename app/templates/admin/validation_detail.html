@@ -10,6 +10,9 @@
     <p><strong>Method:</strong> {{ record.production_method }}</p>
     <p><strong>Area:</strong> {{ record.production_area }}</p>
     <p><strong>Salt Beds:</strong> {{ record.num_salt_beds }}</p>
+    <p><strong>Producer Age:</strong> {{ record.producer_age }}</p>
+    <p><strong>Producer Gender:</strong> {{ record.producer_gender }}</p>
+    <p><strong>Notes:</strong> {{ record.notes or 'None' }}</p>
   </div>
 </div>
 <div class="alert alert-warning">Auto-flags: duplicate records, negative values, missing required fields (placeholder checks).</div>
@@ -21,6 +24,23 @@
   </div>
   <button type="submit" name="approve" class="btn btn-success">Approve</button>
   <button type="submit" name="reject" class="btn btn-danger">Reject</button>
-  <button type="submit" name="return_btn" class="btn btn-warning">Return</button>
 </form>
+
+<h5 class="mt-4">Validation History</h5>
+<table class="table table-striped">
+  <thead>
+    <tr><th>Action</th><th>Status</th><th>Reviewer</th><th>Comment</th><th>Date</th></tr>
+  </thead>
+  <tbody>
+    {% for h in record.validation_histories %}
+      <tr>
+        <td>{{ h.action }}</td>
+        <td>{{ h.new_status }}</td>
+        <td>{{ h.reviewer.name if h.reviewer else 'System' }}</td>
+        <td>{{ h.comment or '' }}</td>
+        <td>{{ h.created_at.strftime('%Y-%m-%d') }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %}

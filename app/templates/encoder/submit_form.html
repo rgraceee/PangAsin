@@ -1,48 +1,61 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>{{ title }}</h1>
-{% if record and record.reviewer_comment %}
-  <div class="alert alert-warning">Reviewer Comment: {{ record.reviewer_comment }}</div>
+{% if record %}
+  {% set last = record.validation_histories | sort(attribute='created_at') | last %}
+  {% if last and last.comment %}
+    <div class="alert alert-warning">Reviewer Comment: {{ last.comment }}</div>
+  {% endif %}
 {% endif %}
 <div class="card">
   <div class="card-body">
     <form method="post">
       {{ form.hidden_tag() }}
-      <div class="mb-3">
-        {{ form.period_type.label(class="form-label") }}
-        {{ form.period_type(class="form-select") }}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="mb-3">
+            {{ form.period_type.label(class="form-label") }}
+            {{ form.period_type(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ form.record_date.label(class="form-label") }}
+            {{ form.record_date(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.barangay.label(class="form-label") }}
+            {{ form.barangay(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.production_volume.label(class="form-label") }}
+            {{ form.production_volume(class="form-control") }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-3">
+            {{ form.production_method.label(class="form-label") }}
+            {{ form.production_method(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            {{ form.production_area.label(class="form-label") }}
+            {{ form.production_area(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.num_salt_beds.label(class="form-label") }}
+            {{ form.num_salt_beds(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.producer_age.label(class="form-label") }}
+            {{ form.producer_age(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.producer_gender.label(class="form-label") }}
+            {{ form.producer_gender(class="form-select") }}
+          </div>
+        </div>
       </div>
       <div class="mb-3">
-        {{ form.record_date.label(class="form-label") }}
-        {{ form.record_date(class="form-control") }}
-      </div>
-      <div class="mb-3">
-        {{ form.barangay.label(class="form-label") }}
-        {{ form.barangay(class="form-control") }}
-      </div>
-      <div class="mb-3">
-        {{ form.production_volume.label(class="form-label") }}
-        {{ form.production_volume(class="form-control") }}
-      </div>
-      <div class="mb-3">
-        {{ form.production_method.label(class="form-label") }}
-        {{ form.production_method(class="form-select") }}
-      </div>
-      <div class="mb-3">
-        {{ form.production_area.label(class="form-label") }}
-        {{ form.production_area(class="form-control") }}
-      </div>
-      <div class="mb-3">
-        {{ form.num_salt_beds.label(class="form-label") }}
-        {{ form.num_salt_beds(class="form-control") }}
-      </div>
-      <div class="mb-3">
-        {{ form.producer_age.label(class="form-label") }}
-        {{ form.producer_age(class="form-control") }}
-      </div>
-      <div class="mb-3">
-        {{ form.producer_gender.label(class="form-label") }}
-        {{ form.producer_gender(class="form-control") }}
+        {{ form.notes.label(class="form-label") }}
+        {{ form.notes(class="form-control", rows=3) }}
       </div>
       <button type="submit" name="submit" class="btn btn-success">Submit for Validation</button>
       <button type="submit" name="save_draft" class="btn btn-secondary">Save as Draft</button>

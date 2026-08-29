@@ -1,12 +1,12 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SelectField, SubmitField
-from wtforms.validators import DataRequired, Email, Length, Optional as WTFormsOptional
+from wtforms.validators import DataRequired, Length, Optional as WTFormsOptional
 from app.models.municipality import Municipality
 
 
 class UserForm(FlaskForm):
-    name = StringField("Name", validators=[DataRequired(), Length(max=120)])
-    email = StringField("Email", validators=[DataRequired(), Email(), Length(max=120)])
+    name = StringField("Name", validators=[DataRequired(), Length(max=150)])
+    email = StringField("Email", validators=[DataRequired(), Length(max=150)])
     password = PasswordField("Password", validators=[WTFormsOptional(), Length(min=6)])
     role = SelectField("Role", choices=[("encoder", "Encoder"), ("admin", "Administrator")], validators=[DataRequired()])
     municipality_id = SelectField("Municipality", coerce=int, validators=[WTFormsOptional()])

@@ -11,10 +11,8 @@ class Report(db.Model):
     municipality_id = db.Column(db.Integer, db.ForeignKey("municipalities.id"), nullable=True)
     date_range_start = db.Column(db.Date, nullable=True)
     date_range_end = db.Column(db.Date, nullable=True)
-    format = db.Column(db.Enum("pdf", "excel", name="report_format"), nullable=False)
     status = db.Column(db.Enum("pending", "generated", "failed", name="report_status"), default="pending", nullable=False)
-    file_url = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     generated_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    requester = db.relationship("User", backref="reports")
+    report_files = db.relationship("ReportFile", backref="report", lazy=True, cascade="all, delete-orphan")
