@@ -32,6 +32,7 @@ def create_app(config_class=Config):
     from app.blueprints.forecasting import forecasting_bp
     from app.blueprints.reporting import reporting_bp
     from app.blueprints.public_dashboard import public_dashboard_bp
+    from app.blueprints.public_dashboard_react import public_dashboard_react_bp
     from app.blueprints.trends import trends_bp
     from app.blueprints.comparison import comparison_bp
     from app.blueprints.map_insights import map_insights_bp
@@ -47,6 +48,7 @@ def create_app(config_class=Config):
     app.register_blueprint(forecasting_bp)
     app.register_blueprint(reporting_bp)
     app.register_blueprint(public_dashboard_bp)
+    app.register_blueprint(public_dashboard_react_bp)
     app.register_blueprint(trends_bp)
     app.register_blueprint(comparison_bp)
     app.register_blueprint(map_insights_bp)

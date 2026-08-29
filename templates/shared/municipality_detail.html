@@ -1,0 +1,89 @@
+<div class="mb-3">
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h3 class="h5 mb-1" id="detail-name">—</h3>
+      <span class="text-muted small" id="detail-rank">—</span>
+    </div>
+    <span class="synthetic-badge" style="font-size:0.7rem">Synthetic Data</span>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="card-title text-uppercase text-muted small">Production Summary</h6>
+    <div class="detail-metric">
+      <span class="detail-metric-label">Current Production</span>
+      <span class="detail-metric-value" id="detail-production">—</span>
+    </div>
+    <div class="detail-metric">
+      <span class="detail-metric-label">Previous Production</span>
+      <span class="detail-metric-value" id="detail-previous">—</span>
+    </div>
+    <div class="detail-metric">
+      <span class="detail-metric-label">Change</span>
+      <span class="detail-metric-value" id="detail-change">—</span>
+    </div>
+    <div class="detail-metric">
+      <span class="detail-metric-label">Production Rank</span>
+      <span class="detail-metric-value" id="detail-rank-value">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="card-title text-uppercase text-muted small">Production Area & Facilities</h6>
+    <div class="detail-metric">
+      <span class="detail-metric-label">Production Area</span>
+      <span class="detail-metric-value" id="detail-area">—</span>
+    </div>
+    <div class="detail-metric">
+      <span class="detail-metric-label">Salt Beds</span>
+      <span class="detail-metric-value" id="detail-beds">—</span>
+    </div>
+    <div class="detail-metric">
+      <span class="detail-metric-label">Dominant Method</span>
+      <span class="detail-metric-value" id="detail-method">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="card-title text-uppercase text-muted small">Method Distribution</h6>
+    <div class="chart-container" style="height: 260px;">
+      <canvas id="methodDistributionChart" aria-label="Method distribution chart" role="img"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="card-title text-uppercase text-muted small">Historical Trend</h6>
+    <div class="chart-container" style="height: 260px;">
+      <canvas id="historicalTrendChart" aria-label="Historical production trend chart" role="img"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="card-title text-uppercase text-muted small">Aggregated Demographics</h6>
+    <div id="detail-age-empty" class="text-muted small" style="display:none">Age data not available</div>
+    <div class="chart-container" style="height: 240px;">
+      <canvas id="detailAgeChart" aria-label="Municipality age distribution chart" role="img"></canvas>
+    </div>
+    <hr class="my-3">
+    <div id="detail-gender-empty" class="text-muted small" style="display:none">Gender data not available</div>
+    <div class="chart-container" style="height: 240px;">
+      <canvas id="detailGenderChart" aria-label="Municipality gender distribution chart" role="img"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="card-title text-uppercase text-muted small">Industry Insight</h6>
+    <p class="mb-0" id="detail-insight">—</p>
+  </div>
+</div>

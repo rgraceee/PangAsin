@@ -1,90 +1,187 @@
-{% extends "base.html" %}
+{% extends "public_base.html" %}
 {% block content %}
-<h1 class="mb-4">Public Dashboard</h1>
-<div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="card border-success">
-      <div class="card-body">
-        <h5 class="card-title text-success">Total Production</h5>
-        <p class="card-text fs-3">{{ "%.2f"|format(total_production) }} kg</p>
+<section id="kpis" class="mb-5">
+  <div class="row g-3" id="kpi-container">
+    <div class="col-md-6 col-lg-3">
+      <div class="kpi-card border-success">
+        <div class="card-body">
+          <div class="kpi-title text-success">Total Recorded Production</div>
+          <div class="kpi-value" id="kpi-production">—</div>
+          <div class="kpi-supporting">Approved production records</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="kpi-card border-info">
+        <div class="card-body">
+          <div class="kpi-title text-info">Total Production Area</div>
+          <div class="kpi-value" id="kpi-area">—</div>
+          <div class="kpi-supporting">Recorded production area</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="kpi-card border-warning">
+        <div class="card-body">
+          <div class="kpi-title text-warning">Registered Producer Entries</div>
+          <div class="kpi-value" id="kpi-producers">—</div>
+          <div class="kpi-supporting">Registered producer entries</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="kpi-card border-primary">
+        <div class="card-body">
+          <div class="kpi-title text-primary">National Self-Sufficiency</div>
+          <div class="kpi-value" id="kpi-sufficiency">—</div>
+          <div class="kpi-supporting">Estimated national supply sufficiency</div>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card border-info">
-      <div class="card-body">
-        <h5 class="card-title text-info">Active Municipalities</h5>
-        <p class="card-text fs-3">{{ municipalities_count }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card border-warning">
-      <div class="card-body">
-        <h5 class="card-title text-warning">Top Municipality</h5>
-        <p class="card-text fs-3">{{ top_municipality.name if top_municipality else 'N/A' }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card border-secondary">
-      <div class="card-body">
-        <h5 class="card-title text-secondary">Avg per Record</h5>
-        <p class="card-text fs-3">{{ "%.2f"|format(avg_production) }} kg</p>
-      </div>
-    </div>
-  </div>
-</div>
+  <div id="dashboard-error" class="alert alert-danger mt-3" style="display:none" role="alert"></div>
+</section>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Method Distribution</h5>
-        <canvas id="methodChart"></canvas>
+<section id="map-section" class="mb-5">
+  <div class="section-card">
+    <div class="card-body">
+      <h2 class="section-title">Municipal Production Overview</h2>
+      <p class="text-muted small">Click a municipality to view details. Hover for a quick summary.</p>
+      <div id="public-map" style="height: 520px; border-radius: 0.5rem; border: 1px solid #dee2e6;"></div>
+      <div class="map-legend" aria-label="Map legend">
+        <span class="map-legend-item"><span class="map-legend-swatch" style="background:#198754"></span> High</span>
+        <span class="map-legend-item"><span class="map-legend-swatch" style="background:#ffc107"></span> Medium</span>
+        <span class="map-legend-item"><span class="map-legend-swatch" style="background:#dc3545"></span> Low</span>
       </div>
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Top Municipalities</h5>
-        <canvas id="municipalityChart"></canvas>
-      </div>
-    </div>
-  </div>
-</div>
+</section>
 
-{% if show_supply_demand %}
-<div class="row g-3 mb-4">
-  <div class="col-md-12">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Supply vs Demand</h5>
-        <canvas id="supplyChart"></canvas>
+<section id="comparison" class="mb-5">
+  <div class="section-card">
+    <div class="card-body">
+      <h2 class="section-title">Municipality Comparison</h2>
+      <div class="chart-container" style="height: 420px;">
+        <canvas id="comparisonChart" aria-label="Municipality production comparison chart" role="img"></canvas>
       </div>
     </div>
   </div>
+</section>
+
+<section id="supply-demand" class="mb-5">
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="section-card h-100">
+        <div class="card-body">
+          <h2 class="section-title">Supply vs Demand</h2>
+          <div class="chart-container" style="height: 320px;">
+            <canvas id="supplyDemandChart" aria-label="Supply versus demand chart" role="img"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="section-card h-100">
+        <div class="card-body">
+          <h2 class="section-title">Demand by Sector</h2>
+          <div class="chart-container" style="height: 320px;">
+            <canvas id="sectorDemandChart" aria-label="Sector demand breakdown chart" role="img"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="demographics" class="mb-5">
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="section-card h-100">
+        <div class="card-body">
+          <h2 class="section-title">Producer Age Distribution</h2>
+          <div class="chart-container" style="height: 320px;">
+            <canvas id="ageDistributionChart" aria-label="Producer age distribution chart" role="img"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="section-card h-100">
+        <div class="card-body">
+          <h2 class="section-title">Producer Gender Distribution</h2>
+          <div class="chart-container" style="height: 320px;">
+            <canvas id="genderDistributionChart" aria-label="Producer gender distribution chart" role="img"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="offcanvas offcanvas-end detail-panel" tabindex="-1" id="municipalityDetail" aria-labelledby="detailTitle">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="detailTitle">Municipality Details</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div id="detail-content">
+      <p class="text-muted">Select a municipality on the map to view details.</p>
+    </div>
+  </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  new Chart(document.getElementById('methodChart'), {
-    type: 'doughnut',
-    data: { labels: {{ method_labels|tojson }}, datasets: [{ data: {{ method_data|tojson }}, backgroundColor: ['#198754', '#0dcaf0', '#ffc107'] }] }
+  document.addEventListener("DOMContentLoaded", function () {
+    Dashboard.loadAll();
   });
-  new Chart(document.getElementById('municipalityChart'), {
-    type: 'bar',
-    data: { labels: {{ municipality_labels|tojson }}, datasets: [{ label: 'Production', data: {{ municipality_data|tojson }}, backgroundColor: '#0d6efd' }] }
-  });
-  {% if show_supply_demand %}
-  new Chart(document.getElementById('supplyChart'), {
-    type: 'bar',
-    data: { labels: ['Supply', 'Demand'], datasets: [{ label: 'Supply', data: [{{ supply_value }}], backgroundColor: '#198754' }, { label: 'Demand', data: [{{ demand_value }}], backgroundColor: '#dc3545' }] }
-  });
-  {% endif %}
+</script>
+<script>
+  (function () {
+    const sidebar = document.getElementById("publicSidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    const toggle = document.getElementById("sidebarToggle");
+    if (!sidebar || !overlay || !toggle) return;
+
+    function openSidebar() {
+      sidebar.classList.add("open");
+      overlay.classList.add("open");
+      overlay.setAttribute("aria-hidden", "false");
+      toggle.setAttribute("aria-expanded", "true");
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden", "true");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+
+    toggle.addEventListener("click", function () {
+      if (sidebar.classList.contains("open")) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+
+    overlay.addEventListener("click", closeSidebar);
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && sidebar.classList.contains("open")) {
+        closeSidebar();
+        toggle.focus();
+      }
+    });
+
+    sidebar.querySelectorAll(".nav-link").forEach(function (link) {
+      link.addEventListener("click", function () {
+        if (window.innerWidth < 992) {
+          closeSidebar();
+        }
+      });
+    });
+  })();
 </script>
 {% endblock %}

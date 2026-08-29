@@ -1,0 +1,15 @@
+{
+  "nationalDemandMT": 683608,
+  "pangasinanSupplyMT": 18642,
+  "importedMT": 500000,
+  "sufficiencyRate": 38.4,
+  "sectorDemand": {
+    "household": 320000,
+    "foodProcessing": 180000,
+    "industry": 120000,
+    "agriculture": 63608
+  },
+  "dataSource": "synthetic",
+  "dataStatus": "approved",
+  "asOfDate": "June 30, 2026"
+}
