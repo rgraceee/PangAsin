@@ -9,10 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "bootstrap": "^5.3.8",
+    "leaflet": "^1.9.4",
     "react": "^18.2.0",
+    "react-bootstrap": "^2.10.10",
     "react-dom": "^18.2.0",
-    "recharts": "^2.10.3",
-    "leaflet": "^1.9.4"
+    "react-router-dom": "^7.18.3",
+    "recharts": "^2.10.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

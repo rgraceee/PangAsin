@@ -72,3 +72,124 @@ export function getIndustryInsight(id) {
   const muni = municipalitiesData.find((m) => m.id === id);
   return muni ? muni.insightSnippet : null;
 }
+
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const res = await fetch(`/api${path}`, { ...options, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || data.errors?.join(', ') || 'Request failed');
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+export function loginAPI(email, password) {
+  return api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+}
+
+export function logoutAPI() {
+  return api('/auth/logout', { method: 'POST' });
+}
+
+export function getMe() {
+  return api('/encoder/me');
+}
+
+export function getEncoderBarangays() {
+  return api('/encoder/barangays');
+}
+
+export function getRecords(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/encoder/records${qs ? `?${qs}` : ''}`);
+}
+
+export function getRecord(id) {
+  return api(`/encoder/records/${id}`);
+}
+
+export function createRecord(payload) {
+  return api('/encoder/records', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateRecord(id, payload) {
+  return api(`/encoder/records/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export function deleteRecord(id) {
+  return api(`/encoder/records/${id}`, { method: 'DELETE' });
+}
+
+export function getStats() {
+  return api('/encoder/stats');
+}
+
+export function submitRecord(id) {
+  return api(`/encoder/records/${id}/submit`, { method: 'PATCH' });
+}
+
+export function getAdminMe() {
+  return api('/admin/me');
+}
+
+export function getAdminMunicipalities() {
+  return api('/admin/municipalities');
+}
+
+export function getAdminUsers(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/users${qs ? `?${qs}` : ''}`);
+}
+
+export function createAdminUser(payload) {
+  return api('/admin/users', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateAdminUser(id, payload) {
+  return api(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function getAdminRecords(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/records${qs ? `?${qs}` : ''}`);
+}
+
+export function getAdminRecord(id) {
+  return api(`/admin/records/${id}`);
+}
+
+export function reviewAdminRecord(id, payload) {
+  return api(`/admin/records/${id}/review`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function getAdminStats() {
+  return api('/admin/stats');
+}
+
+export function getDataQuality() {
+  return api('/admin/data-quality');
+}
+
+export function getInsight() {
+  return api('/admin/insight');
+}
+
+export function runForecast(payload) {
+  return api('/admin/forecast/run', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function getForecastRuns(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/forecast/runs${qs ? `?${qs}` : ''}`);
+}
+
+export function getForecastResult(runId) {
+  return api(`/admin/forecast/runs/${runId}`);
+}
+
+export function getMunicipalityOutlook() {
+  return api('/admin/forecast/municipality-outlook');
+}
