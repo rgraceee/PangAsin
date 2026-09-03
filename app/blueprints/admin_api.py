@@ -6,7 +6,7 @@ from app.models.municipality import Municipality
 from app.models.user import User
 from app.extensions import db
 from datetime import datetime
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
@@ -19,7 +19,7 @@ QUALITY_WEIGHTS = {
     "male_producers": 0.10,
     "female_producers": 0.10,
     "record_date": 0.05,
-    "notes": 0.05,
+    "production_method": 0.05,
     "barangay_id": 0.15,
 }
 
@@ -60,7 +60,7 @@ def _serialize(record):
         "production_volume": float(record.production_volume) if record.production_volume is not None else None,
         "num_salt_beds": record.num_salt_beds,
         "area_per_salt_bed": float(record.area_per_salt_bed) if record.area_per_salt_bed is not None else None,
-        "notes": record.notes,
+        "production_method": record.production_method,
         "status": record.status,
         "reviewer_comment": record.reviewer_comment,
         "submitted_by": record.submitted_by,
@@ -322,7 +322,7 @@ def list_records():
     if q:
         like = f"%{q}%"
         query = query.join(Barangay, Barangay.id == ProductionRecord.barangay_id).filter(
-            or_(Barangay.name.ilike(like), ProductionRecord.notes.ilike(like))
+            Barangay.name.ilike(like)
         )
     if start:
         try:
@@ -498,9 +498,6 @@ def data_quality():
             value = getattr(r, field, None)
             if field == "area_per_salt_bed":
                 if value is not None:
-                    bucket["field_present"][field] += 1
-            elif field == "notes":
-                if value is not None and str(value).strip():
                     bucket["field_present"][field] += 1
             else:
                 if value is not None and value != "":

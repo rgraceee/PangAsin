@@ -1,11 +1,19 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Row, Col, Alert, Spinner, Card } from 'react-bootstrap';
-import { useOutletContext } from 'react-router-dom';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend,
+  CartesianGrid, Legend, Cell, ComposedChart, Area,
 } from 'recharts';
-import { getAdminStats, getInsight, getAdminMunicipalities } from '../../services/dataService';
+import {
+  getAdminStats, getInsight, getAdminMunicipalities,
+  getMunicipalityOutlook, getDataQuality,
+} from '../../services/dataService';
+import { supplyDemand } from '../../data/municipalities';
+
+const MUNI_COLORS = [
+  '#1565C8', '#F09A28', '#E53935', '#29B039',
+  '#8E24AA', '#00ACC1', '#FB8C00',
+];
 
 function KPIStat({ title, value, supporting, accent }) {
   return (
@@ -20,11 +28,25 @@ function KPIStat({ title, value, supporting, accent }) {
   );
 }
 
-export default function AdminDashboard() {
-  const { user } = useOutletContext();
+function CustomLegend({ payload }) {
+  return (
+    <div className="admin-chart-legend">
+      {payload.map((entry, i) => (
+        <span key={i} className="admin-chart-legend-item">
+          <span className="admin-chart-legend-swatch" style={{ background: entry.color }} />
+          {entry.value}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState(null);
   const [insight, setInsight] = useState(null);
   const [munis, setMunis] = useState([]);
+  const [outlook, setOutlook] = useState([]);
+  const [dq, setDq] = useState(null);
   const [filters, setFilters] = useState({ municipality_id: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,13 +58,20 @@ export default function AdminDashboard() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getAdminStats()
-      .then((s) => { setStats(s); setLoading(false); })
+    Promise.all([
+      getAdminStats(),
+      getInsight().catch(() => null),
+      getMunicipalityOutlook().catch(() => ({ municipalities: [] })),
+      getDataQuality().catch(() => null),
+    ])
+      .then(([s, ins, ol, dqData]) => {
+        setStats(s);
+        setInsight(ins);
+        setOutlook(ol.municipalities || []);
+        setDq(dqData);
+        setLoading(false);
+      })
       .catch((err) => { setError(err.message); setLoading(false); });
-  }, []);
-
-  useEffect(() => {
-    getInsight().then(setInsight).catch(() => setInsight(null));
   }, []);
 
   const muniData = useMemo(() => {
@@ -52,6 +81,7 @@ export default function AdminDashboard() {
         name: m.municipality_name,
         volumeMT: Math.round((m.total_volume_kg || 0) / 1000 * 100) / 100,
         beds: m.total_salt_beds,
+        area: m.total_area_sqm,
         registered: m.total_registered_producers,
         efficiency: m.total_salt_beds > 0 ? Math.round((m.total_volume_kg / m.total_salt_beds) * 100) / 100 : 0,
       }))
@@ -66,20 +96,6 @@ export default function AdminDashboard() {
     });
   }, [muniData, filters.municipality_id, stats]);
 
-  const filteredMuniIds = new Set(filteredMuniData.map((m) => m.name));
-  const contribution = filteredMuniData.map((m) => ({
-    name: m.name,
-    volumeMT: m.volumeMT,
-  }));
-  const efficiency = filteredMuniData.map((m) => ({
-    name: m.name,
-    kgPerBed: m.efficiency,
-  }));
-  const trend = filteredMuniData.map((m, idx) => ({
-    name: m.name,
-    volumeMT: m.volumeMT,
-  }));
-
   if (loading) {
     return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
   }
@@ -88,6 +104,36 @@ export default function AdminDashboard() {
   }
 
   const totalVolumeMT = Math.round((stats.total_volume_kg / 1000) * 100) / 100;
+  const demandBenchmark = supplyDemand.pangasinan.demandBenchmark;
+  const supplyDemandGap = totalVolumeMT - demandBenchmark;
+  const supplyDemandLabel = supplyDemandGap >= 0 ? 'Surplus' : 'Shortage';
+
+  const readyMunis = outlook.filter((o) => o.readiness !== 'not_ready').length;
+  const totalMunis = outlook.length || munis.length;
+
+  const qualityScore = dq ? dq.overall_quality_score : '—';
+
+  const contribution = filteredMuniData.map((m) => ({
+    name: m.name,
+    volumeMT: m.volumeMT,
+  }));
+  const efficiency = filteredMuniData.map((m) => ({
+    name: m.name,
+    kgPerBed: m.efficiency,
+  }));
+  const trend = filteredMuniData.map((m) => ({
+    name: m.name,
+    volumeMT: m.volumeMT,
+  }));
+
+  const efficiencyWithColor = efficiency.map((e, i) => ({
+    ...e,
+    fill: MUNI_COLORS[i % MUNI_COLORS.length],
+  }));
+  const contributionWithColor = contribution.map((c, i) => ({
+    ...c,
+    fill: MUNI_COLORS[i % MUNI_COLORS.length],
+  }));
 
   return (
     <div>
@@ -113,16 +159,37 @@ export default function AdminDashboard() {
           <KPIStat title="Total Production" value={`${totalVolumeMT.toLocaleString()} MT`} supporting={`${stats.total_volume_kg.toLocaleString()} kg`} accent="ocean" />
         </Col>
         <Col md={4} lg>
-          <KPIStat title="Salt Beds" value={stats.total_salt_beds.toLocaleString()} supporting={`${stats.total_area_sqm.toLocaleString()} m² total area`} accent="gold" />
+          <KPIStat title="Total Salt Beds" value={stats.total_salt_beds.toLocaleString()} supporting="Active production beds" accent="gold" />
         </Col>
         <Col md={4} lg>
-          <KPIStat title="Registered Producers" value={stats.total_registered_producers.toLocaleString()} supporting="Across all submissions" accent="green" />
+          <KPIStat title="Production Area" value={`${stats.total_area_sqm.toLocaleString()} m²`} supporting="Combined area of all beds" accent="green" />
         </Col>
         <Col md={4} lg>
-          <KPIStat title="Records" value={stats.record_count.toLocaleString()} supporting="Submissions on file" accent="brown" />
+          <KPIStat title="Pending Validation" value={stats.pending_validation_count.toLocaleString()} supporting="Awaiting admin review" accent="warning" />
         </Col>
         <Col md={4} lg>
-          <KPIStat title="Pending Validation" value={stats.pending_validation_count.toLocaleString()} supporting="Awaiting review" accent="warning" />
+          <KPIStat
+            title="Supply-Demand Balance"
+            value={`${supplyDemandLabel} ${Math.abs(Math.round(supplyDemandGap)).toLocaleString()} MT`}
+            supporting={`vs ${demandBenchmark.toLocaleString()} MT demand benchmark`}
+            accent={supplyDemandGap >= 0 ? 'green' : 'brown'}
+          />
+        </Col>
+        <Col md={4} lg>
+          <KPIStat
+            title="Forecast Availability"
+            value={`${readyMunis} / ${totalMunis}`}
+            supporting="Municipalities with forecast data"
+            accent="ocean"
+          />
+        </Col>
+        <Col md={4} lg>
+          <KPIStat
+            title="Data Quality Score"
+            value={typeof qualityScore === 'number' ? `${qualityScore}%` : qualityScore}
+            supporting="Based on record completeness"
+            accent="gold"
+          />
         </Col>
       </Row>
 
@@ -133,14 +200,18 @@ export default function AdminDashboard() {
             <Card.Body>
               <div style={{ height: 280 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <BarChart data={trend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="volumeMT" name="Volume (MT)" stroke="#1565C8" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
+                    <Legend content={<CustomLegend />} />
+                    <Bar dataKey="volumeMT" name="Volume (MT)" radius={[4, 4, 0, 0]}>
+                      {trend.map((entry, i) => (
+                        <Cell key={i} fill={MUNI_COLORS[i % MUNI_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card.Body>
@@ -171,12 +242,17 @@ export default function AdminDashboard() {
             <Card.Body>
               <div style={{ height: 280 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={contribution} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <BarChart data={contributionWithColor} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Bar dataKey="volumeMT" name="Volume (MT)" fill="#29B039" radius={[4, 4, 0, 0]} />
+                    <Legend content={<CustomLegend />} />
+                    <Bar dataKey="volumeMT" name="Volume (MT)" radius={[4, 4, 0, 0]}>
+                      {contributionWithColor.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -185,16 +261,21 @@ export default function AdminDashboard() {
         </Col>
         <Col lg={6}>
           <Card className="encoder-card">
-            <Card.Header as="h5">Efficiency (kg / salt bed)</Card.Header>
+            <Card.Header as="h5">Production Efficiency (kg / salt bed)</Card.Header>
             <Card.Body>
               <div style={{ height: 280 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={efficiency} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <BarChart data={efficiencyWithColor} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Bar dataKey="kgPerBed" name="kg per bed" fill="#F09A28" radius={[4, 4, 0, 0]} />
+                    <Legend content={<CustomLegend />} />
+                    <Bar dataKey="kgPerBed" name="kg per bed" radius={[4, 4, 0, 0]}>
+                      {efficiencyWithColor.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>

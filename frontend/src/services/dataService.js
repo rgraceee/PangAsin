@@ -123,8 +123,9 @@ export function deleteRecord(id) {
   return api(`/encoder/records/${id}`, { method: 'DELETE' });
 }
 
-export function getStats() {
-  return api('/encoder/stats');
+export function getStats(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/encoder/stats${qs ? `?${qs}` : ''}`);
 }
 
 export function submitRecord(id) {

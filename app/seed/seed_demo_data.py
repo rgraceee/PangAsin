@@ -170,9 +170,9 @@ def seed_records():
                     "insert into production_records "
                     "(municipality_id, barangay_id, record_date, production_volume, num_salt_beds, "
                     " area_per_salt_bed, registered_producers, male_producers, female_producers, "
-                    " notes, status, submitted_by, submitted_at) "
+                    " production_method, status, submitted_by, submitted_at) "
                     "values (:m, :b, '2026-08-01', :v, :beds, :area, :reg, :male, :female, "
-                    " :notes, 'approved', :uid, now())"
+                    " 'solar', 'approved', :uid, now())"
                 ),
                 {
                     "m": muni.id,
@@ -183,7 +183,6 @@ def seed_records():
                     "reg": 12 + i,
                     "male": 7 + i,
                     "female": 5,
-                    "notes": "Demo seeded record",
                     "uid": submitter.id,
                 },
             )

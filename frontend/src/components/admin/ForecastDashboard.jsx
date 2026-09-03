@@ -4,6 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Area, ComposedChart,
 } from 'recharts';
 import { runForecast, getForecastRuns, getForecastResult, getMunicipalityOutlook, getAdminMunicipalities } from '../../services/dataService';
+import { supplyDemand } from '../../data/municipalities';
 
 function readinessBadge(readiness) {
   const map = {
@@ -22,46 +23,127 @@ function readinessReason(readiness) {
 }
 
 function trendIcon(direction) {
-  if (direction === 'increasing') return '↑ Increasing';
-  if (direction === 'declining') return '↓ Declining';
-  return '→ Stable';
+  if (direction === 'increasing') return '\u2191 Increasing';
+  if (direction === 'declining') return '\u2193 Declining';
+  return '\u2192 Stable';
 }
 
 function formatKg(val) {
-  if (val === null || val === undefined) return '—';
+  if (val === null || val === undefined) return '\u2014';
   return `${Math.round(val).toLocaleString()} kg`;
 }
 
 function formatPct(val) {
-  if (val === null || val === undefined) return '—';
+  if (val === null || val === undefined) return '\u2014';
   const sign = val > 0 ? '+' : '';
   return `${sign}${val.toFixed(1)}%`;
 }
 
-function insightText(run, outlook) {
-  if (!run) {
-    if (outlook && outlook.readiness === 'not_ready') {
-      return 'Additional validated historical records are required before a meaningful forecast can be generated.';
+function InsightCard({ title, children, className }) {
+  return (
+    <Col md={4}>
+      <Card className={`forecast-insight-card h-100 ${className || ''}`}>
+        <Card.Header as="h6" className="fw-bold">{title}</Card.Header>
+        <Card.Body>
+          {children}
+        </Card.Body>
+      </Card>
+    </Col>
+  );
+}
+
+function computeInsights(currentRun, outlook) {
+  const insights = {
+    perMuni: [],
+    seasonal: { peak: '\u2014', low: '\u2014', pattern: 'No forecast data available.' },
+    ranking: { top: null, bottom: null },
+    supplyDemand: { gap: 0, label: '\u2014', detail: 'No forecast data available.' },
+    flags: { declining: [], growing: [] },
+    regional: { total: '\u2014', detail: 'No forecast data available.' },
+  };
+
+  if (!currentRun) return insights;
+
+  const demandBenchmark = supplyDemand.pangasinan.demandBenchmark;
+
+  if (currentRun.points && currentRun.points.length > 0) {
+    const forecastPoints = currentRun.points.filter((p) => p.is_forecast);
+    const historicalPoints = currentRun.points.filter((p) => !p.is_forecast);
+
+    const monthlyTotals = {};
+    forecastPoints.forEach((p) => {
+      const ym = p.period_label;
+      if (!monthlyTotals[ym]) monthlyTotals[ym] = 0;
+      monthlyTotals[ym] += p.predicted_value || 0;
+    });
+
+    const sortedMonths = Object.entries(monthlyTotals).sort((a, b) => b[1] - a[1]);
+    if (sortedMonths.length > 0) {
+      const peakMonth = sortedMonths[0][0];
+      const lowMonth = sortedMonths[sortedMonths.length - 1][0];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const peakIdx = parseInt(peakMonth.split('-')[1], 10) - 1;
+      const lowIdx = parseInt(lowMonth.split('-')[1], 10) - 1;
+      insights.seasonal.peak = monthNames[peakIdx] || peakMonth;
+      insights.seasonal.low = monthNames[lowIdx] || lowMonth;
+
+      const dryMonths = [1, 2, 3, 4, 5, 6];
+      const rainyMonths = [7, 8, 9, 10, 11, 12];
+      const dryTotal = forecastPoints
+        .filter((p) => dryMonths.includes(parseInt(p.period_label.split('-')[1], 10)))
+        .reduce((s, p) => s + (p.predicted_value || 0), 0);
+      const rainyTotal = forecastPoints
+        .filter((p) => rainyMonths.includes(parseInt(p.period_label.split('-')[1], 10)))
+        .reduce((s, p) => s + (p.predicted_value || 0), 0);
+      if (dryTotal > rainyTotal) {
+        insights.seasonal.pattern = `Dry season (Mar\u2013Jun) is expected to produce ${Math.round(dryTotal).toLocaleString()} kg vs ${Math.round(rainyTotal).toLocaleString()} kg in rainy season (Jul\u2013Dec).`;
+      } else {
+        insights.seasonal.pattern = `Rainy season (Jul\u2013Dec) is expected to produce ${Math.round(rainyTotal).toLocaleString()} kg vs ${Math.round(dryTotal).toLocaleString()} kg in dry season (Mar\u2013Jun).`;
+      }
     }
-    return 'Run a forecast to generate decision-support insights.';
   }
-  if (run.readiness === 'not_ready') {
-    return 'Additional validated historical records are required before a meaningful forecast can be generated.';
+
+  if (currentRun.projected_total !== null && currentRun.projected_total !== undefined) {
+    const projectedMT = currentRun.projected_total / 1000;
+    const gap = Math.round(projectedMT - demandBenchmark);
+    const sign = gap >= 0 ? '+' : '';
+    insights.supplyDemand.gap = gap;
+    insights.supplyDemand.label = `${sign}${gap.toLocaleString()} MT`;
+    insights.supplyDemand.detail = `Projected: ${Math.round(projectedMT).toLocaleString()} MT vs demand benchmark: ${demandBenchmark.toLocaleString()} MT.`;
   }
-  if (run.readiness === 'limited') {
-    return 'Forecast results should be interpreted with caution because validated historical records are limited.';
-  }
-  if (run.trend_direction === 'increasing') {
-    const pct = run.expected_change_pct;
-    if (pct !== null && pct > 15) {
-      return 'Strong production growth is indicated by the current historical trend. Consider prioritizing further assessment of this area.';
+
+  if (outlook && outlook.length > 0) {
+    const withChange = outlook.filter((o) => o.expected_change_pct !== null && o.expected_change_pct !== undefined);
+    if (withChange.length > 0) {
+      const sorted = [...withChange].sort((a, b) => b.expected_change_pct - a.expected_change_pct);
+      insights.ranking.top = sorted[0];
+      insights.ranking.bottom = sorted[sorted.length - 1];
     }
-    return 'Production is projected to increase based on the current historical trend.';
+
+    insights.flags.declining = outlook.filter((o) => o.trend_direction === 'declining' || (o.expected_change_pct !== null && o.expected_change_pct < -10));
+    insights.flags.growing = outlook.filter((o) => o.expected_change_pct !== null && o.expected_change_pct > 15);
+
+    const readyMunis = outlook.filter((o) => o.readiness !== 'not_ready');
+    insights.perMuni = outlook.map((o) => ({
+      name: o.municipality_name,
+      trend: o.trend_direction,
+      change: o.expected_change_pct,
+      readiness: o.readiness,
+    }));
   }
-  if (run.trend_direction === 'declining') {
-    return 'Production shows a declining trend. ASIN Center may investigate possible production or resource constraints.';
+
+  if (currentRun.projected_total !== null && currentRun.projected_total !== undefined) {
+    const totalProjectedMT = Math.round(currentRun.projected_total / 1000).toLocaleString();
+    insights.regional.total = `${totalProjectedMT} MT`;
+    const demandGap = currentRun.projected_total / 1000 - demandBenchmark;
+    if (demandGap >= 0) {
+      insights.regional.detail = `Combined projected supply across all municipalities is expected to exceed the demand benchmark by ${Math.abs(Math.round(demandGap)).toLocaleString()} MT.`;
+    } else {
+      insights.regional.detail = `Combined projected supply across all municipalities falls short of the demand benchmark by ${Math.abs(Math.round(demandGap)).toLocaleString()} MT.`;
+    }
   }
-  return 'Production is projected to remain stable based on recent historical records.';
+
+  return insights;
 }
 
 export default function ForecastDashboard() {
@@ -121,7 +203,7 @@ export default function ForecastDashboard() {
   const chartData = useMemo(() => {
     if (!currentRun || !currentRun.points) return [];
     return currentRun.points.map((p) => ({
-      label: p.predicted_value !== null ? p.period_label : p.period_label,
+      label: p.period_label,
       production: p.predicted_value,
       lower: p.lower_bound,
       upper: p.upper_bound,
@@ -158,6 +240,8 @@ export default function ForecastDashboard() {
     });
     return arr;
   }, [muniOutlook, sortBy]);
+
+  const insights = useMemo(() => computeInsights(currentRun, outlook), [currentRun, outlook]);
 
   if (loading) {
     return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
@@ -246,7 +330,7 @@ export default function ForecastDashboard() {
           <Card className="h-100 forecast-summary-card">
             <Card.Body>
               <div className="forecast-summary-title">Forecast Reliability</div>
-              <div className="forecast-summary-value text-capitalize">{currentRun?.reliability || '—'}</div>
+              <div className="forecast-summary-value text-capitalize">{currentRun?.reliability || '\u2014'}</div>
               <div className="forecast-summary-supporting">Connected to available validated data</div>
             </Card.Body>
           </Card>
@@ -269,7 +353,7 @@ export default function ForecastDashboard() {
                   <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                   <Tooltip
-                    formatter={(value, name) => [value ? `${Math.round(value).toLocaleString()} kg` : '—', name]}
+                    formatter={(value, name) => [value ? `${Math.round(value).toLocaleString()} kg` : '\u2014', name]}
                     labelFormatter={(l) => l}
                   />
                   <Legend />
@@ -328,9 +412,9 @@ export default function ForecastDashboard() {
             <thead>
               <tr>
                 <th>Municipality</th>
-                <th className="cursor-pointer" onClick={() => setSortBy('trend')}>Forecast Trend {sortBy === 'trend' ? '↑' : ''}</th>
-                <th className="cursor-pointer" onClick={() => setSortBy('expected_change')}>Expected Change {sortBy === 'expected_change' ? '↑' : ''}</th>
-                <th className="cursor-pointer" onClick={() => setSortBy('readiness')}>Readiness {sortBy === 'readiness' ? '↑' : ''}</th>
+                <th className="cursor-pointer" onClick={() => setSortBy('trend')}>Forecast Trend {sortBy === 'trend' ? '\u2191' : ''}</th>
+                <th className="cursor-pointer" onClick={() => setSortBy('expected_change')}>Expected Change {sortBy === 'expected_change' ? '\u2191' : ''}</th>
+                <th className="cursor-pointer" onClick={() => setSortBy('readiness')}>Readiness {sortBy === 'readiness' ? '\u2191' : ''}</th>
               </tr>
             </thead>
             <tbody>
@@ -350,24 +434,96 @@ export default function ForecastDashboard() {
         </Card.Body>
       </Card>
 
-      <Card className="forecast-insight-card">
-        <Card.Header as="h5" className="fw-bold">Decision Support Insight</Card.Header>
-        <Card.Body>
-          <div className="forecast-insight-text">
-            {currentRun ? (
-              <>
-                <strong>Production Outlook</strong>
-                <p className="mb-0">{insightText(currentRun, null)}</p>
-              </>
-            ) : (
-              <>
-                <strong>Forecast Unavailable</strong>
-                <p className="mb-0">{insightText(null, outlook[0])}</p>
-              </>
-            )}
+      <h5 className="fw-bold mb-3">Forecast Insights &amp; Decision Support</h5>
+      <Row className="g-3 mb-3">
+        <InsightCard title="1. Production Forecast per Municipality">
+          {insights.perMuni.length === 0 ? (
+            <p className="text-muted mb-0">No forecast data available. Run a forecast to see projected volumes per municipality.</p>
+          ) : (
+            <div className="small">
+              {insights.perMuni.map((m) => (
+                <div key={m.name} className="d-flex justify-content-between mb-1">
+                  <span>{m.name}</span>
+                  <span className="text-muted">{trendIcon(m.trend)} {formatPct(m.change)}</span>
+                </div>
+              ))}
+              {currentRun?.projected_total && (
+                <p className="mt-2 mb-0 fw-semibold">Total projected: {formatKg(currentRun.projected_total)}</p>
+              )}
+            </div>
+          )}
+        </InsightCard>
+
+        <InsightCard title="2. Seasonal Trend Analysis">
+          <div className="small">
+            <p className="mb-1"><strong>Peak production month:</strong> {insights.seasonal.peak}</p>
+            <p className="mb-1"><strong>Lowest production month:</strong> {insights.seasonal.low}</p>
+            <p className="mb-0 text-muted">{insights.seasonal.pattern}</p>
           </div>
-        </Card.Body>
-      </Card>
+        </InsightCard>
+
+        <InsightCard title="3. Municipality Ranking Forecast">
+          {insights.ranking.top ? (
+            <div className="small">
+              <p className="mb-1">
+                <strong className="text-success">Top performer (next period):</strong>{' '}
+                {insights.ranking.top.municipality_name} ({formatPct(insights.ranking.top.expected_change_pct)})
+              </p>
+              {insights.ranking.bottom && insights.ranking.bottom.municipality_id !== insights.ranking.top.municipality_id && (
+                <p className="mb-0">
+                  <strong className="text-warning">Needs attention:</strong>{' '}
+                  {insights.ranking.bottom.municipality_name} ({formatPct(insights.ranking.bottom.expected_change_pct)})
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted mb-0">No ranking data available.</p>
+          )}
+        </InsightCard>
+
+        <InsightCard title="4. Supply-Demand Gap">
+          <div className="small">
+            <p className="mb-1"><strong>Projected gap:</strong> {insights.supplyDemand.label}</p>
+            <p className="mb-0 text-muted">{insights.supplyDemand.detail}</p>
+          </div>
+        </InsightCard>
+
+        <InsightCard title="5. Decline / Growth Flags">
+          {insights.flags.declining.length === 0 && insights.flags.growing.length === 0 ? (
+            <p className="text-muted mb-0">No early warning flags at this time.</p>
+          ) : (
+            <div className="small">
+              {insights.flags.growing.length > 0 && (
+                <div className="mb-2">
+                  <strong className="text-success">Strong growth:</strong>
+                  {insights.flags.growing.map((m) => (
+                    <div key={m.municipality_id} className="ms-2">
+                      {m.municipality_name} ({formatPct(m.expected_change_pct)})
+                    </div>
+                  ))}
+                </div>
+              )}
+              {insights.flags.declining.length > 0 && (
+                <div>
+                  <strong className="text-danger">Declining:</strong>
+                  {insights.flags.declining.map((m) => (
+                    <div key={m.municipality_id} className="ms-2">
+                      {m.municipality_name} ({formatPct(m.expected_change_pct)})
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </InsightCard>
+
+        <InsightCard title="6. Aggregate / Regional Outlook">
+          <div className="small">
+            <p className="mb-1"><strong>Total projected supply:</strong> {insights.regional.total}</p>
+            <p className="mb-0 text-muted">{insights.regional.detail}</p>
+          </div>
+        </InsightCard>
+      </Row>
     </div>
   );
 }

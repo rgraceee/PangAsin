@@ -116,7 +116,7 @@ export default function ValidationQueue() {
               type="text"
               className="form-control"
               name="q"
-              placeholder="Search barangay or notes…"
+              placeholder="Search barangay…"
               value={filters.q}
               onChange={handleFilter}
             />
@@ -186,6 +186,7 @@ export default function ValidationQueue() {
                   <DetailRow label="Municipality" value={detail.municipality_name} />
                   <DetailRow label="Barangay" value={detail.barangay} />
                   <DetailRow label="Date Covered" value={detail.record_date} />
+                  <DetailRow label="Production Method" value={detail.production_method ? detail.production_method.charAt(0).toUpperCase() + detail.production_method.slice(1) : null} />
                   <DetailRow label="Registered Producers" value={detail.registered_producers} />
                   <DetailRow label="Male Producers" value={detail.male_producers} />
                   <DetailRow label="Female Producers" value={detail.female_producers} />
@@ -193,7 +194,6 @@ export default function ValidationQueue() {
                   <DetailRow label="Number of Salt Beds" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
                   <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} kg` : null} />
-                  <DetailRow label="Notes" value={detail.notes} />
                   <DetailRow label="Submitted by" value={detail.submitter ? `${detail.submitter.name} (${detail.submitter.email})` : null} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                   <DetailRow label="Reviewed by" value={detail.reviewer ? `${detail.reviewer.name} (${detail.reviewer.email})` : null} />

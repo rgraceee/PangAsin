@@ -522,16 +522,23 @@ body {
   flex: 1;
   padding-top: 2rem;
   max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
-.encoder-hello h2 {
-  font-weight: 800;
-  color: var(--gray-900);
+.encoder-floating-logout {
+  padding-bottom: 0.25rem;
 }
 
-.encoder-hello p {
-  color: var(--gray-600);
-  margin: 0;
+.encoder-tooltip {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .encoder-kpi {
@@ -619,15 +626,6 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--gray-600);
-}
-
-.encoder-form-wrap {
-  max-width: 760px;
-}
-
-.encoder-form-wrap h4 {
-  font-weight: 800;
-  margin-bottom: 1.25rem;
 }
 
 /* Status badges */
@@ -829,5 +827,78 @@ body {
 
 .forecast-table th:hover {
   background-color: var(--gray-100);
+}
+
+/* ===== Single-page admin layout ===== */
+.admin-single-page {
+  padding-bottom: 5rem;
+  scroll-behavior: smooth;
+}
+
+.admin-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 3rem 0 1.5rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--gray-200);
+}
+
+.admin-section-divider:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.admin-section-number {
+  width: 36px;
+  height: 36px;
+  background: var(--ocean-blue);
+  color: var(--white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.admin-section-divider h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--gray-800);
+}
+
+/* Chart legends */
+.admin-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0;
+  font-size: 12px;
+}
+
+.admin-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.admin-chart-legend-swatch {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Forecast insights */
+.forecast-insight-card h6 {
+  margin-bottom: 0;
 }
 

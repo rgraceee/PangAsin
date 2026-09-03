@@ -1,6 +1,8 @@
 from app.extensions import db
 from datetime import datetime
 
+PRODUCTION_METHODS = ("solar", "cooked", "hybrid")
+
 
 class ProductionRecord(db.Model):
     __tablename__ = "production_records"
@@ -15,7 +17,11 @@ class ProductionRecord(db.Model):
     registered_producers = db.Column(db.Integer, nullable=False, default=0)
     male_producers = db.Column(db.Integer, nullable=False, default=0)
     female_producers = db.Column(db.Integer, nullable=False, default=0)
-    notes = db.Column(db.Text, nullable=True)
+    production_method = db.Column(
+        db.Enum(*PRODUCTION_METHODS, name="production_method_enum"),
+        nullable=False,
+        default="solar",
+    )
     status = db.Column(db.Enum("draft", "pending", "approved", "rejected", "returned", name="record_status_enum"), default="draft", nullable=False)
     reviewer_comment = db.Column(db.Text, nullable=True)
     submitted_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)

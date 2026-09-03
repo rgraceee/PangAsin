@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify, request
 from app.config import Config
 from app.extensions import db, migrate, login_manager
 
@@ -10,6 +10,12 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        if request.path.startswith("/api/") or request.accept_mimetypes.accept_json:
+            return jsonify({"error": "Unauthorized"}), 401
+        return jsonify({"error": "Unauthorized"}), 401
 
     from app import models  # noqa: F401  (register models with SQLAlchemy)
 

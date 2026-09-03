@@ -1,15 +1,17 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
-from app.models.production_record import ProductionRecord
+from app.models.production_record import ProductionRecord, PRODUCTION_METHODS
 from app.models.barangay import Barangay
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 encoder_api_bp = Blueprint("encoder_api", __name__, url_prefix="/api/encoder")
 
 PRODUCER_COUNT_FIELDS = ("male_producers", "female_producers")
+
+ENCODER_READ_ONLY_STATUS = "approved"
 
 
 def _barangay_name(record):
@@ -31,7 +33,7 @@ def _serialize(record):
         "production_volume": float(record.production_volume) if record.production_volume is not None else None,
         "num_salt_beds": record.num_salt_beds,
         "area_per_salt_bed": float(record.area_per_salt_bed) if record.area_per_salt_bed is not None else None,
-        "notes": record.notes,
+        "production_method": record.production_method,
         "status": record.status,
         "reviewer_comment": record.reviewer_comment,
         "reviewed_by": record.reviewed_by,
@@ -60,12 +62,10 @@ def _allocate(record, data):
     for field in ("production_volume", "num_salt_beds") + PRODUCER_COUNT_FIELDS:
         if field in data:
             setattr(record, field, data[field])
-    if "registered_producers" in data:
-        pass
     if "area_per_salt_bed" in data:
         record.area_per_salt_bed = data["area_per_salt_bed"] if data["area_per_salt_bed"] not in (None, "") else None
-    if "notes" in data:
-        record.notes = data["notes"]
+    if "production_method" in data:
+        record.production_method = data["production_method"]
 
 
 def _validate(data, partial=False):
@@ -128,6 +128,15 @@ def _validate(data, partial=False):
                 errors.append("area_per_salt_bed must be non-negative (m2).")
         except (TypeError, ValueError):
             errors.append("area_per_salt_bed must be a number (m2).")
+
+    if not partial or "production_method" in data:
+        method = data.get("production_method")
+        if method in (None, ""):
+            errors.append("production_method is required.")
+        elif method not in PRODUCTION_METHODS:
+            errors.append(
+                f"production_method must be one of: {', '.join(PRODUCTION_METHODS)}."
+            )
 
     return errors
 
@@ -244,6 +253,11 @@ def update_record(record_id):
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
 
+    if record.status == ENCODER_READ_ONLY_STATUS:
+        return jsonify({
+            "error": "Cannot modify an approved record. It is locked from editing."
+        }), 409
+
     data = request.get_json(silent=True) or {}
     errors = _validate(data, partial=True)
     if errors:
@@ -304,6 +318,11 @@ def delete_record(record_id):
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
 
+    if record.status == ENCODER_READ_ONLY_STATUS:
+        return jsonify({
+            "error": "Cannot delete an approved record. It is locked from deletion."
+        }), 409
+
     db.session.delete(record)
     try:
         db.session.commit()
@@ -316,6 +335,34 @@ def delete_record(record_id):
     return jsonify({"message": "Record deleted."})
 
 
+def _apply_period(query, start_raw, end_raw):
+    start_d = _parse_date(start_raw) if start_raw else None
+    end_d = _parse_date(end_raw) if end_raw else None
+    if start_d:
+        query = query.filter(ProductionRecord.record_date >= start_d)
+    if end_d:
+        query = query.filter(ProductionRecord.record_date <= end_d)
+    return query, start_d, end_d
+
+
+def _by_barangay_query():
+    return (
+        db.session.query(
+            ProductionRecord.barangay_id,
+            Barangay.name,
+            func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("total_volume"),
+            func.count(ProductionRecord.id).label("record_count"),
+            func.coalesce(
+                func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed),
+                0,
+            ).label("total_area"),
+            func.coalesce(func.sum(ProductionRecord.registered_producers), 0).label("total_registered"),
+        )
+        .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
+        .filter(ProductionRecord.municipality_id == current_user.municipality_id)
+    )
+
+
 @encoder_api_bp.route("/stats", methods=["GET"])
 @login_required
 def stats():
@@ -323,37 +370,72 @@ def stats():
         return jsonify({"error": "Encoder access only."}), 403
 
     base = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id)
+    base, start_d, end_d = _apply_period(base, request.args.get("start"), request.args.get("end"))
 
-    by_barangay = (
-        db.session.query(
-            ProductionRecord.barangay_id,
-            Barangay.name,
-            func.sum(ProductionRecord.production_volume).label("total_volume"),
-            func.count(ProductionRecord.id).label("record_count"),
-            func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
-            func.sum(ProductionRecord.registered_producers).label("total_registered"),
+    by_barangay_q = _by_barangay_query()
+    by_barangay_q, _, _ = _apply_period(by_barangay_q, request.args.get("start"), request.args.get("end"))
+    by_barangay = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
+
+    total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume), 0)).scalar() or 0
+    total_area = base.with_entities(
+        func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)
+    ).scalar() or 0
+    record_count = base.count()
+    total_beds = base.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0)).scalar() or 0
+    total_registered = base.with_entities(
+        func.coalesce(func.sum(ProductionRecord.registered_producers), 0)
+    ).scalar() or 0
+
+    month_rows = (
+        base.with_entities(
+            func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
+            ProductionRecord.barangay_id.label("barangay_id"),
+            Barangay.name.label("barangay"),
+            func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("volume"),
         )
         .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
-        .filter(ProductionRecord.municipality_id == current_user.municipality_id)
-        .group_by(ProductionRecord.barangay_id, Barangay.name)
+        .group_by(
+            func.to_char(ProductionRecord.record_date, "YYYY-MM"),
+            ProductionRecord.barangay_id,
+            Barangay.name,
+        )
+        .order_by(func.to_char(ProductionRecord.record_date, "YYYY-MM"))
         .all()
     )
 
-    total_volume = base.with_entities(func.sum(ProductionRecord.production_volume)).scalar() or 0
-    total_area = base.with_entities(
-        func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed)
-    ).scalar() or 0
-    record_count = base.count()
-    total_beds = base.with_entities(func.sum(ProductionRecord.num_salt_beds)).scalar() or 0
-    total_registered = base.with_entities(func.sum(ProductionRecord.registered_producers)).scalar() or 0
+    months_set = []
+    months_seen = set()
+    barangay_names = []
+    barangay_seen = set()
+    series = {}
+    for m, _bid, bname, vol in month_rows:
+        if m not in months_seen:
+            months_seen.add(m)
+            months_set.append(m)
+        if bname not in barangay_seen:
+            barangay_seen.add(bname)
+            barangay_names.append(bname)
+            series[bname] = {}
+        series[bname][m] = float(vol or 0)
+
+    by_month = []
+    for m in months_set:
+        row = {"month": m}
+        for bname in barangay_names:
+            row[bname] = series.get(bname, {}).get(m, 0.0)
+        by_month.append(row)
 
     return jsonify({
         "municipality_id": current_user.municipality_id,
         "municipality_name": current_user.municipality.name if current_user.municipality else None,
+        "period": {
+            "start": start_d.isoformat() if start_d else None,
+            "end": end_d.isoformat() if end_d else None,
+        },
         "total_volume_kg": float(total_volume),
         "total_area_sqm": float(total_area or 0),
         "record_count": record_count,
-        "total_salt_beds": total_beds,
+        "total_salt_beds": int(total_beds or 0),
         "total_registered_producers": int(total_registered or 0),
         "by_barangay": [
             {
@@ -366,4 +448,6 @@ def stats():
             }
             for b in by_barangay
         ],
+        "by_month": by_month,
+        "barangays": barangay_names,
     })
