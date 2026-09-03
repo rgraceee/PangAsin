@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { Row, Col, Card, Table } from 'react-bootstrap';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Row, Col, Card, Table, Spinner, Alert } from 'react-bootstrap';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, BarChart, Bar, Cell } from 'recharts';
-import { municipalities, production } from '../../data/municipalities';
+import { getAdminTrends } from '../../services/dataService';
 
 const MUNI_COLORS = [
   '#1565C8', '#F09A28', '#E53935', '#29B039',
@@ -22,34 +22,42 @@ function CustomLegend({ payload }) {
 }
 
 export default function TrendsComparison() {
-  const trendData = useMemo(() => {
-    const byYear = {};
-    production.records.forEach((r) => {
-      const key = `${r.year}-${String(r.month).padStart(2, '0')}`;
-      byYear[key] = (byYear[key] || 0) + r.totalMT;
-    });
-    return Object.entries(byYear)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, total]) => ({ month, total }));
+  const [trendData, setTrendData] = useState([]);
+  const [comparisonData, setComparisonData] = useState([]);
+  const [period, setPeriod] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    getAdminTrends()
+      .then((res) => {
+        setTrendData(res.trend || []);
+        setComparisonData(res.municipalities || []);
+        setPeriod(res.period || null);
+        setLoading(false);
+      })
+      .catch((err) => { setError(err.message); setLoading(false); });
   }, []);
 
-  const comparisonData = useMemo(() => {
-    return municipalities
-      .map((m) => ({
-        name: m.name,
-        current: m.productionMT,
-        previous: m.previousProductionMT,
-        changePct: m.productionChangePercent,
-      }))
-      .sort((a, b) => b.current - a.current);
-  }, []);
+  const barData = useMemo(() => comparisonData.map((m) => ({ name: m.name, current: m.current })), [comparisonData]);
 
-  const barData = comparisonData.map((m) => ({ name: m.name, current: m.current }));
+  if (loading) {
+    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+  }
+  if (error) {
+    return <Alert variant="danger">{error}</Alert>;
+  }
+  if (trendData.length === 0) {
+    return <Alert variant="info">No approved production records available to build trends yet.</Alert>;
+  }
 
   return (
     <div>
       <h2 className="mb-1">Trends &amp; Comparison</h2>
-      <p className="text-muted">Province-wide production trends over time and side-by-side municipality comparison.</p>
+      <p className="text-muted">
+        Province-wide production trends over time and side-by-side municipality comparison.
+        {period ? ` (${period.start} to ${period.end})` : ''}
+      </p>
 
       <Row className="g-3 mb-3">
         <Col lg={8}>
@@ -87,9 +95,13 @@ export default function TrendsComparison() {
                     <tr key={m.name}>
                       <td>{m.name}</td>
                       <td className="text-end">
-                        <span className={m.changePct >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'}>
-                          {m.changePct >= 0 ? '+' : ''}{m.changePct}%
-                        </span>
+                        {m.changePct === null || m.changePct === undefined ? (
+                          <span className="text-muted">—</span>
+                        ) : (
+                          <span className={m.changePct >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'}>
+                            {m.changePct >= 0 ? '+' : ''}{m.changePct}%
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -22,3 +22,7 @@ migrations/versions/*.py
 # OS
 Thumbs.db
 .DS_Store
+
+# Generated report files
+app/static/reports/*.xlsx
+app/static/reports/*.pdf

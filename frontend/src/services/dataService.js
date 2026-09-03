@@ -174,6 +174,31 @@ export function getDataQuality() {
   return api('/admin/data-quality');
 }
 
+export function getAdminSupplyDemand() {
+  return api('/admin/supply-demand');
+}
+
+export function getAdminTrends() {
+  return api('/admin/trends');
+}
+
+export function createReport(payload) {
+  return api('/admin/reports', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function getReports(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/reports${qs ? `?${qs}` : ''}`);
+}
+
+export function getReport(id) {
+  return api(`/admin/reports/${id}`);
+}
+
+export function getReportDownloadUrl(id) {
+  return `/api/admin/reports/${id}/download`;
+}
+
 export function getInsight() {
   return api('/admin/insight');
 }

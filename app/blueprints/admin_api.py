@@ -4,10 +4,12 @@ from app.models.production_record import ProductionRecord
 from app.models.barangay import Barangay
 from app.models.municipality import Municipality
 from app.models.user import User
+from app.models.demand_benchmark import DemandBenchmark
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from app.services.forecast_service import _monthly_aggregates
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
 
@@ -576,4 +578,134 @@ def insight():
         "methodology": "Heuristic summary of DB aggregates. Will be replaced by Module 4.2 forecasting engine.",
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "source": "module4.2-pending",
+    })
+
+
+# National-level sector demand breakdown (reference data, MT). Not stored in the
+# demand_benchmarks table (which holds annual supply/demand figures); served here
+# as a labeled reference constant for the sector breakdown visualisation.
+SECTOR_DEMAND = {
+    "household": 320000.0,
+    "foodProcessing": 180000.0,
+    "industry": 120000.0,
+    "agriculture": 63608.0,
+}
+
+SECTOR_DEMAND_NOTE = (
+    "Reference national sector breakdown by end use. Not derived from "
+    "production_records; shown for context only."
+)
+
+
+@admin_api_bp.route("/supply-demand", methods=["GET"])
+@login_required
+def supply_demand():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    provincial = DemandBenchmark.query.filter_by(geographic_scope="provincial").order_by(DemandBenchmark.year.desc()).first()
+    national = DemandBenchmark.query.filter_by(geographic_scope="national").order_by(DemandBenchmark.year.desc()).first()
+
+    pangasinan_local_kg = (
+        db.session.query(func.sum(ProductionRecord.production_volume))
+        .filter(ProductionRecord.status == "approved")
+        .scalar()
+        or 0
+    )
+    local_production_mt = round(pangasinan_local_kg / 1000, 2)
+
+    pangasinan = {
+        "year": provincial.year if provincial else datetime.utcnow().year,
+        "demand_volume": float(provincial.demand_volume) if provincial else None,
+        "local_production": local_production_mt if local_production_mt > 0 else (float(provincial.local_production) if provincial and provincial.local_production else None),
+        "import_volume": float(provincial.import_volume) if provincial and provincial.import_volume is not None else None,
+        "source_name": provincial.source_name if provincial else None,
+    }
+
+    philippines = {
+        "year": national.year if national else None,
+        "demand_volume": float(national.demand_volume) if national else None,
+        "local_production": float(national.local_production) if national and national.local_production is not None else None,
+        "import_volume": float(national.import_volume) if national and national.import_volume is not None else None,
+        "source_name": national.source_name if national else None,
+    }
+
+    return jsonify({
+        "pangasinan": pangasinan,
+        "philippines": philippines,
+        "sector_demand": SECTOR_DEMAND,
+        "sector_demand_note": SECTOR_DEMAND_NOTE,
+    })
+
+
+@admin_api_bp.route("/trends", methods=["GET"])
+@login_required
+def trends():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    latest = (
+        db.session.query(func.max(ProductionRecord.record_date))
+        .filter(ProductionRecord.status == "approved")
+        .scalar()
+    )
+    if latest is None:
+        return jsonify({"trend": [], "municipalities": [], "period": None})
+
+    end = latest
+    start = end - timedelta(days=365)
+
+    labels, values, _ = _monthly_aggregates(None, start, end)
+    trend = [
+        {"month": labels[i], "total": round(values[i] / 1000, 2)}
+        for i in range(len(labels))
+    ]
+
+    by_muni = (
+        db.session.query(
+            Municipality.id,
+            Municipality.name,
+            func.sum(ProductionRecord.production_volume).label("v"),
+        )
+        .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+        .filter(ProductionRecord.status == "approved")
+        .filter(ProductionRecord.record_date >= start)
+        .filter(ProductionRecord.record_date <= end)
+        .group_by(Municipality.id, Municipality.name)
+        .all()
+    )
+    by_muni_prev = (
+        db.session.query(
+            Municipality.id,
+            func.sum(ProductionRecord.production_volume).label("v"),
+        )
+        .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+        .filter(ProductionRecord.status == "approved")
+        .filter(ProductionRecord.record_date >= start - timedelta(days=365))
+        .filter(ProductionRecord.record_date < start)
+        .group_by(Municipality.id)
+        .all()
+    )
+    prev_map = {r.id: float(r.v or 0) for r in by_muni_prev}
+
+    municipalities = []
+    for r in by_muni:
+        current_mt = round(float(r.v or 0) / 1000, 2)
+        previous_mt = round(prev_map.get(r.id, 0) / 1000, 2)
+        change_pct = None
+        if previous_mt:
+            change_pct = round(((current_mt - previous_mt) / previous_mt) * 100, 1)
+        municipalities.append({
+            "name": r.name,
+            "current": current_mt,
+            "previous": previous_mt,
+            "changePct": change_pct,
+        })
+
+    municipalities.sort(key=lambda x: x["current"], reverse=True)
+
+    return jsonify({
+        "trend": trend,
+        "municipalities": municipalities,
+        "period": {"start": start.isoformat(), "end": end.isoformat()},
     })

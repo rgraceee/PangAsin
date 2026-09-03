@@ -3,8 +3,7 @@ import { Row, Col, Card, Spinner, Alert, Form, Badge, Table, Button } from 'reac
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Area, ComposedChart,
 } from 'recharts';
-import { runForecast, getForecastRuns, getForecastResult, getMunicipalityOutlook, getAdminMunicipalities } from '../../services/dataService';
-import { supplyDemand } from '../../data/municipalities';
+import { runForecast, getForecastRuns, getForecastResult, getMunicipalityOutlook, getAdminMunicipalities, getAdminSupplyDemand } from '../../services/dataService';
 
 function readinessBadge(readiness) {
   const map = {
@@ -52,7 +51,7 @@ function InsightCard({ title, children, className }) {
   );
 }
 
-function computeInsights(currentRun, outlook) {
+function computeInsights(currentRun, outlook, demandBenchmark) {
   const insights = {
     perMuni: [],
     seasonal: { peak: '\u2014', low: '\u2014', pattern: 'No forecast data available.' },
@@ -63,8 +62,6 @@ function computeInsights(currentRun, outlook) {
   };
 
   if (!currentRun) return insights;
-
-  const demandBenchmark = supplyDemand.pangasinan.demandBenchmark;
 
   if (currentRun.points && currentRun.points.length > 0) {
     const forecastPoints = currentRun.points.filter((p) => p.is_forecast);
@@ -105,11 +102,13 @@ function computeInsights(currentRun, outlook) {
 
   if (currentRun.projected_total !== null && currentRun.projected_total !== undefined) {
     const projectedMT = currentRun.projected_total / 1000;
-    const gap = Math.round(projectedMT - demandBenchmark);
-    const sign = gap >= 0 ? '+' : '';
-    insights.supplyDemand.gap = gap;
-    insights.supplyDemand.label = `${sign}${gap.toLocaleString()} MT`;
-    insights.supplyDemand.detail = `Projected: ${Math.round(projectedMT).toLocaleString()} MT vs demand benchmark: ${demandBenchmark.toLocaleString()} MT.`;
+    if (demandBenchmark !== null && demandBenchmark !== undefined) {
+      const gap = Math.round(projectedMT - demandBenchmark);
+      const sign = gap >= 0 ? '+' : '';
+      insights.supplyDemand.gap = gap;
+      insights.supplyDemand.label = `${sign}${gap.toLocaleString()} MT`;
+      insights.supplyDemand.detail = `Projected: ${Math.round(projectedMT).toLocaleString()} MT vs demand benchmark: ${demandBenchmark.toLocaleString()} MT.`;
+    }
   }
 
   if (outlook && outlook.length > 0) {
@@ -152,6 +151,7 @@ export default function ForecastDashboard() {
   const [runs, setRuns] = useState([]);
   const [currentRun, setCurrentRun] = useState(null);
   const [outlook, setOutlook] = useState([]);
+  const [demandBenchmark, setDemandBenchmark] = useState(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState(null);
@@ -162,6 +162,9 @@ export default function ForecastDashboard() {
       .catch(() => {});
     getMunicipalityOutlook()
       .then((res) => setOutlook(res.municipalities || []))
+      .catch(() => {});
+    getAdminSupplyDemand()
+      .then((res) => setDemandBenchmark(res?.pangasinan?.demand_volume ?? null))
       .catch(() => {});
   }, []);
 
@@ -205,6 +208,8 @@ export default function ForecastDashboard() {
     return currentRun.points.map((p) => ({
       label: p.period_label,
       production: p.predicted_value,
+      historical: p.is_forecast ? null : p.predicted_value,
+      forecast: p.is_forecast ? p.predicted_value : null,
       lower: p.lower_bound,
       upper: p.upper_bound,
       isForecast: p.is_forecast,
@@ -241,7 +246,7 @@ export default function ForecastDashboard() {
     return arr;
   }, [muniOutlook, sortBy]);
 
-  const insights = useMemo(() => computeInsights(currentRun, outlook), [currentRun, outlook]);
+  const insights = useMemo(() => computeInsights(currentRun, outlook, demandBenchmark), [currentRun, outlook, demandBenchmark]);
 
   if (loading) {
     return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
@@ -381,7 +386,7 @@ export default function ForecastDashboard() {
                   />
                   <Line
                     type="monotone"
-                    dataKey="production"
+                    dataKey="historical"
                     stroke="#1565C8"
                     strokeWidth={3}
                     dot={false}
@@ -390,7 +395,7 @@ export default function ForecastDashboard() {
                   />
                   <Line
                     type="monotone"
-                    dataKey="production"
+                    dataKey="forecast"
                     stroke="#F09A28"
                     strokeWidth={3}
                     strokeDasharray="6 4"

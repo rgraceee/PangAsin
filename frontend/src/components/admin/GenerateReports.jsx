@@ -1,43 +1,121 @@
-import React, { useState } from 'react';
-import { Row, Col, Card, Form, Button, Table, Alert, Modal, Badge } from 'react-bootstrap';
+import React, { useEffect, useState } from 'react';
+import { Row, Col, Card, Form, Button, Table, Alert, Modal, Badge, Spinner } from 'react-bootstrap';
+import { getAdminMunicipalities, createReport, getReports, getReport, getReportDownloadUrl } from '../../services/dataService';
 
 const REPORT_TYPES = [
-  { id: 'production', label: 'Production Summary' },
-  { id: 'ranking', label: 'Municipality Ranking' },
-  { id: 'validation', label: 'Validation Status' },
-  { id: 'quality', label: 'Data Quality' },
+  { id: 'provincial', label: 'Provincial Summary' },
+  { id: 'municipality', label: 'Municipality Summary' },
+  { id: 'forecast', label: 'Forecast Report' },
+  { id: 'data_quality', label: 'Data Quality' },
+  { id: 'supply_demand', label: 'Supply & Demand' },
+  { id: 'gis', label: 'Geographic Reference' },
 ];
 
+const STATUS_VARIANT = {
+  generated: 'success',
+  pending: 'warning',
+  failed: 'danger',
+};
+
+const TYPE_LABEL = Object.fromEntries(REPORT_TYPES.map((t) => [t.id, t.label]));
+
+function formatDateRange(start, end) {
+  if (!start && !end) return 'All records';
+  return [start, end].filter(Boolean).join(' to ');
+}
+
 export default function GenerateReports() {
-  const [reportType, setReportType] = useState('production');
+  const [reportType, setReportType] = useState('provincial');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [generated, setGenerated] = useState([]);
+  const [municipalityId, setMunicipalityId] = useState('');
+  const [format, setFormat] = useState('excel');
+  const [municipalities, setMunicipalities] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [currentReport, setCurrentReport] = useState(null);
-  const [error, setError] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const loadReports = () => {
+    getReports()
+      .then((res) => setReports(res.reports || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    getAdminMunicipalities()
+      .then((res) => setMunicipalities(res.municipalities || []))
+      .catch(() => {});
+    loadReports();
+  }, []);
+
+  useEffect(() => {
+    if (reportType !== 'municipality') setMunicipalityId('');
+  }, [reportType]);
 
   const handleGenerate = () => {
     setError(null);
-    const selected = REPORT_TYPES.find((r) => r.id === reportType);
-    if (!startDate || !endDate) {
-      setError('Please set both a start and end date range.');
+    if (reportType === 'municipality' && !municipalityId) {
+      setError('Please select a municipality for the Municipality Summary report.');
       return;
     }
-    const report = {
-      id: Date.now(),
-      type: reportType,
-      typeLabel: selected.label,
-      start: startDate,
-      end: endDate,
-      created: new Date().toLocaleString(),
+    if ((startDate && !endDate) || (!startDate && endDate)) {
+      setError('Set both a start and an end date, or leave both empty for all records.');
+      return;
+    }
+    setCreating(true);
+    const payload = {
+      report_type: reportType,
+      format,
+      date_range_start: startDate || null,
+      date_range_end: endDate || null,
     };
-    setGenerated([report, ...generated]);
+    if (reportType === 'municipality') {
+      payload.municipality_id = Number(municipalityId);
+    }
+    createReport(payload)
+      .then(() => {
+        loadReports();
+        setCreating(false);
+      })
+      .catch((err) => { setError(err.message); setCreating(false); });
   };
 
   const openPreview = (r) => {
     setCurrentReport(r);
     setShowPreview(true);
+    setPreviewData(null);
+    setPreviewLoading(true);
+    getReport(r.id)
+      .then((res) => setPreviewData(res.data || null))
+      .catch(() => {})
+      .finally(() => setPreviewLoading(false));
+  };
+
+  const download = (r) => {
+    window.open(getReportDownloadUrl(r.id), '_blank');
+  };
+
+  const previewRows = (obj, prefix = '') => {
+    if (!obj) return [];
+    return Object.entries(obj).flatMap(([k, v]) => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        return previewRows(v, `${prefix}${k} `);
+      }
+      return [{ key: `${prefix}${k}`.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), value: formatValue(v) }];
+    });
+  };
+
+  const formatValue = (v) => {
+    if (v === null || v === undefined) return '—';
+    if (Array.isArray(v)) return `${v.length} rows`;
+    if (typeof v === 'number' && !Number.isInteger(v)) return Math.round(v * 100) / 100;
+    return String(v);
   };
 
   return (
@@ -49,7 +127,7 @@ export default function GenerateReports() {
         <Card.Header as="h5">Create a New Report</Card.Header>
         <Card.Body>
           <Row className="g-3">
-            <Col md={4}>
+            <Col md={3}>
               <Form.Label className="small fw-bold text-uppercase text-muted">Report Type</Form.Label>
               <Form.Select value={reportType} onChange={(e) => setReportType(e.target.value)}>
                 {REPORT_TYPES.map((r) => (
@@ -58,15 +136,38 @@ export default function GenerateReports() {
               </Form.Select>
             </Col>
             <Col md={3}>
-              <Form.Label className="small fw-bold text-uppercase text-muted">Start Date</Form.Label>
-              <Form.Control type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Form.Label className="small fw-bold text-uppercase text-muted">Format</Form.Label>
+              <Form.Select value={format} onChange={(e) => setFormat(e.target.value)}>
+                <option value="excel">Excel (.xlsx)</option>
+                <option value="pdf">PDF</option>
+              </Form.Select>
             </Col>
-            <Col md={3}>
-              <Form.Label className="small fw-bold text-uppercase text-muted">End Date</Form.Label>
-              <Form.Control type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </Col>
-            <Col md={2} className="d-flex align-items-end">
-              <Button variant="primary" onClick={handleGenerate}>Generate</Button>
+            {reportType === 'municipality' ? (
+              <Col md={3}>
+                <Form.Label className="small fw-bold text-uppercase text-muted">Municipality</Form.Label>
+                <Form.Select value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value)}>
+                  <option value="">Select municipality…</option>
+                  {municipalities.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </Form.Select>
+              </Col>
+            ) : (
+              <>
+                <Col md={2}>
+                  <Form.Label className="small fw-bold text-uppercase text-muted">Start Date</Form.Label>
+                  <Form.Control type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </Col>
+                <Col md={2}>
+                  <Form.Label className="small fw-bold text-uppercase text-muted">End Date</Form.Label>
+                  <Form.Control type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </Col>
+              </>
+            )}
+            <Col md={3} className="d-flex align-items-end">
+              <Button variant="primary" onClick={handleGenerate} disabled={creating}>
+                {creating ? <Spinner animation="border" size="sm" /> : 'Generate'}
+              </Button>
             </Col>
           </Row>
           {error && <Alert variant="danger" className="mt-3 mb-0">{error}</Alert>}
@@ -76,28 +177,35 @@ export default function GenerateReports() {
       <Card className="encoder-card">
         <Card.Header as="h5">Generated Reports</Card.Header>
         <Card.Body className="p-0">
-          {generated.length === 0 ? (
+          {loading ? (
+            <div className="text-center p-4"><Spinner animation="border" variant="primary" /></div>
+          ) : reports.length === 0 ? (
             <div className="text-muted p-4 text-center">No reports generated yet. Fill in the form above to create one.</div>
           ) : (
             <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
               <thead>
                 <tr>
                   <th>Type</th>
+                  <th>Scope</th>
                   <th>Date Range</th>
+                  <th>Format</th>
+                  <th>Status</th>
                   <th>Created</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {generated.map((r) => (
+                {reports.map((r) => (
                   <tr key={r.id}>
-                    <td>
-                      <Badge bg="info" className="me-1">{r.typeLabel}</Badge>
-                    </td>
-                    <td>{r.start} to {r.end}</td>
-                    <td>{r.created}</td>
-                    <td>
-                      <Button size="sm" variant="outline-primary" onClick={() => openPreview(r)}>Preview</Button>
+                    <td><Badge bg="info" className="me-1">{TYPE_LABEL[r.report_type] || r.report_type}</Badge></td>
+                    <td>{r.municipality_name || 'Province-wide'}</td>
+                    <td>{formatDateRange(r.date_range_start, r.date_range_end)}</td>
+                    <td className="text-uppercase">{r.format}</td>
+                    <td><span className={`record-status-badge status-${r.status === 'failed' ? 'rejected' : r.status === 'generated' ? 'approved' : 'pending'}`}>{r.status}</span></td>
+                    <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                    <td className="text-end">
+                      <Button size="sm" variant="outline-primary" className="me-1" onClick={() => openPreview(r)} disabled={r.status !== 'generated'}>Preview</Button>
+                      <Button size="sm" variant="outline-success" onClick={() => download(r)} disabled={r.status !== 'generated'}>Download</Button>
                     </td>
                   </tr>
                 ))}
@@ -109,38 +217,58 @@ export default function GenerateReports() {
 
       <Modal show={showPreview} onHide={() => setShowPreview(false)} size="lg" centered>
         <Modal.Header closeButton>
-          <Modal.Title>{currentReport ? `${currentReport.typeLabel} Report` : 'Report Preview'}</Modal.Title>
+          <Modal.Title>{currentReport ? `${TYPE_LABEL[currentReport.report_type] || currentReport.report_type} Report` : 'Report Preview'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {currentReport && (
+          {previewLoading ? (
+            <div className="text-center p-4"><Spinner animation="border" variant="primary" /></div>
+          ) : currentReport && (
             <>
               <Alert variant="info" className="small">
-                This is a simulated preview. Export functionality is a placeholder.
+                Generated from live database records on {currentReport.generated_at ? new Date(currentReport.generated_at).toLocaleString() : '—'} ({currentReport.format.toUpperCase()}).
               </Alert>
               <Table bordered size="sm" className="mb-0">
                 <tbody>
                   <tr>
                     <th className="text-muted fw-normal" style={{ width: '35%' }}>Report Type</th>
-                    <td>{currentReport.typeLabel}</td>
+                    <td>{TYPE_LABEL[currentReport.report_type] || currentReport.report_type}</td>
+                  </tr>
+                  <tr>
+                    <th className="text-muted fw-normal">Scope</th>
+                    <td>{currentReport.municipality_name || 'Province-wide'}</td>
                   </tr>
                   <tr>
                     <th className="text-muted fw-normal">Date Range</th>
-                    <td>{currentReport.start} to {currentReport.end}</td>
+                    <td>{formatDateRange(currentReport.date_range_start, currentReport.date_range_end)}</td>
                   </tr>
                   <tr>
-                    <th className="text-muted fw-normal">Generated</th>
-                    <td>{currentReport.created}</td>
-                  </tr>
-                  <tr>
-                    <th className="text-muted fw-normal">Status</th>
-                    <td><span className="record-status-badge status-approved">Ready</span></td>
+                    <th className="text-muted fw-normal">Format / Status</th>
+                    <td><span className="text-uppercase">{currentReport.format}</span> · <span className={`record-status-badge status-${currentReport.status === 'failed' ? 'rejected' : 'approved'}`}>{currentReport.status}</span></td>
                   </tr>
                 </tbody>
               </Table>
+              {previewData && (
+                <>
+                  <h6 className="mt-3 fw-bold">Report Data</h6>
+                  <Table bordered size="sm" className="mb-0">
+                    <tbody>
+                      {previewRows(previewData).map((row, i) => (
+                        <tr key={i}>
+                          <th className="text-muted fw-normal" style={{ width: '35%' }}>{row.key}</th>
+                          <td>{row.value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </>
+              )}
             </>
           )}
         </Modal.Body>
         <Modal.Footer>
+          {currentReport && currentReport.status === 'generated' && (
+            <Button variant="success" onClick={() => download(currentReport)}>Download {currentReport.format.toUpperCase()}</Button>
+          )}
           <Button variant="secondary" onClick={() => setShowPreview(false)}>Close</Button>
         </Modal.Footer>
       </Modal>

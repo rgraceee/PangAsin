@@ -6,9 +6,8 @@ import {
 } from 'recharts';
 import {
   getAdminStats, getInsight, getAdminMunicipalities,
-  getMunicipalityOutlook, getDataQuality,
+  getMunicipalityOutlook, getDataQuality, getAdminSupplyDemand,
 } from '../../services/dataService';
-import { supplyDemand } from '../../data/municipalities';
 
 const MUNI_COLORS = [
   '#1565C8', '#F09A28', '#E53935', '#29B039',
@@ -47,6 +46,7 @@ export default function AdminDashboard({ user }) {
   const [munis, setMunis] = useState([]);
   const [outlook, setOutlook] = useState([]);
   const [dq, setDq] = useState(null);
+  const [supplyDemand, setSupplyDemand] = useState(null);
   const [filters, setFilters] = useState({ municipality_id: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,12 +63,14 @@ export default function AdminDashboard({ user }) {
       getInsight().catch(() => null),
       getMunicipalityOutlook().catch(() => ({ municipalities: [] })),
       getDataQuality().catch(() => null),
+      getAdminSupplyDemand().catch(() => null),
     ])
-      .then(([s, ins, ol, dqData]) => {
+      .then(([s, ins, ol, dqData, sd]) => {
         setStats(s);
         setInsight(ins);
         setOutlook(ol.municipalities || []);
         setDq(dqData);
+        setSupplyDemand(sd);
         setLoading(false);
       })
       .catch((err) => { setError(err.message); setLoading(false); });
@@ -104,7 +106,7 @@ export default function AdminDashboard({ user }) {
   }
 
   const totalVolumeMT = Math.round((stats.total_volume_kg / 1000) * 100) / 100;
-  const demandBenchmark = supplyDemand.pangasinan.demandBenchmark;
+  const demandBenchmark = supplyDemand?.pangasinan?.demand_volume ?? 0;
   const supplyDemandGap = totalVolumeMT - demandBenchmark;
   const supplyDemandLabel = supplyDemandGap >= 0 ? 'Surplus' : 'Shortage';
 

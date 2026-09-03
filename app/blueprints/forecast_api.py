@@ -5,7 +5,6 @@ from app.extensions import db
 from app.models.forecast import ForecastRun, ForecastPoint
 from app.models.municipality import Municipality
 from app.services.forecast_service import run_forecast, get_municipality_outlook
-from app.blueprints.forecast_mock import generate_mock_runs, generate_mock_outlook
 
 forecast_api_bp = Blueprint("forecast_api", __name__, url_prefix="/api/admin/forecast")
 
@@ -33,6 +32,11 @@ def _serialize_run(run):
         "trend_direction": run.trend_direction,
         "expected_change_pct": float(run.expected_change_pct) if run.expected_change_pct is not None else None,
         "projected_total": float(run.projected_total) if run.projected_total is not None else None,
+        "mae": float(run.mae) if run.mae is not None else None,
+        "rmse": float(run.rmse) if run.rmse is not None else None,
+        "mape": float(run.mape) if run.mape is not None else None,
+        "r2": float(run.r2) if run.r2 is not None else None,
+        "candidate_metrics": run.candidate_metrics,
         "created_at": run.created_at.isoformat() + "Z" if run.created_at else None,
         "points": [
             {
@@ -92,10 +96,6 @@ def list_runs():
         q = q.filter_by(municipality_id=municipality_id)
     runs = q.order_by(ForecastRun.created_at.desc()).limit(50).all()
 
-    if not runs:
-        runs = generate_mock_runs(municipality_id)
-        return jsonify({"runs": runs})
-
     return jsonify({"runs": [_serialize_run(r) for r in runs]})
 
 
@@ -104,13 +104,6 @@ def list_runs():
 def get_run(run_id):
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
-
-    if isinstance(run_id, str) and run_id.startswith("mock-"):
-        muni_id = int(run_id.split("-")[1])
-        mock_runs = generate_mock_runs(muni_id)
-        if mock_runs:
-            return jsonify({"run": mock_runs[0]})
-        return jsonify({"error": "Mock run not found."}), 404
 
     run = ForecastRun.query.get_or_404(run_id)
     return jsonify({"run": _serialize_run(run)})
@@ -123,6 +116,4 @@ def outlook():
         return jsonify({"error": "Admin access only."}), 403
 
     data = get_municipality_outlook()
-    if not data:
-        data = generate_mock_outlook()
     return jsonify({"municipalities": data})

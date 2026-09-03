@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { Row, Col, Card, Alert } from 'react-bootstrap';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, PieChart, Pie } from 'recharts';
-import { supplyDemand } from '../../data/municipalities';
+import { getAdminSupplyDemand } from '../../services/dataService';
 
 const BARS = [
   { key: 'localSupply', name: 'Local Supply', color: '#1565C8' },
@@ -24,29 +24,49 @@ function CustomLegend({ payload }) {
 }
 
 export default function SupplyDemandAnalytics() {
-  const pangasinan = supplyDemand.pangasinan;
-  const philippines = supplyDemand.philippines;
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const supplyDemandData = useMemo(() => {
-    const total = Object.values(pangasinan.sectorDemand || {}).reduce((s, v) => s + v, 0);
-    return [
-      ...BARS.map((b) => ({ name: b.name, value: pangasinan[b.key], fill: b.color })),
-    ];
-  }, [pangasinan]);
+  useEffect(() => {
+    getAdminSupplyDemand()
+      .then((res) => { setData(res); setLoading(false); })
+      .catch((err) => { setError(err.message); setLoading(false); });
+  }, []);
+
+  const pangasinan = data?.pangasinan || null;
+  const sectorDemand = data?.sector_demand || {};
+
+  const localSupply = pangasinan?.local_production != null ? pangasinan.local_production : 0;
+  const demandBenchmark = pangasinan?.demand_volume != null ? pangasinan.demand_volume : 0;
+
+  const supplyDemandData = useMemo(() => [
+    { name: BARS[0].name, value: localSupply, fill: BARS[0].color },
+    { name: BARS[1].name, value: demandBenchmark, fill: BARS[1].color },
+  ], [localSupply, demandBenchmark]);
 
   const sectorData = useMemo(() => {
-    const sd = supplyDemand.sectorDemand;
-    return Object.entries(sd).map(([key, value], i) => ({
+    return Object.entries(sectorDemand).map(([key, value], i) => ({
       name: key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
       value,
       fill: GRADIENT[i % GRADIENT.length],
     }));
-  }, []);
+  }, [sectorDemand]);
 
-  const sufficiency = pangasinan.localSupply > 0
-    ? Math.round((pangasinan.localSupply / pangasinan.demandBenchmark) * 1000) / 10
+  if (loading) {
+    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+  }
+  if (error) {
+    return <Alert variant="danger">{error}</Alert>;
+  }
+  if (!pangasinan || demandBenchmark <= 0) {
+    return <Alert variant="info">No supply/demand benchmark data available yet.</Alert>;
+  }
+
+  const sufficiency = localSupply > 0
+    ? Math.round((localSupply / demandBenchmark) * 1000) / 10
     : 0;
-  const gap = pangasinan.localSupply - pangasinan.demandBenchmark;
+  const gap = localSupply - demandBenchmark;
 
   return (
     <div>
@@ -58,8 +78,8 @@ export default function SupplyDemandAnalytics() {
           <Card className="encoder-kpi admin-kpi">
             <Card.Body>
               <div className="encoder-kpi-title">Local Supply</div>
-              <div className="encoder-kpi-value">{pangasinan.localSupply.toLocaleString()} MT</div>
-              <div className="encoder-kpi-supporting">Pangasinan production</div>
+              <div className="encoder-kpi-value">{localSupply.toLocaleString()} MT</div>
+              <div className="encoder-kpi-supporting">Pangasinan production ({pangasinan.year})</div>
             </Card.Body>
           </Card>
         </Col>
@@ -67,8 +87,8 @@ export default function SupplyDemandAnalytics() {
           <Card className="encoder-kpi admin-kpi">
             <Card.Body>
               <div className="encoder-kpi-title">Demand Benchmark</div>
-              <div className="encoder-kpi-value">{pangasinan.demandBenchmark.toLocaleString()} MT</div>
-              <div className="encoder-kpi-supporting">Target demand</div>
+              <div className="encoder-kpi-value">{demandBenchmark.toLocaleString()} MT</div>
+              <div className="encoder-kpi-supporting">Target demand ({pangasinan.year})</div>
             </Card.Body>
           </Card>
         </Col>
@@ -134,6 +154,9 @@ export default function SupplyDemandAnalytics() {
           </Card>
         </Col>
       </Row>
+      {data?.sector_demand_note && (
+        <p className="text-muted small mt-3 mb-0">{data.sector_demand_note}</p>
+      )}
     </div>
   );
 }
