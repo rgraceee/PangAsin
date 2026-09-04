@@ -25,7 +25,7 @@ export default function KPISection({ data }) {
         <div className="col-md-6 col-lg-3">
           <KPICard
             title="Total Production Area"
-            value={`${summary.totalArea.toLocaleString()} ha`}
+            value={`${summary.totalArea.toLocaleString()} m²`}
             supporting="Recorded salt production area"
           />
         </div>

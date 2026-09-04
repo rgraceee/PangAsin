@@ -4,6 +4,9 @@ import {
   getAdminRecords, getAdminRecord, getAdminMunicipalities, reviewAdminRecord,
 } from '../../services/dataService';
 import RecordStatusBadge from '../encoder/RecordStatusBadge';
+import { Eye } from 'lucide-react';
+import IconButton from '../IconButton';
+import PageHeader from './PageHeader';
 
 const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
 
@@ -94,42 +97,49 @@ export default function ValidationQueue() {
   );
 
   return (
-    <Card className="encoder-card admin-card">
-      <Card.Header as="h5">Validation Queue</Card.Header>
-      <Card.Body>
-        <Row className="g-2 mb-3">
-          <Col md={3}>
-            <select className="form-select" name="status" value={filters.status} onChange={handleFilter}>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-              ))}
-            </select>
-          </Col>
-          <Col md={3}>
-            <select className="form-select" name="municipality_id" value={filters.municipality_id} onChange={handleFilter}>
-              <option value="">All municipalities</option>
-              {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-          </Col>
-          <Col md={3}>
-            <input
-              type="text"
-              className="form-control"
-              name="q"
-              placeholder="Search barangay…"
-              value={filters.q}
-              onChange={handleFilter}
-            />
-          </Col>
-          <Col md={3} className="d-flex gap-2 align-items-center">
-            <input type="date" className="form-control form-control-sm" name="start" value={filters.start} onChange={handleFilter} title="Start date" />
-            <input type="date" className="form-control form-control-sm" name="end" value={filters.end} onChange={handleFilter} title="End date" />
-          </Col>
-          <Col md={12} className="d-flex gap-2 align-items-center">
+    <>
+      <PageHeader
+        id="admin-validation"
+        variant="sub"
+        title="Validation Queue"
+        subtitle="Review and approve submitted production records."
+      >
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-status">Status</label>
+          <select id="vq-status" className="form-select admin-page-hero-select" name="status" value={filters.status} onChange={handleFilter}>
+            <option value="">All statuses</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-muni">Municipality</label>
+          <select id="vq-muni" className="form-select admin-page-hero-select" name="municipality_id" value={filters.municipality_id} onChange={handleFilter}>
+            <option value="">All municipalities</option>
+            {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-q">Barangay</label>
+          <input id="vq-q" type="text" className="form-control admin-page-hero-input" name="q" placeholder="Search barangay…" value={filters.q} onChange={handleFilter} />
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-start">Start date</label>
+          <input id="vq-start" type="date" className="form-control admin-page-hero-input" name="start" value={filters.start} onChange={handleFilter} />
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-end">End date</label>
+          <input id="vq-end" type="date" className="form-control admin-page-hero-input" name="end" value={filters.end} onChange={handleFilter} />
+        </div>
+      </PageHeader>
+
+      <Card className="encoder-card admin-card">
+        <Card.Body>
+          <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="text-muted small">{records.length} record{records.length === 1 ? '' : 's'}</span>
             {hasFilter && <Button variant="link" size="sm" onClick={handleClear}>Clear filters</Button>}
-          </Col>
-        </Row>
+          </div>
 
         {error && <Alert variant="danger">{error}</Alert>}
         {loading && <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>}
@@ -159,7 +169,12 @@ export default function ValidationQueue() {
                   <td>{r.production_volume?.toLocaleString()}</td>
                   <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
                   <td className="text-nowrap">
-                    <Button size="sm" variant="outline-primary" onClick={() => handleView(r.id)}>Review</Button>
+                    <IconButton
+                      icon={Eye}
+                      label={`Review record ${r.id}`}
+                      variant="outline-primary"
+                      onClick={() => handleView(r.id)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -244,5 +259,6 @@ export default function ValidationQueue() {
         </Modal.Footer>
       </Modal>
     </Card>
+    </>
   );
 }

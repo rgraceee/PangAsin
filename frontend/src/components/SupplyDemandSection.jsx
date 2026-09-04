@@ -56,7 +56,7 @@ export default function SupplyDemandSection({ supplyDemand }) {
       <div className="section-card">
         <div className="card-body">
           <h2 className="section-title">Salt Demand by Sector</h2>
-          <p className="text-muted small">Synthetic demonstration data</p>
+          <p className="text-muted small">Reference national sector breakdown by end use</p>
           <div className="chart-container" style={{ height: 320 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>

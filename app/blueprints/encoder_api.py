@@ -10,6 +10,13 @@ from sqlalchemy.exc import IntegrityError
 encoder_api_bp = Blueprint("encoder_api", __name__, url_prefix="/api/encoder")
 
 PRODUCER_COUNT_FIELDS = ("male_producers", "female_producers")
+AGE_BUCKET_FIELDS = (
+    "producers_18_30",
+    "producers_31_40",
+    "producers_41_50",
+    "producers_51_60",
+    "producers_61_plus",
+)
 
 ENCODER_READ_ONLY_STATUS = "approved"
 
@@ -30,6 +37,7 @@ def _serialize(record):
         "registered_producers": record.registered_producers,
         "male_producers": record.male_producers,
         "female_producers": record.female_producers,
+        **{f: getattr(record, f) for f in AGE_BUCKET_FIELDS},
         "production_volume": float(record.production_volume) if record.production_volume is not None else None,
         "num_salt_beds": record.num_salt_beds,
         "area_per_salt_bed": float(record.area_per_salt_bed) if record.area_per_salt_bed is not None else None,
@@ -61,6 +69,9 @@ def _allocate(record, data):
         record.record_date = _parse_date(date_str)
     for field in ("production_volume", "num_salt_beds") + PRODUCER_COUNT_FIELDS:
         if field in data:
+            setattr(record, field, data[field])
+    for field in AGE_BUCKET_FIELDS:
+        if field in data and data[field] not in (None, ""):
             setattr(record, field, data[field])
     if "area_per_salt_bed" in data:
         record.area_per_salt_bed = data["area_per_salt_bed"] if data["area_per_salt_bed"] not in (None, "") else None
@@ -120,6 +131,14 @@ def _validate(data, partial=False):
                         errors.append(f"{field} must be non-negative.")
                 except (TypeError, ValueError):
                     errors.append(f"{field} must be an integer.")
+
+    for field in AGE_BUCKET_FIELDS:
+        if field in data and data[field] not in (None, ""):
+            try:
+                if int(data[field]) < 0:
+                    errors.append(f"{field} must be non-negative.")
+            except (TypeError, ValueError):
+                errors.append(f"{field} must be an integer.")
 
     if "area_per_salt_bed" in data and data["area_per_salt_bed"] not in (None, ""):
         try:

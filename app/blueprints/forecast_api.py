@@ -37,6 +37,8 @@ def _serialize_run(run):
         "mape": float(run.mape) if run.mape is not None else None,
         "r2": float(run.r2) if run.r2 is not None else None,
         "candidate_metrics": run.candidate_metrics,
+        "incomplete_tail": bool(run.incomplete_tail),
+        "note": run.note,
         "created_at": run.created_at.isoformat() + "Z" if run.created_at else None,
         "points": [
             {

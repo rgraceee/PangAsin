@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Form, Button, Table, Alert, Modal, Badge, Spinner } from 'react-bootstrap';
-import { getAdminMunicipalities, createReport, getReports, getReport, getReportDownloadUrl } from '../../services/dataService';
+import { getAdminMunicipalities, createReport, getReports, getReport, getReportDownloadUrl, deleteReport } from '../../services/dataService';
+import { Eye, Download, Trash2 } from 'lucide-react';
+import IconButton from '../IconButton';
+import PageHeader from './PageHeader';
 
 const REPORT_TYPES = [
   { id: 'provincial', label: 'Provincial Summary' },
@@ -101,6 +104,32 @@ export default function GenerateReports() {
     window.open(getReportDownloadUrl(r.id), '_blank');
   };
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = (r) => {
+    setReportToDelete(r);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDelete = () => {
+    if (!reportToDelete) return;
+    setDeleting(true);
+    deleteReport(reportToDelete.id)
+      .then(() => {
+        setShowDeleteConfirm(false);
+        setReportToDelete(null);
+        setDeleting(false);
+        loadReports();
+      })
+      .catch((err) => {
+        setError(err.message);
+        setShowDeleteConfirm(false);
+        setDeleting(false);
+      });
+  };
+
   const previewRows = (obj, prefix = '') => {
     if (!obj) return [];
     return Object.entries(obj).flatMap(([k, v]) => {
@@ -120,8 +149,21 @@ export default function GenerateReports() {
 
   return (
     <div>
-      <h2 className="mb-1">Generate Reports</h2>
-      <p className="text-muted">Create summary reports for export based on the production records.</p>
+      <PageHeader
+        id="admin-reports"
+        variant="sub"
+        title="Generate Reports"
+        subtitle="Create summary reports for export based on the production records."
+        action={
+          <Button className="admin-page-hero-btn" onClick={handleGenerate} disabled={creating}>
+            {creating ? (
+              <><Spinner as="span" animation="border" size="sm" className="me-2" />Generating&hellip;</>
+            ) : (
+              <><Download size={16} strokeWidth={2.2} className="me-2" />Generate</>
+            )}
+          </Button>
+        }
+      />
 
       <Card className="encoder-card mb-3">
         <Card.Header as="h5">Create a New Report</Card.Header>
@@ -164,11 +206,6 @@ export default function GenerateReports() {
                 </Col>
               </>
             )}
-            <Col md={3} className="d-flex align-items-end">
-              <Button variant="primary" onClick={handleGenerate} disabled={creating}>
-                {creating ? <Spinner animation="border" size="sm" /> : 'Generate'}
-              </Button>
-            </Col>
           </Row>
           {error && <Alert variant="danger" className="mt-3 mb-0">{error}</Alert>}
         </Card.Body>
@@ -203,9 +240,27 @@ export default function GenerateReports() {
                     <td className="text-uppercase">{r.format}</td>
                     <td><span className={`record-status-badge status-${r.status === 'failed' ? 'rejected' : r.status === 'generated' ? 'approved' : 'pending'}`}>{r.status}</span></td>
                     <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
-                    <td className="text-end">
-                      <Button size="sm" variant="outline-primary" className="me-1" onClick={() => openPreview(r)} disabled={r.status !== 'generated'}>Preview</Button>
-                      <Button size="sm" variant="outline-success" onClick={() => download(r)} disabled={r.status !== 'generated'}>Download</Button>
+                    <td className="text-end text-nowrap">
+                      <IconButton
+                        icon={Eye}
+                        label="Preview report"
+                        variant="outline-primary"
+                        onClick={() => openPreview(r)}
+                        disabled={r.status !== 'generated'}
+                      />
+                      <IconButton
+                        icon={Download}
+                        label="Download report"
+                        variant="outline-success"
+                        onClick={() => download(r)}
+                        disabled={r.status !== 'generated'}
+                      />
+                      <IconButton
+                        icon={Trash2}
+                        label="Delete report"
+                        variant="outline-danger"
+                        onClick={() => confirmDelete(r)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -270,6 +325,27 @@ export default function GenerateReports() {
             <Button variant="success" onClick={() => download(currentReport)}>Download {currentReport.format.toUpperCase()}</Button>
           )}
           <Button variant="secondary" onClick={() => setShowPreview(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showDeleteConfirm} onHide={() => !deleting && setShowDeleteConfirm(false)} centered>
+        <Modal.Header closeButton={!deleting}>
+          <Modal.Title>Delete Report</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {reportToDelete && (
+            <p className="mb-0">
+              Are you sure you want to delete the <strong>{TYPE_LABEL[reportToDelete.report_type] || reportToDelete.report_type}</strong> report
+              {reportToDelete.municipality_name ? ` for ${reportToDelete.municipality_name}` : ''}?
+              This will permanently remove the file and cannot be undone.
+            </p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>Cancel</Button>
+          <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <><Spinner as="span" animation="border" size="sm" className="me-2" />Deleting&hellip;</> : 'Delete'}
+          </Button>
         </Modal.Footer>
       </Modal>
     </div>

@@ -144,3 +144,25 @@ def download_report(report_id):
     if not os.path.exists(filepath):
         return jsonify({"error": "Report file not found on disk."}), 404
     return send_file(filepath, as_attachment=True, download_name=report.file_url)
+
+
+@reports_api_bp.route("/<int:report_id>", methods=["DELETE"])
+@login_required
+def delete_report(report_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    report = Report.query.get_or_404(report_id)
+
+    if report.file_url:
+        filepath = os.path.join(_reports_dir(), report.file_url)
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
+
+    db.session.delete(report)
+    db.session.commit()
+
+    return jsonify({"ok": True})

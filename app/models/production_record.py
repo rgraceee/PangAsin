@@ -17,6 +17,11 @@ class ProductionRecord(db.Model):
     registered_producers = db.Column(db.Integer, nullable=False, default=0)
     male_producers = db.Column(db.Integer, nullable=False, default=0)
     female_producers = db.Column(db.Integer, nullable=False, default=0)
+    producers_18_30 = db.Column(db.Integer, nullable=False, default=0)
+    producers_31_40 = db.Column(db.Integer, nullable=False, default=0)
+    producers_41_50 = db.Column(db.Integer, nullable=False, default=0)
+    producers_51_60 = db.Column(db.Integer, nullable=False, default=0)
+    producers_61_plus = db.Column(db.Integer, nullable=False, default=0)
     production_method = db.Column(
         db.Enum(*PRODUCTION_METHODS, name="production_method_enum"),
         nullable=False,
@@ -41,5 +46,10 @@ class ProductionRecord(db.Model):
         db.CheckConstraint("registered_producers >= 0", name="chk_registered_producers"),
         db.CheckConstraint("male_producers >= 0", name="chk_male_producers"),
         db.CheckConstraint("female_producers >= 0", name="chk_female_producers"),
+        db.CheckConstraint("producers_18_30 >= 0", name="chk_producers_18_30"),
+        db.CheckConstraint("producers_31_40 >= 0", name="chk_producers_31_40"),
+        db.CheckConstraint("producers_41_50 >= 0", name="chk_producers_41_50"),
+        db.CheckConstraint("producers_51_60 >= 0", name="chk_producers_51_60"),
+        db.CheckConstraint("producers_61_plus >= 0", name="chk_producers_61_plus"),
         db.CheckConstraint("area_per_salt_bed IS NULL OR area_per_salt_bed >= 0", name="chk_area_per_salt_bed"),
     )

@@ -1,14 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, PieChart, Pie } from 'recharts';
+import { Boxes, Target, Percent } from 'lucide-react';
 import { getAdminSupplyDemand } from '../../services/dataService';
+import { BRAND, STATUS } from '../../theme/colors';
+import AdminKpiCard from './AdminKpiCard';
+import PageHeader from './PageHeader';
 
 const BARS = [
-  { key: 'localSupply', name: 'Local Supply', color: '#1565C8' },
-  { key: 'demandBenchmark', name: 'Demand Benchmark', color: '#F09A28' },
+  { key: 'localSupply', name: 'Local Supply', color: BRAND.ocean },
+  { key: 'demandBenchmark', name: 'Demand Benchmark', color: BRAND.gold },
 ];
 
-const GRADIENT = ['#1565C8', '#F09A28', '#29B039', '#E53935'];
+const GRADIENT = [BRAND.ocean, BRAND.gold, BRAND.green, STATUS.not_ready];
 
 function CustomLegend({ payload }) {
   return (
@@ -70,36 +74,40 @@ export default function SupplyDemandAnalytics() {
 
   return (
     <div>
-      <h2 className="mb-1">Supply &amp; Demand Analytics</h2>
-      <p className="text-muted">Domestic salt supply compared with demand benchmarks.</p>
+      <PageHeader
+        id="admin-supply-demand"
+        variant="sub"
+        title="Supply &amp; Demand Analytics"
+        subtitle="Domestic salt supply compared with demand benchmarks."
+      />
 
       <Row className="g-3 mb-3">
         <Col md={4}>
-          <Card className="encoder-kpi admin-kpi">
-            <Card.Body>
-              <div className="encoder-kpi-title">Local Supply</div>
-              <div className="encoder-kpi-value">{localSupply.toLocaleString()} MT</div>
-              <div className="encoder-kpi-supporting">Pangasinan production ({pangasinan.year})</div>
-            </Card.Body>
-          </Card>
+          <AdminKpiCard
+            icon={Boxes}
+            title="Local Supply"
+            value={`${localSupply.toLocaleString()} MT`}
+            supporting={`Pangasinan production (${pangasinan.year})`}
+            accent="ocean"
+          />
         </Col>
         <Col md={4}>
-          <Card className="encoder-kpi admin-kpi">
-            <Card.Body>
-              <div className="encoder-kpi-title">Demand Benchmark</div>
-              <div className="encoder-kpi-value">{demandBenchmark.toLocaleString()} MT</div>
-              <div className="encoder-kpi-supporting">Target demand ({pangasinan.year})</div>
-            </Card.Body>
-          </Card>
+          <AdminKpiCard
+            icon={Target}
+            title="Demand Benchmark"
+            value={`${demandBenchmark.toLocaleString()} MT`}
+            supporting={`Target demand (${pangasinan.year})`}
+            accent="gold"
+          />
         </Col>
         <Col md={4}>
-          <Card className="encoder-kpi admin-kpi">
-            <Card.Body>
-              <div className="encoder-kpi-title">Sufficiency</div>
-              <div className="encoder-kpi-value">{sufficiency}%</div>
-              <div className="encoder-kpi-supporting">{gap >= 0 ? 'Surplus' : 'Shortage'} of {Math.abs(gap).toLocaleString()} MT</div>
-            </Card.Body>
-          </Card>
+          <AdminKpiCard
+            icon={Percent}
+            title="Sufficiency"
+            value={`${sufficiency}%`}
+            supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} MT`}
+            accent="green"
+          />
         </Col>
       </Row>
 

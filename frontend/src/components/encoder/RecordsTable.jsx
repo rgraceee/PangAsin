@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Spinner, Alert, Button, Card, Row, Col, Modal } from 'react-bootstrap';
 import { getRecords, getRecord, deleteRecord, getEncoderBarangays, submitRecord } from '../../services/dataService';
+import { Eye, Pencil, Trash2, Send } from 'lucide-react';
 import RecordStatusBadge from './RecordStatusBadge';
-import { ViewIcon, EditIcon, DeleteIcon, SendIcon } from '../icons';
 
 const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
 const PRODUCTION_METHOD_LABELS = {
@@ -184,7 +184,7 @@ export default function RecordsTable({ onEdit, refreshKey = 0 }) {
                         ariaLabel="View record"
                         onClick={() => handleView(r.id)}
                       >
-                        <ViewIcon />
+                        <Eye size={16} strokeWidth={2} />
                       </IconAction>
                       {!isApproved && (
                         <IconAction
@@ -193,7 +193,7 @@ export default function RecordsTable({ onEdit, refreshKey = 0 }) {
                           ariaLabel="Edit record"
                           onClick={() => onEdit && onEdit(r.id)}
                         >
-                          <EditIcon />
+                          <Pencil size={16} strokeWidth={2} />
                         </IconAction>
                       )}
                       {!isApproved && (
@@ -203,7 +203,7 @@ export default function RecordsTable({ onEdit, refreshKey = 0 }) {
                           ariaLabel="Delete record"
                           onClick={() => handleDelete(r.id, r.status)}
                         >
-                          <DeleteIcon />
+                          <Trash2 size={16} strokeWidth={2} />
                         </IconAction>
                       )}
                       {r.status === 'draft' && (
@@ -213,7 +213,7 @@ export default function RecordsTable({ onEdit, refreshKey = 0 }) {
                           ariaLabel="Submit for review"
                           onClick={() => handleSubmitForReview(r.id)}
                         >
-                          <SendIcon />
+                          <Send size={16} strokeWidth={2} />
                         </IconAction>
                       )}
                     </td>

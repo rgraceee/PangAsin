@@ -9,6 +9,14 @@ const PRODUCTION_METHODS = [
   { value: 'hybrid', label: 'Hybrid' },
 ];
 
+const AGE_BUCKETS = [
+  { key: 'producers_18_30', label: '18-30' },
+  { key: 'producers_31_40', label: '31-40' },
+  { key: 'producers_41_50', label: '41-50' },
+  { key: 'producers_51_60', label: '51-60' },
+  { key: 'producers_61_plus', label: '61+' },
+];
+
 export default function ProductionRecordForm({ editingId = null, onClose, onSaved }) {
   const isEdit = Boolean(editingId);
 
@@ -22,6 +30,11 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
     num_salt_beds: '',
     area_per_salt_bed: '',
     production_method: '',
+    producers_18_30: '',
+    producers_31_40: '',
+    producers_41_50: '',
+    producers_51_60: '',
+    producers_61_plus: '',
   });
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -45,6 +58,11 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             num_salt_beds: r.num_salt_beds ?? '',
             area_per_salt_bed: r.area_per_salt_bed ?? '',
             production_method: r.production_method ?? '',
+            producers_18_30: r.producers_18_30 ?? '',
+            producers_31_40: r.producers_31_40 ?? '',
+            producers_41_50: r.producers_41_50 ?? '',
+            producers_51_60: r.producers_51_60 ?? '',
+            producers_61_plus: r.producers_61_plus ?? '',
           });
           setApproved(r.status === 'approved');
           setLoading(false);
@@ -238,6 +256,29 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
                 </Form.Group>
               </Col>
             </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Producers by Age Bracket</Form.Label>
+              <Row>
+                {AGE_BUCKETS.map((bucket) => (
+                  <Col md={4} key={bucket.key}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted mb-1">{bucket.label}</Form.Label>
+                      <Form.Control
+                        type="number"
+                        min="0"
+                        step="1"
+                        name={bucket.key}
+                        value={form[bucket.key]}
+                        onChange={handleChange}
+                        disabled={approved}
+                        placeholder="0"
+                      />
+                    </Form.Group>
+                  </Col>
+                ))}
+              </Row>
+            </Form.Group>
           </Form>
         )}
       </Modal.Body>

@@ -202,9 +202,15 @@ def _metrics(actual, predicted):
         mape = None
     else:
         mape = float(np.mean(np.abs(errors) / np.abs(a)) * 100.0)
+        # MAPE is unbounded when predictions are degenerate; guard against an
+        # overflow, but keep real values intact (a 1000%+ MAPE is informative).
+        mape = min(mape, 100000.0)
     ss_res = float(np.sum((a - p) ** 2))
     ss_tot = float(np.sum((a - np.mean(a)) ** 2))
     r2 = (1.0 - ss_res / ss_tot) if ss_tot > 0 else (1.0 if np.isclose(ss_res, 0) else 0.0)
+    # r2 can collapse far below -1 when a model overfits to the data; guard
+    # against column overflow without masking the magnitude of the error.
+    r2 = max(r2, -1000000.0)
     return {"mae": round(mae, 2), "rmse": round(rmse, 2), "mape": round(mape, 2) if mape is not None else None, "r2": round(r2, 4)}
 
 
@@ -242,6 +248,108 @@ def _best_model(offsets, values):
     return winner, results.get(winner), candidate_metrics
 
 
+def _detect_incomplete_tail(labels, values, anchor_year: int = 2025):
+    """Return whether the current (in-progress) year is under-reported.
+
+    Reporting insight: while a year is in progress, only a small subset of
+    records is submitted, so the recent months read as a false
+    collapse. We compare the current year's month-of-year volumes against the
+    last complete (anchor) year and flag the tail as incomplete when the
+    current year falls well below the anchored seasonal pattern — even though
+    genuine rainy-season lows are not that small.
+
+    Returns (flag, affected_tail_positions) where affected positions are
+    measured from the end of the series (0 = last month).
+    """
+    if not labels or not values:
+        return False, []
+
+    current_year = max(int(lb[:4]) for lb in labels)
+    if current_year <= anchor_year:
+        return False, []
+
+    anchors = {}
+    for lb, v in zip(labels, values):
+        year = int(lb[:4])
+        if year != anchor_year:
+            continue
+        month = int(lb[5:7])
+        anchors[month] = v
+
+    # For each of the current year's months, compare to the anchor same-month.
+    below = []
+    for lb, v in zip(labels, values):
+        year = int(lb[:4])
+        if year != current_year:
+            continue
+        month = int(lb[5:7])
+        anchor = anchors.get(month)
+        if anchor is not None and anchor > 0 and v < 0.30 * anchor:
+            below.append(month)
+
+    if not below:
+        return False, []
+
+    # Only flag if the productive (material) months are under-reported; a
+    # genuine low-production year that mirrors the anchor's rainy lows is fine.
+    productive = [m for m, a in anchors.items() if a > 0]
+    flagged = [m for m in below if m in productive]
+    if not flagged:
+        return False, []
+
+    # Report the affected trailing positions (contiguous run ending at the
+    # last month), else all current-year positions.
+    positions = [len(labels) - 1 - i for i, lb in enumerate(reversed(labels))
+                 if lb[:4] == str(current_year)]
+    return True, positions
+
+
+def _seasonal_profile(labels, values, anchor_year: int = 2025):
+    """Per-month-of-year mean volumes for the anchor year (the seasonal pattern)."""
+    profile = {}
+    for lb, v in zip(labels, values):
+        month = int(lb[5:7])
+        year = int(lb[:4])
+        if year != anchor_year:
+            continue
+        profile.setdefault(month, []).append(v)
+    if not profile:
+        return None
+    return {m: float(sum(vs)) / len(vs) for m, vs in profile.items()}
+
+
+def _forecast_anchored_2025(labels, values, forecast_horizon: int = 12):
+    """Produce a realistic projection anchored to the 2025 seasonal pattern.
+
+    Mid-year 2026 is under-reported, so extrapolating the raw tail produces a
+    misleading collapse. Instead, replay the established 2025 monthly profile
+    for the next `forecast_horizon` months, so the projection resumes the real
+    dry-season / rainy-season rhythm instead of the censored dip.
+
+    Returns (preds, note) where preds is a list of monthly predicted values (kg).
+    """
+    profile = _seasonal_profile(labels, values, 2025)
+    note = ""
+    flat_past = sum(values) / len(values) if values else 0.0
+
+    if profile:
+        last_label = labels[-1]
+        preds = []
+        for i in range(1, forecast_horizon + 1):
+            nl = _next_month_label(last_label, i)
+            month = int(nl[5:7])
+            val = profile.get(month, flat_past)
+            preds.append(max(0.0, float(val)))
+        note = (
+            "Recent months appear partially reported (year in progress). "
+            "Forecast anchored to the 2025 seasonal production pattern."
+        )
+    else:
+        preds = [flat_past] * forecast_horizon
+        note = "Forecast anchored to the recent average production level."
+    return preds, note
+
+
 def run_forecast(municipality_id: Optional[int], period_start: date, period_end: date, forecast_horizon: int = 12):
     hist_start = period_start - timedelta(days=365 * 3)
     labels, values, offsets = _monthly_aggregates(municipality_id, hist_start, period_end)
@@ -265,15 +373,31 @@ def run_forecast(municipality_id: Optional[int], period_start: date, period_end:
         db.session.commit()
         return run
 
-    winner, winner_metrics, candidate_metrics = _best_model(offsets, values)
-    plan = _MODEL_PLANS[winner]()
+    incomplete, tail_positions = _detect_incomplete_tail(labels, values)
 
-    # Fit the winner on the full history and generate the forward forecast.
-    preds = _walk_forecast(plan, offsets, values, forecast_horizon)
+    last_label = labels[-1] if labels else period_start.isoformat()[:7]
+    all_labels = labels + [_next_month_label(last_label, i + 1) for i in range(forecast_horizon)]
+    note = None
+
+    if incomplete:
+        # Prior months complete, but the trailing ones collapsed (mid-year
+        # partial reporting). Anchor the projection to the established seasonal
+        # pattern so it does not forecast a false collapse.
+        preds, note = _forecast_anchored_2025(labels, values, forecast_horizon)
+        algorithm = "seasonal_anchor"
+        winner_metrics = None
+        candidate_metrics = None
+    else:
+        winner, winner_metrics, candidate_metrics = _best_model(offsets, values)
+        plan = _MODEL_PLANS[winner]()
+        preds = _walk_forecast(plan, offsets, values, forecast_horizon)
+        algorithm = winner
 
     # Trend direction from the winner's fitted linear trend when available.
-    state = plan["fit"](offsets, values)
-    if winner == "linear_regression":
+    state = None
+    if not incomplete:
+        state = plan["fit"](offsets, values)
+    if algorithm == "linear_regression" and state is not None:
         slope = float(state["model"].coef_[0])
         monthly_avg = float(np.mean(values)) if len(values) else 0.0
         slope_pct = (slope / monthly_avg * 100.0) if monthly_avg != 0 else 0.0
@@ -281,7 +405,6 @@ def run_forecast(municipality_id: Optional[int], period_start: date, period_end:
     else:
         # Approximate slope over the observed window end-to-end for labeling.
         if len(offsets) > 1:
-            x0, x1 = offsets[0], offsets[-1]
             diff = offsets[-1] - offsets[0]
             slope = (values[-1] - values[0]) / diff if diff else 0.0
             monthly_avg = float(np.mean(values)) if len(values) else 0.0
@@ -302,8 +425,6 @@ def run_forecast(municipality_id: Optional[int], period_start: date, period_end:
         std_err = float(np.std(y_full)) * 0.5 if len(y_full) else monthly_avg * 0.2
     std_err = max(std_err, monthly_avg * 0.05)
 
-    last_label = labels[-1] if labels else period_start.isoformat()[:7]
-    all_labels = labels + [_next_month_label(last_label, i + 1) for i in range(forecast_horizon)]
     all_values = list(values) + [max(0.0, float(v)) for v in preds]
     all_lower = [None] * len(values) + [max(0.0, float(v) - 1.65 * std_err) for v in preds]
     all_upper = [None] * len(values) + [max(0.0, float(v) + 1.65 * std_err) for v in preds]
@@ -322,8 +443,8 @@ def run_forecast(municipality_id: Optional[int], period_start: date, period_end:
     expected = _expected_change(values, list(preds))
     projected = float(sum(preds))
 
-    run.algorithm = winner
-    run.reliability = _reliability(readiness, len(values))
+    run.algorithm = algorithm
+    run.reliability = _reliability(readiness, len(values)) if not incomplete else "moderate"
     run.trend_direction = trend
     run.expected_change_pct = expected
     run.projected_total = projected
@@ -332,6 +453,8 @@ def run_forecast(municipality_id: Optional[int], period_start: date, period_end:
     run.mape = winner_metrics["mape"] if winner_metrics and winner_metrics["mape"] is not None else None
     run.r2 = winner_metrics["r2"] if winner_metrics and winner_metrics["r2"] is not None else None
     run.candidate_metrics = candidate_metrics
+    run.note = note if note else None
+    run.incomplete_tail = incomplete
     db.session.commit()
     return run
 

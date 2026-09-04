@@ -17,9 +17,11 @@ class ForecastRun(db.Model):
     projected_total = db.Column(db.Numeric(14, 2), nullable=True)
     mae = db.Column(db.Numeric(14, 2), nullable=True)
     rmse = db.Column(db.Numeric(14, 2), nullable=True)
-    mape = db.Column(db.Numeric(8, 2), nullable=True)
-    r2 = db.Column(db.Numeric(8, 4), nullable=True)
+    mape = db.Column(db.Numeric(12, 2), nullable=True)
+    r2 = db.Column(db.Numeric(14, 6), nullable=True)
     candidate_metrics = db.Column(db.JSON, nullable=True)
+    incomplete_tail = db.Column(db.Boolean, nullable=False, default=False)
+    note = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

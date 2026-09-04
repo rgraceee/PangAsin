@@ -5,8 +5,9 @@ import { getIndustryInsight } from '../services/dataService';
 export default function MunicipalityDetailPanel({ municipality, onClose, demographics }) {
   if (!municipality) return null;
 
-  const trendSymbol = municipality.productionChangePercent >= 0 ? '↑' : '↓';
-  const trendClass = municipality.productionChangePercent >= 0 ? 'text-success' : 'text-danger';
+  const changePct = municipality.productionChangePercent;
+  const trendSymbol = changePct >= 0 ? '↑' : '↓';
+  const trendClass = changePct >= 0 ? 'text-success' : 'text-danger';
   const insight = getIndustryInsight(municipality.id);
   const muniDemo = demographics.byMunicipality[municipality.id];
 
@@ -51,12 +52,12 @@ export default function MunicipalityDetailPanel({ municipality, onClose, demogra
               </div>
               <div className="detail-metric">
                 <span className="detail-metric-label">Previous Production</span>
-                <span className="detail-metric-value">{municipality.previousProductionMT.toLocaleString()} MT</span>
+                <span className="detail-metric-value">{municipality.previousProductionMT != null ? `${municipality.previousProductionMT.toLocaleString()} MT` : '—'}</span>
               </div>
               <div className="detail-metric">
                 <span className="detail-metric-label">Change</span>
                 <span className={`detail-metric-value ${trendClass}`}>
-                  {trendSymbol} {Math.abs(municipality.productionChangePercent)}%
+                  {changePct != null ? `${trendSymbol} ${Math.abs(changePct)}%` : '—'}
                 </span>
               </div>
               <div className="detail-metric">
@@ -71,7 +72,7 @@ export default function MunicipalityDetailPanel({ municipality, onClose, demogra
               <h6 className="card-title text-uppercase text-muted small">Production Area & Facilities</h6>
               <div className="detail-metric">
                 <span className="detail-metric-label">Production Area</span>
-                <span className="detail-metric-value">{municipality.productionAreaHa.toLocaleString()} ha</span>
+                <span className="detail-metric-value">{municipality.productionAreaSqm.toLocaleString()} m²</span>
               </div>
               <div className="detail-metric">
                 <span className="detail-metric-label">Salt Beds</span>

@@ -81,11 +81,12 @@ export default function MunicipalityMapSection({ municipalities, onSelectMunicip
             if (!m) return;
             const trendSymbol = m.productionChangePercent >= 0 ? '↑' : '↓';
             const trendClass = m.productionChangePercent >= 0 ? 'text-success' : 'text-danger';
+            const changeText = m.productionChangePercent != null ? `${trendSymbol} ${Math.abs(m.productionChangePercent)}%` : '—';
             const tooltipContent = `
               <div style="min-width:160px">
                 <strong>${m.name}</strong><br/>
                 <span style="font-size:0.85rem">Production: ${m.productionMT.toLocaleString()} MT</span><br/>
-                <span class="${trendClass}" style="font-size:0.85rem">${trendSymbol} ${Math.abs(m.productionChangePercent)}%</span><br/>
+                <span class="${trendClass}" style="font-size:0.85rem">${changeText}</span><br/>
                 <span style="font-size:0.85rem;color:#495057">Method: ${m.dominantMethod.charAt(0).toUpperCase() + m.dominantMethod.slice(1)}</span>
               </div>
             `;

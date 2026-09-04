@@ -6,6 +6,12 @@ import EncoderLayout from './components/encoder/EncoderLayout';
 import EncoderDashboard from './components/encoder/EncoderDashboard';
 import RequireAdmin from './components/admin/RequireAdmin';
 import AdminLayout from './components/admin/AdminLayout';
+import AdminPage from './components/admin/AdminPage';
+import UsersManagement from './components/admin/UsersManagement';
+import ForecastDashboard from './components/admin/ForecastDashboard';
+import GenerateReports from './components/admin/GenerateReports';
+import ValidationQueue from './components/admin/ValidationQueue';
+import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import { getMe } from './services/dataService';
 
 function RequireAuth({ user, isLoading, children }) {
@@ -52,7 +58,14 @@ export default function App() {
               <AdminLayout user={user} setUser={setUser} />
             </RequireAdmin>
           }
-        />
+        >
+          <Route index element={<AdminPage user={user} />} />
+          <Route path="users" element={<UsersManagement />} />
+          <Route path="validation" element={<ValidationQueue />} />
+          <Route path="data-quality" element={<DataQualityDashboard />} />
+          <Route path="forecast" element={<ForecastDashboard />} />
+          <Route path="reports" element={<GenerateReports />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>

@@ -1,29 +1,33 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Row, Col, Alert, Spinner, Card } from 'react-bootstrap';
+import { Row, Col, Alert, Spinner, Card, Table } from 'react-bootstrap';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, Cell, ComposedChart, Area,
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  CartesianGrid, Legend,
 } from 'recharts';
+import { Boxes, LayoutGrid, Ruler, Hourglass, Scale, CalendarCheck, ChartLine, TrendingUp, TrendingDown } from 'lucide-react';
 import {
-  getAdminStats, getInsight, getAdminMunicipalities,
-  getMunicipalityOutlook, getDataQuality, getAdminSupplyDemand,
+  getAdminStats, getAdminTrends,
+  getMunicipalityOutlook, getAdminSupplyDemand,
 } from '../../services/dataService';
+import { BRAND } from '../../theme/colors';
+import AdminKpiCard from './AdminKpiCard';
+import PageHeader from './PageHeader';
 
-const MUNI_COLORS = [
-  '#1565C8', '#F09A28', '#E53935', '#29B039',
-  '#8E24AA', '#00ACC1', '#FB8C00',
-];
-
-function KPIStat({ title, value, supporting, accent }) {
+function KPIStat({ title, value, supporting, accent, icon }) {
   return (
-    <Card className="encoder-kpi admin-kpi">
-      <Card.Body>
-        <div className="encoder-kpi-title">{title}</div>
-        <div className="encoder-kpi-value">{value}</div>
-        <div className="encoder-kpi-supporting">{supporting}</div>
-        {accent && <div className={`admin-kpi-accent admin-kpi-accent-${accent}`} />}
-      </Card.Body>
-    </Card>
+    <AdminKpiCard icon={icon} title={title} value={value} supporting={supporting} accent={accent} />
+  );
+}
+
+function KPICluster({ title, accent, children }) {
+  return (
+    <div className="mb-4">
+      <div className={`d-flex align-items-center gap-2 admin-kpi-cluster admin-kpi-cluster-${accent}`}>
+        <span className={`admin-kpi-cluster-bar admin-kpi-accent-${accent}`} />
+        <span className="admin-kpi-cluster-title">{title}</span>
+      </div>
+      <Row className="g-3">{children}</Row>
+    </div>
   );
 }
 
@@ -40,36 +44,59 @@ function CustomLegend({ payload }) {
   );
 }
 
+function ChartTooltip({ active, payload, label, suffix = '', nameFormatter }) {
+  if (!active || !payload || payload.length === 0) return null;
+  return (
+    <div className="admin-chart-tooltip">
+      {label != null && <div className="ct-label">{label}</div>}
+      {payload.map((entry, i) => (
+        <div key={entry.dataKey || i}>
+          <div className="ct-value">{nameFormatter ? nameFormatter(entry.value) : `${Number(entry.value).toLocaleString()}${suffix}`}</div>
+          <div className="ct-sub">{entry.name}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChangePill({ value }) {
+  if (value === null || value === undefined) {
+    return <span className="yc-pill">—</span>;
+  }
+  const up = value >= 0;
+  return (
+    <span className={`yc-pill ${up ? 'yc-pill-up' : 'yc-pill-down'}`}>
+      <span className="yc-arrow">{up ? <TrendingUp size={13} strokeWidth={2.5} /> : <TrendingDown size={13} strokeWidth={2.5} />}</span>
+      {up ? '+' : ''}{value}%
+    </span>
+  );
+}
+
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState(null);
-  const [insight, setInsight] = useState(null);
-  const [munis, setMunis] = useState([]);
+  const [trendSeries, setTrendSeries] = useState([]);
+  const [yoyRows, setYoyRows] = useState([]);
+  const [period, setPeriod] = useState(null);
   const [outlook, setOutlook] = useState([]);
-  const [dq, setDq] = useState(null);
   const [supplyDemand, setSupplyDemand] = useState(null);
-  const [filters, setFilters] = useState({ municipality_id: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    getAdminMunicipalities().then((res) => setMunis(res.municipalities || [])).catch(() => {});
-  }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     Promise.all([
       getAdminStats(),
-      getInsight().catch(() => null),
+      getAdminTrends().catch(() => ({ trend: [], municipalities: [] })),
       getMunicipalityOutlook().catch(() => ({ municipalities: [] })),
-      getDataQuality().catch(() => null),
       getAdminSupplyDemand().catch(() => null),
     ])
-      .then(([s, ins, ol, dqData, sd]) => {
+      .then(([s, tr, ol, sd]) => {
         setStats(s);
-        setInsight(ins);
+        setTrendSeries(tr.trend || []);
+        setYoyRows(tr.municipalities || []);
+        setPeriod(tr.period || null);
         setOutlook(ol.municipalities || []);
-        setDq(dqData);
         setSupplyDemand(sd);
         setLoading(false);
       })
@@ -90,14 +117,6 @@ export default function AdminDashboard({ user }) {
       .sort((a, b) => b.volumeMT - a.volumeMT);
   }, [stats]);
 
-  const filteredMuniData = useMemo(() => {
-    if (!filters.municipality_id) return muniData;
-    const id = Number(filters.municipality_id);
-    return muniData.filter((m, idx) => {
-      return stats.by_municipality[idx]?.municipality_id === id;
-    });
-  }, [muniData, filters.municipality_id, stats]);
-
   if (loading) {
     return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
   }
@@ -111,85 +130,48 @@ export default function AdminDashboard({ user }) {
   const supplyDemandLabel = supplyDemandGap >= 0 ? 'Surplus' : 'Shortage';
 
   const readyMunis = outlook.filter((o) => o.readiness !== 'not_ready').length;
-  const totalMunis = outlook.length || munis.length;
-
-  const qualityScore = dq ? dq.overall_quality_score : '—';
-
-  const contribution = filteredMuniData.map((m) => ({
-    name: m.name,
-    volumeMT: m.volumeMT,
-  }));
-  const efficiency = filteredMuniData.map((m) => ({
-    name: m.name,
-    kgPerBed: m.efficiency,
-  }));
-  const trend = filteredMuniData.map((m) => ({
-    name: m.name,
-    volumeMT: m.volumeMT,
-  }));
-
-  const efficiencyWithColor = efficiency.map((e, i) => ({
-    ...e,
-    fill: MUNI_COLORS[i % MUNI_COLORS.length],
-  }));
-  const contributionWithColor = contribution.map((c, i) => ({
-    ...c,
-    fill: MUNI_COLORS[i % MUNI_COLORS.length],
-  }));
+  const totalMunis = outlook.length || muniData.length;
 
   return (
     <div>
-      <div className="encoder-hello d-flex justify-content-between align-items-start">
-        <div>
-          <h2>Executive Dashboard</h2>
-          <p>Welcome, <strong>{user?.name}</strong> · Province-wide overview across all municipalities.</p>
-        </div>
-        <div className="d-flex gap-2 align-items-end">
-          <select
-            className="form-select form-select-sm"
-            value={filters.municipality_id}
-            onChange={(e) => setFilters({ municipality_id: e.target.value })}
-          >
-            <option value="">All municipalities</option>
-            {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
-      </div>
+      <PageHeader
+        id="admin-dashboard"
+        variant="main"
+        title="Executive Dashboard"
+        subtitle={`Welcome, ${user?.name} · Province-wide overview across all municipalities.`}
+      />
 
       <Row className="g-3 mb-4">
-        <Col md={4} lg>
-          <KPIStat title="Total Production" value={`${totalVolumeMT.toLocaleString()} MT`} supporting={`${stats.total_volume_kg.toLocaleString()} kg`} accent="ocean" />
+        <Col md={4}>
+          <KPIStat icon={Boxes} title="Total Production" value={`${totalVolumeMT.toLocaleString()} MT`} supporting={`${stats.total_volume_kg.toLocaleString()} kg`} accent="ocean" />
         </Col>
-        <Col md={4} lg>
-          <KPIStat title="Total Salt Beds" value={stats.total_salt_beds.toLocaleString()} supporting="Active production beds" accent="gold" />
+        <Col md={4}>
+          <KPIStat icon={Ruler} title="Production Area" value={`${stats.total_area_sqm.toLocaleString()} m²`} supporting="Combined area of all beds" accent="ocean" />
         </Col>
-        <Col md={4} lg>
-          <KPIStat title="Production Area" value={`${stats.total_area_sqm.toLocaleString()} m²`} supporting="Combined area of all beds" accent="green" />
-        </Col>
-        <Col md={4} lg>
-          <KPIStat title="Pending Validation" value={stats.pending_validation_count.toLocaleString()} supporting="Awaiting admin review" accent="warning" />
-        </Col>
-        <Col md={4} lg>
+        <Col md={4}>
           <KPIStat
+            icon={Scale}
             title="Supply-Demand Balance"
             value={`${supplyDemandLabel} ${Math.abs(Math.round(supplyDemandGap)).toLocaleString()} MT`}
             supporting={`vs ${demandBenchmark.toLocaleString()} MT demand benchmark`}
-            accent={supplyDemandGap >= 0 ? 'green' : 'brown'}
+            accent="gold"
           />
         </Col>
-        <Col md={4} lg>
+      </Row>
+
+      <Row className="g-3 mb-4">
+        <Col md={4}>
+          <KPIStat icon={LayoutGrid} title="Total Salt Beds" value={stats.total_salt_beds.toLocaleString()} supporting="Active production beds" accent="ocean" />
+        </Col>
+        <Col md={4}>
+          <KPIStat icon={Hourglass} title="Pending Validation" value={stats.pending_validation_count.toLocaleString()} supporting="Awaiting admin review" accent="green" />
+        </Col>
+        <Col md={4}>
           <KPIStat
+            icon={CalendarCheck}
             title="Forecast Availability"
             value={`${readyMunis} / ${totalMunis}`}
             supporting="Municipalities with forecast data"
-            accent="ocean"
-          />
-        </Col>
-        <Col md={4} lg>
-          <KPIStat
-            title="Data Quality Score"
-            value={typeof qualityScore === 'number' ? `${qualityScore}%` : qualityScore}
-            supporting="Based on record completeness"
             accent="gold"
           />
         </Col>
@@ -197,90 +179,69 @@ export default function AdminDashboard({ user }) {
 
       <Row className="g-3 mb-4">
         <Col lg={8}>
-          <Card className="encoder-card">
-            <Card.Header as="h5">Production Trend by Municipality</Card.Header>
-            <Card.Body>
-              <div style={{ height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={trend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Legend content={<CustomLegend />} />
-                    <Bar dataKey="volumeMT" name="Volume (MT)" radius={[4, 4, 0, 0]}>
-                      {trend.map((entry, i) => (
-                        <Cell key={i} fill={MUNI_COLORS[i % MUNI_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+          <Card className="encoder-card h-100">
+            <Card.Header>
+              <div className="admin-card-head">
+                <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><ChartLine size={16} strokeWidth={2} /></span>
+                <div>
+                  <h5 className="admin-card-head-title">Province-Wide Production Trend (MT / month)</h5>
+                  {period ? <span className="fw-normal text-muted small ms-1">({period.start} to {period.end})</span> : null}
+                </div>
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col lg={4}>
-          <Card className="encoder-card">
-            <Card.Header as="h5">Insight Callout</Card.Header>
+            </Card.Header>
             <Card.Body>
-              {insight ? (
-                <>
-                  <p className="mb-2">{insight.insight}</p>
-                  <p className="small text-muted mb-2">{insight.methodology}</p>
-                  <p className="small text-muted mb-0">Source: {insight.source}</p>
-                </>
+              {trendSeries.length === 0 ? (
+                <div className="text-muted text-center py-4">No approved production records available to build trends yet.</div>
               ) : (
-                <p className="text-muted">Loading insight…</p>
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendSeries} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11 }} interval={3} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip content={<ChartTooltip nameFormatter={(v) => `${v.toLocaleString()} MT`} />} />
+                      <Legend />
+                      <Line type="monotone" dataKey="total" name="Total Production (MT)" stroke={BRAND.ocean} strokeWidth={2} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </Card.Body>
           </Card>
         </Col>
-      </Row>
-
-      <Row className="g-3 mb-4">
-        <Col lg={6}>
-          <Card className="encoder-card">
-            <Card.Header as="h5">Municipality Contribution</Card.Header>
-            <Card.Body>
-              <div style={{ height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={contributionWithColor} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Legend content={<CustomLegend />} />
-                    <Bar dataKey="volumeMT" name="Volume (MT)" radius={[4, 4, 0, 0]}>
-                      {contributionWithColor.map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+        <Col lg={4}>
+          <Card className="encoder-card h-100">
+            <Card.Header>
+              <div className="admin-card-head">
+                <span className="admin-card-head-icon admin-kpi-accent-goldbg"><TrendingUp size={16} strokeWidth={2} /></span>
+                <h5 className="admin-card-head-title">Year-over-Year Change</h5>
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col lg={6}>
-          <Card className="encoder-card">
-            <Card.Header as="h5">Production Efficiency (kg / salt bed)</Card.Header>
-            <Card.Body>
-              <div style={{ height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={efficiencyWithColor} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Legend content={<CustomLegend />} />
-                    <Bar dataKey="kgPerBed" name="kg per bed" radius={[4, 4, 0, 0]}>
-                      {efficiencyWithColor.map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            </Card.Header>
+            <Card.Body className="p-0">
+              <Table responsive striped hover size="sm" className="mb-0 encoder-table">
+                <thead>
+                  <tr>
+                    <th>Municipality</th>
+                    <th className="text-end">Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yoyRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="text-center text-muted py-4">No year-over-year change data available.</td>
+                    </tr>
+                  ) : (
+                    yoyRows.map((m) => (
+                      <tr key={m.name}>
+                        <td>{m.name}</td>
+                        <td className="text-end">
+                          <ChangePill value={m.changePct} />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </Table>
             </Card.Body>
           </Card>
         </Col>

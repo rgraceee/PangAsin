@@ -1,18 +1,27 @@
-import { municipalities as municipalitiesData, production as productionData, demographics as demographicsData, supplyDemand as supplyDemandData } from '../data/municipalities';
+let dashboardCache = { municipalities: [], production: { provinceTotalMT: 0, records: [] }, demographics: { provinceWide: {}, byMunicipality: {} }, supplyDemand: null };
+
+async function apiNoAuth(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const res = await fetch(path, { ...options, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || 'Request failed');
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
 
 export async function loadAllMockData() {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return {
-    municipalities: municipalitiesData,
-    production: productionData,
-    demographics: demographicsData,
-    supplyDemand: supplyDemandData,
-  };
+  const data = await apiNoAuth('/api/public/dashboard');
+  dashboardCache = data;
+  return data;
 }
 
 export function getMunicipalityProduction() {
-  const sorted = [...municipalitiesData].sort((a, b) => b.productionMT - a.productionMT);
-  const total = sorted.reduce((sum, m) => sum + m.productionMT, 0);
+  const sorted = [...(dashboardCache.municipalities || [])].sort((a, b) => b.productionMT - a.productionMT);
+  const total = sorted.reduce((sum, m) => sum + (m.productionMT || 0), 0);
   return sorted.map((m) => ({
     ...m,
     percentageOfTotal: total > 0 ? (m.productionMT / total) * 100 : 0,
@@ -20,39 +29,47 @@ export function getMunicipalityProduction() {
 }
 
 export function getProductionSummary() {
-  const totalProduction = municipalitiesData.reduce((sum, m) => sum + m.productionMT, 0);
-  const totalArea = municipalitiesData.reduce((sum, m) => sum + (m.productionAreaHa || 0), 0);
-  const producerEntries = Object.values(demographicsData.provinceWide.genderDistribution).reduce((a, b) => a + b, 0);
-  const sufficiency = supplyDemandData.philippines.domesticSupply > 0 ? (supplyDemandData.philippines.domesticSupply / supplyDemandData.philippines.demand) * 100 : 0;
+  const munis = dashboardCache.municipalities || [];
+  const totalProduction = munis.reduce((sum, m) => sum + (m.productionMT || 0), 0);
+  const totalArea = munis.reduce((sum, m) => sum + (m.productionAreaSqm || 0), 0);
+  const gender = (dashboardCache.demographics?.provinceWide?.genderDistribution) || {};
+  const producerEntries = Object.values(gender).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+  const sd = dashboardCache.supplyDemand || { philippines: {}, pangasinan: {} };
+  const demand = sd.philippines?.demand || 0;
+  const domesticSupply = sd.philippines?.domesticSupply || 0;
+  const sufficiency = demand > 0 ? (domesticSupply / demand) * 100 : 0;
   return {
     totalProduction,
     totalArea,
     producerEntries,
     sufficiency,
-    municipalityCount: municipalitiesData.length,
+    municipalityCount: munis.length,
   };
 }
 
 export function getSupplyDemand(scope) {
+  const sd = dashboardCache.supplyDemand || {};
   if (scope === 'philippines') {
+    const ph = sd.philippines || {};
     return {
       labels: ['National Demand', 'Domestic Supply', 'Imported Salt'],
-      values: [supplyDemandData.philippines.demand, supplyDemandData.philippines.domesticSupply, supplyDemandData.philippines.imports],
+      values: [ph.demand || 0, ph.domesticSupply || 0, ph.imports || 0],
       unit: 'MT',
-      note: 'Synthetic demonstration data',
+      note: 'Compiled from database demand benchmarks',
     };
   }
+  const pa = sd.pangasinan || {};
   return {
     labels: ['Pangasinan Supply', 'Demand Benchmark'],
-    values: [supplyDemandData.pangasinan.localSupply, supplyDemandData.pangasinan.demandBenchmark],
+    values: [pa.localSupply || 0, pa.demandBenchmark || 0],
     unit: 'MT',
-    note: 'Synthetic demonstration data',
+    note: 'Compiled from database demand benchmarks',
   };
 }
 
 export function getSectorDemand() {
-  const sector = supplyDemandData.sectorDemand;
-  const total = Object.values(sector).reduce((a, b) => a + b, 0);
+  const sector = (dashboardCache.supplyDemand && dashboardCache.supplyDemand.sectorDemand) || {};
+  const total = Object.values(sector).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
   return Object.entries(sector).map(([key, value]) => ({
     sector: key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
     value,
@@ -61,15 +78,15 @@ export function getSectorDemand() {
 }
 
 export function getProducerDemographics() {
-  return demographicsData.provinceWide;
+  return (dashboardCache.demographics && dashboardCache.demographics.provinceWide) || { ageGroups: {}, genderDistribution: {} };
 }
 
 export function getMunicipalityDetail(id) {
-  return municipalitiesData.find((m) => m.id === id) || null;
+  return (dashboardCache.municipalities || []).find((m) => m.id === id) || null;
 }
 
 export function getIndustryInsight(id) {
-  const muni = municipalitiesData.find((m) => m.id === id);
+  const muni = (dashboardCache.municipalities || []).find((m) => m.id === id);
   return muni ? muni.insightSnippet : null;
 }
 
@@ -197,6 +214,10 @@ export function getReport(id) {
 
 export function getReportDownloadUrl(id) {
   return `/api/admin/reports/${id}/download`;
+}
+
+export function deleteReport(id) {
+  return api(`/admin/reports/${id}`, { method: 'DELETE' });
 }
 
 export function getInsight() {

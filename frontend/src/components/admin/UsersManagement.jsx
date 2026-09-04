@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Spinner, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import { getAdminUsers, getAdminMunicipalities, createAdminUser, updateAdminUser } from '../../services/dataService';
+import { Pencil, Power, UserPlus } from 'lucide-react';
+import IconButton from '../IconButton';
+import PageHeader from './PageHeader';
 
 const USER_ROLES = ['admin', 'encoder'];
 
@@ -109,37 +112,48 @@ export default function UsersManagement() {
   const hasFilter = Boolean(filters.role || filters.status || filters.municipality_id);
 
   return (
-    <Card className="encoder-card admin-card">
-      <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
-        <span>User Management</span>
-        <Button size="sm" onClick={openAdd}>+ Add Encoder</Button>
-      </Card.Header>
-      <Card.Body>
-        <Row className="g-2 mb-3">
-          <Col md={3}>
-            <select className="form-select" name="role" value={filters.role} onChange={handleFilter}>
-              <option value="">All roles</option>
-              {USER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </Col>
-          <Col md={3}>
-            <select className="form-select" name="status" value={filters.status} onChange={handleFilter}>
-              <option value="">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </Col>
-          <Col md={3}>
-            <select className="form-select" name="municipality_id" value={filters.municipality_id} onChange={handleFilter}>
-              <option value="">All municipalities</option>
-              {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-          </Col>
-          <Col md={3} className="d-flex gap-2 align-items-center">
+    <>
+      <PageHeader
+        id="admin-users"
+        variant="sub"
+        title="User Management"
+        subtitle="Manage admin and encoder accounts, roles, and access."
+        action={
+          <Button className="admin-page-hero-btn" onClick={openAdd}>
+            <UserPlus size={16} strokeWidth={2.2} className="me-2" />Add Encoder
+          </Button>
+        }
+      >
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="um-role">Role</label>
+          <select id="um-role" className="form-select admin-page-hero-select" name="role" value={filters.role} onChange={handleFilter}>
+            <option value="">All roles</option>
+            {USER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="um-status">Status</label>
+          <select id="um-status" className="form-select admin-page-hero-select" name="status" value={filters.status} onChange={handleFilter}>
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="um-muni">Municipality</label>
+          <select id="um-muni" className="form-select admin-page-hero-select" name="municipality_id" value={filters.municipality_id} onChange={handleFilter}>
+            <option value="">All municipalities</option>
+            {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
+      </PageHeader>
+
+      <Card className="encoder-card admin-card">
+        <Card.Body>
+          <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="text-muted small">{users.length} user{users.length === 1 ? '' : 's'}</span>
             {hasFilter && <Button variant="link" size="sm" onClick={handleClear}>Clear filters</Button>}
-          </Col>
-        </Row>
+          </div>
 
         {error && <Alert variant="danger">{error}</Alert>}
         {loading && <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>}
@@ -169,15 +183,19 @@ export default function UsersManagement() {
                   <td><span className={`record-status-badge ${u.status === 'active' ? 'status-approved' : 'status-rejected'}`}>{u.status}</span></td>
                   <td>{u.last_login ? new Date(u.last_login).toLocaleString() : '—'}</td>
                   <td className="text-nowrap">
-                    <Button size="sm" variant="outline-primary" onClick={() => openEdit(u)}>Edit</Button>{' '}
+                    <IconButton
+                      icon={Pencil}
+                      label={`Edit ${u.name}`}
+                      variant="outline-primary"
+                      onClick={() => openEdit(u)}
+                    />
                     {u.role === 'encoder' && (
-                      <Button
-                        size="sm"
-                        variant={u.status === 'active' ? 'outline-warning' : 'outline-success'}
+                      <IconButton
+                        icon={Power}
+                        label={u.status === 'active' ? `Deactivate ${u.name}` : `Activate ${u.name}`}
+                        variant={u.status === 'active' ? 'outline-danger' : 'outline-success'}
                         onClick={() => toggleStatus(u)}
-                      >
-                        {u.status === 'active' ? 'Deactivate' : 'Activate'}
-                      </Button>
+                      />
                     )}
                   </td>
                 </tr>
@@ -245,5 +263,6 @@ export default function UsersManagement() {
         </Form>
       </Modal>
     </Card>
+    </>
   );
 }

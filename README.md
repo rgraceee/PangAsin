@@ -23,13 +23,11 @@ The system runs as a **single Flask server** on port **5000**. Flask serves the 
    set FLASK_APP=run.py
    flask db upgrade
    ```
+   > Note: when pointing at an existing Supabase database, the schema is
+   > already present, so migrations are typically already applied. The app
+   > connects to the database via the `DATABASE_URL` in `.env`.
 
-4. Seed the database with municipalities, barangays, demo users, and demo records:
-   ```bash
-   python -c "from app.seed.seed_demo_data import seed; seed()"
-   ```
-
-5. Start the server:
+4. Start the server:
    ```bash
    python run.py
    ```
@@ -43,7 +41,7 @@ The system runs as a **single Flask server** on port **5000**. Flask serves the 
 
 ## Demo Accounts
 
-Seeded users are created with the pattern `admin@pangasin.gov.ph` for the administrator and `{municipality}.encoder@pangasin.gov.ph` for each municipality's encoder.
+User accounts live in the database. They follow the pattern `admin@pangasin.gov.ph` for the administrator and `{municipality}.encoder@pangasin.gov.ph` for each municipality's encoder.
 
 | Role | Email | Password |
 |---|---|---|
@@ -63,7 +61,6 @@ pangasin/
 │   ├── forms/
 │   ├── blueprints/
 │   ├── services/
-│   ├── seed/            # database seeding scripts
 │   ├── templates/
 │   ├── static/
 │   │   └── react/       # production frontend build output

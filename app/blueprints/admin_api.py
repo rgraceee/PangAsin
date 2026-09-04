@@ -13,6 +13,14 @@ from app.services.forecast_service import _monthly_aggregates
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
 
+AGE_BUCKET_FIELDS = (
+    "producers_18_30",
+    "producers_31_40",
+    "producers_41_50",
+    "producers_51_60",
+    "producers_61_plus",
+)
+
 QUALITY_WEIGHTS = {
     "production_volume": 0.20,
     "num_salt_beds": 0.10,
@@ -59,6 +67,7 @@ def _serialize(record):
         "registered_producers": record.registered_producers,
         "male_producers": record.male_producers,
         "female_producers": record.female_producers,
+        **{f: getattr(record, f) for f in AGE_BUCKET_FIELDS},
         "production_volume": float(record.production_volume) if record.production_volume is not None else None,
         "num_salt_beds": record.num_salt_beds,
         "area_per_salt_bed": float(record.area_per_salt_bed) if record.area_per_salt_bed is not None else None,
