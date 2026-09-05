@@ -1,6 +1,32 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, LabelList, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { getIndustryInsight } from '../services/dataService';
+import { GENDER, BRAND } from '../theme/colors';
+import ChartCaption from './ChartCaption';
+
+const METHOD_COLORS = { Solar: BRAND.ocean, Cooked: BRAND.gold, Hybrid: BRAND.green };
+
+function VolumeTooltip({ active, payload, unit }) {
+  if (!active || !payload || !payload.length) return null;
+  const p = payload[0];
+  return (
+    <div className="admin-chart-tooltip">
+      {p.name ? <div className="ct-label">{p.name}</div> : null}
+      <div className="ct-value">{Number(p.value).toLocaleString()}{unit ? ` ${unit}` : ''}</div>
+    </div>
+  );
+}
+
+function CountTooltip({ active, payload }) {
+  if (!active || !payload || !payload.length) return null;
+  const p = payload[0];
+  return (
+    <div className="admin-chart-tooltip">
+      {p.name ? <div className="ct-label">{p.name}</div> : null}
+      <div className="ct-value">{Number(p.value).toLocaleString()} producers</div>
+    </div>
+  );
+}
 
 export default function MunicipalityDetailPanel({ municipality, onClose, demographics }) {
   if (!municipality) return null;
@@ -15,20 +41,35 @@ export default function MunicipalityDetailPanel({ municipality, onClose, demogra
     { name: 'Solar', value: municipality.solarProductionMT },
     { name: 'Cooked', value: municipality.cookedProductionMT },
     { name: 'Hybrid', value: municipality.hybridProductionMT },
-  ];
+  ].map((e) => {
+    const total = [municipality.solarProductionMT, municipality.cookedProductionMT, municipality.hybridProductionMT].reduce((a, b) => a + (b || 0), 0);
+    const pct = total > 0 ? (e.value / total) * 100 : 0;
+    return { ...e, pct, label: `${e.value.toLocaleString()} MT · ${pct.toFixed(1)}%` };
+  });
+  const topMethod = methodData.reduce((best, e) => (e.value > best.value ? e : best), methodData[0]);
 
   const historicalData = Object.entries(municipality.historicalProduction || {}).map(([year, value]) => ({
     year,
     value,
   }));
+  const peakYear = historicalData.length
+    ? historicalData.reduce((best, e) => (e.value > best.value ? e : best), historicalData[0])
+    : null;
 
   const ageData = muniDemo ? Object.entries(muniDemo.ageGroups).map(([age, count]) => ({ age, count })) : [];
+  const topAge = ageData.length ? ageData.reduce((best, e) => (e.count > best.count ? e : best), ageData[0]) : null;
   const genderData = muniDemo
     ? Object.entries(muniDemo.genderDistribution).map(([gender, count]) => ({
         gender: gender === 'notSpecified' ? 'Not Specified' : gender.charAt(0).toUpperCase() + gender.slice(1),
         count,
       }))
     : [];
+  const genderTotal = genderData.reduce((sum, g) => sum + g.count, 0);
+
+  const genderColor = (name) => {
+    const key = name === 'Male' ? 'male' : name === 'Female' ? 'female' : '';
+    return key ? GENDER[key] : '#9E9E9E';
+  };
 
   return (
     <>
@@ -88,32 +129,45 @@ export default function MunicipalityDetailPanel({ municipality, onClose, demogra
           <div className="card mb-3">
             <div className="card-body">
               <h6 className="card-title text-uppercase text-muted small">Method Distribution</h6>
-              <div className="chart-container" style={{ height: 260 }}>
+              {topMethod && topMethod.value > 0 && (
+                <ChartCaption>
+                  {topMethod.name} evaporation leads {municipality.name}&apos;s recorded volume at {topMethod.value.toLocaleString()} MT ({topMethod.pct.toFixed(1)}% of the municipal total).
+                </ChartCaption>
+              )}
+              <div className="chart-container" style={{ height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={methodData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                      {methodData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#198754', '#dc3545', '#ffc107'][index % 3]} />
+                  <BarChart data={methodData} layout="vertical" margin={{ top: 5, right: 150, left: 20, bottom: 5 }}>
+                    <XAxis type="number" tickFormatter={(value) => value.toLocaleString()} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={70} />
+                    <Tooltip cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }} content={<VolumeTooltip unit="MT" />} />
+                    <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={30}>
+                      {methodData.map((entry) => (
+                        <Cell key={entry.name} fill={METHOD_COLORS[entry.name] || BRAND.ocean} />
                       ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`${value.toLocaleString()} MT`, '']} />
-                    <Legend />
-                  </PieChart>
+                      <LabelList dataKey="label" position="right" className="chart-bar-label" />
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
+              {municipality.methodDescription && <p className="text-muted small mt-2 mb-0">{municipality.methodDescription}</p>}
             </div>
           </div>
 
           <div className="card mb-3">
             <div className="card-body">
               <h6 className="card-title text-uppercase text-muted small">Historical Trend</h6>
+              {peakYear && (
+                <ChartCaption>
+                  Recorded production in {municipality.name} peaked in {peakYear.year} at {peakYear.value.toLocaleString()} MT.
+                </ChartCaption>
+              )}
               <div className="chart-container" style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={historicalData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <XAxis dataKey="year" />
                     <YAxis tickFormatter={(value) => value.toLocaleString()} />
-                    <Tooltip formatter={(value) => [`${value.toLocaleString()} MT`, '']} />
-                    <Line type="monotone" dataKey="value" stroke="#198754" strokeWidth={2} dot={{ r: 4 }} />
+                    <Tooltip cursor={{ stroke: BRAND.ocean }} content={<VolumeTooltip unit="MT" />} />
+                    <Line type="monotone" dataKey="value" name="year" stroke={BRAND.ocean} strokeWidth={2} dot={{ r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -127,20 +181,30 @@ export default function MunicipalityDetailPanel({ municipality, onClose, demogra
                 <div className="row g-3">
                   <div className="col-md-6">
                     <h6 className="small text-muted mb-2">Age Distribution</h6>
-                    <div className="chart-container" style={{ height: 240 }}>
+                    {topAge && (
+                      <ChartCaption>
+                        Producers aged {topAge.age} form the largest cohort at {topAge.count.toLocaleString()}.
+                      </ChartCaption>
+                    )}
+                    <div className="chart-container" style={{ height: 220 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={ageData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                           <XAxis dataKey="age" tick={{ fontSize: 11 }} />
                           <YAxis allowDecimals={false} />
-                          <Tooltip formatter={(value) => [value, 'Producers']} />
-                          <Bar dataKey="count" fill="#198754" radius={[4, 4, 0, 0]} />
+                          <Tooltip cursor={{ fill: 'rgba(41, 176, 57, 0.08)' }} content={<CountTooltip />} />
+                          <Bar dataKey="count" fill={BRAND.green} radius={[4, 4, 0, 0]} maxBarSize={30} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
                   <div className="col-md-6">
                     <h6 className="small text-muted mb-2">Gender Distribution</h6>
-                    <div className="chart-container" style={{ height: 240 }}>
+                    {genderTotal > 0 && (
+                      <ChartCaption>
+                        {genderData.reduce((max, g) => (g.count > max.count ? g : max), genderData[0]).gender} is the largest reported group among the {genderTotal.toLocaleString()} producers.
+                      </ChartCaption>
+                    )}
+                    <div className="chart-container" style={{ height: 220 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -152,11 +216,11 @@ export default function MunicipalityDetailPanel({ municipality, onClose, demogra
                             outerRadius={80}
                             label={({ gender, count }) => `${gender}: ${count}`}
                           >
-                            {genderData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={['#0d6efd', '#dc3545', '#6c757d'][index % 3]} />
+                            {genderData.map((entry) => (
+                              <Cell key={entry.gender} fill={genderColor(entry.gender)} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value) => [value, '']} />
+                          <Tooltip content={<CountTooltip />} />
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>

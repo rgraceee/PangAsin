@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import PublicHeader from './PublicHeader';
-import DashboardIntro from './DashboardIntro';
-import DataStatusBadge from './DataStatusBadge';
-import KPISection from './KPISection';
+import { Alert, Spinner } from 'react-bootstrap';
+import PageHeader from './admin/PageHeader';
+import Reveal from './Reveal';
 import MunicipalityMapSection from './MunicipalityMapSection';
 import MunicipalityProductionSection from './MunicipalityProductionSection';
 import SupplyDemandSection from './SupplyDemandSection';
 import ProducerDemographicsSection from './ProducerDemographicsSection';
-import PublicFooter from './PublicFooter';
-import { loadAllMockData } from '../services/dataService';
 import MunicipalityDetailPanel from './MunicipalityDetailPanel';
+import { loadAllMockData } from '../services/dataService';
 
 export default function GuestDashboard() {
   const [data, setData] = useState(null);
@@ -30,58 +28,52 @@ export default function GuestDashboard() {
       });
   }, []);
 
-  if (loading) {
-    return (
-      <div className="public-dashboard">
-        <PublicHeader />
-        <DashboardIntro />
-        <DataStatusBadge />
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="public-dashboard">
-        <PublicHeader />
-        <DashboardIntro />
-        <DataStatusBadge />
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="public-dashboard">
-      <PublicHeader />
-      <DashboardIntro />
-      <DataStatusBadge />
-
-      <KPISection data={data} />
-
-      <MunicipalityMapSection
-        municipalities={data.municipalities}
-        onSelectMunicipality={setSelectedMunicipality}
+    <div className="public-dashboard admin-content">
+      <PageHeader
+        id="public-overview"
+        variant="main"
+        title="Pangasinan Salt Industry Dashboard"
+        subtitle="The Accelerating Salt Research and Innovation (ASIN) Center at Pangasinan State University supports the Philippine salt industry through research, innovation, and data-driven planning under RA 11985. This dashboard presents approved and aggregated salt production information from the salt-producing municipalities of Pangasinan."
       />
 
-      <MunicipalityProductionSection municipalities={data.municipalities} />
+      {loading && (
+        <div className="text-center py-5">
+          <Spinner animation="border" variant="primary" />
+        </div>
+      )}
 
-      <SupplyDemandSection supplyDemand={data.supplyDemand} />
+      {error && (
+        <div className="mb-4">
+          <Alert variant="danger">{error}</Alert>
+        </div>
+      )}
 
-      <ProducerDemographicsSection demographics={data.demographics} />
+      {data && (
+        <>
+          <Reveal>
+            <MunicipalityMapSection onSelectMunicipality={setSelectedMunicipality} />
+          </Reveal>
 
-      <MunicipalityDetailPanel
-        municipality={selectedMunicipality}
-        onClose={() => setSelectedMunicipality(null)}
-        demographics={data.demographics}
-      />
+          <Reveal>
+            <MunicipalityProductionSection />
+          </Reveal>
+
+          <Reveal>
+            <SupplyDemandSection />
+          </Reveal>
+
+          <Reveal>
+            <ProducerDemographicsSection />
+          </Reveal>
+
+          <MunicipalityDetailPanel
+            municipality={selectedMunicipality}
+            onClose={() => setSelectedMunicipality(null)}
+            demographics={data.demographics}
+          />
+        </>
+      )}
     </div>
   );
 }

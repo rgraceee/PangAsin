@@ -1,22 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Row, Col, Alert, Spinner, Card, Table } from 'react-bootstrap';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, PieChart, Pie } from 'recharts';
-import { getAdminStats, getAdminMunicipalities, loadAllMockData, getMunicipalityProduction } from '../../services/dataService';
-import { BRAND, MUNICIPALITY_COLORS } from '../../theme/colors';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, LabelList } from 'recharts';
+import { getAdminStats, loadAllMockData, getMunicipalityProduction, getDemographicsByMunicipality } from '../../services/dataService';
+import { BRAND, MUNICIPALITY_COLORS, GENDER } from '../../theme/colors';
 import PageHeader from './PageHeader';
-
-function CustomLegend({ payload }) {
-  return (
-    <div className="admin-chart-legend">
-      {payload.map((entry, i) => (
-        <span key={i} className="admin-chart-legend-item">
-          <span className="admin-chart-legend-swatch" style={{ background: entry.color }} />
-          {entry.value}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 function ChartTooltip({ active, payload, nameFormatter }) {
   if (!active || !payload || !payload.length) return null;
@@ -46,19 +33,21 @@ const METHOD_LABELS = {
   hybrid: 'Hybrid',
 };
 
+const AGE_BANDS = [
+  { label: '18-30', field: 'producers_18_30' },
+  { label: '31-40', field: 'producers_31_40' },
+  { label: '41-50', field: 'producers_41_50' },
+  { label: '51-60', field: 'producers_51_60' },
+  { label: '61+', field: 'producers_61_plus' },
+];
+
 export default function MunicipalityAnalytics() {
   const [data, setData] = useState(null);
-  const [munis, setMunis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hidden, setHidden] = useState(() => new Set());
-  const [filters, setFilters] = useState({ municipality_id: '' });
-  const [methodMuniId, setMethodMuniId] = useState(null);
+  const [provinceMode, setProvinceMode] = useState(true);
   const [methodData, setMethodData] = useState([]);
-
-  useEffect(() => {
-    getAdminMunicipalities().then((res) => setMunis(res.municipalities || [])).catch(() => {});
-  }, []);
 
   useEffect(() => {
     getAdminStats()
@@ -86,21 +75,20 @@ export default function MunicipalityAnalytics() {
         area: Math.round(m.total_area_sqm || 0),
         registered: m.total_registered_producers,
         records: m.record_count,
+        male: m.total_male_producers || 0,
+        female: m.total_female_producers || 0,
       }))
       .sort((a, b) => b.volumeMT - a.volumeMT);
   }, [data]);
 
-  const filteredRows = useMemo(() => {
-    if (!filters.municipality_id) return rows;
-    const id = Number(filters.municipality_id);
-    return rows.filter((r) => r.id === id);
-  }, [rows, filters.municipality_id]);
+  const registeredData = useMemo(() => {
+    const visible = rows.filter((r) => !hidden.has(r.name));
+    return [...visible]
+      .sort((a, b) => b.registered - a.registered)
+      .map((r) => ({ name: r.name, registered: r.registered, fill: MUNICIPALITY_COLORS[r.name] || BRAND.ocean }));
+  }, [rows, hidden]);
 
-  useEffect(() => {
-    if (filteredRows.length > 0 && methodMuniId === null) {
-      setMethodMuniId('all');
-    }
-  }, [filteredRows, methodMuniId]);
+  const muniColor = (name) => MUNICIPALITY_COLORS[name] || BRAND.ocean;
 
   if (loading) {
     return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
@@ -110,42 +98,149 @@ export default function MunicipalityAnalytics() {
   }
   if (!data) return null;
 
-  const muniColor = (name) => MUNICIPALITY_COLORS[name] || BRAND.ocean;
+  const visibleRows = rows.filter((r) => !hidden.has(r.name));
+  const present = new Set(rows.map((r) => r.name));
+  const activeNames = new Set(visibleRows.map((r) => r.name));
 
-  const visibleRows = filteredRows.filter((r) => !hidden.has(r.name));
-
-  const registeredData = visibleRows.map((r) => ({ name: r.name, registered: r.registered, fill: muniColor(r.name) }));
-
-  const present = new Set(filteredRows.map((r) => r.name));
-
-  const toggleMuni = (name) => {
-    setHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
+  const selectPangasinan = () => {
+    setProvinceMode(true);
+    setHidden(new Set());
   };
 
-  const selectedMuni = methodMuniId === 'all'
-    ? { name: 'All Municipalities', productionMT: methodData.reduce((s, m) => s + (m.productionMT || 0), 0), productionAreaSqm: methodData.reduce((s, m) => s + (m.productionAreaSqm || 0), 0) }
-    : methodData.find((m) => m.id === methodMuniId);
-  const methods = selectedMuni
-    ? [
-        { key: 'solar', value: methodMuniId === 'all' ? methodData.reduce((s, m) => s + (m.solarProductionMT || 0), 0) : (selectedMuni.solarProductionMT || 0) },
-        { key: 'cooked', value: methodMuniId === 'all' ? methodData.reduce((s, m) => s + (m.cookedProductionMT || 0), 0) : (selectedMuni.cookedProductionMT || 0) },
-        { key: 'hybrid', value: methodMuniId === 'all' ? methodData.reduce((s, m) => s + (m.hybridProductionMT || 0), 0) : (selectedMuni.hybridProductionMT || 0) },
-      ].filter((m) => m.value > 0)
-    : [];
+  const toggleMuni = (name) => {
+    if (provinceMode) {
+      setProvinceMode(false);
+      setHidden(new Set(rows.map((r) => r.name).filter((n) => n !== name)));
+      return;
+    }
+    if (hidden.has(name)) {
+      const next = new Set(hidden);
+      next.delete(name);
+      setHidden(next);
+    } else {
+      const next = new Set(hidden);
+      next.add(name);
+      const stillActive = rows.some((r) => r.name !== name && !next.has(r.name));
+      if (!stillActive) {
+        setProvinceMode(true);
+        setHidden(new Set());
+      } else {
+        setHidden(next);
+      }
+    }
+  };
+
+  /* ---- Registered producers ---- */
+  const topRegistered = registeredData.reduce((best, r) => (r.registered > best.registered ? r : best), registeredData[0] || null);
+  const registeredTotal = visibleRows.reduce((s, r) => s + r.registered, 0);
+
+  function registeredCaption() {
+    if (!topRegistered || topRegistered.registered <= 0) {
+      return (
+        <div className="chart-caption">
+          <b>No registered producer data</b> available for the selected municipalities.
+        </div>
+      );
+    }
+    return (
+      <div className="chart-caption">
+        <b>{topRegistered.name}</b> has the most registered producers at <b>{topRegistered.registered.toLocaleString()}</b>.
+      </div>
+    );
+  }
+
+  /* ---- Production methods (aggregate over active municipalities) ---- */
+  const activeMethodRows = methodData.filter((m) => activeNames.has(m.name));
+  const methods = [
+    { key: 'solar', value: activeMethodRows.reduce((s, m) => s + (m.solarProductionMT || 0), 0) },
+    { key: 'cooked', value: activeMethodRows.reduce((s, m) => s + (m.cookedProductionMT || 0), 0) },
+    { key: 'hybrid', value: activeMethodRows.reduce((s, m) => s + (m.hybridProductionMT || 0), 0) },
+  ].filter((m) => m.value > 0);
   const methodsTotal = methods.reduce((s, m) => s + m.value, 0);
   const methodPieData = methods.map((m) => ({
     name: METHOD_LABELS[m.key],
     value: m.value,
     fill: METHOD_COLORS[m.key],
   }));
-  const efficiencyHa = selectedMuni && selectedMuni.productionAreaSqm
-    ? (selectedMuni.productionMT / (selectedMuni.productionAreaSqm / 10000)).toFixed(2)
-    : null;
+
+  function methodCaption() {
+    if (methods.length === 0) return null;
+    const top = methods.reduce((b, m) => (m.value > b.value ? m : b), methods[0]);
+    const pct = methodsTotal > 0 ? ((top.value / methodsTotal) * 100).toFixed(1) : 0;
+    return (
+      <div className="chart-caption">
+        <b>{METHOD_LABELS[top.key]}</b> leads production with <b>{pct}%</b> of the recorded volume.
+      </div>
+    );
+  }
+
+  /* ---- Producer demographics (gender) ---- */
+  const hasDemogData = visibleRows.some((r) => (r.male || r.female) > 0);
+
+  const demogTotalMale = visibleRows.reduce((s, r) => s + r.male, 0);
+  const demogTotalFemale = visibleRows.reduce((s, r) => s + r.female, 0);
+  const demogTotal = demogTotalMale + demogTotalFemale;
+
+  const genderPieData = (demogTotal > 0 ? [
+    { name: 'Male Producers', value: demogTotalMale, fill: GENDER.male },
+    { name: 'Female Producers', value: demogTotalFemale, fill: GENDER.female },
+  ] : []);
+
+  function genderDonutCaption() {
+    if (!hasDemogData) {
+      return (
+        <div className="chart-caption">
+          <b>No producer gender data</b> available for the selected municipalities.
+        </div>
+      );
+    }
+    if (demogTotal === 0) return null;
+    const malePct = (demogTotalMale / demogTotal) * 100;
+    const femalePct = (demogTotalFemale / demogTotal) * 100;
+    const headline = malePct >= femalePct
+      ? `Male producers outnumber female, ${malePct.toFixed(1)}% to ${femalePct.toFixed(1)}%.`
+      : `Female producers outnumber male, ${femalePct.toFixed(1)}% to ${malePct.toFixed(1)}%.`;
+    let title;
+    if (visibleRows.length === 1) {
+      title = `${visibleRows[0].name} records ${demogTotal.toLocaleString()} producers.`;
+    } else if (visibleRows.length === present.size) {
+      title = `Across Pangasinan, ${demogTotal.toLocaleString()} producers are recorded.`;
+    } else {
+      title = `Across the ${visibleRows.length} selected municipalities, ${demogTotal.toLocaleString()} producers are recorded.`;
+    }
+    return (
+      <div className="chart-caption">
+        {title} {headline}
+      </div>
+    );
+  }
+
+  /* ---- Producer demographics (age) ---- */
+  const demogByMuni = getDemographicsByMunicipality();
+  const ageValues = AGE_BANDS.map((b) => ({
+    name: b.label,
+    value: visibleRows.reduce((s, r) => s + ((demogByMuni[String(r.id)]?.ageGroups || {})[b.field] || 0), 0),
+  }));
+  const ageTotal = ageValues.reduce((s, a) => s + a.value, 0);
+  const ageData = ageValues.map((a) => ({ ...a, total: ageTotal, pct: ageTotal > 0 ? (a.value / ageTotal) * 100 : 0 }));
+  const ageMax = Math.max(1, ...ageValues.map((a) => a.value));
+
+  function ageCaption() {
+    if (ageTotal === 0) {
+      return (
+        <div className="chart-caption">
+          <b>No producer age data</b> available for the selected municipalities.
+        </div>
+      );
+    }
+    const top = ageData.reduce((b, a) => (a.value > b.value ? a : b), ageData[0]);
+    return (
+      <div className="chart-caption">
+        The <b>{top.name}</b> age bracket is the largest group at
+        {' '}<b>{top.pct.toFixed(1)}%</b> of {ageTotal.toLocaleString()} recorded producers.
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -154,41 +249,43 @@ export default function MunicipalityAnalytics() {
         variant="sub"
         title="Municipality Analytics"
         subtitle="Deep-dive production breakdown for each municipality."
-      >
-        <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="muni-filter">Municipality</label>
-          <select
-            id="muni-filter"
-            className="form-select admin-page-hero-select"
-            value={filters.municipality_id}
-            onChange={(e) => setFilters({ municipality_id: e.target.value })}
-          >
-            <option value="">All municipalities</option>
-            {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
-      </PageHeader>
+      />
 
       <div className="muni-toggle">
+        <button
+          key="pangasinan"
+          type="button"
+          className={`muni-chip ${provinceMode ? 'muni-chip--on' : 'muni-chip--off'}`}
+          style={provinceMode ? { background: BRAND.ocean, borderColor: BRAND.ocean, color: '#fff', boxShadow: `0 4px 14px -4px ${BRAND.ocean}66` } : undefined}
+          onClick={selectPangasinan}
+          aria-pressed={provinceMode}
+          title="Whole-province aggregate"
+        >
+          <span className="muni-chip-swatch" style={{ background: provinceMode ? 'rgba(255,255,255,0.9)' : BRAND.ocean }} />
+          <span className="muni-chip-name">Pangasinan</span>
+        </button>
         {MUNI_ORDER.map((name) => {
           const inData = present.has(name);
-          const isOff = hidden.has(name);
+          const isOn = inData && !provinceMode && !hidden.has(name);
+          const isOff = inData && !provinceMode && hidden.has(name);
           const cls = ['muni-chip'];
-          if (inData && !isOff) cls.push('muni-chip--on');
-          if (inData && isOff) cls.push('muni-chip--off');
           if (!inData) cls.push('muni-chip--no-data');
+          else if (isOn) cls.push('muni-chip--on');
+          else cls.push('muni-chip--off');
+          const color = muniColor(name);
           return (
             <button
               key={name}
               type="button"
               className={cls.join(' ')}
+              style={isOn ? { background: color, borderColor: color, color: '#fff', boxShadow: `0 4px 14px -4px ${color}66` } : undefined}
               onClick={() => inData && toggleMuni(name)}
               disabled={!inData}
-              aria-pressed={inData && !isOff}
+              aria-pressed={isOn}
               aria-disabled={!inData}
-              title={inData ? (isOff ? `Show ${name}` : `Hide ${name}`) : `${name} has no data`}
+              title={!inData ? `${name} has no data` : isOff ? `Show ${name}` : `Hide ${name}`}
             >
-              <span className="muni-chip-swatch" style={{ background: inData ? muniColor(name) : 'transparent' }} />
+              <span className="muni-chip-swatch" style={{ background: inData ? (isOn ? 'rgba(255,255,255,0.9)' : color) : 'transparent' }} />
               <span className="muni-chip-name">{name}</span>
               {!inData && <span className="muni-chip-none">no data</span>}
             </button>
@@ -196,110 +293,233 @@ export default function MunicipalityAnalytics() {
         })}
       </div>
 
+      {/* Row A: Registered Producers | Method Breakdown */}
+      <Row className="g-3 mb-4">
+        <Col lg={6}>
+          <Card className="encoder-card h-100">
+            <Card.Header>
+              <div className="admin-card-head d-flex align-items-center justify-content-between w-100">
+                <h5 className="admin-card-head-title mb-0">Registered Producers by Municipality</h5>
+                <div className="text-end">
+                  <div className="small text-muted" style={{ fontSize: 11, lineHeight: 1.1 }}>Total Registered Producers</div>
+                  <div className="fw-bold" style={{ fontSize: 24, lineHeight: 1.1 }}>{registeredTotal.toLocaleString()}</div>
+                </div>
+              </div>
+            </Card.Header>
+            <Card.Body>
+              {registeredData.length === 0 ? (
+                <div className="chart-empty">
+                  <span className="chart-empty-chip">No data</span>
+                  No registered producer data for the selected municipalities.
+                </div>
+              ) : (
+                <div>
+                  <div style={{ height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={registeredData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <defs>
+                          {registeredData.map((entry, i) => (
+                            <linearGradient key={i} id={`regGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={entry.fill} stopOpacity={0.95} />
+                              <stop offset="100%" stopColor={entry.fill} stopOpacity={0.55} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                        <Tooltip cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }} content={<ChartTooltip />} />
+                        <Bar dataKey="registered" name="Registered producers" radius={[6, 6, 0, 0]} maxBarSize={46}>
+                          {registeredData.map((entry, i) => (
+                            <Cell key={i} fill={`url(#regGrad-${i})`} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {registeredCaption()}
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col lg={6}>
+          <Card className="encoder-card h-100">
+            <Card.Header>
+              <div className="admin-card-head">
+                <h5 className="admin-card-head-title">Method Breakdown</h5>
+              </div>
+            </Card.Header>
+            <Card.Body>
+              {methods.length > 0 ? (
+                <div>
+                  <div style={{ minHeight: 300 }} className="d-flex align-items-center justify-content-center flex-wrap gap-4">
+                    <div style={{ width: 200, height: 200, flexShrink: 0 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={methodPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={55}
+                            outerRadius={90}
+                            paddingAngle={2}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {methodPieData.map((entry, i) => (
+                              <Cell key={i} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value) => [`${Math.round(value).toLocaleString()} MT`, '']}
+                            contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.12)', fontSize: 12 }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div>
+                      {methods.map((m) => {
+                        const pct = methodsTotal > 0 ? ((m.value / methodsTotal) * 100).toFixed(1) : 0;
+                        return (
+                          <div key={m.key} className="d-flex align-items-center gap-2 mb-2">
+                            <span style={{ width: 10, height: 10, borderRadius: 3, background: METHOD_COLORS[m.key], flexShrink: 0 }} />
+                            <span className="small fw-semibold" style={{ minWidth: 130 }}>{METHOD_LABELS[m.key]}</span>
+                            <span className="small text-muted">{pct}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {methodCaption()}
+                </div>
+              ) : (
+                <div className="chart-empty">
+                  <span className="chart-empty-chip">No data</span>
+                  No production method data available for the selected municipalities.
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Row B: Producer demographics — gender | age */}
       <Row className="g-3 mb-4">
         <Col lg={6}>
           <Card className="encoder-card h-100">
             <Card.Header>
               <div className="admin-card-head">
-                <h5 className="admin-card-head-title">Registered Producers by Municipality</h5>
+                <h5 className="admin-card-head-title">Producer Gender Distribution</h5>
               </div>
             </Card.Header>
             <Card.Body>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={registeredData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <defs>
-                      {registeredData.map((entry, i) => (
-                        <linearGradient key={i} id={`regGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={entry.fill} stopOpacity={0.95} />
-                          <stop offset="100%" stopColor={entry.fill} stopOpacity={0.55} />
-                        </linearGradient>
+              {genderPieData.length === 0 ? (
+                <div className="chart-empty">
+                  <span className="chart-empty-chip">No data</span>
+                  No producer gender data available for the selected municipalities.
+                </div>
+              ) : (
+                <div>
+                  <div style={{ minHeight: 300 }} className="d-flex align-items-center justify-content-center flex-wrap gap-4">
+                    <div style={{ width: 210, height: 210, flexShrink: 0 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={genderPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={56}
+                            outerRadius={92}
+                            paddingAngle={3}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {genderPieData.map((entry, i) => (
+                              <Cell key={i} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value, name) => [`${Number(value).toLocaleString()} producers`, name]}
+                            contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.12)', fontSize: 12 }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div>
+                      {genderPieData.map((g) => (
+                        <div key={g.name} className="d-flex align-items-center gap-2 mb-2">
+                          <span style={{ width: 10, height: 10, borderRadius: 3, background: g.fill, flexShrink: 0 }} />
+                          <span className="small fw-semibold" style={{ minWidth: 130 }}>{g.name}</span>
+                          <span className="small text-muted">{g.value.toLocaleString()}</span>
+                        </div>
                       ))}
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                    <Tooltip cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }} content={<ChartTooltip />} />
-                    <Legend content={<CustomLegend />} />
-                    <Bar dataKey="registered" name="Registered producers" radius={[6, 6, 0, 0]} maxBarSize={46}>
-                      {registeredData.map((entry, i) => (
-                        <Cell key={i} fill={`url(#regGrad-${i})`} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                    </div>
+                  </div>
+                  {genderDonutCaption()}
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
+
         <Col lg={6}>
           <Card className="encoder-card h-100">
             <Card.Header>
-              <div className="admin-card-head d-flex align-items-center justify-content-between">
-                <h5 className="admin-card-head-title mb-0">Method Breakdown</h5>
-                {filteredRows.length > 0 && (
-                  <select
-                    className="form-select form-select-sm"
-                    style={{ width: 'auto', maxWidth: 160, fontSize: 12 }}
-                    value={methodMuniId || 'all'}
-                    onChange={(e) => setMethodMuniId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                  >
-                    <option value="all">All Municipalities</option>
-                    {filteredRows.map((r) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                )}
+              <div className="admin-card-head">
+                <h5 className="admin-card-head-title">Producer Age Distribution</h5>
               </div>
             </Card.Header>
             <Card.Body>
-              {selectedMuni && methods.length > 0 ? (
-                <div style={{ height: 300 }} className="d-flex align-items-center justify-content-center gap-4">
-                  <div style={{ width: 200, height: 200, flexShrink: 0 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={methodPieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={55}
-                          outerRadius={90}
-                          paddingAngle={2}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {methodPieData.map((entry, i) => (
-                            <Cell key={i} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value) => [`${Math.round(value).toLocaleString()} MT`, '']}
-                          contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.12)', fontSize: 12 }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div>
-                    {methods.map((m) => {
-                      const pct = methodsTotal > 0 ? ((m.value / methodsTotal) * 100).toFixed(1) : 0;
-                      return (
-                        <div key={m.key} className="d-flex align-items-center gap-2 mb-2">
-                          <span style={{ width: 10, height: 10, borderRadius: 3, background: METHOD_COLORS[m.key], flexShrink: 0 }} />
-                          <span className="small fw-semibold" style={{ minWidth: 130 }}>{METHOD_LABELS[m.key]}</span>
-                          <span className="small text-muted">{pct}%</span>
-                        </div>
-                      );
-                    })}
-                    {efficiencyHa && (
-                      <div className="mt-3 pt-2 border-top small text-muted">
-                        Efficiency: <strong className="text-dark">{efficiencyHa} MT/ha</strong>
-                      </div>
-                    )}
-                  </div>
+              {ageTotal === 0 ? (
+                <div className="chart-empty">
+                  <span className="chart-empty-chip">No data</span>
+                  No producer age data available for the selected municipalities.
                 </div>
               ) : (
-                <div className="text-muted text-center py-4">
-                  {selectedMuni ? `${selectedMuni.name} has no production method data.` : 'Select a municipality to view method breakdown.'}
+                <div>
+                  <div style={{ height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={ageData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <defs>
+                          <linearGradient id="ageGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={BRAND.ocean} stopOpacity={0.95} />
+                            <stop offset="100%" stopColor={BRAND.ocean} stopOpacity={0.55} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} allowDecimals={false} domain={[0, ageMax]} />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload || !payload.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="admin-chart-tooltip">
+                                <div className="ct-label">Age {d.name}</div>
+                                <div className="ct-value">{d.value.toLocaleString()} producers</div>
+                                <div className="ct-sub">{d.pct.toFixed(1)}% of {d.total.toLocaleString()} recorded</div>
+                              </div>
+                            );
+                          }}
+                          cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }}
+                        />
+                        <Bar dataKey="value" name="Producers" radius={[6, 6, 0, 0]} maxBarSize={54}>
+                          {ageData.map((entry, i) => (
+                            <Cell key={i} fill="url(#ageGrad)" />
+                          ))}
+                          <LabelList
+                            dataKey="value"
+                            position="top"
+                            formatter={(v) => Number(v).toLocaleString()}
+                            style={{ fontSize: 11, fontWeight: 700, fill: 'var(--gray-700)' }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {ageCaption()}
                 </div>
               )}
             </Card.Body>
@@ -322,7 +542,7 @@ export default function MunicipalityAnalytics() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((r) => (
+              {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="fw-semibold">{r.name}</td>
                   <td>{r.volumeMT.toLocaleString()}</td>

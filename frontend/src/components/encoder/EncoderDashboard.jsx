@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Row, Col, Alert, Spinner, Card, Button, Form } from 'react-bootstrap';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { Row, Col, Alert, Spinner, Card, Button } from 'react-bootstrap';
+import { useOutletContext } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { getStats, logoutAPI } from '../../services/dataService';
+import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, Plus } from 'lucide-react';
+import { getStats } from '../../services/dataService';
+import AdminKpiCard from '../admin/AdminKpiCard';
+import PageHeader from '../admin/PageHeader';
 import RecordsTable from './RecordsTable';
 import ProductionRecordForm from './ProductionRecordForm';
 
@@ -26,18 +29,6 @@ function colorFor(name, names) {
   const idx = names.indexOf(name);
   if (idx < 0) return BRAND_PALETTE[0];
   return BRAND_PALETTE[idx % BRAND_PALETTE.length];
-}
-
-function KPIStat({ title, value, supporting }) {
-  return (
-    <Card className="encoder-kpi">
-      <Card.Body>
-        <div className="encoder-kpi-title">{title}</div>
-        <div className="encoder-kpi-value">{value}</div>
-        <div className="encoder-kpi-supporting">{supporting}</div>
-      </Card.Body>
-    </Card>
-  );
 }
 
 function periodThisYear() {
@@ -68,21 +59,50 @@ function formatPct(value) {
   return ` (${value.toFixed(1)}%)`;
 }
 
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div className="admin-chart-tooltip">
+      {label != null && <div className="ct-label">{label}</div>}
+      {payload.map((entry, i) => (
+        <div key={entry.dataKey || i}>
+          <div className="ct-value">{Number(entry.value).toLocaleString()} kg</div>
+          <div className="ct-sub">{entry.name}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PieTooltip({ active, payload, total }) {
   if (!active || !payload || !payload.length) return null;
   const p = payload[0];
   const share = total > 0 ? (p.value / total) * 100 : 0;
   return (
-    <div className="encoder-tooltip">
-      <div><strong>{p.name}</strong></div>
-      <div>{p.value.toLocaleString()} kg{formatPct(share)}</div>
+    <div className="admin-chart-tooltip">
+      <div className="ct-label">{p.name}</div>
+      <div className="ct-value">{p.value.toLocaleString()} kg{formatPct(share)}</div>
+    </div>
+  );
+}
+
+function KPICluster({ title, accent, actions, children }) {
+  return (
+    <div className="mb-4">
+      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+        <div className={`d-flex align-items-center gap-2 admin-kpi-cluster admin-kpi-cluster-${accent}`}>
+          <span className={`admin-kpi-cluster-bar admin-kpi-accent-${accent}`} />
+          <span className="admin-kpi-cluster-title">{title}</span>
+        </div>
+        {actions}
+      </div>
+      <Row className="g-3">{children}</Row>
     </div>
   );
 }
 
 export default function EncoderDashboard() {
   const { user } = useOutletContext();
-  const navigate = useNavigate();
 
   const [periodKey, setPeriodKey] = useState('thisYear');
   const [period, setPeriod] = useState(periodThisYear());
@@ -136,11 +156,6 @@ export default function EncoderDashboard() {
     loadStats();
   };
 
-  const handleLogout = async () => {
-    try { await logoutAPI(); } catch (e) { /* ignore */ }
-    navigate('/login');
-  };
-
   const pieData = useMemo(() => {
     if (!stats) return [];
     return [...(stats.by_barangay || [])]
@@ -177,83 +192,103 @@ export default function EncoderDashboard() {
   }
 
   return (
-    <div className="encoder-dashboard">
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 encoder-floating-logout">
-        <div>
-          <h2 className="mb-0">Welcome, {user?.name}</h2>
-          <div className="text-muted small">
-            Municipality: <strong>{stats?.municipality_name || user?.municipality_name}</strong>
-          </div>
-        </div>
-        <div className="d-flex align-items-center gap-2">
-          <Form.Select
-            size="sm"
-            value={periodKey}
-            onChange={handlePeriodChange}
-            aria-label="Select period"
-            style={{ minWidth: 170 }}
-          >
-            <option value="thisYear">This Year</option>
-            <option value="last12">Last 12 Months</option>
-            <option value="allTime">All Time</option>
-          </Form.Select>
-          <Button variant="link" size="sm" onClick={handleLogout}>Logout</Button>
-        </div>
-      </div>
-
-      <div className="d-flex justify-content-end mb-3">
-        <Button variant="primary" onClick={handleAdd} className="encoder-submit-btn">
-          + Add Record
-        </Button>
-      </div>
+    <div>
+      <PageHeader
+        id="encoder-overview"
+        variant="main"
+        title={stats?.municipality_name || user?.municipality_name || 'Encoder Dashboard'}
+        subtitle={`Welcome, ${user?.name}. Record, review, and manage your municipality's production data.`}
+        action={
+          <Button className="admin-page-hero-btn" onClick={handleAdd}>
+            <Plus size={16} strokeWidth={2.5} className="me-1" />
+            Add Record
+          </Button>
+        }
+      />
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Row className="g-3 mb-4">
+      <KPICluster
+        title="Your data at a glance"
+        accent="ocean"
+        actions={
+          <div className="d-flex align-items-center gap-2">
+            <label className="small fw-semibold text-muted" htmlFor="encoder-period">Period</label>
+            <select
+              id="encoder-period"
+              className="form-select form-select-sm admin-demog-select"
+              value={periodKey}
+              onChange={handlePeriodChange}
+              aria-label="Select period"
+            >
+              <option value="thisYear">This Year</option>
+              <option value="last12">Last 12 Months</option>
+              <option value="allTime">All Time</option>
+            </select>
+          </div>
+        }
+      >
         <Col md={4} lg>
-          <KPIStat
+          <AdminKpiCard
+            icon={Boxes}
             title="Total Production"
             value={`${((stats.total_volume_kg || 0) / 1000).toFixed(2)} MT`}
             supporting={`${(stats.total_volume_kg || 0).toLocaleString()} kg recorded`}
+            accent="ocean"
           />
         </Col>
         <Col md={4} lg>
-          <KPIStat
+          <AdminKpiCard
+            icon={Ruler}
             title="Salt Area"
             value={`${(stats.total_area_sqm || 0).toLocaleString()} m²`}
             supporting="Beds × area per bed"
+            accent="gold"
           />
         </Col>
         <Col md={4} lg>
-          <KPIStat
+          <AdminKpiCard
+            icon={LayoutGrid}
             title="Total Salt Beds"
             value={(stats.total_salt_beds || 0).toLocaleString()}
             supporting="Across all records"
+            accent="green"
           />
         </Col>
         <Col md={4} lg>
-          <KPIStat
+          <AdminKpiCard
+            icon={ClipboardList}
             title="Records"
             value={stats.record_count || 0}
             supporting="Barangay-level entries"
+            accent="brown"
           />
         </Col>
         <Col md={4} lg>
-          <KPIStat
+          <AdminKpiCard
+            icon={Users}
             title="Registered Producers"
             value={(stats.total_registered_producers || 0).toLocaleString()}
             supporting="Across submitted records"
+            accent="ocean"
           />
         </Col>
-      </Row>
+      </KPICluster>
 
       <Row className="g-3 mb-4">
         <Col lg={7}>
-          <Card className="encoder-card">
-            <Card.Header as="h5">Production by Barangay</Card.Header>
+          <Card className="encoder-card h-100">
+            <Card.Header>
+              <div className="admin-card-head">
+                <h5 className="admin-card-head-title">Production by Barangay</h5>
+              </div>
+            </Card.Header>
             <Card.Body>
               {lineData.length === 0 ? (
-                <div className="text-muted py-4 text-center">No records in this period.</div>
+                <div className="chart-empty">
+                  <span className="chart-empty-chip">No data</span>
+                  No records in this period.
+                </div>
               ) : (
                 <div style={{ height: 280 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -261,7 +296,7 @@ export default function EncoderDashboard() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip />
+                      <Tooltip content={<ChartTooltip />} />
                       <Legend />
                       {barangayOrder.map((b) => (
                         <Line
@@ -283,11 +318,18 @@ export default function EncoderDashboard() {
           </Card>
         </Col>
         <Col lg={5}>
-          <Card className="encoder-card">
-            <Card.Header as="h5">Barangay Total Summary</Card.Header>
+          <Card className="encoder-card h-100">
+            <Card.Header>
+              <div className="admin-card-head">
+                <h5 className="admin-card-head-title">Barangay Total Summary</h5>
+              </div>
+            </Card.Header>
             <Card.Body>
               {pieData.length === 0 ? (
-                <div className="text-muted py-4 text-center">No production in this period.</div>
+                <div className="chart-empty">
+                  <span className="chart-empty-chip">No data</span>
+                  No production in this period.
+                </div>
               ) : (
                 <div style={{ height: 280 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -323,7 +365,9 @@ export default function EncoderDashboard() {
         </Col>
       </Row>
 
-      <RecordsTable onEdit={handleEdit} refreshKey={recordsRefreshKey} />
+      <div id="encoder-submissions">
+        <RecordsTable onEdit={handleEdit} refreshKey={recordsRefreshKey} />
+      </div>
 
       {showForm && (
         <ProductionRecordForm

@@ -45,195 +45,12 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2.5rem 1rem 0;
+  background: var(--p-sand);
+  min-height: 100vh;
 }
 
-/* Header */
-.public-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.public-header h1 {
-  font-weight: 700;
-  color: var(--ocean-blue);
-  margin-bottom: 0.5rem;
-  font-size: 28px;
-}
-
-.public-header p {
-  color: var(--gray-600);
-  max-width: 800px;
-  margin: 0 auto;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-/* Data Status */
-.data-status-bar {
-  background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
-  padding: 0.75rem 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.data-as-of {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gray-700);
-  letter-spacing: 0.2px;
-}
-
-.synthetic-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 11px;
-  font-weight: 700;
-  color: #7c4a03;
-  background: #fff8e1;
-  border: 1px solid var(--harvest-gold);
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-/* Main Content */
-.main-content {
-  padding: 2rem 1.5rem;
-}
-
-/* KPI Section */
-.kpi-section {
-  margin-bottom: 2.5rem;
-}
-
-.kpi-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  padding: 1.5rem;
-  text-align: center;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.kpi-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--ocean-blue);
-}
-
-.kpi-card:nth-child(2)::before {
-  background: var(--harvest-gold);
-}
-
-.kpi-card:nth-child(3)::before {
-  background: var(--leaf-green);
-}
-
-.kpi-card:nth-child(4)::before {
-  background: var(--earth-brown);
-}
-
-.kpi-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  border-color: var(--gray-300);
-}
-
-.kpi-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 0.75rem;
-  font-size: 20px;
-}
-
-.kpi-card:nth-child(1) .kpi-icon {
-  background: rgba(21, 101, 200, 0.1);
-  color: var(--ocean-blue);
-}
-
-.kpi-card:nth-child(2) .kpi-icon {
-  background: rgba(240, 154, 40, 0.1);
-  color: var(--harvest-gold);
-}
-
-.kpi-card:nth-child(3) .kpi-icon {
-  background: rgba(41, 176, 57, 0.1);
-  color: var(--leaf-green);
-}
-
-.kpi-card:nth-child(4) .kpi-icon {
-  background: rgba(87, 67, 38, 0.1);
-  color: var(--earth-brown);
-}
-
-.kpi-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--gray-600);
-  margin-bottom: 0.5rem;
-}
-
-.kpi-value {
-  font-size: 28px;
-  font-weight: 900;
-  color: var(--gray-900);
-  margin-bottom: 0.25rem;
-  line-height: 1.2;
-}
-
-.kpi-supporting {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--gray-500);
-}
-
-/* Section Cards */
-.section-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.section-header {
-  margin-bottom: 1.25rem;
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin-bottom: 0.25rem;
-  letter-spacing: -0.2px;
-}
-
-.section-description {
-  font-size: 14px;
-  color: var(--gray-600);
-  margin: 0;
-  line-height: 1.5;
+.public-dashboard.admin-content {
+  max-width: 1200px;
 }
 
 /* Map */
@@ -250,35 +67,122 @@ body {
 
 .map-legend {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  margin-top: 0.75rem;
-  padding: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
   background: var(--gray-50);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
-.map-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 13px;
+.map-gradient-caption {
+  display: flex;
+  justify-content: space-between;
+}
+
+.map-legend-label {
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--gray-700);
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.map-legend-swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+.map-gradient-legend {
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(21, 35, 58, 0.08);
+}
+
+.map-range-note {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin: 0.15rem 0 0;
+  text-align: center;
 }
 
 /* Charts */
 .chart-container {
   position: relative;
   width: 100%;
+}
+
+.public-chart-caption {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-700);
+  margin: 0 0 1rem;
+  line-height: 1.55;
+  border-radius: 0 8px 8px 0;
+  border-left: 3px solid var(--ocean-blue);
+  padding: 0.1rem 0 0.1rem 0.75rem;
+  background: linear-gradient(90deg, rgba(21, 101, 200, 0.05), transparent 70%);
+}
+
+.chart-bar-label {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--gray-800);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section spacing + reveal animation */
+.public-section {
+  margin-bottom: 2.75rem;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.55s ease-out, transform 0.55s ease-out;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Scope distinction for supply and demand */
+.scope-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  margin-bottom: 0.9rem;
+}
+
+.scope-flag-philippines {
+  color: #7c4a03;
+  background: #fff7e0;
+  border-color: rgba(240, 154, 40, 0.35);
+}
+
+.scope-flag-pangasinan {
+  color: #0c3f7a;
+  background: #e9f2fc;
+  border-color: rgba(21, 101, 200, 0.35);
+}
+
+.scope-tint-philippines {
+  background: rgba(240, 154, 40, 0.05);
+}
+
+.scope-tint-pangasinan {
+  background: rgba(21, 101, 200, 0.055);
 }
 
 /* Detail Panel */
@@ -409,67 +313,10 @@ body {
   line-height: 1.6;
 }
 
-/* Footer */
-.public-footer {
-  display: none;
-}
-
-/* Scope Selector */
-.scope-selector {
-  display: inline-flex;
-  background: var(--gray-100);
-  border-radius: 8px;
-  padding: 4px;
-  margin-bottom: 1rem;
-}
-
-.scope-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  background: transparent;
-  color: var(--gray-600);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.scope-btn.active {
-  background: var(--white);
-  color: var(--ocean-blue);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.scope-btn:hover:not(.active) {
-  color: var(--gray-800);
-}
-
 /* Responsive */
 @media (max-width: 767.98px) {
-  .public-header {
-    padding: 2rem 1rem 1.5rem;
-  }
-
-  .wordmark {
-    font-size: 36px;
-  }
-
-  .tagline {
-    font-size: 16px;
-  }
-
-  .main-content {
-    padding: 1.5rem 1rem;
-  }
-
-  .kpi-value {
-    font-size: 24px;
-  }
-
-  .section-title {
-    font-size: 18px;
+  .public-dashboard {
+    padding: 1.5rem 0.75rem 0;
   }
 
   .map-container {
@@ -1029,23 +876,15 @@ body {
   border: none;
 }
 
-.admin-icon-btn {
-  width: 32px;
-  height: 32px;
+.admin-icon-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
   line-height: 1;
 }
 
-.admin-icon-btn .bi {
-  font-size: 1rem;
-}
-
-.admin-icon-btn + .admin-icon-btn,
-.admin-icon-btn .bi + .bi {
-  margin-left: 0.35rem;
+.admin-icon-link + .admin-icon-link {
+  margin-left: 0.15rem;
 }
 
 /* ===== Forecast Module ===== */
@@ -1159,8 +998,8 @@ body {
 
 /* ---- Municipality comparison toggle legend ---- */
 .muni-toggle {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -1168,7 +1007,9 @@ body {
 .muni-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.45rem;
+  width: 100%;
   padding: 0.4rem 0.75rem;
   border: 1px solid rgba(12, 35, 64, 0.14);
   border-radius: 999px;
@@ -1180,9 +1021,23 @@ body {
   transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
+.muni-chip:disabled {
+  cursor: default;
+}
+
 .muni-chip:hover:not(:disabled) {
   border-color: var(--p-ocean);
   box-shadow: 0 4px 12px -8px rgba(21, 101, 200, 0.5);
+}
+
+.muni-chip--on {
+  font-weight: 700;
+  opacity: 1;
+}
+
+.muni-chip--on .muni-chip-swatch {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 .muni-chip-swatch {
@@ -1531,6 +1386,13 @@ body {
   border: 1px solid rgba(21, 35, 58, 0.07);
   border-radius: 16px;
   box-shadow: 0 14px 34px -22px rgba(12, 35, 64, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.fc-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(21, 101, 200, 0.35);
+  box-shadow: 0 22px 40px -22px rgba(12, 35, 64, 0.45);
 }
 
 .fc-card-pad { padding: 1.25rem 1.25rem; }
@@ -1689,6 +1551,192 @@ body {
   background: repeating-linear-gradient(90deg, var(--gray-400) 0 4px, transparent 4px 7px);
 }
 
+/* ---- Forecast insight cards (visual redesign) ---- */
+
+.fc-section-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-800);
+}
+
+.fc-section-sub {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.fc-province-band {
+  background: linear-gradient(180deg, rgba(21, 101, 200, 0.045), rgba(21, 101, 200, 0.02));
+  border: 1px solid rgba(21, 101, 200, 0.12);
+  border-radius: 18px;
+  padding: 1.15rem 1.2rem 1.35rem;
+}
+
+.fc-insight-caption {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 0.55rem;
+  line-height: 1.4;
+}
+
+/* headline stat */
+.fc-insight-stat {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+/* thin horizontal progress bar (supply as % of demand) */
+.fc-insight-bar {
+  height: 7px;
+  border-radius: 99px;
+  background: rgba(21, 35, 58, 0.08);
+  overflow: hidden;
+  margin-top: 0.6rem;
+}
+
+.fc-insight-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+
+/* seasonal trend sparkline legend + tints */
+.fc-season-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 11px;
+  color: var(--gray-500);
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
+.fc-season-label { margin-right: 0.5rem; }
+
+.fc-season-key {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.fc-season-key-dry { background: rgba(21, 101, 200, 0.28); }
+.fc-season-key-wet { background: rgba(240, 154, 40, 0.38); }
+
+/* municipality ranking badges */
+.fc-ranking-pair {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.fc-ranking-badge {
+  flex: 1 1 0;
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(21, 35, 58, 0.07);
+}
+
+.fc-ranking-badge-top { background: rgba(41, 176, 57, 0.08); }
+.fc-ranking-badge-down { background: rgba(229, 57, 53, 0.08); }
+.fc-ranking-badge-empty { background: rgba(21, 35, 58, 0.04); }
+
+.fc-ranking-ico { flex-shrink: 0; }
+.fc-ranking-badge-top .fc-ranking-ico { color: #1b7a2a; }
+.fc-ranking-badge-down .fc-ranking-ico { color: #c62828; }
+
+.fc-ranking-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fc-ranking-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-500);
+}
+
+.fc-ranking-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-ranking-val {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-ranking-badge-top .fc-ranking-val { color: #15803d; }
+.fc-ranking-badge-down .fc-ranking-val { color: #b91c1c; }
+
+/* growth / decline flag chips */
+.fc-flag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.fc-flag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0.32rem 0.65rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.fc-flag-chip b { font-variant-numeric: tabular-nums; }
+.fc-flag-name { font-weight: 700; }
+
+.fc-flag-chip-up {
+  background: rgba(41, 176, 57, 0.12);
+  color: #15803d;
+}
+
+.fc-flag-chip-down {
+  background: rgba(229, 57, 53, 0.12);
+  color: #b91c1c;
+}
+
+/* regional outlook radial gauge */
+.fc-gauge {
+  width: 128px;
+  height: 128px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.fc-gauge-centered {
+  font-size: 22px;
+  font-weight: 900;
+  fill: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-gauge-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-600);
+  margin-bottom: 0.15rem;
+}
+
 /* ===== PangAsin admin shell + sidebar (Google Docs-style panel) ===== */
 /* Constrain the admin layout to viewport height so the content scrolls
    inside .admin-page-scroll (making sidebar click-to-scroll work) instead
@@ -1834,6 +1882,34 @@ body {
   outline-offset: 2px;
 }
 
+.encoder-sidebar-user {
+  margin: 1rem 0.2rem 0.25rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(21, 101, 200, 0.06);
+  border: 1px solid rgba(21, 101, 200, 0.12);
+}
+
+.encoder-sidebar-user-name {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--p-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.encoder-sidebar-user-muni {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(12, 35, 64, 0.62);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.15rem;
+}
+
 .admin-sidebar-section {
   font-family: "Montserrat", sans-serif;
   font-size: 10px;
@@ -1913,4 +1989,177 @@ body {
 @media (max-width: 768px) {
   .admin-main-content { overflow: hidden; }
 }
+
+/* ===== Executive dashboard refinement (bullet chart, reference cards,
+        auto-captions, empty states, demographics) ===== */
+
+/* Auto-caption under dashboard charts */
+.chart-caption {
+  font-size: 12px;
+  color: var(--gray-500);
+  line-height: 1.5;
+  margin-top: 0.65rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed rgba(12, 35, 64, 0.12);
+}
+.chart-caption b {
+  font-weight: 700;
+  color: var(--gray-800);
+}
+.chart-caption .chart-caption-good { color: var(--leaf-green); font-weight: 700; }
+.chart-caption .chart-caption-bad { color: var(--danger, #dc3545); font-weight: 700; }
+
+/* Dressed empty state (shared by any dashboard chart with no data) */
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 100px;
+  padding: 0.75rem;
+  color: var(--gray-500);
+  text-align: center;
+}
+.chart-empty-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.7rem;
+  border: 1.5px dashed rgba(12, 35, 64, 0.28);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(12, 35, 64, 0.45);
+  background: var(--p-sand);
+}
+
+/* Reference-data treatment (sector demand) */
+.reference-card {
+  border-style: dashed !important;
+  border-color: rgba(12, 35, 64, 0.16) !important;
+}
+.reference-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-500);
+  background: var(--p-sand);
+  border: 1px dashed rgba(12, 35, 64, 0.2);
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Diverging YoY bar label text */
+.yoy-bar-label {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--gray-800);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Demographics gender draft */
+.gender-draft-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+.gender-draft-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.admin-demog-select {
+  font-size: 12px;
+  max-width: 210px;
+}
+
+/* ===== Admin municipality map popups ===== */
+.map-wrapper-float {
+  overflow: visible;
+}
+
+.admin-map-popup .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 14px 34px -14px rgba(12, 35, 64, 0.5);
+  border: 1px solid rgba(21, 35, 58, 0.08);
+  overflow: hidden;
+}
+
+.admin-map-popup .leaflet-popup-content {
+  margin: 0;
+  width: 240px !important;
+  font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.admin-map-popup .leaflet-popup-content p {
+  margin: 0;
+}
+
+.admin-map-popup .leaflet-popup-tip {
+  box-shadow: 0 6px 16px -6px rgba(12, 35, 64, 0.35);
+  border: 1px solid rgba(21, 35, 58, 0.08);
+}
+
+.map-popup-card .map-popup-header {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--white);
+  padding: 12px 14px;
+  background:
+    radial-gradient(220px 120px at 90% -30%, rgba(240, 154, 40, 0.28), transparent 60%),
+    linear-gradient(135deg, var(--ocean-blue) 0%, #0d47a1 100%);
+}
+
+.map-popup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  border-bottom: 1px solid rgba(21, 35, 58, 0.06);
+}
+
+.map-popup-row:last-of-type {
+  border-bottom: none;
+}
+
+.map-popup-label {
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.map-popup-value {
+  font-weight: 700;
+  color: var(--gray-800);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-popup-foot {
+  padding: 7px 14px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-500);
+  text-align: center;
+  background: var(--gray-50);
+  border-top: 1px solid rgba(21, 35, 58, 0.06);
+}
+
 

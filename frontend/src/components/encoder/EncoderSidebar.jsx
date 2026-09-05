@@ -1,63 +1,42 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Gauge, Users, ClipboardCheck, DatabaseCheck, Building2, Boxes, Zap, FileDown, LayoutGrid, UserCog, ChartColumn, Compass, LogOut } from 'lucide-react';
+import { Gauge, ClipboardList, LayoutGrid, UserCog, LogOut } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 
 const SECTIONS = [
-  { id: 'admin-dashboard', label: 'Executive Dashboard', icon: Gauge },
-  { id: 'admin-users', label: 'User Management', icon: Users },
-  { id: 'admin-validation', label: 'Validation Queue', icon: ClipboardCheck },
-  { id: 'admin-data-quality', label: 'Data Quality', icon: DatabaseCheck },
-  { id: 'admin-municipality', label: 'Municipality Analytics', icon: Building2 },
-  { id: 'admin-supply-demand', label: 'Supply & Demand', icon: Boxes },
-  { id: 'admin-forecast', label: 'Forecasting', icon: Zap },
-  { id: 'admin-reports', label: 'Generate Reports', icon: FileDown },
+  { id: 'encoder-overview', label: 'Overview', icon: Gauge },
+  { id: 'encoder-submissions', label: 'Submissions', icon: ClipboardList },
 ];
 
 const GROUPS = [
   { title: 'Overview', items: SECTIONS.slice(0, 1) },
-  { title: 'Manage', items: SECTIONS.slice(1, 4) },
-  { title: 'Analytics', items: SECTIONS.slice(4, 6) },
-  { title: 'Planning', items: SECTIONS.slice(6, 8) },
+  { title: 'Records', items: SECTIONS.slice(1, 2) },
 ];
 
 const GROUP_ICONS = {
   Overview: LayoutGrid,
-  Manage: UserCog,
-  Analytics: ChartColumn,
-  Planning: Compass,
+  Records: UserCog,
 };
 
 function prefersReducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function AdminSidebar({ scrollRef, onLogout }) {
+export default function EncoderSidebar({ user, scrollRef, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const onIndex = location.pathname === '/admin';
-  const [activeId, setActiveId] = useState('admin-dashboard');
-  usePageTitle(SECTIONS.find((s) => s.id === activeId)?.label);
+  const [activeId, setActiveId] = useState('encoder-overview');
+
+  const muni = user?.municipality_name;
+  const muniTitle = muni || 'Encoder Dashboard';
+
+  usePageTitle(muniTitle, muni ? { prefix: '' } : undefined);
 
   useEffect(() => {
-    if (!onIndex) {
-      const isForecast = location.pathname === '/admin/forecast';
-      const isReports = location.pathname === '/admin/reports';
-      const isValidation = location.pathname === '/admin/validation';
-      const isDataQuality = location.pathname === '/admin/data-quality';
-      let fallback = 'admin-dashboard';
-      if (isValidation) fallback = 'admin-validation';
-      else if (isDataQuality) fallback = 'admin-data-quality';
-      else if (isForecast) fallback = 'admin-forecast';
-      else if (isReports) fallback = 'admin-reports';
-      setActiveId(fallback);
-      return;
-    }
     const scroller = scrollRef?.current;
     if (!scroller || typeof IntersectionObserver === 'undefined') return;
 
     const elements = SECTIONS
-      .filter((s) => s.id !== 'admin-users' && s.id !== 'admin-forecast' && s.id !== 'admin-reports' && s.id !== 'admin-validation' && s.id !== 'admin-data-quality')
       .map((s) => scroller.querySelector(`#${s.id}`))
       .filter(Boolean);
 
@@ -76,47 +55,17 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
 
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [scrollRef, onIndex]);
+  }, [scrollRef, location.pathname]);
 
   const handleClick = useCallback((id) => {
     const scroller = scrollRef?.current;
-    if (id === 'admin-users') {
-      navigate('/admin/users');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-forecast') {
-      navigate('/admin/forecast');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-reports') {
-      navigate('/admin/reports');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-validation') {
-      navigate('/admin/validation');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-data-quality') {
-      navigate('/admin/data-quality');
-      setActiveId(id);
-      return;
-    }
-    if (!onIndex) {
-      navigate('/admin', { state: { scrollTo: id } });
-      setActiveId(id);
-      return;
-    }
     const el = scroller?.querySelector(`#${id}`);
     if (scroller && el) {
       const top = (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12);
       scroller.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
       setActiveId(id);
     }
-  }, [scrollRef, navigate, onIndex]);
+  }, [scrollRef]);
 
   return (
     <aside className="admin-sidebar">
@@ -132,7 +81,7 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
 
         <div className="admin-checkerband" aria-hidden="true" />
 
-        <nav aria-label="Admin sections">
+        <nav aria-label="Encoder sections">
           {GROUPS.map((group) => {
             const GroupIcon = GROUP_ICONS[group.title];
             return (
@@ -153,6 +102,13 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
             );
           })}
         </nav>
+
+        {user && (
+          <div className="encoder-sidebar-user">
+            <div className="encoder-sidebar-user-name">{user.name}</div>
+            {user.municipality_name && <div className="encoder-sidebar-user-muni">{user.municipality_name}</div>}
+          </div>
+        )}
 
         <div className="admin-sidebar-footer">
           <button type="button" className="admin-logout" onClick={onLogout}>

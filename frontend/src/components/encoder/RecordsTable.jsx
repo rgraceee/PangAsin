@@ -104,7 +104,11 @@ export default function RecordsTable({ onEdit, refreshKey = 0 }) {
 
   return (
     <Card className="encoder-card">
-      <Card.Header as="h5">Submissions</Card.Header>
+      <Card.Header>
+        <div className="admin-card-head">
+          <h5 className="admin-card-head-title">Submissions</h5>
+        </div>
+      </Card.Header>
       <Card.Body>
         <Row className="g-2 mb-3">
           <Col md={4}>

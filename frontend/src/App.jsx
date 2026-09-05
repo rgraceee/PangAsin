@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, HashRouter } from 'react-router-dom';
+import { Routes, Route, Navigate, HashRouter, useLocation } from 'react-router-dom';
 import GuestDashboard from './components/GuestDashboard';
 import Login from './components/Login';
 import EncoderLayout from './components/encoder/EncoderLayout';
@@ -13,6 +13,25 @@ import GenerateReports from './components/admin/GenerateReports';
 import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import { getMe } from './services/dataService';
+import usePageTitle from './hooks/usePageTitle';
+
+const ROUTE_TITLES = {
+  '/': 'Public Dashboard',
+  '/login': 'Sign In',
+  '/encoder': 'Encoder Dashboard',
+  '/admin': 'Executive Dashboard',
+  '/admin/users': 'User Management',
+  '/admin/validation': 'Validation Queue',
+  '/admin/data-quality': 'Data Quality',
+  '/admin/forecast': 'Forecasting',
+  '/admin/reports': 'Generate Reports',
+};
+
+function TitleSetter() {
+  const location = useLocation();
+  usePageTitle(ROUTE_TITLES[location.pathname] || '');
+  return null;
+}
 
 function RequireAuth({ user, isLoading, children }) {
   if (isLoading) {
@@ -37,6 +56,7 @@ export default function App() {
 
   return (
     <HashRouter>
+      <TitleSetter />
       <Routes>
         <Route path="/" element={<GuestDashboard />} />
         <Route path="/login" element={<Login onLogin={setUser} />} />

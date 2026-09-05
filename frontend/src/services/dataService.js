@@ -81,6 +81,10 @@ export function getProducerDemographics() {
   return (dashboardCache.demographics && dashboardCache.demographics.provinceWide) || { ageGroups: {}, genderDistribution: {} };
 }
 
+export function getDemographicsByMunicipality() {
+  return (dashboardCache.demographics && dashboardCache.demographics.byMunicipality) || {};
+}
+
 export function getMunicipalityDetail(id) {
   return (dashboardCache.municipalities || []).find((m) => m.id === id) || null;
 }
