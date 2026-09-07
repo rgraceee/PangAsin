@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Gauge, Users, ClipboardCheck, DatabaseCheck, Building2, Boxes, Zap, FileDown, LayoutGrid, UserCog, ChartColumn, Compass, LogOut } from 'lucide-react';
+import { Gauge, Users, ClipboardCheck, DatabaseCheck, Building2, Boxes, Zap, FileDown, LayoutGrid, UserCog, ChartColumn, Compass, LogOut, Target } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 
 const SECTIONS = [
@@ -11,6 +11,7 @@ const SECTIONS = [
   { id: 'admin-municipality', label: 'Municipality Analytics', icon: Building2 },
   { id: 'admin-supply-demand', label: 'Supply & Demand', icon: Boxes },
   { id: 'admin-forecast', label: 'Forecasting', icon: Zap },
+  { id: 'admin-forecast-target', label: 'Target Evaluation', icon: Target },
   { id: 'admin-reports', label: 'Generate Reports', icon: FileDown },
 ];
 
@@ -18,7 +19,7 @@ const GROUPS = [
   { title: 'Overview', items: SECTIONS.slice(0, 1) },
   { title: 'Manage', items: SECTIONS.slice(1, 4) },
   { title: 'Analytics', items: SECTIONS.slice(4, 6) },
-  { title: 'Planning', items: SECTIONS.slice(6, 8) },
+  { title: 'Planning', items: SECTIONS.slice(6, 9) },
 ];
 
 const GROUP_ICONS = {
@@ -42,12 +43,14 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
   useEffect(() => {
     if (!onIndex) {
       const isForecast = location.pathname === '/admin/forecast';
+      const isForecastTarget = location.pathname === '/admin/forecast/target';
       const isReports = location.pathname === '/admin/reports';
       const isValidation = location.pathname === '/admin/validation';
       const isDataQuality = location.pathname === '/admin/data-quality';
       let fallback = 'admin-dashboard';
       if (isValidation) fallback = 'admin-validation';
       else if (isDataQuality) fallback = 'admin-data-quality';
+      else if (isForecastTarget) fallback = 'admin-forecast-target';
       else if (isForecast) fallback = 'admin-forecast';
       else if (isReports) fallback = 'admin-reports';
       setActiveId(fallback);
@@ -57,7 +60,7 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
     if (!scroller || typeof IntersectionObserver === 'undefined') return;
 
     const elements = SECTIONS
-      .filter((s) => s.id !== 'admin-users' && s.id !== 'admin-forecast' && s.id !== 'admin-reports' && s.id !== 'admin-validation' && s.id !== 'admin-data-quality')
+      .filter((s) => s.id !== 'admin-users' && s.id !== 'admin-forecast' && s.id !== 'admin-forecast-target' && s.id !== 'admin-reports' && s.id !== 'admin-validation' && s.id !== 'admin-data-quality')
       .map((s) => scroller.querySelector(`#${s.id}`))
       .filter(Boolean);
 
@@ -87,6 +90,11 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
     }
     if (id === 'admin-forecast') {
       navigate('/admin/forecast');
+      setActiveId(id);
+      return;
+    }
+    if (id === 'admin-forecast-target') {
+      navigate('/admin/forecast/target');
       setActiveId(id);
       return;
     }

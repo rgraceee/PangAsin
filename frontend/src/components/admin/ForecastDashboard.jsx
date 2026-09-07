@@ -306,15 +306,9 @@ export default function ForecastDashboard() {
   const [view, setView] = useState('line');
   const [showBand, setShowBand] = useState(true);
   const [selectedRunId, setSelectedRunId] = useState(null);
-  const [annualTarget, setAnnualTarget] = useState('');
   const [showForecastModal, setShowForecastModal] = useState(false);
   const [forecastHorizon, setForecastHorizon] = useState(12);
   const [forecastNotes, setForecastNotes] = useState('');
-  const [showDecisionSupport, setShowDecisionSupport] = useState(false);
-  const [decisionTarget, setDecisionTarget] = useState('');
-  const [decisionHorizon, setDecisionHorizon] = useState(12);
-  const [decisionResults, setDecisionResults] = useState(null);
-  const [decisionLoading, setDecisionLoading] = useState(false);
 
   useEffect(() => {
     getAdminMunicipalities()
@@ -388,7 +382,6 @@ export default function ForecastDashboard() {
 
   const chartData = useMemo(() => {
     if (!currentRun || !currentRun.points) return [];
-    const monthlyTarget = annualTarget && Number(annualTarget) > 0 ? Number(annualTarget) / 12 : null;
     return currentRun.points.map((p) => ({
       label: p.period_label,
       production: p.predicted_value,
@@ -397,9 +390,8 @@ export default function ForecastDashboard() {
       lower: p.lower_bound,
       upper: p.upper_bound,
       isForecast: p.is_forecast,
-      target: monthlyTarget != null && p.is_forecast ? monthlyTarget : null,
     }));
-  }, [currentRun, annualTarget]);
+  }, [currentRun]);
 
   const prevChartData = useMemo(() => {
     if (!prevRun || !prevRun.points) return chartData;
@@ -431,22 +423,6 @@ export default function ForecastDashboard() {
   }, []);
 
   const insights = useMemo(() => computeInsights(currentRun, outlook, demandBenchmark), [currentRun, outlook, demandBenchmark]);
-
-  const runDecisionSupport = () => {
-    const target = decisionTarget && Number(decisionTarget) > 0 ? Number(decisionTarget) : null;
-    if (!target) return;
-    setDecisionLoading(true);
-    setError(null);
-    const payload = {
-      municipality_id: selectedMuni !== 'all' ? Number(selectedMuni) : null,
-      annual_target: target,
-      forecast_horizon: decisionHorizon,
-    };
-    evaluateTarget(payload)
-      .then((res) => setDecisionResults(res.evaluation))
-      .catch((err) => setError(err.message))
-      .finally(() => setDecisionLoading(false));
-  };
 
   const yoyAbsMax = useMemo(() => {
     const peaks = yoyRows.map((m) => Math.abs(m.changePct || 0));
@@ -502,33 +478,6 @@ export default function ForecastDashboard() {
               </option>
             ))}
           </Form.Select>
-        </div>
-        <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="fc-target">Annual Target (MT)</label>
-          <Form.Control
-            id="fc-target"
-            className="admin-page-hero-input"
-            type="number"
-            min="0"
-            step="any"
-            placeholder="e.g. 5000"
-            value={annualTarget}
-            onChange={(e) => setAnnualTarget(e.target.value)}
-          />
-        </div>
-        <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field">&nbsp;</label>
-          <Button className="admin-page-hero-btn" onClick={openForecastModal} disabled={running}>
-            <Zap size={14} strokeWidth={2.5} className="me-1" />
-            {running ? 'Running…' : 'Run Forecast'}
-          </Button>
-        </div>
-        <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field">&nbsp;</label>
-          <Button className="admin-page-hero-btn" onClick={() => setShowDecisionSupport((v) => !v)} variant={showDecisionSupport ? 'primary' : 'outline-primary'}>
-            <Target size={14} strokeWidth={2.5} className="me-1" />
-            {showDecisionSupport ? 'Hide Decision Support' : 'Decision Support'}
-          </Button>
         </div>
       </PageHeader>
 
@@ -721,19 +670,6 @@ export default function ForecastDashboard() {
                           strokeDasharray="6 4"
                           dot={false}
                           name="Forecast"
-                          connectNulls
-                          isAnimationActive
-                        />
-                      )}
-                      {annualTarget && Number(annualTarget) > 0 && (
-                        <Line
-                          type="monotone"
-                          dataKey="target"
-                          stroke="#ef4444"
-                          strokeWidth={2}
-                          strokeDasharray="6 4"
-                          dot={false}
-                          name="Target (monthly)"
                           connectNulls
                           isAnimationActive
                         />
@@ -990,138 +926,6 @@ export default function ForecastDashboard() {
         </Col>
       </Row>
 
-      {showDecisionSupport && (
-        <div className="fc-decision-card mb-3">
-          <SectionHeading icon={Target} title="Decision Support — Forecast vs. Production Target" sub="Evaluate achievability against month-specific weighted targets." chip="gold" />
-          <Row className="g-3 mb-3">
-            <Col md={4}>
-              <Form.Label className="fc-decision-label">Annual Target (MT)</Form.Label>
-              <Form.Control type="number" min="0" step="any" value={decisionTarget} onChange={(e) => setDecisionTarget(e.target.value)} placeholder="e.g. 5000" className="fc-decision-input" />
-            </Col>
-            <Col md={3}>
-              <Form.Label className="fc-decision-label">Forecast Horizon (months)</Form.Label>
-              <Form.Control type="number" min="1" max="36" value={decisionHorizon} onChange={(e) => setDecisionHorizon(Number(e.target.value))} className="fc-decision-input" />
-            </Col>
-            <Col md={3}>
-              <Form.Label className="fc-decision-label">Municipality Scope</Form.Label>
-              <Form.Select value={selectedMuni} onChange={(e) => setSelectedMuni(e.target.value)} className="fc-decision-input" disabled>
-                <option value="all">All Municipalities</option>
-                {municipalities.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </Form.Select>
-            </Col>
-            <Col md={2} className="d-flex align-items-end">
-              <Button variant="primary" onClick={runDecisionSupport} disabled={decisionLoading || !decisionTarget} className="fc-decision-run-btn w-100">
-                {decisionLoading ? 'Evaluating…' : 'Run Evaluation'}
-              </Button>
-            </Col>
-          </Row>
-
-          {decisionResults && (
-            <>
-              <Row className="g-3 mb-3">
-                <Col md={8}>
-                  <Card className="fc-card h-100">
-                    <Card.Header>
-                      <div className="admin-card-head">
-                        <span className="admin-card-head-icon admin-kpi-accent-goldbg"><Target size={16} strokeWidth={2} /></span>
-                        <h5 className="admin-card-head-title">Forecast vs. Target</h5>
-                      </div>
-                    </Card.Header>
-                    <Card.Body>
-                      <div style={{ height: 300 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={(currentRun?.points || []).filter(p => p.is_forecast).slice(0, decisionResults.forecast_horizon).map((p, i) => ({
-                            label: p.period_label,
-                            forecast: decisionResults.monthly_forecasts[i],
-                            target: decisionResults.monthly_targets[i],
-                          }))} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false} />
-                            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                            <Tooltip formatter={(value) => [`${Math.round(value).toLocaleString()} kg`, undefined]} />
-                            <Legend />
-                            <Bar dataKey="forecast" name="Forecast" fill={BRAND.ocean} radius={[3, 3, 0, 0]} isAnimationActive />
-                            <Line type="monotone" dataKey="target" name="Monthly Target" stroke={BRAND.gold} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive />
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-                <Col md={4}>
-                  <Card className="fc-card h-100">
-                    <Card.Header>
-                      <div className="admin-card-head">
-                        <span className="admin-card-head-icon admin-kpi-accent-greenbg"><Activity size={16} strokeWidth={2} /></span>
-                        <h5 className="admin-card-head-title">Evaluation Summary</h5>
-                      </div>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="d-flex flex-column gap-3">
-                        <div className="fc-outlook-stat">
-                          <div className="small text-muted">Annual Target</div>
-                          <div className="fw-bold">{decisionResults.annual_target.toLocaleString()} MT</div>
-                        </div>
-                        <div className="fc-outlook-stat">
-                          <div className="small text-muted">Projected Total</div>
-                          <div className="fw-bold">{decisionResults.total_projected.toLocaleString()} MT</div>
-                        </div>
-                        <div className="fc-outlook-stat">
-                          <div className="small text-muted">Variance</div>
-                          <div className={`fw-bold ${decisionResults.variance >= 0 ? 'text-success' : 'text-danger'}`}>{decisionResults.variance >= 0 ? '+' : ''}{decisionResults.variance.toLocaleString()} MT ({decisionResults.variance_pct.toFixed(1)}%)</div>
-                        </div>
-                        <div className={`text-center py-2 rounded ${decisionResults.achievable ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'}`}>
-                          <div className="small fw-semibold">Target Status</div>
-                          <div className="fw-bold" style={{ fontSize: 16 }}>{decisionResults.achievable ? 'Achievable' : 'Challenging'}</div>
-                        </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
-
-              <Card className="fc-card mb-3">
-                <Card.Header>
-                  <div className="admin-card-head">
-                    <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><ClipboardList size={16} strokeWidth={2} /></span>
-                    <h5 className="admin-card-head-title">Narrative Insight</h5>
-                  </div>
-                </Card.Header>
-                <Card.Body>
-                  <p className="mb-2">{decisionResults.narrative}</p>
-                  <Row className="g-2 mt-2">
-                    <Col md={4}>
-                      <div className="small text-muted">Trend Direction</div>
-                      <div className="fw-bold text-capitalize">{decisionResults.trend_direction}</div>
-                    </Col>
-                    <Col md={4}>
-                      <div className="small text-muted">Peak Season</div>
-                      <div className="fw-bold">{decisionResults.peak_month}</div>
-                    </Col>
-                    <Col md={4}>
-                      <div className="small text-muted">Low Season</div>
-                      <div className="fw-bold">{decisionResults.low_month}</div>
-                    </Col>
-                  </Row>
-                  {decisionResults.recommendations.length > 0 && (
-                    <div className="mt-3">
-                      <div className="small fw-semibold text-muted mb-1">Recommendations</div>
-                      <ul className="mb-0">
-                        {decisionResults.recommendations.map((rec, idx) => (
-                          <li key={idx} className="small">{rec}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </Card.Body>
-              </Card>
-            </>
-          )}
-        </div>
-      )}
-
       <Modal show={showForecastModal} onHide={() => setShowForecastModal(false)} centered backdrop="static">
         <Modal.Header closeButton>
           <Modal.Title>Run Forecast</Modal.Title>
@@ -1141,10 +945,6 @@ export default function ForecastDashboard() {
             <Form.Group className="mb-3">
               <Form.Label>Forecast Horizon (months)</Form.Label>
               <Form.Control type="number" min="1" max="36" value={forecastHorizon} onChange={(e) => setForecastHorizon(Number(e.target.value))} />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Annual Target (MT)</Form.Label>
-              <Form.Control type="number" min="0" step="any" value={annualTarget} onChange={(e) => setAnnualTarget(e.target.value)} placeholder="e.g. 5000" />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Notes / Context (optional)</Form.Label>

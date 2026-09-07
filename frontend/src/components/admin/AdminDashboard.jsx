@@ -143,6 +143,8 @@ export default function AdminDashboard({ user }) {
         subtitle={`Welcome, ${user?.name} · Province-wide overview across all municipalities.`}
       />
 
+      <MunicipalityMap muniData={muniData} />
+
       <Row className="g-3 mb-4">
         <Col md={4}>
           <KPIStat icon={Boxes} title="Total Production" value={`${totalVolumeMT.toLocaleString()} MT`} supporting={`${stats.total_volume_kg.toLocaleString()} kg`} accent="ocean" />
@@ -178,8 +180,6 @@ export default function AdminDashboard({ user }) {
           />
         </Col>
       </Row>
-
-      <MunicipalityMap muniData={muniData} />
 
       <Row className="g-3 mb-4">
         <Col lg={12}>

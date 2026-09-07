@@ -9,6 +9,7 @@ import AdminLayout from './components/admin/AdminLayout';
 import AdminPage from './components/admin/AdminPage';
 import UsersManagement from './components/admin/UsersManagement';
 import ForecastDashboard from './components/admin/ForecastDashboard';
+import DecisionSupport from './components/admin/DecisionSupport';
 import GenerateReports from './components/admin/GenerateReports';
 import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
@@ -24,6 +25,7 @@ const ROUTE_TITLES = {
   '/admin/validation': 'Validation Queue',
   '/admin/data-quality': 'Data Quality',
   '/admin/forecast': 'Forecasting',
+  '/admin/forecast/target': 'Target Evaluation',
   '/admin/reports': 'Generate Reports',
 };
 
@@ -84,6 +86,7 @@ export default function App() {
           <Route path="validation" element={<ValidationQueue />} />
           <Route path="data-quality" element={<DataQualityDashboard />} />
           <Route path="forecast" element={<ForecastDashboard />} />
+          <Route path="forecast/target" element={<DecisionSupport />} />
           <Route path="reports" element={<GenerateReports />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

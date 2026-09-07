@@ -586,9 +586,9 @@ def evaluate_target(municipality_id: Optional[int], annual_target: float, foreca
     if latest_run:
         trend_direction = latest_run.trend_direction or "stable"
     trend_notes = {
-        "increasing": "The forecast trend is increasing, which supports target achievability.",
-        "declining": "The forecast trend is declining, which may make the target harder to reach without intervention.",
-        "stable": "The forecast trend is stable.",
+        "increasing": "The forecast is trending upward, which supports hitting your target.",
+        "declining": "The forecast is trending downward, so reaching this target will require extra effort or intervention.",
+        "stable": "The forecast is holding steady, making the target more predictable.",
     }
     trend_note = trend_notes.get(trend_direction, trend_notes["stable"])
 
@@ -597,28 +597,57 @@ def evaluate_target(municipality_id: Optional[int], annual_target: float, foreca
     peak_month_idx = max(range(12), key=lambda i: raw_weights[i])
     low_month_idx = min(range(12), key=lambda i: raw_weights[i])
     seasonal_note = (
-        f"Seasonally, {month_names[low_month_idx]} tends to be the lowest-output month, "
-        f"while {month_names[peak_month_idx]} is the peak."
+        f"Historically, {month_names[low_month_idx]} is the lowest-output month and "
+        f"{month_names[peak_month_idx]} is the peak. Plan around this seasonal rhythm."
     )
 
     recommendations = []
     if not achievable:
-        recommendations.append("Consider increasing production capacity or extending the forecast horizon.")
+        recommendations.append(
+            f"Target is out of reach by {abs(variance):,.0f} MT ({abs(variance_pct):.1f}%). "
+            f"Increase capacity, improve yields, or extend the horizon beyond {forecast_horizon} months."
+        )
     if trend_direction == "declining":
-        recommendations.append("Address the declining trend before it compounds further.")
+        recommendations.append(
+            "The declining trend will compound over time. Investigate causes now—such as reduced planting area, weather shocks, or labor shortages—and address them before the next cycle."
+        )
+    if trend_direction == "increasing":
+        recommendations.append(
+            "The upward trend is favorable. Protect this momentum by maintaining inputs, labor, and quality standards through the peak season."
+        )
     if below_months:
         recommendations.append(
-            f"Pay special attention to {', '.join(below_months)} where forecast falls below target."
+            f"Schedule interventions or incentives before {', '.join(below_months)}. "
+            f"These months are projected to fall short of their monthly targets."
+        )
+    if above_months:
+        recommendations.append(
+            f"{', '.join(above_months)} are projected to exceed target. Use this surplus to buffer below-target months or build inventory."
+        )
+    if peak_month_idx in wet_months:
+        recommendations.append(
+            f"Peak season is during the rainy months ({month_names[peak_month_idx]}). Ensure harvesting and processing capacity can handle wet-weather constraints."
         )
     if not recommendations:
-        recommendations.append("Target looks achievable based on current trajectory.")
+        recommendations.append("Target looks achievable based on current trajectory. Keep monitoring monthly against these weighted targets.")
+
+    monthly_avg_note = (
+        f"This breaks down to roughly {annual_target / 12:,.1f} MT per month on average, "
+        f"but actual monthly targets vary because historical production is not evenly distributed throughout the year."
+    )
+    if municipality_id is not None:
+        scope_note = f"for the selected municipality"
+    else:
+        scope_note = "province-wide"
+    scope_intro = f"This evaluation is {scope_note}."
 
     sign = "+" if variance >= 0 else ""
     narrative = (
-        f"Annual target of {annual_target:,.2f} MT ({annual_target / 12:,.3f} MT/month on average). "
-        f"Projected forecast totals {total_projected:,.2f} MT ({sign}{variance:,.2f} MT vs target, {sign}{variance_pct:.1f}%). "
+        f"{scope_intro} {monthly_avg_note} "
+        f"The projected total is {total_projected:,.2f} MT, which is {sign}{variance:,.2f} MT ({sign}{variance_pct:.1f}%) "
+        f"{'above' if variance >= 0 else 'below'} the annual target. "
         f"{trend_note} {seasonal_note} "
-        f"Target looks {'achievable' if achievable else 'challenging'}. "
+        f"Overall, this target looks {'achievable' if achievable else 'challenging'}. "
         + " ".join(recommendations)
     )
 
@@ -626,6 +655,7 @@ def evaluate_target(municipality_id: Optional[int], annual_target: float, foreca
         "municipality_id": municipality_id,
         "annual_target": float(annual_target),
         "forecast_horizon": forecast_horizon,
+        "forecast_labels": forecast_labels,
         "monthly_targets": [float(t) for t in monthly_targets],
         "monthly_forecasts": [float(v) for v in (forecast_values + [0.0] * forecast_horizon)[:forecast_horizon]],
         "total_target": float(total_target),
