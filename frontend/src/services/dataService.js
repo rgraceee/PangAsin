@@ -2,7 +2,7 @@ let dashboardCache = { municipalities: [], production: { provinceTotalMT: 0, rec
 
 async function apiNoAuth(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(path, { ...options, headers, credentials: 'include' });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.error || 'Request failed');
@@ -96,7 +96,7 @@ export function getIndustryInsight(id) {
 
 async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  const res = await fetch(`/api${path}`, { ...options, headers });
+  const res = await fetch(`/api${path}`, { ...options, headers, credentials: 'include' });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.error || data.errors?.join(', ') || 'Request failed');
@@ -116,7 +116,7 @@ export function logoutAPI() {
 }
 
 export function getMe() {
-  return api('/encoder/me');
+  return api('/auth/me');
 }
 
 export function getEncoderBarangays() {
@@ -251,4 +251,8 @@ export function getForecastResult(runId) {
 
 export function getMunicipalityOutlook() {
   return api('/admin/forecast/municipality-outlook');
+}
+
+export function evaluateTarget(payload) {
+  return api('/admin/forecast/evaluate-target', { method: 'POST', body: JSON.stringify(payload) });
 }

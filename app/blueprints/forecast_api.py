@@ -4,7 +4,7 @@ from datetime import datetime, date
 from app.extensions import db
 from app.models.forecast import ForecastRun, ForecastPoint
 from app.models.municipality import Municipality
-from app.services.forecast_service import run_forecast, get_municipality_outlook
+from app.services.forecast_service import run_forecast, get_municipality_outlook, evaluate_target
 
 forecast_api_bp = Blueprint("forecast_api", __name__, url_prefix="/api/admin/forecast")
 
@@ -119,3 +119,30 @@ def outlook():
 
     data = get_municipality_outlook()
     return jsonify({"municipalities": data})
+
+
+@forecast_api_bp.route("/evaluate-target", methods=["POST"])
+@login_required
+def evaluate_target_route():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    body = request.get_json(silent=True) or {}
+    municipality_id = body.get("municipality_id")
+    if municipality_id is not None and municipality_id != "":
+        municipality_id = int(municipality_id)
+    else:
+        municipality_id = None
+
+    annual_target = body.get("annual_target")
+    if annual_target is None or str(annual_target).strip() == "":
+        return jsonify({"error": "annual_target is required."}), 400
+
+    forecast_horizon = int(body.get("forecast_horizon") or 12)
+
+    try:
+        result = evaluate_target(municipality_id, float(annual_target), forecast_horizon)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({"evaluation": result})

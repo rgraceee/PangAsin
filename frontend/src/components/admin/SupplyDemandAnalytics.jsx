@@ -213,8 +213,43 @@ export default function SupplyDemandAnalytics() {
         </Col>
       </Row>
       {data?.sector_demand_note && (
-        <p className="text-muted small mt-3 mb-0">{data.sector_demand_note}</p>
+        <p className="text-muted small mt-3 mb-0">{data?.sector_demand_note}</p>
       )}
+
+      <div className="fc-outlook-card mt-3">
+        <div className="fc-section-title mb-3">Production Outlook</div>
+        <Row className="g-3 align-items-center">
+          <Col md={8}>
+            <div className="small text-muted mb-2">
+              Local supply stands at <b>{localSupply.toLocaleString()} MT</b> against a demand benchmark of <b>{demandBenchmark.toLocaleString()} MT</b> ({sufficiency}% sufficiency).
+              {gap < 0
+                ? <> This represents a shortage of <b>{Math.abs(gap).toLocaleString()} MT</b>. Additional production or imports may be needed to meet demand.</>
+                : <> This represents a surplus of <b>{gap.toLocaleString()} MT</b>. Target looks achievable based on current trajectory.</>}
+              {topSector && <> The largest tracked demand sector is <b>{topSector.name}</b> at <b>{topSector.value.toLocaleString()} MT</b>.</>}
+            </div>
+            <div className="fc-target-bar">
+              <div className="fc-target-bar-fill" style={{ width: `${Math.min(100, sufficiency)}%`, background: gap < 0 ? STATUS.not_ready : BRAND.green }} />
+            </div>
+            <div className="small text-muted mt-1">{sufficiency}% of demand benchmark covered</div>
+          </Col>
+          <Col md={4}>
+            <div className="d-flex flex-wrap gap-2 justify-content-md-end">
+              <div className="fc-outlook-stat">
+                <div className="small text-muted">Local Supply</div>
+                <div className="fw-bold">{localSupply.toLocaleString()} MT</div>
+              </div>
+              <div className="fc-outlook-stat">
+                <div className="small text-muted">Demand Benchmark</div>
+                <div className="fw-bold">{demandBenchmark.toLocaleString()} MT</div>
+              </div>
+              <div className="fc-outlook-stat">
+                <div className="small text-muted">Gap</div>
+                <div className={`fw-bold ${gap >= 0 ? 'text-success' : 'text-danger'}`}>{gap >= 0 ? '+' : ''}{gap.toLocaleString()} MT</div>
+              </div>
+            </div>
+          </Col>
+        </Row>
+      </div>
     </div>
   );
 }

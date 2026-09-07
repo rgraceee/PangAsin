@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Row, Col, Card, Spinner, Alert, Form, Button } from 'react-bootstrap';
+import { Row, Col, Card, Spinner, Alert, Form, Button, Modal } from 'react-bootstrap';
 import {
   ComposedChart, Line, Area, Bar, BarChart, LabelList, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, Cell, ReferenceArea, ReferenceLine, PieChart, Pie, AreaChart,
 } from 'recharts';
 import {
   ChartLine, ChartArea, ChartColumn, TrendingUp, Zap, BoxSelect,
-  CalendarDays, Trophy, ClipboardList, Flag, Globe2, Boxes, ArrowUpRight, ArrowDownRight, Activity, ShieldCheck,
+  CalendarDays, Trophy, ClipboardList, Flag, Globe2, Boxes, ArrowUpRight, ArrowDownRight, Activity, ShieldCheck, Target,
 } from 'lucide-react';
 import { runForecast, getForecastRuns, getMunicipalityOutlook, getAdminMunicipalities, getAdminSupplyDemand, getAdminTrends } from '../../services/dataService';
 import { BRAND, STATUS } from '../../theme/colors';
@@ -307,6 +307,14 @@ export default function ForecastDashboard() {
   const [showBand, setShowBand] = useState(true);
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [annualTarget, setAnnualTarget] = useState('');
+  const [showForecastModal, setShowForecastModal] = useState(false);
+  const [forecastHorizon, setForecastHorizon] = useState(12);
+  const [forecastNotes, setForecastNotes] = useState('');
+  const [showDecisionSupport, setShowDecisionSupport] = useState(false);
+  const [decisionTarget, setDecisionTarget] = useState('');
+  const [decisionHorizon, setDecisionHorizon] = useState(12);
+  const [decisionResults, setDecisionResults] = useState(null);
+  const [decisionLoading, setDecisionLoading] = useState(false);
 
   useEffect(() => {
     getAdminMunicipalities()
@@ -344,12 +352,14 @@ export default function ForecastDashboard() {
       .catch((err) => { setError(err.message); setLoading(false); });
   }, [selectedMuni]);
 
-  const handleRun = () => {
+  const openForecastModal = () => setShowForecastModal(true);
+
+  const submitForecast = () => {
     setRunning(true);
     setError(null);
     const payload = {
       municipality_id: selectedMuni !== 'all' ? Number(selectedMuni) : null,
-      forecast_horizon: 12,
+      forecast_horizon: forecastHorizon,
     };
     runForecast(payload)
       .then((res) => {
@@ -358,7 +368,7 @@ export default function ForecastDashboard() {
       })
       .then((res) => setRuns(res.runs || []))
       .catch((err) => setError(err.message))
-      .finally(() => setRunning(false));
+      .finally(() => { setRunning(false); setShowForecastModal(false); });
   };
 
   const handleRunSelect = (id) => {
@@ -422,37 +432,21 @@ export default function ForecastDashboard() {
 
   const insights = useMemo(() => computeInsights(currentRun, outlook, demandBenchmark), [currentRun, outlook, demandBenchmark]);
 
-  const targetInsight = useMemo(() => {
-    const target = annualTarget && Number(annualTarget) > 0 ? Number(annualTarget) : null;
-    if (!target || !currentRun) return null;
-    const projected = currentRun.projected_total || 0;
-    const projectedMT = projected / 1000;
-    const monthlyTarget = target / 12;
-    const totalForecast = currentRun.points
-      ? currentRun.points.filter((p) => p.is_forecast).reduce((s, p) => s + (p.predicted_value || 0), 0)
-      : 0;
-    const totalForecastMT = totalForecast / 1000;
-    const diff = totalForecastMT - target;
-    const sign = diff >= 0 ? '+' : '';
-    const achievable = diff >= 0;
-    const trend = currentRun.trend_direction || 'stable';
-    const seasonalNote = insights.seasonal.peak !== '—'
-      ? `Seasonally, ${insights.seasonal.low} tends to be the lowest-output month, while ${insights.seasonal.peak} is the peak.`
-      : 'Seasonal pattern data is limited.';
-    const trendNote = trend === 'declining'
-      ? 'The forecast trend is declining, which may make the target harder to reach without intervention.'
-      : trend === 'increasing'
-      ? 'The forecast trend is increasing, supporting target achievability.'
-      : 'The forecast trend is stable.';
-    return {
-      target,
-      monthlyTarget,
-      totalForecastMT,
-      diff,
-      achievable,
-      text: `Annual target of ${target.toLocaleString()} MT (${monthlyTarget.toLocaleString()} MT/month). Projected forecast totals ${totalForecastMT.toLocaleString()} MT (${sign}${diff.toLocaleString()} MT vs target). ${trendNote} ${seasonalNote} Target looks ${achievable ? 'achievable' : 'challenging'}.`,
+  const runDecisionSupport = () => {
+    const target = decisionTarget && Number(decisionTarget) > 0 ? Number(decisionTarget) : null;
+    if (!target) return;
+    setDecisionLoading(true);
+    setError(null);
+    const payload = {
+      municipality_id: selectedMuni !== 'all' ? Number(selectedMuni) : null,
+      annual_target: target,
+      forecast_horizon: decisionHorizon,
     };
-  }, [annualTarget, currentRun, insights]);
+    evaluateTarget(payload)
+      .then((res) => setDecisionResults(res.evaluation))
+      .catch((err) => setError(err.message))
+      .finally(() => setDecisionLoading(false));
+  };
 
   const yoyAbsMax = useMemo(() => {
     const peaks = yoyRows.map((m) => Math.abs(m.changePct || 0));
@@ -522,6 +516,20 @@ export default function ForecastDashboard() {
             onChange={(e) => setAnnualTarget(e.target.value)}
           />
         </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field">&nbsp;</label>
+          <Button className="admin-page-hero-btn" onClick={openForecastModal} disabled={running}>
+            <Zap size={14} strokeWidth={2.5} className="me-1" />
+            {running ? 'Running…' : 'Run Forecast'}
+          </Button>
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field">&nbsp;</label>
+          <Button className="admin-page-hero-btn" onClick={() => setShowDecisionSupport((v) => !v)} variant={showDecisionSupport ? 'primary' : 'outline-primary'}>
+            <Target size={14} strokeWidth={2.5} className="me-1" />
+            {showDecisionSupport ? 'Hide Decision Support' : 'Decision Support'}
+          </Button>
+        </div>
       </PageHeader>
 
       <Row className="g-3 mb-3">
@@ -566,13 +574,6 @@ export default function ForecastDashboard() {
         <Alert variant="warning" className="mb-3">
           <strong>Partial current-year reporting.</strong>{' '}
           {currentRun.note || 'Recent months may be under-reported because the current year is still in progress. The forecast is anchored to the established seasonal pattern.'}
-        </Alert>
-      )}
-
-      {targetInsight && (
-        <Alert variant="info" className="mb-3">
-          <strong>Forecast vs. Target</strong>
-          <div className="mt-2 small">{targetInsight.text}</div>
         </Alert>
       )}
 
@@ -988,6 +989,176 @@ export default function ForecastDashboard() {
           </Card>
         </Col>
       </Row>
+
+      {showDecisionSupport && (
+        <div className="fc-decision-card mb-3">
+          <SectionHeading icon={Target} title="Decision Support — Forecast vs. Production Target" sub="Evaluate achievability against month-specific weighted targets." chip="gold" />
+          <Row className="g-3 mb-3">
+            <Col md={4}>
+              <Form.Label className="fc-decision-label">Annual Target (MT)</Form.Label>
+              <Form.Control type="number" min="0" step="any" value={decisionTarget} onChange={(e) => setDecisionTarget(e.target.value)} placeholder="e.g. 5000" className="fc-decision-input" />
+            </Col>
+            <Col md={3}>
+              <Form.Label className="fc-decision-label">Forecast Horizon (months)</Form.Label>
+              <Form.Control type="number" min="1" max="36" value={decisionHorizon} onChange={(e) => setDecisionHorizon(Number(e.target.value))} className="fc-decision-input" />
+            </Col>
+            <Col md={3}>
+              <Form.Label className="fc-decision-label">Municipality Scope</Form.Label>
+              <Form.Select value={selectedMuni} onChange={(e) => setSelectedMuni(e.target.value)} className="fc-decision-input" disabled>
+                <option value="all">All Municipalities</option>
+                {municipalities.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </Form.Select>
+            </Col>
+            <Col md={2} className="d-flex align-items-end">
+              <Button variant="primary" onClick={runDecisionSupport} disabled={decisionLoading || !decisionTarget} className="fc-decision-run-btn w-100">
+                {decisionLoading ? 'Evaluating…' : 'Run Evaluation'}
+              </Button>
+            </Col>
+          </Row>
+
+          {decisionResults && (
+            <>
+              <Row className="g-3 mb-3">
+                <Col md={8}>
+                  <Card className="fc-card h-100">
+                    <Card.Header>
+                      <div className="admin-card-head">
+                        <span className="admin-card-head-icon admin-kpi-accent-goldbg"><Target size={16} strokeWidth={2} /></span>
+                        <h5 className="admin-card-head-title">Forecast vs. Target</h5>
+                      </div>
+                    </Card.Header>
+                    <Card.Body>
+                      <div style={{ height: 300 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={(currentRun?.points || []).filter(p => p.is_forecast).slice(0, decisionResults.forecast_horizon).map((p, i) => ({
+                            label: p.period_label,
+                            forecast: decisionResults.monthly_forecasts[i],
+                            target: decisionResults.monthly_targets[i],
+                          }))} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" vertical={false} />
+                            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                            <Tooltip formatter={(value) => [`${Math.round(value).toLocaleString()} kg`, undefined]} />
+                            <Legend />
+                            <Bar dataKey="forecast" name="Forecast" fill={BRAND.ocean} radius={[3, 3, 0, 0]} isAnimationActive />
+                            <Line type="monotone" dataKey="target" name="Monthly Target" stroke={BRAND.gold} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+                <Col md={4}>
+                  <Card className="fc-card h-100">
+                    <Card.Header>
+                      <div className="admin-card-head">
+                        <span className="admin-card-head-icon admin-kpi-accent-greenbg"><Activity size={16} strokeWidth={2} /></span>
+                        <h5 className="admin-card-head-title">Evaluation Summary</h5>
+                      </div>
+                    </Card.Header>
+                    <Card.Body>
+                      <div className="d-flex flex-column gap-3">
+                        <div className="fc-outlook-stat">
+                          <div className="small text-muted">Annual Target</div>
+                          <div className="fw-bold">{decisionResults.annual_target.toLocaleString()} MT</div>
+                        </div>
+                        <div className="fc-outlook-stat">
+                          <div className="small text-muted">Projected Total</div>
+                          <div className="fw-bold">{decisionResults.total_projected.toLocaleString()} MT</div>
+                        </div>
+                        <div className="fc-outlook-stat">
+                          <div className="small text-muted">Variance</div>
+                          <div className={`fw-bold ${decisionResults.variance >= 0 ? 'text-success' : 'text-danger'}`}>{decisionResults.variance >= 0 ? '+' : ''}{decisionResults.variance.toLocaleString()} MT ({decisionResults.variance_pct.toFixed(1)}%)</div>
+                        </div>
+                        <div className={`text-center py-2 rounded ${decisionResults.achievable ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'}`}>
+                          <div className="small fw-semibold">Target Status</div>
+                          <div className="fw-bold" style={{ fontSize: 16 }}>{decisionResults.achievable ? 'Achievable' : 'Challenging'}</div>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+
+              <Card className="fc-card mb-3">
+                <Card.Header>
+                  <div className="admin-card-head">
+                    <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><ClipboardList size={16} strokeWidth={2} /></span>
+                    <h5 className="admin-card-head-title">Narrative Insight</h5>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  <p className="mb-2">{decisionResults.narrative}</p>
+                  <Row className="g-2 mt-2">
+                    <Col md={4}>
+                      <div className="small text-muted">Trend Direction</div>
+                      <div className="fw-bold text-capitalize">{decisionResults.trend_direction}</div>
+                    </Col>
+                    <Col md={4}>
+                      <div className="small text-muted">Peak Season</div>
+                      <div className="fw-bold">{decisionResults.peak_month}</div>
+                    </Col>
+                    <Col md={4}>
+                      <div className="small text-muted">Low Season</div>
+                      <div className="fw-bold">{decisionResults.low_month}</div>
+                    </Col>
+                  </Row>
+                  {decisionResults.recommendations.length > 0 && (
+                    <div className="mt-3">
+                      <div className="small fw-semibold text-muted mb-1">Recommendations</div>
+                      <ul className="mb-0">
+                        {decisionResults.recommendations.map((rec, idx) => (
+                          <li key={idx} className="small">{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      <Modal show={showForecastModal} onHide={() => setShowForecastModal(false)} centered backdrop="static">
+        <Modal.Header closeButton>
+          <Modal.Title>Run Forecast</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Municipality</Form.Label>
+              <Form.Select value={selectedMuni} onChange={(e) => setSelectedMuni(e.target.value)} disabled>
+                <option value="all">All Municipalities</option>
+                {municipalities.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </Form.Select>
+              <Form.Text className="text-muted">Uses the current municipality filter.</Form.Text>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Forecast Horizon (months)</Form.Label>
+              <Form.Control type="number" min="1" max="36" value={forecastHorizon} onChange={(e) => setForecastHorizon(Number(e.target.value))} />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Annual Target (MT)</Form.Label>
+              <Form.Control type="number" min="0" step="any" value={annualTarget} onChange={(e) => setAnnualTarget(e.target.value)} placeholder="e.g. 5000" />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Notes / Context (optional)</Form.Label>
+              <Form.Control as="textarea" rows={3} value={forecastNotes} onChange={(e) => setForecastNotes(e.target.value)} placeholder="Any context for this forecast run..." />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowForecastModal(false)} disabled={running}>Cancel</Button>
+          <Button variant="primary" onClick={submitForecast} disabled={running}>
+            {running ? 'Running…' : 'Run Forecast'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

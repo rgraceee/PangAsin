@@ -86,7 +86,11 @@ function KPICluster({ title, accent, actions, children }) {
 export default function EncoderDashboard() {
   const { user } = useOutletContext();
 
-  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const now = new Date();
+  const initialYear = now.getFullYear();
+  const initialMonth = now.toISOString().slice(0, 7);
+  const [selectedYear, setSelectedYear] = useState(initialYear);
+  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
   const [months, setMonths] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -101,10 +105,40 @@ export default function EncoderDashboard() {
       .catch(() => {});
   }, []);
 
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    (months || []).forEach((m) => {
+      const y = m.split('-')[0];
+      if (y) years.add(Number(y));
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [months]);
+
+  const monthsInYear = useMemo(() => {
+    return (months || [])
+      .filter((m) => m.startsWith(`${selectedYear}-`))
+      .sort();
+  }, [months, selectedYear]);
+
+  useEffect(() => {
+    if (!monthsInYear.includes(selectedMonth)) {
+      const next = monthsInYear[0];
+      setSelectedMonth(next || '');
+    }
+  }, [selectedYear, monthsInYear, selectedMonth]);
+
+  useEffect(() => {
+    if (!availableYears.includes(selectedYear)) {
+      const next = availableYears[0];
+      setSelectedYear(next || initialYear);
+    }
+  }, [availableYears, selectedYear, initialYear]);
+
   const loadStats = useCallback(() => {
     setLoading(true);
     setError(null);
-    const params = selectedMonth ? { month: selectedMonth } : {};
+    const month = selectedMonth || undefined;
+    const params = month ? { month } : {};
     getStats(params)
       .then((s) => { setStats(s); setLoading(false); })
       .catch((err) => { setError(err.message || 'Failed to load dashboard.'); setLoading(false); });
@@ -185,23 +219,37 @@ export default function EncoderDashboard() {
         accent="ocean"
         actions={
           <div className="d-flex align-items-center gap-2">
-            <label className="small fw-semibold text-muted" htmlFor="encoder-month">Period</label>
+            <label className="small fw-semibold text-muted" htmlFor="encoder-year">Period</label>
+            <select
+              id="encoder-year"
+              className="form-select form-select-sm"
+              style={{ maxWidth: 110 }}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              aria-label="Select year"
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
             <select
               id="encoder-month"
-              className="form-select form-select-sm admin-demog-select"
+              className="form-select form-select-sm"
+              style={{ maxWidth: 150 }}
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               aria-label="Select month"
+              disabled={!monthsInYear.length}
             >
-              {months.map((m) => (
-                <option key={m} value={m}>
-                  {(() => {
-                    const [y, mo] = m.split('-');
-                    const d = new Date(Number(y), Number(mo) - 1);
-                    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-                  })()}
-                </option>
-              ))}
+              {monthsInYear.map((m) => {
+                const [y, mo] = m.split('-');
+                const d = new Date(Number(y), Number(mo) - 1);
+                return (
+                  <option key={m} value={m}>
+                    {d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                  </option>
+                );
+              })}
             </select>
             <Button className="admin-page-hero-btn" onClick={handleAdd}>
               <Plus size={16} strokeWidth={2.5} className="me-1" />

@@ -58,10 +58,6 @@ export default function GuestDashboard() {
       {data && (
         <>
           <Reveal>
-            <MunicipalityMapSection onSelectMunicipality={setSelectedMunicipality} />
-          </Reveal>
-
-          <Reveal>
             <SupplyDemandSection />
           </Reveal>
 
@@ -70,6 +66,10 @@ export default function GuestDashboard() {
             onClose={() => setSelectedMunicipality(null)}
             demographics={data.demographics}
           />
+
+          <Reveal>
+            <MunicipalityMapSection onSelectMunicipality={setSelectedMunicipality} />
+          </Reveal>
         </>
       )}
     </div>

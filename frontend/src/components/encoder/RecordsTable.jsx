@@ -138,12 +138,6 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
             </select>
           </Col>
           <Col md={4} className="d-flex gap-2 align-items-center justify-content-end">
-            {onAdd && (
-              <Button variant="primary" size="sm" onClick={onAdd}>
-                <Plus size={14} strokeWidth={2.5} className="me-1" />
-                Add Record
-              </Button>
-            )}
             <span className="text-muted small">{records.length} record{records.length === 1 ? '' : 's'}</span>
             {hasFilter && (
               <Button variant="link" size="sm" onClick={handleClearFilters}>Clear filters</Button>

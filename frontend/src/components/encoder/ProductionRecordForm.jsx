@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Form, Button, Alert, Row, Col, Spinner, Modal } from 'react-bootstrap';
 import { getEncoderBarangays, createRecord, updateRecord, getRecord } from '../../services/dataService';
+import { Factory, Users, CheckCircle2 } from 'lucide-react';
 
 const PRODUCTION_METHODS = [
   { value: '', label: 'Select method…' },
@@ -18,9 +19,9 @@ const AGE_BUCKETS = [
 ];
 
 const STEPS = [
-  { key: 'production', label: 'Production' },
-  { key: 'producer', label: 'Producer' },
-  { key: 'review', label: 'Review & Submit' },
+  { key: 'production', label: 'Production', icon: Factory },
+  { key: 'producer', label: 'Producer', icon: Users },
+  { key: 'review', label: 'Review', icon: CheckCircle2 },
 ];
 
 export default function ProductionRecordForm({ editingId = null, onClose, onSaved }) {
@@ -181,14 +182,17 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
     }
   };
 
+  const progressValue = ((step + 1) / STEPS.length) * 100;
+
   const renderStep = () => {
     if (step === 0) {
       return (
-        <>
-          <Row>
+        <div className="form-step-card">
+          <div className="form-section-title">Production Details</div>
+          <Row className="g-3">
             <Col md={6}>
               <Form.Group className="mb-3">
-                <Form.Label>Barangay <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Barangay <span className="text-danger">*</span></Form.Label>
                 <Form.Select name="barangay_id" value={form.barangay_id} onChange={handleChange} required disabled={approved}>
                   <option value="">Select barangay…</option>
                   {barangays.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -197,7 +201,7 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             </Col>
             <Col md={6}>
               <Form.Group className="mb-3">
-                <Form.Label>Date Covered <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Date Covered <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="date"
                   name="record_date"
@@ -205,16 +209,15 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
                   onChange={handleChange}
                   required
                   disabled={approved}
-                  placeholder="YYYY-MM-DD"
                 />
               </Form.Group>
             </Col>
           </Row>
 
-          <Row>
+          <Row className="g-3">
             <Col md={4}>
               <Form.Group className="mb-3">
-                <Form.Label>Production Volume (kg) <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Production Volume (kg) <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="number"
                   min="0"
@@ -230,7 +233,7 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             </Col>
             <Col md={4}>
               <Form.Group className="mb-3">
-                <Form.Label>Number of Salt Beds <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Number of Salt Beds <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="number"
                   min="1"
@@ -246,7 +249,7 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             </Col>
             <Col md={4}>
               <Form.Group className="mb-3">
-                <Form.Label>Area per Salt Bed (m²)</Form.Label>
+                <Form.Label className="form-field-label">Area per Salt Bed (m²)</Form.Label>
                 <Form.Control
                   type="number"
                   min="0"
@@ -261,8 +264,8 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             </Col>
           </Row>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Production Method <span className="text-danger">*</span></Form.Label>
+          <Form.Group className="mb-0">
+            <Form.Label className="form-field-label">Production Method <span className="text-danger">*</span></Form.Label>
             <Form.Select
               name="production_method"
               value={form.production_method}
@@ -275,17 +278,18 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
               ))}
             </Form.Select>
           </Form.Group>
-        </>
+        </div>
       );
     }
 
     if (step === 1) {
       return (
-        <>
-          <Row>
-            <Col md={4}>
+        <div className="form-step-card">
+          <div className="form-section-title">Producer Details</div>
+          <Row className="g-3">
+            <Col md={6}>
               <Form.Group className="mb-3">
-                <Form.Label>Male Producers <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Male Producers <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="number"
                   min="0"
@@ -299,9 +303,9 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
                 />
               </Form.Group>
             </Col>
-            <Col md={4}>
+            <Col md={6}>
               <Form.Group className="mb-3">
-                <Form.Label>Female Producers <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Female Producers <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="number"
                   min="0"
@@ -315,35 +319,19 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
                 />
               </Form.Group>
             </Col>
-            <Col md={4}>
-              <Form.Group className="mb-3">
-                <Form.Label>Production Method <span className="text-danger">*</span></Form.Label>
-                <Form.Select
-                  name="production_method"
-                  value={form.production_method}
-                  onChange={handleChange}
-                  required
-                  disabled={approved}
-                >
-                  {PRODUCTION_METHODS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
           </Row>
 
-          <div className="text-muted small mb-3">
+          <div className="form-meta-line mb-3">
             Registered Producers: <strong>{registeredProducers || '—'}</strong>
           </div>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Producers by Age Bracket</Form.Label>
-            <Row>
+          <Form.Group className="mb-0">
+            <Form.Label className="form-field-label">Producers by Age Bracket</Form.Label>
+            <Row className="g-2">
               {AGE_BUCKETS.map((bucket) => (
                 <Col md={4} key={bucket.key}>
                   <Form.Group className="mb-2">
-                    <Form.Label className="small text-muted mb-1">{bucket.label}</Form.Label>
+                    <Form.Label className="form-field-label-small">{bucket.label}</Form.Label>
                     <Form.Control
                       type="number"
                       min="0"
@@ -359,7 +347,7 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
               ))}
             </Row>
             {ageAllocated && (
-              <div className={`small mt-2 ${ageValid ? 'text-success' : 'text-danger'}`}>
+              <div className={`small mt-2 fw-semibold ${ageValid ? 'text-success' : 'text-danger'}`}>
                 {ageAllocated}
                 {!ageValid && totalProducers > 0 && (
                   <span> — must equal {totalProducers}</span>
@@ -367,14 +355,14 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
               </div>
             )}
           </Form.Group>
-        </>
+        </div>
       );
     }
 
     if (step === 2) {
       return (
-        <div className="border rounded p-3 bg-light">
-          <h6 className="fw-semibold mb-3">Production Details</h6>
+        <div className="form-step-card">
+          <div className="form-section-title">Production Details</div>
           <Row className="g-2 mb-3">
             <Col md={6}><strong>Barangay:</strong> {barangays.find((b) => String(b.id) === String(form.barangay_id))?.name || '—'}</Col>
             <Col md={6}><strong>Date Covered:</strong> {form.record_date || '—'}</Col>
@@ -384,7 +372,7 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             <Col md={12}><strong>Method:</strong> {form.production_method || '—'}</Col>
           </Row>
 
-          <h6 className="fw-semibold mb-3">Producer Details</h6>
+          <div className="form-section-title">Producer Details</div>
           <Row className="g-2 mb-3">
             <Col md={4}><strong>Male Producers:</strong> {form.male_producers ?? '—'}</Col>
             <Col md={4}><strong>Female Producers:</strong> {form.female_producers ?? '—'}</Col>
@@ -404,62 +392,73 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
   };
 
   return (
-    <Modal show onHide={onClose} size="lg" centered backdrop="static">
-      <Modal.Header closeButton>
-        <Modal.Title>{isEdit ? 'Edit Production Record' : 'New Production Record'}</Modal.Title>
+    <Modal show onHide={onClose} size="lg" centered backdrop="static" className="encoder-form-modal">
+      <Modal.Header closeButton className="encoder-form-header">
+        <div className="w-100">
+          <Modal.Title className="encoder-form-title">{isEdit ? 'Edit Production Record' : 'New Production Record'}</Modal.Title>
+          <div className="encoder-stepper">
+            <div className="encoder-stepper-track">
+              <div className="encoder-stepper-fill" style={{ width: `${progressValue}%` }} />
+            </div>
+            <div className="encoder-stepper-steps">
+              {STEPS.map((s, idx) => {
+                const Icon = s.icon;
+                const isActive = idx === step;
+                const isComplete = idx < step;
+                return (
+                  <div key={s.key} className={`encoder-stepper-item ${isActive ? 'active' : ''} ${isComplete ? 'complete' : ''}`}>
+                    <div className="encoder-stepper-icon">
+                      {isComplete ? <span className="encoder-stepper-check">✓</span> : <Icon size={18} />}
+                    </div>
+                    <span className="encoder-stepper-label">{s.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </Modal.Header>
-      <Modal.Body>
+      <Modal.Body className="encoder-form-body">
         {loading && <div className="text-center py-4"><Spinner animation="border" variant="primary" /></div>}
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && <Alert variant="danger" className="encoder-form-alert">{error}</Alert>}
         {approved && (
-          <Alert variant="warning">
+          <Alert variant="warning" className="encoder-form-alert">
             This record is approved and locked from editing.
           </Alert>
         )}
         {!loading && (
-          <>
-            <div className="d-flex align-items-center gap-3 mb-4">
-              {STEPS.map((s, idx) => (
-                <div key={s.key} className="d-flex align-items-center gap-2">
-                  <div className={`rounded-circle d-flex align-items-center justify-content-center ${idx <= step ? 'bg-primary text-white' : 'bg-light text-muted'}`}
-                    style={{ width: 28, height: 28, fontSize: 12, fontWeight: 700 }}>
-                    {idx + 1}
-                  </div>
-                  <span className={`small fw-semibold ${idx <= step ? 'text-dark' : 'text-muted'}`}>{s.label}</span>
-                  {idx < STEPS.length - 1 && <div style={{ width: 40, height: 2, background: idx < step ? 'var(--p-ocean)' : 'var(--gray-300)' }} />}
-                </div>
-              ))}
-            </div>
-            <Form onSubmit={step === 2 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }}>
-              {renderStep()}
-            </Form>
-          </>
+          <Form onSubmit={step === 2 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }}>
+            {renderStep()}
+          </Form>
         )}
       </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-        <div className="flex-grow-1" />
-        {step > 0 && (
-          <Button variant="outline-secondary" onClick={handleBack} disabled={saving || approved}>
-            Back
-          </Button>
-        )}
-        {step < 2 && (
-          <Button variant="primary" onClick={handleNext} disabled={saving || approved || (step === 0 ? !canProceedFromStep1 : !canProceedFromStep2)}>
-            Next
-          </Button>
-        )}
-        {!loading && step === 2 && (
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={saving || approved || !ageValid}
-          >
-            {saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Save as Draft')}
-          </Button>
-        )}
-      </Modal.Footer>
+      {!loading && (
+        <Modal.Footer className="encoder-form-footer">
+          <Button variant="link" onClick={onClose} disabled={saving} className="encoder-btn-cancel">Cancel</Button>
+          <div className="flex-grow-1" />
+          {step > 0 && (
+            <Button variant="outline-secondary" onClick={handleBack} disabled={saving || approved} className="encoder-btn-back">
+              Back
+            </Button>
+          )}
+          {step < 2 && (
+            <Button variant="primary" onClick={handleNext} disabled={saving || approved || (step === 0 ? !canProceedFromStep1 : !canProceedFromStep2)} className="encoder-btn-next">
+              Next
+            </Button>
+          )}
+          {step === 2 && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={saving || approved || !ageValid}
+              className="encoder-btn-submit"
+            >
+              {saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Save as Draft')}
+            </Button>
+          )}
+        </Modal.Footer>
+      )}
     </Modal>
   );
 }

@@ -502,6 +502,145 @@ def get_municipality_outlook():
                 "readiness": readiness,
                 "reliability": _reliability(readiness, len(labels)),
                 "algorithm": None,
-                "last_run_at": None,
-            })
+                 "last_run_at": None,
+             })
     return results
+
+
+def evaluate_target(municipality_id: Optional[int], annual_target: float, forecast_horizon: int = 12):
+    """Compute month-specific target weights from historical data and evaluate against forecast.
+
+    Returns a dict with monthly targets, monthly forecasts, totals, variance,
+    achievability, and narrative insights.
+    """
+    raw_weights = [0.0] * 12
+    q = (
+        ProductionRecord.query
+        .filter(ProductionRecord.status == "approved")
+        .filter(ProductionRecord.production_volume > 0)
+    )
+    if municipality_id is not None:
+        q = q.filter(ProductionRecord.municipality_id == municipality_id)
+
+    rows = q.with_entities(
+        db.func.extract("month", ProductionRecord.record_date).label("month"),
+        db.func.sum(ProductionRecord.production_volume).label("total_volume"),
+        db.func.count(ProductionRecord.id).label("count"),
+    ).group_by(db.text("1")).all()
+
+    monthly_totals = {}
+    monthly_counts = {}
+    for r in rows:
+        m = int(r.month) - 1
+        monthly_totals[m] = float(r.total_volume or 0)
+        monthly_counts[m] = int(r.count or 0)
+
+    for m in range(12):
+        if monthly_counts.get(m, 0) > 0:
+            raw_weights[m] = monthly_totals[m] / monthly_counts[m]
+
+    total_weight = sum(raw_weights)
+    if total_weight <= 0:
+        raw_weights = [1.0 / 12.0] * 12
+    else:
+        raw_weights = [w / total_weight for w in raw_weights]
+
+    forecast_labels = []
+    forecast_values = []
+    if municipality_id is not None:
+        latest_run = (
+            ForecastRun.query.filter_by(municipality_id=municipality_id)
+            .order_by(ForecastRun.created_at.desc())
+            .first()
+        )
+    else:
+        latest_run = (
+            ForecastRun.query.filter_by(municipality_id=None)
+            .order_by(ForecastRun.created_at.desc())
+            .first()
+        )
+
+    if latest_run and latest_run.points:
+        forecast_points = [p for p in latest_run.points if p.is_forecast]
+        forecast_points.sort(key=lambda p: p.period_label)
+        forecast_labels = [p.period_label for p in forecast_points[:forecast_horizon]]
+        forecast_values = [float(p.predicted_value or 0) for p in forecast_points[:forecast_horizon]]
+
+    monthly_targets = [annual_target * w for w in raw_weights[:forecast_horizon]]
+    total_target = sum(monthly_targets)
+    total_projected = sum(forecast_values) if forecast_values else 0.0
+    variance = total_projected - total_target
+    variance_pct = (variance / total_target * 100.0) if total_target > 0 else 0.0
+    achievable = variance >= 0
+
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    below_months = []
+    above_months = []
+    for i in range(min(forecast_horizon, len(forecast_values))):
+        if forecast_values[i] < monthly_targets[i]:
+            below_months.append(month_names[i % 12])
+        elif forecast_values[i] > monthly_targets[i]:
+            above_months.append(month_names[i % 12])
+
+    trend_direction = "stable"
+    if latest_run:
+        trend_direction = latest_run.trend_direction or "stable"
+    trend_notes = {
+        "increasing": "The forecast trend is increasing, which supports target achievability.",
+        "declining": "The forecast trend is declining, which may make the target harder to reach without intervention.",
+        "stable": "The forecast trend is stable.",
+    }
+    trend_note = trend_notes.get(trend_direction, trend_notes["stable"])
+
+    dry_months = {0, 1, 2, 3, 4, 5}
+    wet_months = {6, 7, 8, 9, 10, 11}
+    peak_month_idx = max(range(12), key=lambda i: raw_weights[i])
+    low_month_idx = min(range(12), key=lambda i: raw_weights[i])
+    seasonal_note = (
+        f"Seasonally, {month_names[low_month_idx]} tends to be the lowest-output month, "
+        f"while {month_names[peak_month_idx]} is the peak."
+    )
+
+    recommendations = []
+    if not achievable:
+        recommendations.append("Consider increasing production capacity or extending the forecast horizon.")
+    if trend_direction == "declining":
+        recommendations.append("Address the declining trend before it compounds further.")
+    if below_months:
+        recommendations.append(
+            f"Pay special attention to {', '.join(below_months)} where forecast falls below target."
+        )
+    if not recommendations:
+        recommendations.append("Target looks achievable based on current trajectory.")
+
+    sign = "+" if variance >= 0 else ""
+    narrative = (
+        f"Annual target of {annual_target:,.2f} MT ({annual_target / 12:,.3f} MT/month on average). "
+        f"Projected forecast totals {total_projected:,.2f} MT ({sign}{variance:,.2f} MT vs target, {sign}{variance_pct:.1f}%). "
+        f"{trend_note} {seasonal_note} "
+        f"Target looks {'achievable' if achievable else 'challenging'}. "
+        + " ".join(recommendations)
+    )
+
+    return {
+        "municipality_id": municipality_id,
+        "annual_target": float(annual_target),
+        "forecast_horizon": forecast_horizon,
+        "monthly_targets": [float(t) for t in monthly_targets],
+        "monthly_forecasts": [float(v) for v in (forecast_values + [0.0] * forecast_horizon)[:forecast_horizon]],
+        "total_target": float(total_target),
+        "total_projected": float(total_projected),
+        "variance": float(variance),
+        "variance_pct": float(variance_pct),
+        "achievable": achievable,
+        "trend_direction": trend_direction,
+        "trend_note": trend_note,
+        "seasonal_note": seasonal_note,
+        "peak_month": month_names[peak_month_idx],
+        "low_month": month_names[low_month_idx],
+        "below_months": below_months,
+        "above_months": above_months,
+        "recommendations": recommendations,
+        "narrative": narrative,
+        "weights": [float(w) for w in raw_weights[:forecast_horizon]],
+    }

@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from app.models.production_record import ProductionRecord, PRODUCTION_METHODS
 from app.models.barangay import Barangay
 from app.extensions import db
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 

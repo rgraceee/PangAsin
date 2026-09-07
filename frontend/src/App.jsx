@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, HashRouter, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, BrowserRouter, useLocation } from 'react-router-dom';
 import GuestDashboard from './components/GuestDashboard';
 import Login from './components/Login';
 import EncoderLayout from './components/encoder/EncoderLayout';
@@ -55,7 +55,7 @@ export default function App() {
   }, []);
 
   return (
-    <HashRouter>
+    <BrowserRouter>
       <TitleSetter />
       <Routes>
         <Route path="/" element={<GuestDashboard />} />
@@ -88,6 +88,6 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
