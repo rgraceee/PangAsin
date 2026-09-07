@@ -382,17 +382,147 @@ def _by_barangay_query():
     )
 
 
+@encoder_api_bp.route("/months", methods=["GET"])
+@login_required
+def encoder_months():
+    if current_user.role != "encoder":
+        return jsonify({"error": "Encoder access only."}), 403
+    rows = (
+        db.session.query(
+            func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
+        )
+        .filter(ProductionRecord.municipality_id == current_user.municipality_id)
+        .distinct()
+        .order_by(func.to_char(ProductionRecord.record_date, "YYYY-MM"))
+        .all()
+    )
+    months = [r.month for r in rows if r.month]
+    now = date.today()
+    current_ym = f"{now.year:04d}-{now.month:02d}"
+    if current_ym not in months:
+        months.append(current_ym)
+    months = sorted(set(months))
+    return jsonify({"months": months})
+
+
 @encoder_api_bp.route("/stats", methods=["GET"])
 @login_required
 def stats():
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
 
+    month = request.args.get("month")
+    if month:
+        try:
+            month_start = datetime.strptime(month, "%Y-%m").date()
+            if month_start.month == 12:
+                month_end = date(month_start.year + 1, 1, 1)
+            else:
+                month_end = date(month_start.year, month_start.month + 1, 1)
+        except (TypeError, ValueError):
+            return jsonify({"error": "month must be in YYYY-MM format."}), 400
+        base = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id).filter(
+            ProductionRecord.record_date >= month_start,
+            ProductionRecord.record_date < month_end,
+        )
+        by_barangay_q = (
+            db.session.query(
+                ProductionRecord.barangay_id,
+                Barangay.name,
+                func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("total_volume"),
+                func.count(ProductionRecord.id).label("record_count"),
+                func.coalesce(
+                    func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed),
+                    0,
+                ).label("total_area"),
+                func.coalesce(func.sum(ProductionRecord.registered_producers), 0).label("total_registered"),
+            )
+            .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
+            .filter(ProductionRecord.municipality_id == current_user.municipality_id)
+            .filter(ProductionRecord.record_date >= month_start)
+            .filter(ProductionRecord.record_date < month_end)
+            .group_by(ProductionRecord.barangay_id, Barangay.name)
+            .all()
+        )
+        month_rows = (
+            base.with_entities(
+                func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
+                ProductionRecord.barangay_id.label("barangay_id"),
+                Barangay.name.label("barangay"),
+                func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("volume"),
+            )
+            .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
+            .group_by(
+                func.to_char(ProductionRecord.record_date, "YYYY-MM"),
+                ProductionRecord.barangay_id,
+                Barangay.name,
+            )
+            .order_by(func.to_char(ProductionRecord.record_date, "YYYY-MM"))
+            .all()
+        )
+        months_set = []
+        months_seen = set()
+        barangay_names = []
+        barangay_seen = set()
+        series = {}
+        for m, _bid, bname, vol in month_rows:
+            if m not in months_seen:
+                months_seen.add(m)
+                months_set.append(m)
+            if bname not in barangay_seen:
+                barangay_seen.add(bname)
+                barangay_names.append(bname)
+                series[bname] = {}
+            series[bname][m] = float(vol or 0)
+        by_month = []
+        for m in months_set:
+            row = {"month": m}
+            for bname in barangay_names:
+                row[bname] = series.get(bname, {}).get(m, 0.0)
+            by_month.append(row)
+        total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume), 0)).scalar() or 0
+        total_area = base.with_entities(
+            func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)
+        ).scalar() or 0
+        record_count = base.count()
+        total_beds = base.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0)).scalar() or 0
+        total_registered = base.with_entities(
+            func.coalesce(func.sum(ProductionRecord.registered_producers), 0)
+        ).scalar() or 0
+        return jsonify({
+            "municipality_id": current_user.municipality_id,
+            "municipality_name": current_user.municipality.name if current_user.municipality else None,
+            "period": {
+                "start": month_start.isoformat(),
+                "end": (month_end - timedelta(days=1)).isoformat(),
+            },
+            "total_volume_kg": float(total_volume),
+            "total_area_sqm": float(total_area or 0),
+            "record_count": record_count,
+            "total_salt_beds": int(total_beds or 0),
+            "total_registered_producers": int(total_registered or 0),
+            "by_barangay": [
+                {
+                    "barangay_id": b.barangay_id,
+                    "barangay": b.name,
+                    "total_volume_kg": float(b.total_volume or 0),
+                    "record_count": b.record_count,
+                    "total_area_sqm": float(b.total_area or 0),
+                    "total_registered_producers": int(b.total_registered or 0),
+                }
+                for b in by_barangay_q
+            ],
+            "by_month": by_month,
+            "barangays": barangay_names,
+        })
+
     base = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id)
-    base, start_d, end_d = _apply_period(base, request.args.get("start"), request.args.get("end"))
+    start_raw = request.args.get("start")
+    end_raw = request.args.get("end")
+    base, start_d, end_d = _apply_period(base, start_raw, end_raw)
 
     by_barangay_q = _by_barangay_query()
-    by_barangay_q, _, _ = _apply_period(by_barangay_q, request.args.get("start"), request.args.get("end"))
+    by_barangay_q, _, _ = _apply_period(by_barangay_q, start_raw, end_raw)
     by_barangay = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
 
     total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume), 0)).scalar() or 0

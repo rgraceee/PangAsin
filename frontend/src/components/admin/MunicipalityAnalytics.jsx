@@ -48,6 +48,7 @@ export default function MunicipalityAnalytics() {
   const [hidden, setHidden] = useState(() => new Set());
   const [provinceMode, setProvinceMode] = useState(true);
   const [methodData, setMethodData] = useState([]);
+  const [chartMuni, setChartMuni] = useState(null);
 
   useEffect(() => {
     getAdminStats()
@@ -98,37 +99,31 @@ export default function MunicipalityAnalytics() {
   }
   if (!data) return null;
 
-  const visibleRows = rows.filter((r) => !hidden.has(r.name));
+  const visibleRows = chartMuni
+    ? rows.filter((r) => r.name === chartMuni)
+    : rows.filter((r) => !hidden.has(r.name));
   const present = new Set(rows.map((r) => r.name));
   const activeNames = new Set(visibleRows.map((r) => r.name));
 
   const selectPangasinan = () => {
     setProvinceMode(true);
     setHidden(new Set());
+    setChartMuni(null);
   };
 
   const toggleMuni = (name) => {
-    if (provinceMode) {
-      setProvinceMode(false);
-      setHidden(new Set(rows.map((r) => r.name).filter((n) => n !== name)));
+    if (chartMuni === name) {
+      setChartMuni(null);
       return;
     }
-    if (hidden.has(name)) {
-      const next = new Set(hidden);
-      next.delete(name);
-      setHidden(next);
-    } else {
-      const next = new Set(hidden);
-      next.add(name);
-      const stillActive = rows.some((r) => r.name !== name && !next.has(r.name));
-      if (!stillActive) {
-        setProvinceMode(true);
-        setHidden(new Set());
-      } else {
-        setHidden(next);
-      }
-    }
+    setChartMuni(name);
+    setProvinceMode(false);
+    setHidden(new Set(rows.map((r) => r.name).filter((n) => n !== name)));
   };
+
+  const chartFilterLabel = chartMuni
+    ? <span className="badge bg-primary ms-2">Filtered: {chartMuni}</span>
+    : <span className="badge bg-secondary ms-2">Province-wide</span>;
 
   /* ---- Registered producers ---- */
   const topRegistered = registeredData.reduce((best, r) => (r.registered > best.registered ? r : best), registeredData[0] || null);
@@ -347,8 +342,11 @@ export default function MunicipalityAnalytics() {
         <Col lg={6}>
           <Card className="encoder-card h-100">
             <Card.Header>
-              <div className="admin-card-head">
-                <h5 className="admin-card-head-title">Method Breakdown</h5>
+              <div className="admin-card-head d-flex align-items-center justify-content-between w-100">
+                <div>
+                  <h5 className="admin-card-head-title mb-0">Method Breakdown</h5>
+                  {chartFilterLabel}
+                </div>
               </div>
             </Card.Header>
             <Card.Body>
@@ -411,7 +409,10 @@ export default function MunicipalityAnalytics() {
           <Card className="encoder-card h-100">
             <Card.Header>
               <div className="admin-card-head">
-                <h5 className="admin-card-head-title">Producer Gender Distribution</h5>
+                <div>
+                  <h5 className="admin-card-head-title">Producer Gender Distribution</h5>
+                  {chartFilterLabel}
+                </div>
               </div>
             </Card.Header>
             <Card.Body>

@@ -647,12 +647,36 @@ def supply_demand():
     })
 
 
+@admin_api_bp.route("/months", methods=["GET"])
+@login_required
+def admin_months():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+    rows = (
+        db.session.query(
+            func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
+        )
+        .filter(ProductionRecord.status == "approved")
+        .distinct()
+        .order_by(func.to_char(ProductionRecord.record_date, "YYYY-MM"))
+        .all()
+    )
+    months = [r.month for r in rows if r.month]
+    now = date.today()
+    current_ym = f"{now.year:04d}-{now.month:02d}"
+    if current_ym not in months:
+        months.append(current_ym)
+    months = sorted(set(months))
+    return jsonify({"months": months})
+
+
 @admin_api_bp.route("/trends", methods=["GET"])
 @login_required
 def trends():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
 
+    month = request.args.get("month")
     latest = (
         db.session.query(func.max(ProductionRecord.record_date))
         .filter(ProductionRecord.status == "approved")
@@ -660,6 +684,66 @@ def trends():
     )
     if latest is None:
         return jsonify({"trend": [], "municipalities": [], "period": None})
+
+    if month:
+        try:
+            month_start = datetime.strptime(month, "%Y-%m").date()
+            if month_start.month == 12:
+                month_end = date(month_start.year + 1, 1, 1)
+            else:
+                month_end = date(month_start.year, month_start.month + 1, 1)
+        except (TypeError, ValueError):
+            return jsonify({"error": "month must be in YYYY-MM format."}), 400
+        labels, values, _ = _monthly_aggregates(None, month_start, month_end - timedelta(days=1))
+        trend = [
+            {"month": labels[i], "total": round(values[i] / 1000, 2)}
+            for i in range(len(labels))
+        ]
+        by_muni = (
+            db.session.query(
+                Municipality.id,
+                Municipality.name,
+                func.sum(ProductionRecord.production_volume).label("v"),
+            )
+            .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+            .filter(ProductionRecord.status == "approved")
+            .filter(ProductionRecord.record_date >= month_start)
+            .filter(ProductionRecord.record_date < month_end)
+            .group_by(Municipality.id, Municipality.name)
+            .all()
+        )
+        by_muni_prev = (
+            db.session.query(
+                Municipality.id,
+                func.sum(ProductionRecord.production_volume).label("v"),
+            )
+            .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+            .filter(ProductionRecord.status == "approved")
+            .filter(ProductionRecord.record_date >= month_start - timedelta(days=365))
+            .filter(ProductionRecord.record_date < month_start)
+            .group_by(Municipality.id)
+            .all()
+        )
+        prev_map = {r.id: float(r.v or 0) for r in by_muni_prev}
+        municipalities = []
+        for r in by_muni:
+            current_mt = round(float(r.v or 0) / 1000, 2)
+            previous_mt = round(prev_map.get(r.id, 0) / 1000, 2)
+            change_pct = None
+            if previous_mt:
+                change_pct = round(((current_mt - previous_mt) / previous_mt) * 100, 1)
+            municipalities.append({
+                "name": r.name,
+                "current": current_mt,
+                "previous": previous_mt,
+                "changePct": change_pct,
+            })
+        municipalities.sort(key=lambda x: x["current"], reverse=True)
+        return jsonify({
+            "trend": trend,
+            "municipalities": municipalities,
+            "period": {"start": month_start.isoformat(), "end": (month_end - timedelta(days=1)).isoformat()},
+        })
 
     end = latest
     start = end - timedelta(days=365)

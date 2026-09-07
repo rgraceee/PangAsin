@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Spinner, Alert, Button, Card, Row, Col, Modal } from 'react-bootstrap';
 import { getRecords, getRecord, deleteRecord, getEncoderBarangays, submitRecord } from '../../services/dataService';
-import { Eye, Pencil, Trash2, Send } from 'lucide-react';
+import { Eye, Pencil, Trash2, Send, Plus } from 'lucide-react';
 import RecordStatusBadge from './RecordStatusBadge';
 
 const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
@@ -35,7 +35,7 @@ const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) 
   </Button>
 );
 
-export default function RecordsTable({ onEdit, refreshKey = 0 }) {
+export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
   const [records, setRecords] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const [filters, setFilters] = useState({ barangay_id: '', status: '' });
@@ -137,7 +137,13 @@ export default function RecordsTable({ onEdit, refreshKey = 0 }) {
               ))}
             </select>
           </Col>
-          <Col md={4} className="d-flex gap-2 align-items-center">
+          <Col md={4} className="d-flex gap-2 align-items-center justify-content-end">
+            {onAdd && (
+              <Button variant="primary" size="sm" onClick={onAdd}>
+                <Plus size={14} strokeWidth={2.5} className="me-1" />
+                Add Record
+              </Button>
+            )}
             <span className="text-muted small">{records.length} record{records.length === 1 ? '' : 's'}</span>
             {hasFilter && (
               <Button variant="link" size="sm" onClick={handleClearFilters}>Clear filters</Button>

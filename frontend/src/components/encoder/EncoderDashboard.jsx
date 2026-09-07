@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, Plus } from 'lucide-react';
-import { getStats } from '../../services/dataService';
+import { getStats, getEncoderMonths } from '../../services/dataService';
 import AdminKpiCard from '../admin/AdminKpiCard';
 import PageHeader from '../admin/PageHeader';
 import RecordsTable from './RecordsTable';
@@ -29,24 +29,6 @@ function colorFor(name, names) {
   const idx = names.indexOf(name);
   if (idx < 0) return BRAND_PALETTE[0];
   return BRAND_PALETTE[idx % BRAND_PALETTE.length];
-}
-
-function periodThisYear() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  return { start, end: now };
-}
-
-function periodLast12Months() {
-  const end = new Date();
-  const start = new Date(end);
-  start.setMonth(start.getMonth() - 11);
-  start.setDate(1);
-  return { start, end };
-}
-
-function periodAllTime() {
-  return { start: null, end: null };
 }
 
 function toIsoDate(d) {
@@ -104,8 +86,8 @@ function KPICluster({ title, accent, actions, children }) {
 export default function EncoderDashboard() {
   const { user } = useOutletContext();
 
-  const [periodKey, setPeriodKey] = useState('thisYear');
-  const [period, setPeriod] = useState(periodThisYear());
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [months, setMonths] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -113,24 +95,20 @@ export default function EncoderDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  const handlePeriodChange = (e) => {
-    const key = e.target.value;
-    setPeriodKey(key);
-    if (key === 'thisYear') setPeriod(periodThisYear());
-    else if (key === 'last12') setPeriod(periodLast12Months());
-    else setPeriod(periodAllTime());
-  };
+  useEffect(() => {
+    getEncoderMonths()
+      .then((res) => setMonths(res.months || []))
+      .catch(() => {});
+  }, []);
 
   const loadStats = useCallback(() => {
     setLoading(true);
     setError(null);
-    const params = { start: toIsoDate(period.start), end: toIsoDate(period.end) };
-    if (!params.start) delete params.start;
-    if (!params.end) delete params.end;
+    const params = selectedMonth ? { month: selectedMonth } : {};
     getStats(params)
       .then((s) => { setStats(s); setLoading(false); })
       .catch((err) => { setError(err.message || 'Failed to load dashboard.'); setLoading(false); });
-  }, [period]);
+  }, [selectedMonth]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
@@ -198,12 +176,6 @@ export default function EncoderDashboard() {
         variant="main"
         title={stats?.municipality_name || user?.municipality_name || 'Encoder Dashboard'}
         subtitle={`Welcome, ${user?.name}. Record, review, and manage your municipality's production data.`}
-        action={
-          <Button className="admin-page-hero-btn" onClick={handleAdd}>
-            <Plus size={16} strokeWidth={2.5} className="me-1" />
-            Add Record
-          </Button>
-        }
       />
 
       {error && <Alert variant="danger">{error}</Alert>}
@@ -213,18 +185,28 @@ export default function EncoderDashboard() {
         accent="ocean"
         actions={
           <div className="d-flex align-items-center gap-2">
-            <label className="small fw-semibold text-muted" htmlFor="encoder-period">Period</label>
+            <label className="small fw-semibold text-muted" htmlFor="encoder-month">Period</label>
             <select
-              id="encoder-period"
+              id="encoder-month"
               className="form-select form-select-sm admin-demog-select"
-              value={periodKey}
-              onChange={handlePeriodChange}
-              aria-label="Select period"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              aria-label="Select month"
             >
-              <option value="thisYear">This Year</option>
-              <option value="last12">Last 12 Months</option>
-              <option value="allTime">All Time</option>
+              {months.map((m) => (
+                <option key={m} value={m}>
+                  {(() => {
+                    const [y, mo] = m.split('-');
+                    const d = new Date(Number(y), Number(mo) - 1);
+                    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+                  })()}
+                </option>
+              ))}
             </select>
+            <Button className="admin-page-hero-btn" onClick={handleAdd}>
+              <Plus size={16} strokeWidth={2.5} className="me-1" />
+              Add Record
+            </Button>
           </div>
         }
       >
@@ -366,7 +348,7 @@ export default function EncoderDashboard() {
       </Row>
 
       <div id="encoder-submissions">
-        <RecordsTable onEdit={handleEdit} refreshKey={recordsRefreshKey} />
+        <RecordsTable onEdit={handleEdit} onAdd={handleAdd} refreshKey={recordsRefreshKey} />
       </div>
 
       {showForm && (

@@ -154,21 +154,12 @@ export default function GenerateReports() {
         variant="sub"
         title="Generate Reports"
         subtitle="Create summary reports for export based on the production records."
-        action={
-          <Button className="admin-page-hero-btn" onClick={handleGenerate} disabled={creating}>
-            {creating ? (
-              <><Spinner as="span" animation="border" size="sm" className="me-2" />Generating&hellip;</>
-            ) : (
-              <><Download size={16} strokeWidth={2.2} className="me-2" />Generate</>
-            )}
-          </Button>
-        }
       />
 
       <Card className="encoder-card mb-3">
         <Card.Header as="h5">Create a New Report</Card.Header>
         <Card.Body>
-          <Row className="g-3">
+          <Row className="g-3 align-items-end">
             <Col md={3}>
               <Form.Label className="small fw-bold text-uppercase text-muted">Report Type</Form.Label>
               <Form.Select value={reportType} onChange={(e) => setReportType(e.target.value)}>
@@ -206,6 +197,15 @@ export default function GenerateReports() {
                 </Col>
               </>
             )}
+            <Col md={2} className="text-end">
+              <Button className="admin-page-hero-btn w-100" onClick={handleGenerate} disabled={creating}>
+                {creating ? (
+                  <><Spinner as="span" animation="border" size="sm" className="me-2" />Generating&hellip;</>
+                ) : (
+                  <><Download size={16} strokeWidth={2.2} className="me-2" />Generate</>
+                )}
+              </Button>
+            </Col>
           </Row>
           {error && <Alert variant="danger" className="mt-3 mb-0">{error}</Alert>}
         </Card.Body>

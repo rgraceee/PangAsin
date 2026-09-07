@@ -3,9 +3,7 @@ import { Alert, Spinner } from 'react-bootstrap';
 import PageHeader from './admin/PageHeader';
 import Reveal from './Reveal';
 import MunicipalityMapSection from './MunicipalityMapSection';
-import MunicipalityProductionSection from './MunicipalityProductionSection';
 import SupplyDemandSection from './SupplyDemandSection';
-import ProducerDemographicsSection from './ProducerDemographicsSection';
 import MunicipalityDetailPanel from './MunicipalityDetailPanel';
 import { loadAllMockData } from '../services/dataService';
 
@@ -56,15 +54,7 @@ export default function GuestDashboard() {
           </Reveal>
 
           <Reveal>
-            <MunicipalityProductionSection />
-          </Reveal>
-
-          <Reveal>
             <SupplyDemandSection />
-          </Reveal>
-
-          <Reveal>
-            <ProducerDemographicsSection />
           </Reveal>
 
           <MunicipalityDetailPanel

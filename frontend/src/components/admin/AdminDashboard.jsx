@@ -7,7 +7,7 @@ import {
 import L from 'leaflet';
 import { Boxes, LayoutGrid, Ruler, Hourglass, Scale, CalendarCheck, ChartLine, MapPin } from 'lucide-react';
 import {
-  getAdminStats, getAdminTrends,
+  getAdminStats, getAdminTrends, getAdminMonths,
   getMunicipalityOutlook, getAdminSupplyDemand,
 } from '../../services/dataService';
 import { BRAND, oceanScale, OCEAN_LIGHT } from '../../theme/colors';
@@ -67,13 +67,27 @@ export default function AdminDashboard({ user }) {
   const [supplyDemand, setSupplyDemand] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [adminMonths, setAdminMonths] = useState([]);
+  const [selectedAdminMonth, setSelectedAdminMonth] = useState(() => new Date().toISOString().slice(0, 7));
+
+  useEffect(() => {
+    getAdminMonths()
+      .then((res) => {
+        const months = res.months || [];
+        setAdminMonths(months);
+        if (months.length > 0 && !months.includes(selectedAdminMonth)) {
+          setSelectedAdminMonth(months[months.length - 1]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     Promise.all([
       getAdminStats(),
-      getAdminTrends().catch(() => ({ trend: [], municipalities: [] })),
+      getAdminTrends({ month: selectedAdminMonth || undefined }).catch(() => ({ trend: [], municipalities: [] })),
       getMunicipalityOutlook().catch(() => ({ municipalities: [] })),
       getAdminSupplyDemand().catch(() => null),
     ])
@@ -86,7 +100,7 @@ export default function AdminDashboard({ user }) {
         setLoading(false);
       })
       .catch((err) => { setError(err.message); setLoading(false); });
-  }, []);
+  }, [selectedAdminMonth]);
 
   const muniData = useMemo(() => {
     if (!stats) return [];
@@ -173,9 +187,28 @@ export default function AdminDashboard({ user }) {
             <Card.Header>
               <div className="admin-card-head">
                 <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><ChartLine size={16} strokeWidth={2} /></span>
-                <div>
-                  <h5 className="admin-card-head-title">Province-Wide Production Trend (MT / month)</h5>
-                  {period ? <span className="fw-normal text-muted small ms-1">({period.start} to {period.end})</span> : null}
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <div>
+                    <h5 className="admin-card-head-title">Province-Wide Production Trend (MT / month)</h5>
+                    {period ? <span className="fw-normal text-muted small ms-1">({period.start} to {period.end})</span> : null}
+                  </div>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: 'auto' }}
+                    value={selectedAdminMonth}
+                    onChange={(e) => setSelectedAdminMonth(e.target.value)}
+                    aria-label="Select month"
+                  >
+                    {adminMonths.map((m) => (
+                      <option key={m} value={m}>
+                        {(() => {
+                          const [y, mo] = m.split('-');
+                          const d = new Date(Number(y), Number(mo) - 1);
+                          return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+                        })()}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </Card.Header>

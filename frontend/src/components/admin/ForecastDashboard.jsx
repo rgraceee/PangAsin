@@ -306,6 +306,7 @@ export default function ForecastDashboard() {
   const [view, setView] = useState('line');
   const [showBand, setShowBand] = useState(true);
   const [selectedRunId, setSelectedRunId] = useState(null);
+  const [annualTarget, setAnnualTarget] = useState('');
 
   useEffect(() => {
     getAdminMunicipalities()
@@ -377,6 +378,7 @@ export default function ForecastDashboard() {
 
   const chartData = useMemo(() => {
     if (!currentRun || !currentRun.points) return [];
+    const monthlyTarget = annualTarget && Number(annualTarget) > 0 ? Number(annualTarget) / 12 : null;
     return currentRun.points.map((p) => ({
       label: p.period_label,
       production: p.predicted_value,
@@ -385,8 +387,9 @@ export default function ForecastDashboard() {
       lower: p.lower_bound,
       upper: p.upper_bound,
       isForecast: p.is_forecast,
+      target: monthlyTarget != null && p.is_forecast ? monthlyTarget : null,
     }));
-  }, [currentRun]);
+  }, [currentRun, annualTarget]);
 
   const prevChartData = useMemo(() => {
     if (!prevRun || !prevRun.points) return chartData;
@@ -418,6 +421,38 @@ export default function ForecastDashboard() {
   }, []);
 
   const insights = useMemo(() => computeInsights(currentRun, outlook, demandBenchmark), [currentRun, outlook, demandBenchmark]);
+
+  const targetInsight = useMemo(() => {
+    const target = annualTarget && Number(annualTarget) > 0 ? Number(annualTarget) : null;
+    if (!target || !currentRun) return null;
+    const projected = currentRun.projected_total || 0;
+    const projectedMT = projected / 1000;
+    const monthlyTarget = target / 12;
+    const totalForecast = currentRun.points
+      ? currentRun.points.filter((p) => p.is_forecast).reduce((s, p) => s + (p.predicted_value || 0), 0)
+      : 0;
+    const totalForecastMT = totalForecast / 1000;
+    const diff = totalForecastMT - target;
+    const sign = diff >= 0 ? '+' : '';
+    const achievable = diff >= 0;
+    const trend = currentRun.trend_direction || 'stable';
+    const seasonalNote = insights.seasonal.peak !== '—'
+      ? `Seasonally, ${insights.seasonal.low} tends to be the lowest-output month, while ${insights.seasonal.peak} is the peak.`
+      : 'Seasonal pattern data is limited.';
+    const trendNote = trend === 'declining'
+      ? 'The forecast trend is declining, which may make the target harder to reach without intervention.'
+      : trend === 'increasing'
+      ? 'The forecast trend is increasing, supporting target achievability.'
+      : 'The forecast trend is stable.';
+    return {
+      target,
+      monthlyTarget,
+      totalForecastMT,
+      diff,
+      achievable,
+      text: `Annual target of ${target.toLocaleString()} MT (${monthlyTarget.toLocaleString()} MT/month). Projected forecast totals ${totalForecastMT.toLocaleString()} MT (${sign}${diff.toLocaleString()} MT vs target). ${trendNote} ${seasonalNote} Target looks ${achievable ? 'achievable' : 'challenging'}.`,
+    };
+  }, [annualTarget, currentRun, insights]);
 
   const yoyAbsMax = useMemo(() => {
     const peaks = yoyRows.map((m) => Math.abs(m.changePct || 0));
@@ -452,15 +487,6 @@ export default function ForecastDashboard() {
         variant="sub"
         title="Forecasting &amp; Production Outlook"
         subtitle="Province-wide and municipality-level production projections anchored to validated historical records."
-        action={
-          <Button className="admin-page-hero-btn" onClick={handleRun} disabled={running}>
-            {running ? (
-              <><Spinner as="span" animation="border" size="sm" className="me-2" />Forecasting&hellip;</>
-            ) : (
-              <><Zap size={16} strokeWidth={2.5} className="me-2" />Run Forecast</>
-            )}
-          </Button>
-        }
       >
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="fc-muni">Municipality</label>
@@ -484,8 +510,17 @@ export default function ForecastDashboard() {
           </Form.Select>
         </div>
         <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="fc-period">Forecast Period</label>
-          <Form.Control id="fc-period" className="admin-page-hero-input" value="12 months from latest record" readOnly disabled />
+          <label className="admin-page-hero-field" htmlFor="fc-target">Annual Target (MT)</label>
+          <Form.Control
+            id="fc-target"
+            className="admin-page-hero-input"
+            type="number"
+            min="0"
+            step="any"
+            placeholder="e.g. 5000"
+            value={annualTarget}
+            onChange={(e) => setAnnualTarget(e.target.value)}
+          />
         </div>
       </PageHeader>
 
@@ -531,6 +566,13 @@ export default function ForecastDashboard() {
         <Alert variant="warning" className="mb-3">
           <strong>Partial current-year reporting.</strong>{' '}
           {currentRun.note || 'Recent months may be under-reported because the current year is still in progress. The forecast is anchored to the established seasonal pattern.'}
+        </Alert>
+      )}
+
+      {targetInsight && (
+        <Alert variant="info" className="mb-3">
+          <strong>Forecast vs. Target</strong>
+          <div className="mt-2 small">{targetInsight.text}</div>
         </Alert>
       )}
 
@@ -678,6 +720,19 @@ export default function ForecastDashboard() {
                           strokeDasharray="6 4"
                           dot={false}
                           name="Forecast"
+                          connectNulls
+                          isAnimationActive
+                        />
+                      )}
+                      {annualTarget && Number(annualTarget) > 0 && (
+                        <Line
+                          type="monotone"
+                          dataKey="target"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          strokeDasharray="6 4"
+                          dot={false}
+                          name="Target (monthly)"
                           connectNulls
                           isAnimationActive
                         />

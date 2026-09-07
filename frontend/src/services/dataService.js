@@ -123,6 +123,14 @@ export function getEncoderBarangays() {
   return api('/encoder/barangays');
 }
 
+export function getEncoderMonths() {
+  return api('/encoder/months');
+}
+
+export function getAdminMonths() {
+  return api('/admin/months');
+}
+
 export function getRecords(params = {}) {
   const qs = new URLSearchParams(params).toString();
   return api(`/encoder/records${qs ? `?${qs}` : ''}`);

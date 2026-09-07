@@ -367,7 +367,7 @@ def write_pdf(data, filepath):
     h_style = ParagraphStyle("HeadX", parent=styles["Heading2"], fontSize=11, spaceBefore=8, spaceAfter=4)
     small_style = ParagraphStyle(name="SmallX", parent=styles["BodyText"], fontSize=7)
 
-    doc = SimpleDocTemplate(filepath, pagesize=A4)
+    doc = SimpleDocTemplate(filepath, pagesize=landscape(A4))
     story = [Paragraph(data.get("report_title", "Report"), title_style)]
     story.append(Paragraph(f"Generated: {datetime.utcnow().isoformat()}Z", styles["BodyText"]))
     story.append(Spacer(1, 10))
