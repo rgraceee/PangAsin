@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Form, Button, Alert, Container, Row, Col } from 'react-bootstrap';
+import { Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginAPI } from '../services/dataService';
+import loginBg from '../assets/login-bg.svg';
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -30,45 +31,63 @@ export default function Login({ onLogin }) {
 
   return (
     <div className="encoder-login-wrap">
-      <Container>
-        <Row className="justify-content-center">
-          <Col md={5} lg={4}>
-            <div className="encoder-login-card">
-              <h1 className="encoder-login-title">PangAsin</h1>
-              <p className="encoder-login-sub">Sign in</p>
-              {error && <Alert variant="danger">{error}</Alert>}
-              <Form onSubmit={handleSubmit}>
-                <Form.Group className="mb-3" controlId="loginEmail">
-                  <Form.Label>Email</Form.Label>
-                  <Form.Control
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@pangasin.gov.ph"
-                    required
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3" controlId="loginPassword">
-                  <Form.Label>Password</Form.Label>
-                  <Form.Control
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                  />
-                </Form.Group>
-                <Button type="submit" className="w-100 encoder-login-btn" disabled={loading}>
-                  {loading ? 'Signing in…' : 'Sign In'}
-                </Button>
-              </Form>
-              <div className="encoder-login-footer">
-                <Link to="/">← Back to public dashboard</Link>
-              </div>
-            </div>
-          </Col>
-        </Row>
-      </Container>
+      <aside className="encoder-login-image-panel" aria-hidden="true">
+        <div className="encoder-login-image-bg" style={{ backgroundImage: `url(${loginBg})` }} />
+        <div className="encoder-login-image-overlay" />
+        <div className="encoder-login-image-content">
+          <img src="/static/brand/PangAsin_Logo.png" alt="PangAsin" className="login-logo" />
+          <h1 className="encoder-login-image-title">PangAsin</h1>
+          <p className="encoder-login-image-tagline">
+            The Accelerating Salt Research and Innovation (ASIN) Center at Pangasinan State University
+            supports the Philippine salt industry through research, innovation, and data-driven
+            planning under RA 11985.
+          </p>
+        </div>
+      </aside>
+
+      <main className="encoder-login-form-panel">
+        <div className="encoder-login-card">
+          <div className="encoder-login-eyebrow">Secure sign in</div>
+          <h2 className="encoder-login-title">Welcome back</h2>
+          <p className="encoder-login-sub">
+            Sign in with your encoder or admin account to continue.
+          </p>
+
+          {error && <Alert variant="danger">{error}</Alert>}
+
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3" controlId="loginEmail">
+              <Form.Label className="encoder-login-field-label">Email</Form.Label>
+              <Form.Control
+                type="email"
+                className="encoder-login-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@pangasin.gov.ph"
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-4" controlId="loginPassword">
+              <Form.Label className="encoder-login-field-label">Password</Form.Label>
+              <Form.Control
+                type="password"
+                className="encoder-login-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </Form.Group>
+            <Button type="submit" className="w-100 encoder-login-btn" disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign In'}
+            </Button>
+          </Form>
+
+          <div className="encoder-login-footer">
+            <Link to="/">← Back to public dashboard</Link>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
