@@ -236,7 +236,8 @@ def create_record():
         submitted_by=current_user.id,
         barangay_id=data["barangay_id"],
         record_date=record_date,
-        status="draft",
+        status="pending",
+        submitted_at=datetime.utcnow(),
     )
     _allocate(record, data)
     record.registered_producers = (record.male_producers or 0) + (record.female_producers or 0)

@@ -293,13 +293,13 @@ function MunicipalityMap({ muniData }) {
     const byName = Object.fromEntries(muniData.map((m) => [m.name, m]));
     const scaledFor = (value) => oceanScale(value, min, max);
 
-    const map = L.map(mapRef.current).setView([16.1, 119.95], 9);
+    const map = L.map(mapRef.current, {
+      minZoom: 9,
+      maxZoom: 15,
+      maxBoundsViscosity: 1.0,
+      attributionControl: false,
+    }).setView([16.1, 120.0], 10);
     mapInstanceRef.current = map;
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 18,
-    }).addTo(map);
 
     geoJsonLayerRef.current = L.geoJSON(geojson, {
       style: (feature) => {
@@ -357,7 +357,9 @@ function MunicipalityMap({ muniData }) {
     }).addTo(map);
 
     if (geoJsonLayerRef.current) {
-      map.fitBounds(geoJsonLayerRef.current.getBounds(), { padding: [24, 24] });
+      const provinceBounds = geoJsonLayerRef.current.getBounds();
+      map.setMaxBounds(provinceBounds.pad(0.06));
+      map.fitBounds(provinceBounds, { padding: [20, 20] });
     }
   }, [muniData, min, max, renderPopup]);
 
@@ -393,7 +395,7 @@ function MunicipalityMap({ muniData }) {
             </div>
             <p className="text-muted small mb-0 mt-2">
               Based on total recorded volume from approved production records. Municipal boundaries referenced from
-              NAMRIA / PSA administrative data; base map &copy; OpenStreetMap contributors.
+              NAMRIA / PSA administrative data.
             </p>
           </Card.Body>
         </Card>

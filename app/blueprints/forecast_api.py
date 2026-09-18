@@ -140,8 +140,17 @@ def evaluate_target_route():
 
     forecast_horizon = int(body.get("forecast_horizon") or 12)
 
+    split_method = body.get("split_method") or "equal"
+    if split_method not in ("equal", "seasonal"):
+        return jsonify({"error": "split_method must be 'equal' or 'seasonal'."}), 400
+
     try:
-        result = evaluate_target(municipality_id, float(annual_target), forecast_horizon)
+        result = evaluate_target(
+            municipality_id,
+            float(annual_target),
+            forecast_horizon,
+            split_method=split_method,
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

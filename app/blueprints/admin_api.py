@@ -8,7 +8,6 @@ from app.models.demand_benchmark import DemandBenchmark
 from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
 from app.services.forecast_service import _monthly_aggregates
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
@@ -186,62 +185,11 @@ def list_users():
 def create_user():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
-    data = request.get_json(silent=True) or {}
-
-    errors = []
-    name = (data.get("name") or "").strip()
-    email = (data.get("email") or "").strip().lower()
-    role = (data.get("role") or "encoder").strip()
-    muni_id = data.get("municipality_id")
-    status = (data.get("status") or "active").strip()
-    password = data.get("password") or ""
-
-    if not name:
-        errors.append("name is required.")
-    if not email:
-        errors.append("email is required.")
-    if role != "encoder":
-        errors.append("Only encoder accounts can be created via this endpoint.")
-    if not muni_id:
-        errors.append("municipality_id is required for encoder accounts.")
-    elif not Municipality.query.get(muni_id):
-        errors.append("municipality_id is invalid.")
-    if status not in ("active", "inactive"):
-        errors.append("status must be active or inactive.")
-    if not password or len(password) < 6:
-        errors.append("password is required (min 6 chars).")
-    if email and User.query.filter_by(email=email).first():
-        errors.append("email is already in use.")
-
-    if errors:
-        return jsonify({"errors": errors}), 400
-
-    user = User(
-        name=name,
-        email=email,
-        role="encoder",
-        municipality_id=muni_id,
-        status=status,
-    )
-    user.set_password(password)
-    db.session.add(user)
-    try:
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"error": "Could not create user (email may already exist)."}), 409
-    except Exception:
-        db.session.rollback()
-        return jsonify({"error": "Could not create user. Please try again."}), 500
+    # Encoder accounts are created when a municipality is added; the manual
+    # add-user flow has been removed. New accounts cannot be created here.
     return jsonify({
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "role": user.role,
-        "municipality_id": user.municipality_id,
-        "municipality_name": user.municipality.name if user.municipality else None,
-        "status": user.status,
-    }), 201
+        "error": "Creating encoder accounts directly is no longer supported. Accounts are created when a municipality is added."
+    }), 400
 
 
 @admin_api_bp.route("/users/<int:user_id>", methods=["PATCH"])

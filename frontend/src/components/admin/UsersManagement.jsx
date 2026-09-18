@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Spinner, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
-import { getAdminUsers, getAdminMunicipalities, createAdminUser, updateAdminUser } from '../../services/dataService';
-import { Pencil, Power, UserPlus } from 'lucide-react';
+import { getAdminUsers, getAdminMunicipalities, updateAdminUser } from '../../services/dataService';
+import { Pencil, Power } from 'lucide-react';
 import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
 
@@ -13,7 +13,7 @@ export default function UsersManagement() {
   const [filters, setFilters] = useState({ role: '', status: '', municipality_id: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
     name: '', email: '', password: '', municipality_id: '', status: 'active',
@@ -42,13 +42,6 @@ export default function UsersManagement() {
   const handleFilter = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
   const handleClear = () => setFilters({ role: '', status: '', municipality_id: '' });
 
-  const openAdd = () => {
-    setEditing(null);
-    setForm({ name: '', email: '', password: '', municipality_id: '', status: 'active' });
-    setFormError(null);
-    setShowAdd(true);
-  };
-
   const openEdit = (u) => {
     setEditing(u);
     setForm({
@@ -59,7 +52,7 @@ export default function UsersManagement() {
       status: u.status,
     });
     setFormError(null);
-    setShowAdd(true);
+    setShowEdit(true);
   };
 
   const handleSubmit = async (e) => {
@@ -67,29 +60,15 @@ export default function UsersManagement() {
     setFormError(null);
     setSaving(true);
     try {
-      if (editing) {
-        const payload = {
-          name: form.name,
-          status: form.status,
-          municipality_id: form.municipality_id || null,
-        };
-        if (form.password) payload.password = form.password;
-        await updateAdminUser(editing.id, payload);
-      } else {
-        if (!form.municipality_id) {
-          setFormError('Municipality is required for encoder accounts.');
-          setSaving(false);
-          return;
-        }
-        await createAdminUser({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          municipality_id: form.municipality_id,
-          status: form.status,
-        });
-      }
-      setShowAdd(false);
+      if (!editing) return;
+      const payload = {
+        name: form.name,
+        status: form.status,
+        municipality_id: form.municipality_id || null,
+      };
+      if (form.password) payload.password = form.password;
+      await updateAdminUser(editing.id, payload);
+      setShowEdit(false);
       load(filters);
     } catch (err) {
       if (err.data?.errors) setFormError(err.data.errors.join(', '));
@@ -117,12 +96,7 @@ export default function UsersManagement() {
         id="admin-users"
         variant="sub"
         title="User Management"
-        subtitle="Manage admin and encoder accounts, roles, and access."
-        action={
-          <Button className="admin-page-hero-btn" onClick={openAdd}>
-            <UserPlus size={16} strokeWidth={2.2} className="me-2" />Add Encoder
-          </Button>
-        }
+        subtitle="Manage admin and encoder accounts, roles, and access. Encoder accounts are created when a municipality is added; new accounts cannot be created from this screen."
       >
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="um-role">Role</label>
@@ -205,9 +179,9 @@ export default function UsersManagement() {
         )}
       </Card.Body>
 
-      <Modal show={showAdd} onHide={() => setShowAdd(false)} centered>
+      <Modal show={showEdit} onHide={() => setShowEdit(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>{editing ? 'Edit User' : 'Add Encoder'}</Modal.Title>
+          <Modal.Title>Edit User</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
@@ -216,31 +190,16 @@ export default function UsersManagement() {
               <Form.Label>Name <span className="text-danger">*</span></Form.Label>
               <Form.Control value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </Form.Group>
-            {!editing && (
-              <>
-                <Form.Group className="mb-3">
-                  <Form.Label>Email <span className="text-danger">*</span></Form.Label>
-                  <Form.Control type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label>Password <span className="text-danger">*</span></Form.Label>
-                  <Form.Control type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
-                  <Form.Text className="text-muted">Minimum 6 characters.</Form.Text>
-                </Form.Group>
-              </>
-            )}
-            {editing && (
-              <Form.Group className="mb-3">
-                <Form.Label>Reset password (optional)</Form.Label>
-                <Form.Control type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to keep current password" />
-              </Form.Group>
-            )}
             <Form.Group className="mb-3">
-              <Form.Label>Municipality <span className="text-danger">*</span></Form.Label>
+              <Form.Label>Reset password (optional)</Form.Label>
+              <Form.Control type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to keep current password" />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Municipality {editing?.role === 'encoder' && <span className="text-danger">*</span>}</Form.Label>
               <Form.Select
                 value={form.municipality_id}
                 onChange={(e) => setForm({ ...form, municipality_id: e.target.value })}
-                required={!editing || (editing && editing.role === 'encoder')}
+                required={editing?.role === 'encoder'}
               >
                 <option value="">Select municipality…</option>
                 {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -255,9 +214,9 @@ export default function UsersManagement() {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => setShowEdit(false)}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving…' : (editing ? 'Save Changes' : 'Create Encoder')}
+              {saving ? 'Saving…' : 'Save Changes'}
             </Button>
           </Modal.Footer>
         </Form>

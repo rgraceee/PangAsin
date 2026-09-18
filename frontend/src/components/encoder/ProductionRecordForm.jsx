@@ -454,7 +454,7 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
               disabled={saving || approved || !ageValid}
               className="encoder-btn-submit"
             >
-              {saving ? 'Saving…' : (isEdit ? 'Save Changes' : 'Save as Draft')}
+              {saving ? 'Saving…' : 'Submit Record'}
             </Button>
           )}
         </Modal.Footer>

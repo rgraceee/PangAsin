@@ -224,8 +224,9 @@ export function getReport(id) {
   return api(`/admin/reports/${id}`);
 }
 
-export function getReportDownloadUrl(id) {
-  return `/api/admin/reports/${id}/download`;
+export function getReportDownloadUrl(id, format) {
+  const base = `/api/admin/reports/${id}/download`;
+  return format ? `${base}?format=${format}` : base;
 }
 
 export function deleteReport(id) {

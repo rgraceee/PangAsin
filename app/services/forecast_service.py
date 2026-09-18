@@ -507,43 +507,41 @@ def get_municipality_outlook():
     return results
 
 
-def evaluate_target(municipality_id: Optional[int], annual_target: float, forecast_horizon: int = 12):
-    """Compute month-specific target weights from historical data and evaluate against forecast.
+def evaluate_target(
+    municipality_id: Optional[int],
+    annual_target: float,
+    forecast_horizon: int = 12,
+    split_method: str = "equal",
+):
+    """Compute month-specific target weights and evaluate against forecast.
+
+    split_method controls how the annual target is spread across months:
+    - "equal": flat 1/12 per month.
+    - "seasonal": Pangasinan's dry-season peak (roughly March–May) /
+      wet-season low salt production pattern.
 
     Returns a dict with monthly targets, monthly forecasts, totals, variance,
     achievability, and narrative insights.
     """
-    raw_weights = [0.0] * 12
-    q = (
-        ProductionRecord.query
-        .filter(ProductionRecord.status == "approved")
-        .filter(ProductionRecord.production_volume > 0)
-    )
-    if municipality_id is not None:
-        q = q.filter(ProductionRecord.municipality_id == municipality_id)
-
-    rows = q.with_entities(
-        db.func.extract("month", ProductionRecord.record_date).label("month"),
-        db.func.sum(ProductionRecord.production_volume).label("total_volume"),
-        db.func.count(ProductionRecord.id).label("count"),
-    ).group_by(db.text("1")).all()
-
-    monthly_totals = {}
-    monthly_counts = {}
-    for r in rows:
-        m = int(r.month) - 1
-        monthly_totals[m] = float(r.total_volume or 0)
-        monthly_counts[m] = int(r.count or 0)
-
-    for m in range(12):
-        if monthly_counts.get(m, 0) > 0:
-            raw_weights[m] = monthly_totals[m] / monthly_counts[m]
-
-    total_weight = sum(raw_weights)
-    if total_weight <= 0:
-        raw_weights = [1.0 / 12.0] * 12
+    if split_method == "seasonal":
+        season_profile = [
+            0.10,  # Jan  — early dry season
+            0.085,  # Feb  — dry season builds
+            0.125,  # Mar  — dry-season peak starts (~Mar–May)
+            0.135,  # Apr  — dry-season peak
+            0.125,  # May  — dry-season peak tapers
+            0.07,  # Jun  — wet season sets in (low)
+            0.055,  # Jul  — wet season
+            0.05,  # Aug  — wet-season low
+            0.05,  # Sep  — wet-season low
+            0.055,  # Oct  — wet season eases
+            0.06,  # Nov  — recovery begins
+            0.09,  # Dec  — moderate rise
+        ]
+        total_weight = sum(season_profile)
+        raw_weights = [w / total_weight for w in season_profile]
     else:
-        raw_weights = [w / total_weight for w in raw_weights]
+        raw_weights = [1.0 / 12.0] * 12
 
     forecast_labels = []
     forecast_values = []
@@ -566,7 +564,8 @@ def evaluate_target(municipality_id: Optional[int], annual_target: float, foreca
         forecast_labels = [p.period_label for p in forecast_points[:forecast_horizon]]
         forecast_values = [float(p.predicted_value or 0) for p in forecast_points[:forecast_horizon]]
 
-    monthly_targets = [annual_target * w for w in raw_weights[:forecast_horizon]]
+    month_weights = [raw_weights[m % 12] for m in range(forecast_horizon)]
+    monthly_targets = [annual_target * w for w in month_weights]
     total_target = sum(monthly_targets)
     total_projected = sum(forecast_values) if forecast_values else 0.0
     variance = total_projected - total_target
@@ -672,5 +671,5 @@ def evaluate_target(municipality_id: Optional[int], annual_target: float, foreca
         "above_months": above_months,
         "recommendations": recommendations,
         "narrative": narrative,
-        "weights": [float(w) for w in raw_weights[:forecast_horizon]],
+        "weights": [float(w) for w in month_weights],
     }

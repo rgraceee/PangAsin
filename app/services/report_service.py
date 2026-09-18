@@ -107,6 +107,195 @@ def build_municipality_data(municipality_id, start, end):
     }
 
 
+def build_production_data(municipality_id, barangay_id, start, end):
+    """Production-focused report across province, municipality, or barangay scope."""
+    if barangay_id is not None:
+        barangay = db.session.get(Barangay, barangay_id)
+        prefix = barangay.name if barangay else f"Barangay #{barangay_id}"
+        muni_name = barangay.municipality.name if barangay and barangay.municipality else None
+
+        q = db.session.query(
+            Barangay.name.label("barangay"),
+            func.sum(ProductionRecord.production_volume).label("total_volume"),
+            func.count(ProductionRecord.id).label("record_count"),
+            func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
+            func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
+        ).join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
+        q = q.filter(ProductionRecord.barangay_id == barangay_id)
+        if start:
+            q = q.filter(ProductionRecord.record_date >= start)
+        if end:
+            q = q.filter(ProductionRecord.record_date <= end)
+        rows = q.group_by(Barangay.name).all()
+
+        total_volume = sum(float(r.total_volume or 0) for r in rows)
+        return {
+            "report_title": f"{prefix} Production Summary",
+            "municipality_name": muni_name,
+            "by_barangay": [
+                {
+                    "barangay": r.barangay,
+                    "production_kg": round(float(r.total_volume or 0), 2),
+                    "production_mt": _volume_mt(r.total_volume),
+                    "record_count": r.record_count,
+                    "total_salt_beds": int(r.total_beds or 0),
+                    "total_area_sqm": round(float(r.total_area or 0), 2),
+                }
+                for r in rows
+            ],
+            "total_production_mt": _volume_mt(total_volume),
+        }
+
+    if municipality_id is not None:
+        muni = db.session.get(Municipality, municipality_id)
+        prefix = muni.name if muni else f"Municipality #{municipality_id}"
+
+        q = db.session.query(
+            Barangay.name.label("barangay"),
+            func.sum(ProductionRecord.production_volume).label("total_volume"),
+            func.count(ProductionRecord.id).label("record_count"),
+            func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
+            func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
+        ).join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
+        q = q.filter(ProductionRecord.municipality_id == municipality_id)
+        if start:
+            q = q.filter(ProductionRecord.record_date >= start)
+        if end:
+            q = q.filter(ProductionRecord.record_date <= end)
+        rows = q.group_by(Barangay.name).all()
+
+        total_volume = sum(float(r.total_volume or 0) for r in rows)
+        return {
+            "report_title": f"{prefix} Production Summary",
+            "municipality_name": muni.name if muni else None,
+            "by_barangay": [
+                {
+                    "barangay": r.barangay,
+                    "production_kg": round(float(r.total_volume or 0), 2),
+                    "production_mt": _volume_mt(r.total_volume),
+                    "record_count": r.record_count,
+                    "total_salt_beds": int(r.total_beds or 0),
+                    "total_area_sqm": round(float(r.total_area or 0), 2),
+                }
+                for r in rows
+            ],
+            "total_production_mt": _volume_mt(total_volume),
+        }
+
+    q = db.session.query(
+        Municipality.id,
+        Municipality.name,
+        func.sum(ProductionRecord.production_volume).label("total_volume"),
+        func.count(ProductionRecord.id).label("record_count"),
+        func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
+        func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
+    ).join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+    if start:
+        q = q.filter(ProductionRecord.record_date >= start)
+    if end:
+        q = q.filter(ProductionRecord.record_date <= end)
+    rows = q.group_by(Municipality.id, Municipality.name).all()
+
+    total_volume = sum(float(r.total_volume or 0) for r in rows)
+    labels, values, _ = _monthly_aggregates(None, start, end) if start and end else ([], [], [])
+
+    return {
+        "report_title": "Provincial Production Summary",
+        "by_municipality": [
+            {
+                "municipality": r.name,
+                "production_kg": round(float(r.total_volume or 0), 2),
+                "production_mt": _volume_mt(r.total_volume),
+                "record_count": r.record_count,
+                "total_salt_beds": int(r.total_beds or 0),
+                "total_area_sqm": round(float(r.total_area or 0), 2),
+            }
+            for r in rows
+        ],
+        "monthly_trend": [
+            {"month": labels[i], "production_mt": round(values[i] / 1000, 2)}
+            for i in range(len(labels))
+        ],
+        "total_production_mt": _volume_mt(total_volume),
+    }
+
+
+def build_producers_data(municipality_id, barangay_id, start, end):
+    """Producer-focused report across province, municipality, or barangay scope."""
+    producer_cols = (
+        func.sum(ProductionRecord.registered_producers).label("total_registered"),
+        func.sum(ProductionRecord.male_producers).label("total_male"),
+        func.sum(ProductionRecord.female_producers).label("total_female"),
+        func.count(ProductionRecord.id).label("record_count"),
+        func.sum(ProductionRecord.production_volume).label("total_volume"),
+    )
+
+    def apply_date(q):
+        if start:
+            q = q.filter(ProductionRecord.record_date >= start)
+        if end:
+            q = q.filter(ProductionRecord.record_date <= end)
+        return q
+
+    if barangay_id is not None:
+        barangay = db.session.get(Barangay, barangay_id)
+        prefix = barangay.name if barangay else f"Barangay #{barangay_id}"
+        muni_name = barangay.municipality.name if barangay and barangay.municipality else None
+
+        q = apply_date(db.session.query(Barangay.name.label("barangay"), *producer_cols)
+                       .join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
+                       .filter(ProductionRecord.barangay_id == barangay_id))
+        rows = q.group_by(Barangay.name).all()
+        report_title = f"{prefix} Producers Report"
+        table_key = "by_barangay"
+        level_label = "barangay"
+    elif municipality_id is not None:
+        muni = db.session.get(Municipality, municipality_id)
+        prefix = muni.name if muni else f"Municipality #{municipality_id}"
+
+        q = apply_date(db.session.query(Barangay.name.label("barangay"), *producer_cols)
+                       .join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
+                       .filter(ProductionRecord.municipality_id == municipality_id))
+        rows = q.group_by(Barangay.name).all()
+        report_title = f"{prefix} Producers Report"
+        table_key = "by_barangay"
+        level_label = "barangay"
+        muni_name = muni.name if muni else None
+    else:
+        q = apply_date(db.session.query(Municipality.name.label("municipality"), *producer_cols)
+                       .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id))
+        rows = q.group_by(Municipality.name).all()
+        report_title = "Provincial Producers Report"
+        table_key = "by_municipality"
+        level_label = "municipality"
+        muni_name = None
+
+    table_rows = []
+    for r in rows:
+        row = {
+            level_label: r[0],
+            "record_count": r.record_count,
+            "registered_producers": int(r.total_registered or 0),
+            "male_producers": int(r.total_male or 0),
+            "female_producers": int(r.total_female or 0),
+            "production_mt": _volume_mt(r.total_volume),
+        }
+        table_rows.append(row)
+
+    total_registered = sum(row["registered_producers"] for row in table_rows)
+    total_male = sum(row["male_producers"] for row in table_rows)
+    total_female = sum(row["female_producers"] for row in table_rows)
+
+    return {
+        "report_title": report_title,
+        "municipality_name": muni_name,
+        table_key: table_rows,
+        "total_registered_producers": total_registered,
+        "total_male_producers": total_male,
+        "total_female_producers": total_female,
+    }
+
+
 def build_forecast_data():
     outlook = []
     runs = (
@@ -268,10 +457,12 @@ BUILDERS = {
     "data_quality": build_data_quality_data,
     "supply_demand": build_supply_demand_data,
     "gis": build_gis_data,
+    "production": build_production_data,
+    "producers": build_producers_data,
 }
 
 
-def build_report_data(report_type, municipality_id=None, start=None, end=None):
+def build_report_data(report_type, municipality_id=None, barangay_id=None, start=None, end=None):
     fn = BUILDERS.get(report_type)
     if fn is None:
         raise ValueError(f"Unsupported report type: {report_type}")
@@ -279,6 +470,8 @@ def build_report_data(report_type, municipality_id=None, start=None, end=None):
         return fn(municipality_id, start, end)
     if report_type == "provincial":
         return fn(start, end)
+    if report_type in ("production", "producers"):
+        return fn(municipality_id, barangay_id, start, end)
     return fn()
 
 
@@ -338,6 +531,9 @@ def write_excel(data, filepath):
         "total_production_mt",
         "overall_quality_score",
         "total_records",
+        "total_registered_producers",
+        "total_male_producers",
+        "total_female_producers",
     ):
         if extra in data and data[extra] not in (None, ""):
             ws.append([extra.replace("_", " ").title(), data[extra]])
@@ -404,15 +600,107 @@ def write_pdf(data, filepath):
         story.append(Paragraph(f"Overall Quality Score: {data['overall_quality_score']}%", styles["Normal"]))
     if "total_production_mt" in data:
         story.append(Paragraph(f"Total Production: {data['total_production_mt']} MT", styles["Normal"]))
+    if "total_registered_producers" in data:
+        story.append(Paragraph(f"Total Registered Producers: {data['total_registered_producers']}", styles["Normal"]))
+        story.append(Paragraph(
+            f"Male: {data['total_male_producers']} · Female: {data['total_female_producers']}",
+            styles["Normal"],
+        ))
 
     doc.build(story)
 
 
-def generate_report_file(report_type, fmt, municipality_id=None, start=None, end=None, reports_dir=None):
-    data = build_report_data(report_type, municipality_id, start, end)
+def write_docx(data, filepath):
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    doc = Document()
+
+    title = doc.add_heading(data.get("report_title", "Report"), level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    generated = doc.add_paragraph()
+    run = generated.add_run(f"Generated: {datetime.utcnow().isoformat()}Z")
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(0x6B, 0x72, 0x80)
+    generated.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph()
+
+    def set_cell_shading(cell, hex_color):
+        tcPr = cell._tc.get_or_add_tcPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"), "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"), hex_color)
+        tcPr.append(shd)
+
+    def add_table(title, rows):
+        if not rows:
+            return
+        doc.add_heading(title, level=1)
+        headers = list(rows[0].keys())
+        table = doc.add_table(rows=1 + len(rows), cols=len(headers))
+        table.style = "Table Grid"
+        table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+        for j, h in enumerate(headers):
+            cell = table.cell(0, j)
+            cell.text = str(h)
+            set_cell_shading(cell, "1565C8")
+            for p in cell.paragraphs:
+                for r in p.runs:
+                    r.font.size = Pt(9)
+                    r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                    r.bold = True
+
+        for i, row in enumerate(rows, start=1):
+            for j, h in enumerate(headers):
+                cell = table.cell(i, j)
+                cell.text = "" if row.get(h) is None else str(row.get(h, ""))
+                for p in cell.paragraphs:
+                    for r in p.runs:
+                        r.font.size = Pt(9)
+
+        doc.add_paragraph()
+
+    table_sections = [
+        ("Municipalities", "municipalities"),
+        ("By Municipality", "by_municipality"),
+        ("By Barangay", "by_barangay"),
+        ("Monthly Trend", "monthly_trend"),
+        ("Forecast Runs", "runs"),
+    ]
+    for title, key in table_sections:
+        rows = data.get(key)
+        if not rows:
+            continue
+        add_table(title, _flatten_rows(rows))
+
+    if "overall_quality_score" in data:
+        doc.add_paragraph(f"Overall Quality Score: {data['overall_quality_score']}%")
+    if "total_production_mt" in data:
+        doc.add_paragraph(f"Total Production: {data['total_production_mt']} MT")
+    if "total_registered_producers" in data:
+        doc.add_paragraph(f"Total Registered Producers: {data['total_registered_producers']}")
+        doc.add_paragraph(
+            f"Male: {data['total_male_producers']} · Female: {data['total_female_producers']}"
+        )
+
+    doc.save(filepath)
+
+
+def generate_report_file(report_type, fmt, municipality_id=None, barangay_id=None, start=None, end=None, reports_dir=None):
+    data = build_report_data(report_type, municipality_id, barangay_id, start, end)
     if fmt == "excel":
         ext = "xlsx"
         writer = write_excel
+    elif fmt == "docx":
+        ext = "docx"
+        writer = write_docx
     else:
         ext = "pdf"
         writer = write_pdf

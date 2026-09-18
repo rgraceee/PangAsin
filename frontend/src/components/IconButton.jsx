@@ -5,13 +5,14 @@ function colorFromVariant(variant) {
   return String(variant || 'outline-secondary').replace(/^outline-/, '');
 }
 
-export default function IconButton({ icon: Icon, label, variant = 'outline-secondary', onClick, disabled, placement = 'top' }) {
+export default function IconButton({ icon: Icon, label, variant = 'outline-secondary', onClick, disabled, placement = 'top', className = '' }) {
+  const cls = `admin-icon-link text-${colorFromVariant(variant)} p-1 ${className || ''}`.trim();
   return (
     <OverlayTrigger placement={placement} overlay={<Tooltip>{label}</Tooltip>}>
       <Button
         variant="link"
         size="sm"
-        className={`admin-icon-link text-${colorFromVariant(variant)} p-1`}
+        className={cls}
         aria-label={label}
         onClick={onClick}
         disabled={disabled}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Spinner, Alert, Button, Card, Row, Col, Modal } from 'react-bootstrap';
-import { getRecords, getRecord, deleteRecord, getEncoderBarangays, submitRecord } from '../../services/dataService';
-import { Eye, Pencil, Trash2, Send, Plus } from 'lucide-react';
+import { getRecords, getRecord, deleteRecord, getEncoderBarangays } from '../../services/dataService';
+import { Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import RecordStatusBadge from './RecordStatusBadge';
 
 const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
@@ -84,16 +84,6 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
     setActionError(null);
     try {
       await deleteRecord(id);
-      load(filters);
-    } catch (err) {
-      setActionError(err.message);
-    }
-  };
-
-  const handleSubmitForReview = async (id) => {
-    setActionError(null);
-    try {
-      await submitRecord(id);
       load(filters);
     } catch (err) {
       setActionError(err.message);
@@ -208,16 +198,6 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
                           onClick={() => handleDelete(r.id, r.status)}
                         >
                           <Trash2 size={16} strokeWidth={2} />
-                        </IconAction>
-                      )}
-                      {r.status === 'draft' && (
-                        <IconAction
-                          variant="success"
-                          title="Submit for review"
-                          ariaLabel="Submit for review"
-                          onClick={() => handleSubmitForReview(r.id)}
-                        >
-                          <Send size={16} strokeWidth={2} />
                         </IconAction>
                       )}
                     </td>

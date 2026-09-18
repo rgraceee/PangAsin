@@ -9,9 +9,13 @@ REPORT_TYPES = (
     "data_quality",
     "supply_demand",
     "gis",
+    "production",
+    "producers",
 )
 
-REPORT_FORMATS = ("pdf", "excel")
+# Keeps the legacy 'excel' value so older rows stay readable/writable. New
+# reports are stored as 'pdf' (the UI exports via the download endpoint).
+REPORT_FORMATS = ("pdf", "excel", "docx")
 REPORT_STATUSES = ("pending", "generated", "failed")
 
 
@@ -31,6 +35,11 @@ class Report(db.Model):
     municipality_id = db.Column(
         db.Integer,
         db.ForeignKey("municipalities.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    barangay_id = db.Column(
+        db.Integer,
+        db.ForeignKey("barangays.id", ondelete="RESTRICT"),
         nullable=True,
     )
     date_range_start = db.Column(db.Date, nullable=True)
@@ -56,6 +65,7 @@ class Report(db.Model):
 
     requester = db.relationship("User", foreign_keys=[requested_by])
     municipality = db.relationship("Municipality", foreign_keys=[municipality_id])
+    barangay = db.relationship("Barangay", foreign_keys=[barangay_id])
 
     def serialize(self):
         return {
@@ -65,6 +75,8 @@ class Report(db.Model):
             "requester_name": self.requester.name if self.requester else None,
             "municipality_id": self.municipality_id,
             "municipality_name": self.municipality.name if self.municipality else None,
+            "barangay_id": self.barangay_id,
+            "barangay_name": self.barangay.name if self.barangay else None,
             "date_range_start": self.date_range_start.isoformat() if self.date_range_start else None,
             "date_range_end": self.date_range_end.isoformat() if self.date_range_end else None,
             "format": self.format,
