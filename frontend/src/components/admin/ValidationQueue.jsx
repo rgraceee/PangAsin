@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Spinner, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import {
   getAdminRecords, getAdminRecord, getAdminMunicipalities, reviewAdminRecord,
 } from '../../services/dataService';
+import { useToast } from '../Toast';
+import { SkeletonList } from '../Skeleton';
 import RecordStatusBadge from '../encoder/RecordStatusBadge';
 import { Eye } from 'lucide-react';
 import IconButton from '../IconButton';
@@ -20,6 +22,7 @@ function DetailRow({ label, value }) {
 }
 
 export default function ValidationQueue() {
+  const { toastSuccess, toastError } = useToast();
   const [records, setRecords] = useState([]);
   const [munis, setMunis] = useState([]);
   const [filters, setFilters] = useState({
@@ -66,7 +69,11 @@ export default function ValidationQueue() {
   const handleView = (id) => {
     getAdminRecord(id)
       .then((r) => { setDetail(r); setShowDetail(true); setReviewAction(null); setReviewComment(''); })
-      .catch((err) => setError(err.message));
+      .catch((err) => {
+        const message = err.message || 'Could not load this record.';
+        setError(message);
+        toastError(message);
+      });
   };
 
   const openReview = (action) => {
@@ -85,8 +92,15 @@ export default function ValidationQueue() {
       setDetail(updated);
       setReviewAction(null);
       load(filters);
+      if (reviewAction === 'approved') {
+        toastSuccess(`Record #${detail.id} has been approved.`, 'Record approved');
+      } else {
+        toastSuccess(`Record #${detail.id} has been rejected.`, 'Record rejected');
+      }
     } catch (err) {
-      setError(err.message);
+      const message = err.message || 'Could not save the review.';
+      setError(message);
+      toastError(message);
     } finally {
       setSubmitting(false);
     }
@@ -142,7 +156,7 @@ export default function ValidationQueue() {
           </div>
 
         {error && <Alert variant="danger">{error}</Alert>}
-        {loading && <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>}
+        {loading && <div className="text-center py-2"><SkeletonList rows={6} cols={6} /></div>}
         {!loading && records.length === 0 && (
           <Alert variant="info">No records match the current filters.</Alert>
         )}

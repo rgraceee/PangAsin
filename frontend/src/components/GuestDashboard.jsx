@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Spinner } from 'react-bootstrap';
+import { Alert } from 'react-bootstrap';
 import PageHeader from './admin/PageHeader';
 import Reveal from './Reveal';
 import MunicipalityMapSection from './MunicipalityMapSection';
 import SupplyDemandSection from './SupplyDemandSection';
 import { loadAllMockData } from '../services/dataService';
+import { SkeletonCards, SkeletonChart } from './Skeleton';
 
 export default function GuestDashboard() {
   const [data, setData] = useState(null);
@@ -42,8 +43,11 @@ export default function GuestDashboard() {
       </div>
 
       {loading && (
-        <div className="text-center py-5">
-          <Spinner animation="border" variant="primary" />
+        <div className="skeleton-dashboard">
+          <SkeletonCards count={4} />
+          <div className="skeleton-card">
+            <SkeletonChart height={320} />
+          </div>
         </div>
       )}
 

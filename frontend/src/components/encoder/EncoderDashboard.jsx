@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Row, Col, Alert, Spinner, Card, Button } from 'react-bootstrap';
+import { Row, Col, Alert, Card, Button } from 'react-bootstrap';
 import { useOutletContext } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, Plus } from 'lucide-react';
 import { getStats, getEncoderMonths } from '../../services/dataService';
+import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import AdminKpiCard from '../admin/AdminKpiCard';
 import PageHeader from '../admin/PageHeader';
 import RecordsTable from './RecordsTable';
@@ -196,7 +197,17 @@ export default function EncoderDashboard() {
   }, [stats, barangayOrder]);
 
   if (loading && !stats) {
-    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+    return (
+      <div className="skeleton-dashboard">
+        <SkeletonBlock width="45%" height={24} />
+        <SkeletonBlock width="70%" height={13} />
+        <div className="mt-4"><SkeletonCards count={4} /></div>
+        <div className="row g-3 mt-1">
+          <div className="col-lg-7"><div className="skeleton-card"><SkeletonChart height={280} /></div></div>
+          <div className="col-lg-5"><div className="skeleton-card"><SkeletonChart height={280} /></div></div>
+        </div>
+      </div>
+    );
   }
 
   if (error && !stats) {

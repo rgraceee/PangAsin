@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Alert, Spinner, Card, Table } from 'react-bootstrap';
+import { Row, Col, Alert, Card, Table } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { BadgeCheck, ClipboardCheck, Building2 } from 'lucide-react';
 import { getDataQuality } from '../../services/dataService';
 import { BRAND } from '../../theme/colors';
 import AdminKpiCard from './AdminKpiCard';
 import PageHeader from './PageHeader';
+import { SkeletonBlock, SkeletonCards } from '../Skeleton';
 
 function scoreClass(score) {
   if (score >= 85) return 'admin-score-high';
@@ -25,7 +26,14 @@ export default function DataQualityDashboard() {
   }, []);
 
   if (loading) {
-    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+    return (
+      <div className="skeleton-dashboard">
+        <SkeletonBlock width="45%" height={24} />
+        <SkeletonBlock width="70%" height={13} />
+        <div className="mt-4"><SkeletonCards count={3} /></div>
+        <SkeletonBlock width="100%" height={200} />
+      </div>
+    );
   }
   if (error) {
     return <Alert variant="danger">{error}</Alert>;

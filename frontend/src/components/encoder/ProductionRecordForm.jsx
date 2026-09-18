@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Form, Button, Alert, Row, Col, Spinner, Modal } from 'react-bootstrap';
+import { Form, Button, Alert, Row, Col, Modal } from 'react-bootstrap';
 import { getEncoderBarangays, createRecord, updateRecord, getRecord } from '../../services/dataService';
+import { useToast } from '../Toast';
+import { SkeletonForm } from '../Skeleton';
 import { Factory, Users, CheckCircle2 } from 'lucide-react';
 
 const PRODUCTION_METHODS = [
@@ -25,6 +27,7 @@ const STEPS = [
 ];
 
 export default function ProductionRecordForm({ editingId = null, onClose, onSaved }) {
+  const { toastSuccess, toastError } = useToast();
   const isEdit = Boolean(editingId);
   const [step, setStep] = useState(0);
 
@@ -171,12 +174,16 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
         record = await createRecord(form);
       }
       if (onSaved) onSaved(record);
+      toastSuccess(
+        isEdit ? 'The production record has been updated.' : 'The production record has been created.',
+        isEdit ? 'Record updated' : 'Record created',
+      );
     } catch (err) {
-      if (err.status === 409) {
-        setError('A record for this barangay and date already exists.');
-      } else {
-        setError(err.message || 'Failed to save record.');
-      }
+      const message = err.status === 409
+        ? 'A record for this barangay and date already exists.'
+        : (err.message || 'Failed to save record.');
+      setError(message);
+      toastError(message, err.status === 409 ? 'Duplicate record' : 'Could not save');
     } finally {
       setSaving(false);
     }
@@ -419,7 +426,9 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
         </div>
       </Modal.Header>
       <Modal.Body className="encoder-form-body">
-        {loading && <div className="text-center py-4"><Spinner animation="border" variant="primary" /></div>}
+        {loading && (
+          <div className="encoder-form-skeleton"><SkeletonForm /></div>
+        )}
         {error && <Alert variant="danger" className="encoder-form-alert">{error}</Alert>}
         {approved && (
           <Alert variant="warning" className="encoder-form-alert">

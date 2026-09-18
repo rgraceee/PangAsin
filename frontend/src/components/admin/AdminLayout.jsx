@@ -2,12 +2,14 @@ import React, { useRef, useEffect } from 'react';
 import { Container } from 'react-bootstrap';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { logoutAPI } from '../../services/dataService';
+import { useToast } from '../Toast';
 import AdminSidebar from './AdminSidebar';
 
 export default function AdminLayout({ user, setUser }) {
   const navigate = useNavigate();
   const location = useLocation();
   const scrollRef = useRef(null);
+  const { toastInfo } = useToast();
 
   useEffect(() => {
     const target = location.state?.scrollTo;
@@ -28,6 +30,7 @@ export default function AdminLayout({ user, setUser }) {
       // ignore
     }
     if (setUser) setUser(null);
+    toastInfo('You have been signed out.', 'Signed out');
     navigate('/login');
   };
 

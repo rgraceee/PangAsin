@@ -14,6 +14,7 @@ import GenerateReports from './components/admin/GenerateReports';
 import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import { getMe } from './services/dataService';
+import { SkeletonPage } from './components/Skeleton';
 import usePageTitle from './hooks/usePageTitle';
 
 const ROUTE_TITLES = {
@@ -37,7 +38,7 @@ function TitleSetter() {
 
 function RequireAuth({ user, isLoading, children }) {
   if (isLoading) {
-    return <div className="text-center py-5"><div className="spinner-border text-primary" /></div>;
+    return <div className="auth-skeleton-wrap"><SkeletonPage /></div>;
   }
   if (!user) {
     return <Navigate to="/login" replace />;

@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Row, Col, Card, Form, Button, Table, Alert, Badge, Spinner, Modal } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Table, Alert, Badge, Spinner } from 'react-bootstrap';
 import { getAdminMunicipalities, getAdminStats, getAdminMonths, createReport, getReports, getReport, getReportDownloadUrl, deleteReport } from '../../services/dataService';
+import { confirmDelete } from '../../services/feedback';
+import { useToast } from '../Toast';
+import { SkeletonList, SkeletonChart } from '../Skeleton';
 import { Eye, Download, Trash2, FileText, SearchX, ChevronDown, ChevronUp } from 'lucide-react';
 import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
@@ -98,6 +101,7 @@ function DataTable({ title, rows }) {
 }
 
 export default function GenerateReports() {
+  const { toastSuccess, toastError } = useToast();
   const [content, setContent] = useState('production');
   const [scope, setScope] = useState('province');
   const [municipalityId, setMunicipalityId] = useState('');
@@ -226,10 +230,13 @@ export default function GenerateReports() {
         showPreview(res.report, res.data);
         setShowReports(true);
         loadReports();
+        toastSuccess('The report has been generated and is ready to preview.', 'Report generated');
       })
       .catch((err) => {
         setCreating(false);
-        setPreviewError(err.message || 'Something went wrong while generating the report. Please try again.');
+        const message = err.message || 'Something went wrong while generating the report. Please try again.';
+        setPreviewError(message);
+        toastError(message);
       });
   };
 
@@ -245,33 +252,31 @@ export default function GenerateReports() {
       .then((res) => showPreview(res.report, res.data))
       .catch((err) => {
         setPreviewLoading(false);
-        setPreviewError(err.message || 'Could not load this report. It may have been deleted.');
+        const message = err.message || 'Could not load this report. It may have been deleted.';
+        setPreviewError(message);
+        toastError(message);
       });
   };
 
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [reportToDelete, setReportToDelete] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const confirmDelete = (r) => {
-    setReportToDelete(r);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDelete = () => {
-    if (!reportToDelete) return;
-    setDeleting(true);
-    deleteReport(reportToDelete.id)
+  const handleDelete = async (r) => {
+    const label = r.barangay_name
+      ? ` for ${r.barangay_name}`
+      : r.municipality_name ? ` for ${r.municipality_name}` : '';
+    const confirmed = await confirmDelete({
+      title: 'Delete this report?',
+      text: `This will permanently remove the <strong>${TYPE_LABEL[r.report_type] || r.report_type}</strong> report${label} and its file. This cannot be undone.`,
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
+    deleteReport(r.id)
       .then(() => {
-        setShowDeleteConfirm(false);
-        setReportToDelete(null);
-        setDeleting(false);
         loadReports();
+        toastSuccess('The report has been deleted.', 'Report deleted');
       })
       .catch((err) => {
-        setError(err.message);
-        setShowDeleteConfirm(false);
-        setDeleting(false);
+        const message = err.message || 'Could not delete this report.';
+        setError(message);
+        toastError(message);
       });
   };
 
@@ -414,7 +419,7 @@ export default function GenerateReports() {
           </Card.Header>
           <Card.Body>
             {previewLoading ? (
-              <div className="text-center p-4"><Spinner animation="border" variant="primary" /></div>
+              <div className="text-center p-2"><SkeletonChart height={280} /></div>
             ) : currentReport && (
               <>
                 <div className="report-preview-meta">
@@ -495,7 +500,7 @@ export default function GenerateReports() {
               Reports are hidden. Click &ldquo;View Reports&rdquo; above to see all generated reports.
             </div>
           ) : loading ? (
-            <div className="text-center p-4"><Spinner animation="border" variant="primary" /></div>
+            <div className="text-center p-3"><SkeletonList rows={5} cols={6} /></div>
           ) : reports.length === 0 ? (
             <div className="text-muted p-4 text-center">No reports generated yet. Fill in the form above to create one.</div>
           ) : (
@@ -544,7 +549,7 @@ export default function GenerateReports() {
                             label="Delete report"
                             variant="outline-danger"
                             className="row-action-btn"
-                            onClick={() => confirmDelete(r)}
+                            onClick={() => handleDelete(r)}
                           />
                         </div>
                       </td>
@@ -584,27 +589,6 @@ export default function GenerateReports() {
           )}
         </Card.Body>
       </Card>
-
-      <Modal show={showDeleteConfirm} onHide={() => !deleting && setShowDeleteConfirm(false)} centered>
-        <Modal.Header closeButton={!deleting}>
-          <Modal.Title>Delete Report</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {reportToDelete && (
-            <p className="mb-0">
-              Are you sure you want to delete the <strong>{TYPE_LABEL[reportToDelete.report_type] || reportToDelete.report_type}</strong> report
-              {reportToDelete.barangay_name ? ` for ${reportToDelete.barangay_name}` : reportToDelete.municipality_name ? ` for ${reportToDelete.municipality_name}` : ''}?
-              This will permanently remove the file and cannot be undone.
-            </p>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>Cancel</Button>
-          <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-            {deleting ? <><Spinner as="span" animation="border" size="sm" className="me-2" />Deleting&hellip;</> : 'Delete'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 }

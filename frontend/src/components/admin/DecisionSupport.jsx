@@ -3,9 +3,12 @@ import { Card, Spinner, Alert, Form, Button, Row, Col } from 'react-bootstrap';
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, LineChart, BarChart, Cell } from 'recharts';
 import { Lightbulb, ChartLine, TrendingUp, ChartColumn } from 'lucide-react';
 import { getAdminMunicipalities, evaluateTarget } from '../../services/dataService';
+import { useToast } from '../Toast';
+import { SkeletonChart } from '../Skeleton';
 import { BRAND } from '../../theme/colors';
 
 export default function DecisionSupport() {
+  const { toastSuccess, toastError } = useToast();
   const [municipalities, setMunicipalities] = useState([]);
   const [selectedMuni, setSelectedMuni] = useState('all');
   const [annualTarget, setAnnualTarget] = useState('');
@@ -32,8 +35,15 @@ export default function DecisionSupport() {
       forecast_horizon: forecastHorizon,
     };
     evaluateTarget(payload)
-      .then((res) => setResults(res.evaluation))
-      .catch((err) => setError(err.message))
+      .then((res) => {
+        setResults(res.evaluation);
+        toastSuccess('Target evaluation compared against the forecast.', 'Evaluation complete');
+      })
+      .catch((err) => {
+        const message = err.message || 'Could not run the evaluation.';
+        setError(message);
+        toastError(message);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -126,9 +136,9 @@ export default function DecisionSupport() {
 
       {loading && (
         <Card className="fc-card mb-3">
-          <Card.Body className="text-center py-5">
-            <Spinner animation="border" variant="primary" />
-            <div className="mt-3 text-muted">Evaluating target against forecast…</div>
+          <Card.Body>
+            <div className="text-muted small mb-2">Evaluating target against forecast…</div>
+            <SkeletonChart height={320} />
           </Card.Body>
         </Card>
       )}

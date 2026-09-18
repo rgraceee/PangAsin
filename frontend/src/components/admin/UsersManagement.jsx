@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Spinner, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import { getAdminUsers, getAdminMunicipalities, updateAdminUser } from '../../services/dataService';
+import { confirmAction } from '../../services/feedback';
+import { useToast } from '../Toast';
+import { SkeletonList } from '../Skeleton';
 import { Pencil, Power } from 'lucide-react';
 import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
@@ -8,6 +11,7 @@ import PageHeader from './PageHeader';
 const USER_ROLES = ['admin', 'encoder'];
 
 export default function UsersManagement() {
+  const { toastSuccess, toastError } = useToast();
   const [users, setUsers] = useState([]);
   const [munis, setMunis] = useState([]);
   const [filters, setFilters] = useState({ role: '', status: '', municipality_id: '' });
@@ -70,9 +74,11 @@ export default function UsersManagement() {
       await updateAdminUser(editing.id, payload);
       setShowEdit(false);
       load(filters);
+      toastSuccess('The user account has been updated.', 'User saved');
     } catch (err) {
-      if (err.data?.errors) setFormError(err.data.errors.join(', '));
-      else setFormError(err.message || 'Could not save user.');
+      const message = err.data?.errors ? err.data.errors.join(', ') : (err.message || 'Could not save user.');
+      setFormError(message);
+      toastError(message);
     } finally {
       setSaving(false);
     }
@@ -80,11 +86,25 @@ export default function UsersManagement() {
 
   const toggleStatus = async (u) => {
     const newStatus = u.status === 'active' ? 'inactive' : 'active';
+    const isActivate = newStatus === 'active';
+    const confirmed = await confirmAction({
+      title: isActivate ? 'Activate this account?' : 'Deactivate this account?',
+      text: `You are about to <strong>${isActivate ? 'activate' : 'deactivate'}</strong> <strong>${u.name}</strong> (${u.email}). ${isActivate ? 'The account can sign in again immediately.' : 'The account will no longer be able to sign in until it is reactivated.'}`,
+      confirmText: isActivate ? 'Activate' : 'Deactivate',
+      danger: !isActivate,
+    });
+    if (!confirmed) return;
     try {
       await updateAdminUser(u.id, { status: newStatus });
       load(filters);
+      toastSuccess(
+        isActivate ? `${u.name} can now sign in.` : `${u.name} has been deactivated.`,
+        isActivate ? 'Account activated' : 'Account deactivated',
+      );
     } catch (err) {
-      setError(err.message);
+      const message = err.message || 'Could not update this account.';
+      setError(message);
+      toastError(message);
     }
   };
 
@@ -130,7 +150,7 @@ export default function UsersManagement() {
           </div>
 
         {error && <Alert variant="danger">{error}</Alert>}
-        {loading && <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>}
+        {loading && <div className="text-center py-2"><SkeletonList rows={6} cols={6} /></div>}
         {!loading && users.length === 0 && (
           <Alert variant="info">No users match the current filters.</Alert>
         )}

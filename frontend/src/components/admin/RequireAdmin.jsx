@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { getAdminMe } from '../../services/dataService';
+import { SkeletonPage } from '../Skeleton';
 
 export default function RequireAdmin({ user, isLoading, setUser, children }) {
   const [state, setState] = useState({ loading: true, ok: false });
@@ -31,7 +32,7 @@ export default function RequireAdmin({ user, isLoading, setUser, children }) {
   }, [user, isLoading, setUser]);
 
   if (state.loading) {
-    return <div className="text-center py-5"><div className="spinner-border text-primary" /></div>;
+    return <div className="auth-skeleton-wrap"><SkeletonPage /></div>;
   }
   if (!state.ok) {
     return <Navigate to="/login" replace />;

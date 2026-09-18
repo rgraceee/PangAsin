@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Row, Col, Alert, Spinner, Card, Table } from 'react-bootstrap';
+import { Row, Col, Alert, Card, Table } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, LabelList } from 'recharts';
 import { getAdminStats, loadAllMockData, getMunicipalityProduction, getDemographicsByMunicipality } from '../../services/dataService';
 import { BRAND, MUNICIPALITY_COLORS, GENDER } from '../../theme/colors';
 import PageHeader from './PageHeader';
+import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 
 function ChartTooltip({ active, payload, nameFormatter }) {
   if (!active || !payload || !payload.length) return null;
@@ -92,7 +93,17 @@ export default function MunicipalityAnalytics() {
   const muniColor = (name) => MUNICIPALITY_COLORS[name] || BRAND.ocean;
 
   if (loading) {
-    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+    return (
+      <div className="skeleton-dashboard">
+        <SkeletonBlock width="45%" height={24} />
+        <SkeletonBlock width="70%" height={13} />
+        <div className="mt-4"><SkeletonCards count={3} /></div>
+        <div className="row g-3 mt-1">
+          <div className="col-lg-7"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
+          <div className="col-lg-5"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
+        </div>
+      </div>
+    );
   }
   if (error) {
     return <Alert variant="danger">{error}</Alert>;

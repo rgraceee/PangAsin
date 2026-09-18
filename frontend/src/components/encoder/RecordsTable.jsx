@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Spinner, Alert, Button, Card, Row, Col, Modal } from 'react-bootstrap';
+import { Table, Alert, Button, Card, Row, Col, Modal } from 'react-bootstrap';
 import { getRecords, getRecord, deleteRecord, getEncoderBarangays } from '../../services/dataService';
+import { confirmDelete } from '../../services/feedback';
+import { useToast } from '../Toast';
+import { SkeletonList } from '../Skeleton';
 import { Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import RecordStatusBadge from './RecordStatusBadge';
 
@@ -36,6 +39,7 @@ const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) 
 );
 
 export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
+  const { toastSuccess, toastError } = useToast();
   const [records, setRecords] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const [filters, setFilters] = useState({ barangay_id: '', status: '' });
@@ -75,18 +79,30 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
     setActionError(null);
     getRecord(id)
       .then((r) => { setDetail(r); setShowDetail(true); })
-      .catch((err) => setActionError(err.message));
+      .catch((err) => {
+        const message = err.message || 'Could not load this record.';
+        setActionError(message);
+        toastError(message);
+      });
   };
 
-  const handleDelete = async (id, status) => {
+  const handleDelete = async (id, status, label) => {
     if (status === 'approved') return;
-    if (!window.confirm('Delete this record?')) return;
+    const confirmed = await confirmDelete({
+      title: 'Delete this record?',
+      text: `This will permanently remove the record for <strong>${label || `record #${id}`}</strong>. This cannot be undone.`,
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
     setActionError(null);
     try {
       await deleteRecord(id);
       load(filters);
+      toastSuccess('The production record has been deleted.', 'Record deleted');
     } catch (err) {
-      setActionError(err.message);
+      const message = err.message || 'Could not delete this record.';
+      setActionError(message);
+      toastError(message);
     }
   };
 
@@ -137,7 +153,7 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
 
         {actionError && <Alert variant="danger" onClose={() => setActionError(null)} dismissible>{actionError}</Alert>}
         {error && <Alert variant="danger">{error}</Alert>}
-        {loading && <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>}
+        {loading && <div className="text-center py-2"><SkeletonList rows={6} cols={5} /></div>}
         {!loading && records.length === 0 && (
           <Alert variant="info">No records found. Use “+ Add Record” above to submit one.</Alert>
         )}
@@ -195,7 +211,7 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
                           variant="danger"
                           title="Delete"
                           ariaLabel="Delete record"
-                          onClick={() => handleDelete(r.id, r.status)}
+                          onClick={() => handleDelete(r.id, r.status, `${r.barangay} on ${r.record_date}`)}
                         >
                           <Trash2 size={16} strokeWidth={2} />
                         </IconAction>

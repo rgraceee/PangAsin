@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginAPI } from '../services/dataService';
+import { useToast } from './Toast';
 import loginBg from '../assets/login-bg.svg';
 
 export default function Login({ onLogin }) {
@@ -10,6 +11,7 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toastSuccess } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,9 +23,11 @@ export default function Login({ onLogin }) {
         throw Object.assign(new Error('This account cannot sign in to PangAsin.'), { status: 403 });
       }
       onLogin(user);
+      toastSuccess('Log in successful.', 'Welcome back');
       navigate(user.role === 'admin' ? '/admin' : '/encoder');
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      const message = err.message || 'Login failed.';
+      setError(message);
     } finally {
       setLoading(false);
     }

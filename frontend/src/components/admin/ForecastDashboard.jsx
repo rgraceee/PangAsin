@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Row, Col, Card, Spinner, Alert, Form, Button, Modal } from 'react-bootstrap';
+import { Row, Col, Card, Alert, Form, Button, Modal } from 'react-bootstrap';
 import {
   ComposedChart, Line, Area, Bar, BarChart, LabelList, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, Cell, ReferenceArea, ReferenceLine, PieChart, Pie, AreaChart,
@@ -9,6 +9,8 @@ import {
   CalendarDays, Trophy, ClipboardList, Flag, Globe2, Boxes, ArrowUpRight, ArrowDownRight, Activity, ShieldCheck, Target,
 } from 'lucide-react';
 import { runForecast, getForecastRuns, getMunicipalityOutlook, getAdminMunicipalities, getAdminSupplyDemand, getAdminTrends } from '../../services/dataService';
+import { useToast } from '../Toast';
+import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import { BRAND, STATUS } from '../../theme/colors';
 import PageHeader from './PageHeader';
 
@@ -293,6 +295,7 @@ function computeInsights(currentRun, outlook, demandBenchmark) {
 }
 
 export default function ForecastDashboard() {
+  const { toastSuccess, toastError } = useToast();
   const [municipalities, setMunicipalities] = useState([]);
   const [selectedMuni, setSelectedMuni] = useState('all');
   const [runs, setRuns] = useState([]);
@@ -358,10 +361,15 @@ export default function ForecastDashboard() {
     runForecast(payload)
       .then((res) => {
         setCurrentRun(res.run);
+        toastSuccess(`Forecast${res.run?.id ? ` run #${res.run.id}` : ''} has been generated.`, 'Forecast complete');
         return getForecastRuns(selectedMuni !== 'all' ? { municipality_id: selectedMuni } : {});
       })
       .then((res) => setRuns(res.runs || []))
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        const message = err.message || 'Could not run the forecast.';
+        setError(message);
+        toastError(message);
+      })
       .finally(() => { setRunning(false); setShowForecastModal(false); });
   };
 
@@ -430,7 +438,14 @@ export default function ForecastDashboard() {
   }, [yoyRows]);
 
   if (loading) {
-    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+    return (
+      <div className="skeleton-dashboard">
+        <SkeletonBlock width="45%" height={24} />
+        <SkeletonBlock width="70%" height={13} />
+        <div className="mt-4"><SkeletonCards count={3} /></div>
+        <div className="skeleton-card"><SkeletonChart height={320} /></div>
+      </div>
+    );
   }
   if (error) {
     return <Alert variant="danger">{error}</Alert>;

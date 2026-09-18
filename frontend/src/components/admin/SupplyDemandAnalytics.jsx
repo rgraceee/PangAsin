@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
+import { Row, Col, Card, Alert } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
 import { Boxes, Target, Percent, Info } from 'lucide-react';
 import { getAdminSupplyDemand } from '../../services/dataService';
 import { BRAND, STATUS } from '../../theme/colors';
 import AdminKpiCard from './AdminKpiCard';
 import PageHeader from './PageHeader';
+import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 
 const GRADIENT = [BRAND.ocean, BRAND.gold, BRAND.green, STATUS.not_ready];
 
@@ -66,7 +67,17 @@ export default function SupplyDemandAnalytics() {
   }, [sectorDemand]);
 
   if (loading) {
-    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+    return (
+      <div className="skeleton-dashboard">
+        <SkeletonBlock width="45%" height={24} />
+        <SkeletonBlock width="70%" height={13} />
+        <div className="mt-4"><SkeletonCards count={3} /></div>
+        <div className="row g-3 mt-1">
+          <div className="col-lg-6"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
+          <div className="col-lg-6"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
+        </div>
+      </div>
+    );
   }
   if (error) {
     return <Alert variant="danger">{error}</Alert>;

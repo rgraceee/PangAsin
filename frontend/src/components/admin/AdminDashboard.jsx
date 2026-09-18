@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Row, Col, Alert, Spinner, Card } from 'react-bootstrap';
+import { Row, Col, Alert, Card } from 'react-bootstrap';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend,
@@ -22,6 +22,7 @@ const normName = (name) =>
 const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
 import AdminKpiCard from './AdminKpiCard';
 import PageHeader from './PageHeader';
+import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 
 function KPIStat({ title, value, supporting, accent, icon }) {
   return (
@@ -128,7 +129,17 @@ export default function AdminDashboard({ user }) {
   }, [stats]);
 
   if (loading) {
-    return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
+    return (
+      <div className="skeleton-dashboard">
+        <SkeletonBlock width="45%" height={24} />
+        <SkeletonBlock width="70%" height={13} />
+        <div className="mt-4"><SkeletonCards count={4} /></div>
+        <div className="row g-3 mt-1">
+          <div className="col-lg-7"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
+          <div className="col-lg-5"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
+        </div>
+      </div>
+    );
   }
   if (error) {
     return <Alert variant="danger">{error}</Alert>;
