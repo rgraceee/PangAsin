@@ -51,6 +51,7 @@ def _municipality_summary():
             Municipality.name,
             Municipality.latitude,
             Municipality.longitude,
+            Municipality.geojson_ref,
             func.coalesce(func.sum(
                 case((ProductionRecord.record_date.between(start, end), ProductionRecord.production_volume), else_=0)
             ), 0).label("current_kg"),
@@ -72,7 +73,7 @@ def _municipality_summary():
         )
         .join(ProductionRecord, Municipality.id == ProductionRecord.municipality_id)
         .filter(ProductionRecord.status == "approved")
-        .group_by(Municipality.id, Municipality.name, Municipality.latitude, Municipality.longitude)
+        .group_by(Municipality.id, Municipality.name, Municipality.latitude, Municipality.longitude, Municipality.geojson_ref)
         .all()
     )
 
@@ -245,6 +246,7 @@ def _build_municipalities(rows, method_by_muni, window):
             "cookedProductionMT": cooked,
             "hybridProductionMT": hybrid,
             "insightSnippet": INSIGHTS.get(muni_id),
+            "geojsonRef": r.geojson_ref,
             "historicalProduction": _historical(muni_id),
         })
 

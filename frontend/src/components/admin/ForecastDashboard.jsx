@@ -461,7 +461,7 @@ export default function ForecastDashboard() {
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="fc-muni">Municipality</label>
           <Form.Select id="fc-muni" className="admin-page-hero-select" value={selectedMuni} onChange={(e) => setSelectedMuni(e.target.value)}>
-            <option value="all">All Municipalities</option>
+            <option value="all">Pangasinan</option>
             {municipalities.map((m) => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}

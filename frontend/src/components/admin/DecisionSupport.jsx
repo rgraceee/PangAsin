@@ -93,7 +93,6 @@ export default function DecisionSupport() {
                 step="any"
                 value={annualTarget}
                 onChange={(e) => setAnnualTarget(e.target.value)}
-                placeholder="e.g. 5000"
                 className="fc-decision-input"
               />
             </Col>

@@ -11,7 +11,15 @@ import {
   getMunicipalityOutlook, getAdminSupplyDemand,
 } from '../../services/dataService';
 import { BRAND, oceanScale, OCEAN_LIGHT } from '../../theme/colors';
+import { addBasemap, buildProvinceMaskRings, addProvinceMask } from '../../utils/mapLayers';
+import { buildMapDetailCard, clampMapDetailTooltip } from '../../utils/mapDetailCard';
 import geojson from '../../data/pangasinan_municipalities.json';
+import geojsonAll from '../../data/pangasinan_municipalities_all.json';
+
+const normName = (name) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
+
+const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
 import AdminKpiCard from './AdminKpiCard';
 import PageHeader from './PageHeader';
 
@@ -247,7 +255,7 @@ function MunicipalityMap({ muniData }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const geoJsonLayerRef = useRef(null);
-  const openPopupRef = useRef(null);
+  const detailOpenRef = useRef(false);
 
   const { min, max } = useMemo(() => {
     const values = muniData.map((m) => m.volumeMT);
@@ -256,54 +264,102 @@ function MunicipalityMap({ muniData }) {
     return { min: mn, max: mx };
   }, [muniData]);
 
-  const renderPopup = useCallback((feature, m) => {
+  const renderPopup = useCallback((m) => {
     const genderText = m.registered > 0
       ? `${(m.male || 0).toLocaleString()} / ${(m.female || 0).toLocaleString()}`
       : '—';
-    const rows = [
-      ['Total Volume', `${m.volumeMT.toLocaleString()} MT`],
-      ['Record Count', (m.records ?? 0).toLocaleString()],
-      ['Production Area', `${(m.area || 0).toLocaleString()} m²`],
-      ['Salt Beds', (m.beds || 0).toLocaleString()],
-      ['Registered Producers', (m.registered || 0).toLocaleString()],
-      ['Male / Female', genderText],
-      ['Kg per Bed', (m.efficiency ?? 0).toLocaleString()],
-    ];
-    const rowsHtml = rows
-      .map(([label, value]) => `
-        <div class="map-popup-row">
-          <span class="map-popup-label">${label}</span>
-          <span class="map-popup-value">${value}</span>
-        </div>
-      `)
-      .join('');
-
-    return `
-      <div class="map-popup-card">
-        <div class="map-popup-header">${feature.properties.name}</div>
-        ${rowsHtml}
-        <div class="map-popup-foot">Administrative summary</div>
-      </div>
-    `;
+    return buildMapDetailCard({
+      name: m.name,
+      rows: [
+        ['Total Volume', `${m.volumeMT.toLocaleString()} MT`],
+        ['Record Count', (m.records ?? 0).toLocaleString()],
+        ['Production Area', `${(m.area || 0).toLocaleString()} m²`],
+        ['Salt Beds', (m.beds || 0).toLocaleString()],
+        ['Registered Producers', (m.registered || 0).toLocaleString()],
+        ['Male / Female', genderText],
+        ['Kg per Bed', (m.efficiency ?? 0).toLocaleString()],
+      ],
+    });
   }, []);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    const byName = Object.fromEntries(muniData.map((m) => [m.name, m]));
+    const byName = Object.fromEntries(muniData.map((m) => [normName(m.name), m]));
     const scaledFor = (value) => oceanScale(value, min, max);
+    const producingNames = new Set(muniData.map((m) => normName(m.name)));
+
+    const allFeatures = [...geojsonAll.features, ...geojson.features];
+    const provinceBounds = L.geoJSON(allFeatures).getBounds();
 
     const map = L.map(mapRef.current, {
-      minZoom: 9,
+      minZoom: 7,
       maxZoom: 15,
       maxBoundsViscosity: 1.0,
-      attributionControl: false,
-    }).setView([16.1, 120.0], 10);
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      touchZoom: false,
+    }).setView(provinceBounds.getCenter(), 8);
     mapInstanceRef.current = map;
+
+    addBasemap(map);
+    addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds));
+
+    const detailAnchor = L.marker([0, 0], {
+      icon: L.divIcon({ className: 'detail-anchor', html: '', iconSize: [0, 0] }),
+      interactive: false,
+    }).addTo(map);
+    detailAnchor.bindTooltip('', {
+      direction: 'right',
+      sticky: false,
+      interactive: true,
+      className: 'admin-map-detail',
+      opacity: 1,
+      offset: [14, 30],
+    });
+    map.on('click', (e) => {
+      const target = e.originalEvent && e.originalEvent.target;
+      if (target && target.classList && target.classList.contains('leaflet-interactive')) return;
+      detailOpenRef.current = false;
+      if (detailAnchor.isTooltipOpen()) detailAnchor.closeTooltip();
+    });
+    map.on('moveend zoomend', () => {
+      if (detailAnchor.isTooltipOpen()) {
+        window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
+      }
+    });
+
+    const contextFeatures = geojsonAll.features.filter(
+      (f) => !producingNames.has(normName(f.properties.shapeName || f.properties.name || ''))
+    );
+
+    L.geoJSON(contextFeatures, {
+      style: {
+        fillColor: '#E2E8F0',
+        fillOpacity: 0.65,
+        weight: 1.2,
+        opacity: 0.85,
+        color: '#94A3B8',
+      },
+      onEachFeature: (feature, layer) => {
+        const label = prettyName(feature.properties.shapeName || feature.properties.name || '');
+        layer.bindTooltip(
+          `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
+          { sticky: true, direction: 'auto', offset: [0, -8] }
+        );
+        L.marker(layer.getBounds().getCenter(), {
+          icon: L.divIcon({ className: 'muni-name-label', html: label, iconSize: null }),
+          interactive: false,
+        }).addTo(map);
+      },
+    }).addTo(map);
 
     geoJsonLayerRef.current = L.geoJSON(geojson, {
       style: (feature) => {
-        const m = byName[feature.properties.name];
+        const m = byName[normName(feature.properties.name)];
         return {
           fillColor: m ? scaledFor(m.volumeMT) : '#cbd5e1',
           weight: 1.5,
@@ -313,23 +369,24 @@ function MunicipalityMap({ muniData }) {
         };
       },
       onEachFeature: (feature, layer) => {
-        const m = byName[feature.properties.name];
+        const m = byName[normName(feature.properties.name)];
         if (!m) return;
         layer.bindTooltip(
           `
             <div style="min-width:170px">
-              <strong>${feature.properties.name}</strong><br/>
+              <strong>${m.name}</strong><br/>
               <span style="font-size:0.85rem">Total: ${m.volumeMT.toLocaleString()} MT</span><br/>
               <span style="font-size:0.85rem;color:#495057">Area: ${(m.area || 0).toLocaleString()} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
               <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} producers</span><br/>
               <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
             </div>
           `,
-          { sticky: true, direction: 'top', offset: [0, -10] }
+          { sticky: true, direction: 'auto', offset: [0, -10] }
         );
         layer.on({
           mouseover: (e) => {
             const target = e.target;
+            if (detailOpenRef.current) return;
             target.setStyle({ fillOpacity: 0.9, weight: 2.5 });
             if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
               target.bringToFront();
@@ -340,26 +397,50 @@ function MunicipalityMap({ muniData }) {
             geoJsonLayerRef.current.resetStyle(e.target);
             e.target.closeTooltip();
           },
-          click: () => {
-            if (openPopupRef.current && openPopupRef.current !== layer) {
-              openPopupRef.current.closePopup();
-            }
-            openPopupRef.current = layer;
-            const html = renderPopup(feature, m);
-            layer.bindPopup(html, {
-              className: 'admin-map-popup',
-              maxWidth: 260,
-              closeButton: true,
-            }).openPopup();
+          click: (e) => {
+            L.DomEvent.stopPropagation(e.originalEvent);
+            detailOpenRef.current = true;
+            layer.closeTooltip();
+            const html = renderPopup(m);
+            const b = layer.getBounds();
+            const anchor = L.latLng(
+              b.getCenter().lat,
+              b.getCenter().lng + (b.getEast() - b.getCenter().lng) * 0.6
+            );
+            detailAnchor.setLatLng(anchor);
+            detailAnchor.setTooltipContent(html);
+            detailAnchor.openTooltip();
+            window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
           },
         });
+
+        L.marker(layer.getBounds().getCenter(), {
+          icon: L.divIcon({ className: 'muni-name-label', html: prettyName(m.name), iconSize: null }),
+          interactive: false,
+        }).addTo(map);
       },
     }).addTo(map);
 
-    if (geoJsonLayerRef.current) {
-      const provinceBounds = geoJsonLayerRef.current.getBounds();
-      map.setMaxBounds(provinceBounds.pad(0.06));
-      map.fitBounds(provinceBounds, { padding: [20, 20] });
+if (geoJsonLayerRef.current) {
+      const container = mapRef.current;
+      let resizeObserver = null;
+      let fitted = false;
+      const fitToProvince = () => {
+        if (fitted) return;
+        fitted = true;
+        map.invalidateSize();
+        map.setMaxBounds(provinceBounds.pad(0.06));
+        map.fitBounds(provinceBounds, { padding: [10, 10] });
+        if (resizeObserver) resizeObserver.disconnect();
+      };
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => {
+          if (container && container.getBoundingClientRect().height > 0) fitToProvince();
+        });
+        resizeObserver.observe(container);
+      } else {
+        window.requestAnimationFrame(fitToProvince);
+      }
     }
   }, [muniData, min, max, renderPopup]);
 
@@ -377,7 +458,7 @@ function MunicipalityMap({ muniData }) {
             </div>
           </Card.Header>
           <Card.Body>
-            <div className="map-wrapper map-wrapper-float">
+            <div className="map-wrapper">
               <div className="map-container" ref={mapRef}></div>
             </div>
             <div className="map-legend" aria-label="Map legend">
@@ -394,8 +475,9 @@ function MunicipalityMap({ muniData }) {
               </p>
             </div>
             <p className="text-muted small mb-0 mt-2">
-              Based on total recorded volume from approved production records. Municipal boundaries referenced from
-              NAMRIA / PSA administrative data.
+              Based on total recorded volume from approved production records. Shaded gray municipalities have no
+              recorded production yet. Municipal boundaries referenced from NAMRIA / PSA administrative data.
+              &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
             </p>
           </Card.Body>
         </Card>

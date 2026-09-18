@@ -4,14 +4,12 @@ import PageHeader from './admin/PageHeader';
 import Reveal from './Reveal';
 import MunicipalityMapSection from './MunicipalityMapSection';
 import SupplyDemandSection from './SupplyDemandSection';
-import MunicipalityDetailPanel from './MunicipalityDetailPanel';
 import { loadAllMockData } from '../services/dataService';
 
 export default function GuestDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedMunicipality, setSelectedMunicipality] = useState(null);
 
   useEffect(() => {
     loadAllMockData()
@@ -61,14 +59,8 @@ export default function GuestDashboard() {
             <SupplyDemandSection />
           </Reveal>
 
-          <MunicipalityDetailPanel
-            municipality={selectedMunicipality}
-            onClose={() => setSelectedMunicipality(null)}
-            demographics={data.demographics}
-          />
-
           <Reveal>
-            <MunicipalityMapSection onSelectMunicipality={setSelectedMunicipality} />
+            <MunicipalityMapSection />
           </Reveal>
         </>
       )}

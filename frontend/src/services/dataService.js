@@ -89,6 +89,19 @@ export function getMunicipalityDetail(id) {
   return (dashboardCache.municipalities || []).find((m) => m.id === id) || null;
 }
 
+// WHAT: i-load lahat ng .json boundary files sa data/geojson/ folder nang sabay
+// WHY: local files ito (Bolinao, Anda, Alaminos City, etc.) — hindi kailangan mag-fetch sa backend
+const municipalityGeoJsonFiles = import.meta.glob('../data/geojson/*.json', { eager: true });
+
+// WHAT: hanapin yung tamang boundary geojson base sa geojson_ref column (e.g. "geojson/bolinao.json")
+// WHY: ginagamit ito ng MunicipalityDetailPanel para i-render yung zoomed-in boundary
+export function getMunicipalityGeoJson(geojsonRef) {
+  if (!geojsonRef) return null;
+  const filename = geojsonRef.split('/').pop();
+  const entry = Object.entries(municipalityGeoJsonFiles).find(([path]) => path.endsWith(filename));
+  return entry ? entry[1].default : null;
+}
+
 export function getIndustryInsight(id) {
   const muni = (dashboardCache.municipalities || []).find((m) => m.id === id);
   return muni ? muni.insightSnippet : null;

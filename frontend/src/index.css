@@ -117,8 +117,26 @@ body {
 }
 
 .map-container {
-  height: 480px;
+  height: 520px;
+  min-height: 460px;
+  width: 100%;
   background: #DCECFB;
+}
+
+.map-container .leaflet-interactive:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (min-width: 992px) {
+  .map-container {
+    height: 620px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .map-container {
+    height: 660px;
+  }
 }
 
 .map-legend {
@@ -155,6 +173,40 @@ body {
   color: var(--gray-500);
   margin: 0.15rem 0 0;
   text-align: center;
+}
+
+.muni-name-label {
+  font-family: "Montserrat", sans-serif;
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #55606E;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(21, 35, 58, 0.1);
+  border-radius: 999px;
+  padding: 0 4px;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 2px rgba(21, 35, 58, 0.1);
+}
+
+.muni-hover-tooltip {
+  background: #ffffff;
+  border: 1px solid rgba(21, 35, 58, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px -10px rgba(12, 35, 64, 0.45);
+  opacity: 1;
+  z-index: 1000;
+  max-width: 230px;
+}
+
+.muni-hover-tooltip::before {
+  border-top-color: #ffffff;
+  border-bottom-color: #ffffff;
+  border-left-color: #ffffff;
+  border-right-color: #ffffff;
 }
 
 /* Charts */
@@ -376,7 +428,8 @@ body {
   }
 
   .map-container {
-    height: 360px;
+    height: 380px;
+    min-height: 380px;
   }
 
   .detail-panel {
@@ -2342,8 +2395,30 @@ body {
 }
 
 /* ===== Admin municipality map popups ===== */
-.map-wrapper-float {
-  overflow: visible;
+.detail-anchor {
+  width: 0;
+  height: 0;
+}
+
+.admin-map-detail {
+  background: #ffffff;
+  border: 1px solid rgba(21, 35, 58, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px -14px rgba(12, 35, 64, 0.5);
+  padding: 0;
+  font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  width: 242px;
+  max-height: 440px;
+  overflow-y: auto;
+  opacity: 1;
+  z-index: 1000;
+}
+
+.admin-map-detail::before {
+  border-top-color: #ffffff;
+  border-bottom-color: #ffffff;
+  border-left-color: #ffffff;
+  border-right-color: #ffffff;
 }
 
 .admin-map-popup .leaflet-popup-content-wrapper {
@@ -2358,6 +2433,8 @@ body {
   margin: 0;
   width: 240px !important;
   font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 .admin-map-popup .leaflet-popup-content p {
