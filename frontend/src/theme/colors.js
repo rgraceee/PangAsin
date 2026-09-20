@@ -35,7 +35,7 @@ export function oceanScale(value, min, max) {
 }
 
 export const MUNICIPALITY_COLORS = {
-  Alaminos: BRAND.ocean,
+  'Alaminos City': BRAND.ocean,
   Anda: BRAND.green,
   Bani: BRAND.gold,
   Bolinao: BRAND.navy,

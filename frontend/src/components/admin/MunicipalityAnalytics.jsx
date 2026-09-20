@@ -20,7 +20,7 @@ function ChartTooltip({ active, payload, nameFormatter }) {
   );
 }
 
-const MUNI_ORDER = ['Dasol', 'Infanta', 'Bani', 'Bolinao', 'Anda', 'Alaminos', 'San Fabian'];
+const MUNI_ORDER = ['Dasol', 'Infanta', 'Bani', 'Bolinao', 'Anda', 'Alaminos City', 'San Fabian'];
 
 const METHOD_COLORS = {
   solar: BRAND.gold,
