@@ -1,3 +1,5 @@
+# WHAT: Municipality table — isang bayan sa Pangasinan (7 salt-producing areas).
+# WHY: Reference ng bawat production record; ang geojson_ref ang link sa map boundary.
 from app.extensions import db
 from datetime import datetime
 

@@ -1,3 +1,5 @@
+# WHAT: I-serve ang pre-built React bundle (app/static/react) at ang SPA routes.
+# WHY: Ang frontend ay naka-build na; ito ang naghahatid ng index.html at assets.
 import os
 from flask import Blueprint, Flask, redirect, url_for, send_from_directory
 

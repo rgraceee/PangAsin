@@ -1,3 +1,5 @@
+# WHAT: Report generation API endpoints (create, list, download, delete).
+# WHY: Generation logic ay nasa report_service; dito lang ang HTTP/REST layer.
 import os
 from datetime import datetime
 
@@ -10,22 +12,13 @@ from app.models.report import Report, REPORT_TYPES, REPORT_FORMATS
 from app.models.user import User
 from app.models.barangay import Barangay
 from app.services.report_service import generate_report_file, build_report_data
+from app.utils import _admin_only, _parse_date
 
 reports_api_bp = Blueprint("reports_api", __name__, url_prefix="/api/admin/reports")
 
 
-def _admin_only():
-    return current_user.role != "admin"
-
-
 def _reports_dir():
     return os.path.join(current_app.root_path, "static", "reports")
-
-
-def _parse_date(date_str):
-    if not date_str:
-        return None
-    return datetime.strptime(str(date_str), "%Y-%m-%d").date()
 
 
 REPORT_TYPE_NAMES = {

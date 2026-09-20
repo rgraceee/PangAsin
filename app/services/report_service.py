@@ -1,3 +1,5 @@
+# WHAT: Report generation (build data per report type + write Excel/PDF/DOCX).
+# WHY: Inilalayo ang file-format logic sa API para ma-reuse at madaling basahin.
 import os
 from datetime import datetime, date, timedelta
 
@@ -12,15 +14,7 @@ from app.models.user import User
 from app.models.demand_benchmark import DemandBenchmark
 from app.models.forecast import ForecastRun
 from app.services.forecast_service import _monthly_aggregates
-
-# National-level sector demand breakdown (reference data, MT). Mirrors the
-# constant served by /api/admin/supply-demand.
-SECTOR_DEMAND = {
-    "household": 320000.0,
-    "foodProcessing": 180000.0,
-    "industry": 120000.0,
-    "agriculture": 63608.0,
-}
+from app.constants import SECTOR_DEMAND
 
 
 def _volume_mt(kg):
@@ -463,6 +457,8 @@ BUILDERS = {
 
 
 def build_report_data(report_type, municipality_id=None, barangay_id=None, start=None, end=None):
+    # WHAT: Piliin ang tamang data-builder base sa report_type.
+    # WHY: Isang entry point para sa lahat ng report types, iwas if/elif sa API.
     fn = BUILDERS.get(report_type)
     if fn is None:
         raise ValueError(f"Unsupported report type: {report_type}")
@@ -694,6 +690,8 @@ def write_docx(data, filepath):
 
 
 def generate_report_file(report_type, fmt, municipality_id=None, barangay_id=None, start=None, end=None, reports_dir=None):
+    # WHAT: Buuin ang report data at isulat sa file (excel/pdf/docx).
+    # WHY: Ang API ay nagko-call dito; ito ang nagde-decide ng extension at writer.
     data = build_report_data(report_type, municipality_id, barangay_id, start, end)
     if fmt == "excel":
         ext = "xlsx"

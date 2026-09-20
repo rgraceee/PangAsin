@@ -1,3 +1,5 @@
+# WHAT: Report table — history ng mga binuong admin report (Excel/PDF/DOCX).
+# WHY: Itinatago ang request + generated file URL para ma-download ulit ang report.
 from app.extensions import db
 from datetime import datetime
 

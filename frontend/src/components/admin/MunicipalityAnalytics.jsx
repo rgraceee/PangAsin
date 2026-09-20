@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Row, Col, Alert, Card, Table } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, LabelList } from 'recharts';
-import { getAdminStats, loadAllMockData, getMunicipalityProduction, getDemographicsByMunicipality } from '../../services/dataService';
+import { getAdminStats, loadPublicDashboardData, getMunicipalityProduction, getDemographicsByMunicipality } from '../../services/dataService';
 import { BRAND, MUNICIPALITY_COLORS, GENDER } from '../../theme/colors';
 import PageHeader from './PageHeader';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
@@ -61,7 +61,7 @@ export default function MunicipalityAnalytics() {
   }, []);
 
   useEffect(() => {
-    loadAllMockData()
+    loadPublicDashboardData()
       .then(() => setMethodData(getMunicipalityProduction()))
       .catch(() => {});
   }, []);

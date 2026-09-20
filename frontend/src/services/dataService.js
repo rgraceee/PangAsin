@@ -1,3 +1,6 @@
+// WHAT: Lahat ng API calls at dashboard cache sa isang lugar.
+// WHY: Para hindi paulit-ulit ang fetch logic sa bawat component, at may cache
+//      ang public dashboard data kaya hindi nagre-request tuwing may render.
 let dashboardCache = { municipalities: [], production: { provinceTotalMT: 0, records: [] }, demographics: { provinceWide: {}, byMunicipality: {} }, supplyDemand: null };
 
 async function apiNoAuth(path, options = {}) {
@@ -13,7 +16,7 @@ async function apiNoAuth(path, options = {}) {
   return data;
 }
 
-export async function loadAllMockData() {
+export async function loadPublicDashboardData() {
   const data = await apiNoAuth('/api/public/dashboard');
   dashboardCache = data;
   return data;
@@ -26,25 +29,6 @@ export function getMunicipalityProduction() {
     ...m,
     percentageOfTotal: total > 0 ? (m.productionMT / total) * 100 : 0,
   }));
-}
-
-export function getProductionSummary() {
-  const munis = dashboardCache.municipalities || [];
-  const totalProduction = munis.reduce((sum, m) => sum + (m.productionMT || 0), 0);
-  const totalArea = munis.reduce((sum, m) => sum + (m.productionAreaSqm || 0), 0);
-  const gender = (dashboardCache.demographics?.provinceWide?.genderDistribution) || {};
-  const producerEntries = Object.values(gender).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-  const sd = dashboardCache.supplyDemand || { philippines: {}, pangasinan: {} };
-  const demand = sd.philippines?.demand || 0;
-  const domesticSupply = sd.philippines?.domesticSupply || 0;
-  const sufficiency = demand > 0 ? (domesticSupply / demand) * 100 : 0;
-  return {
-    totalProduction,
-    totalArea,
-    producerEntries,
-    sufficiency,
-    municipalityCount: munis.length,
-  };
 }
 
 export function getSupplyDemand(scope) {
@@ -77,34 +61,8 @@ export function getSectorDemand() {
   }));
 }
 
-export function getProducerDemographics() {
-  return (dashboardCache.demographics && dashboardCache.demographics.provinceWide) || { ageGroups: {}, genderDistribution: {} };
-}
-
 export function getDemographicsByMunicipality() {
   return (dashboardCache.demographics && dashboardCache.demographics.byMunicipality) || {};
-}
-
-export function getMunicipalityDetail(id) {
-  return (dashboardCache.municipalities || []).find((m) => m.id === id) || null;
-}
-
-// WHAT: i-load lahat ng .json boundary files sa data/geojson/ folder nang sabay
-// WHY: local files ito (Bolinao, Anda, Alaminos City, etc.) — hindi kailangan mag-fetch sa backend
-const municipalityGeoJsonFiles = import.meta.glob('../data/geojson/*.json', { eager: true });
-
-// WHAT: hanapin yung tamang boundary geojson base sa geojson_ref column (e.g. "geojson/bolinao.json")
-// WHY: ginagamit ito ng MunicipalityDetailPanel para i-render yung zoomed-in boundary
-export function getMunicipalityGeoJson(geojsonRef) {
-  if (!geojsonRef) return null;
-  const filename = geojsonRef.split('/').pop();
-  const entry = Object.entries(municipalityGeoJsonFiles).find(([path]) => path.endsWith(filename));
-  return entry ? entry[1].default : null;
-}
-
-export function getIndustryInsight(id) {
-  const muni = (dashboardCache.municipalities || []).find((m) => m.id === id);
-  return muni ? muni.insightSnippet : null;
 }
 
 async function api(path, options = {}) {
@@ -170,10 +128,6 @@ export function getStats(params = {}) {
   return api(`/encoder/stats${qs ? `?${qs}` : ''}`);
 }
 
-export function submitRecord(id) {
-  return api(`/encoder/records/${id}/submit`, { method: 'PATCH' });
-}
-
 export function getAdminMe() {
   return api('/admin/me');
 }
@@ -185,10 +139,6 @@ export function getAdminMunicipalities() {
 export function getAdminUsers(params = {}) {
   const qs = new URLSearchParams(params).toString();
   return api(`/admin/users${qs ? `?${qs}` : ''}`);
-}
-
-export function createAdminUser(payload) {
-  return api('/admin/users', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export function updateAdminUser(id, payload) {
@@ -246,10 +196,6 @@ export function deleteReport(id) {
   return api(`/admin/reports/${id}`, { method: 'DELETE' });
 }
 
-export function getInsight() {
-  return api('/admin/insight');
-}
-
 export function runForecast(payload) {
   return api('/admin/forecast/run', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -257,10 +203,6 @@ export function runForecast(payload) {
 export function getForecastRuns(params = {}) {
   const qs = new URLSearchParams(params).toString();
   return api(`/admin/forecast/runs${qs ? `?${qs}` : ''}`);
-}
-
-export function getForecastResult(runId) {
-  return api(`/admin/forecast/runs/${runId}`);
 }
 
 export function getMunicipalityOutlook() {

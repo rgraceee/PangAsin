@@ -1,3 +1,5 @@
+# WHAT: Forecast API endpoints (run forecast, list runs, outlook, target eval).
+# WHY: Naka-separate para malinaw kung saan ginagawa ang pagsusuri ng forecast.
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime, date
@@ -5,18 +7,9 @@ from app.extensions import db
 from app.models.forecast import ForecastRun, ForecastPoint
 from app.models.municipality import Municipality
 from app.services.forecast_service import run_forecast, get_municipality_outlook, evaluate_target
+from app.utils import _admin_only, _parse_date
 
 forecast_api_bp = Blueprint("forecast_api", __name__, url_prefix="/api/admin/forecast")
-
-
-def _admin_only():
-    return current_user.role != "admin"
-
-
-def _parse_date(date_str):
-    if not date_str:
-        return None
-    return datetime.strptime(date_str, "%Y-%m-%d").date()
 
 
 def _serialize_run(run):

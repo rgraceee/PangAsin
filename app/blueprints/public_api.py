@@ -276,6 +276,9 @@ def _historical(municipality_id):
 
 @public_api_bp.route("/dashboard", methods=["GET"])
 def dashboard():
+    # WHAT: Bundle lahat ng public dashboard data sa isang endpoint.
+    # WHY: Isang request lang ang kailangan ng React app, at approved records lang
+    #      ang binibilang para iwas sa hindi pa-validated na data.
     rows, method_by_muni, window = _municipality_summary()
     municipalities = _build_municipalities(rows, method_by_muni, window)
     return jsonify({

@@ -1,3 +1,5 @@
+# WHAT: ProductionRecord table — buwanang record ng asin production ng isang barangay.
+# WHY: Core data ng buong system; may lifecycle: draft -> pending -> approved/rejected.
 from app.extensions import db
 from datetime import datetime
 

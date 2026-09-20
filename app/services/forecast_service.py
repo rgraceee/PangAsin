@@ -1,3 +1,6 @@
+# WHAT: Core forecasting logic (monthly aggregation, model fitting, forecast run,
+#       outlook, target evaluation).
+# WHY: Hiwalay sa API layer para ma-test/ma-reuse ang parehong Math kahit saan.
 from datetime import date, timedelta
 from typing import List, Optional
 
@@ -351,6 +354,8 @@ def _forecast_anchored_2025(labels, values, forecast_horizon: int = 12):
 
 
 def run_forecast(municipality_id: Optional[int], period_start: date, period_end: date, forecast_horizon: int = 12):
+    # WHAT: Generate at i-save ang isang ForecastRun gamit ang pinakamagandang model.
+    # WHY: Ito ang tawag ng /forecast/run; hinuhugot ang history + magtutugma ng model.
     hist_start = period_start - timedelta(days=365 * 3)
     labels, values, offsets = _monthly_aggregates(municipality_id, hist_start, period_end)
     readiness = _readiness(labels)
@@ -591,7 +596,6 @@ def evaluate_target(
     }
     trend_note = trend_notes.get(trend_direction, trend_notes["stable"])
 
-    dry_months = {0, 1, 2, 3, 4, 5}
     wet_months = {6, 7, 8, 9, 10, 11}
     peak_month_idx = max(range(12), key=lambda i: raw_weights[i])
     low_month_idx = min(range(12), key=lambda i: raw_weights[i])

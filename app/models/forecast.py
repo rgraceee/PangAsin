@@ -1,3 +1,5 @@
+# WHAT: ForecastRun (isang forecast) + ForecastPoint (bawat buwan nito) tables.
+# WHY: Iniimbak ang bawat run para magamit sa outlook at mabiliang-report muli.
 from app.extensions import db
 from datetime import datetime
 

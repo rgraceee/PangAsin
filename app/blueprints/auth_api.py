@@ -1,3 +1,5 @@
+# WHAT: Authentication endpoints (login, logout, current user info).
+# WHY: Session-based login gamit ang flask_login; dito tinitingnan ang role ng user.
 from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.user import User

@@ -1,3 +1,5 @@
+# WHAT: Encoder API endpoints (barangays, records CRUD, submit, stats, months).
+# WHY: Nasa isang blueprint lahat ng ginagawa ng municipal encoder sa records.
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from app.models.production_record import ProductionRecord, PRODUCTION_METHODS
@@ -6,18 +8,12 @@ from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from app.constants import AGE_BUCKET_FIELDS
+from app.utils import _parse_date
 
 encoder_api_bp = Blueprint("encoder_api", __name__, url_prefix="/api/encoder")
 
 PRODUCER_COUNT_FIELDS = ("male_producers", "female_producers")
-AGE_BUCKET_FIELDS = (
-    "producers_18_30",
-    "producers_31_40",
-    "producers_41_50",
-    "producers_51_60",
-    "producers_61_plus",
-)
-
 ENCODER_READ_ONLY_STATUS = "approved"
 
 
@@ -55,12 +51,6 @@ def _serialize(record):
     }
 
 
-def _parse_date(date_str):
-    if not date_str:
-        return None
-    return datetime.strptime(date_str, "%Y-%m-%d").date()
-
-
 def _allocate(record, data):
     if "barangay_id" in data:
         record.barangay_id = data["barangay_id"]
@@ -80,6 +70,8 @@ def _allocate(record, data):
 
 
 def _validate(data, partial=False):
+    # WHAT: Validate one record's incoming payload before save/update.
+    # WHY: Pinipigilan ang malisya/mali na data; partial=True kapag update lamang.
     errors = []
 
     if not partial or "barangay_id" in data:

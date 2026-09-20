@@ -1,3 +1,5 @@
+# WHAT: User table — admin at encoder accounts (flask_login UserMixin).
+# WHY: Ang role ang nagde-determine kung anong API ang pwede i-access ng user.
 from app.extensions import db, login_manager
 from datetime import datetime
 from flask_login import UserMixin

@@ -1,3 +1,6 @@
+// WHAT: Leaflet helpers para sa basemap at province mask.
+// WHY: Nilalagay ang protected-area overlay ng buong Pangasinan sa likod ng
+//      municipal boundary polygons para malinaw ang lugar ng bawat bayan.
 import L from 'leaflet';
 
 export const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';

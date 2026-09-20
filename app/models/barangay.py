@@ -1,3 +1,5 @@
+# WHAT: Barangay table — sub-area ng isang municipality.
+# WHY: Bawat production record ay naka-link sa barangay para mas detalyado ang reporting.
 from app.extensions import db
 from datetime import datetime
 

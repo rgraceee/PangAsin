@@ -1,10 +1,13 @@
+// WHAT: Public/guest dashboard na walang login.
+// WHY: Ipinapakita ang aggregated provincial data (supply-demand + mapa) mula sa
+//      loadPublicDashboardData, para hindi kailangan ng account para makita.
 import React, { useEffect, useState } from 'react';
 import { Alert } from 'react-bootstrap';
 import PageHeader from './admin/PageHeader';
 import Reveal from './Reveal';
 import MunicipalityMapSection from './MunicipalityMapSection';
 import SupplyDemandSection from './SupplyDemandSection';
-import { loadAllMockData } from '../services/dataService';
+import { loadPublicDashboardData } from '../services/dataService';
 import { SkeletonCards, SkeletonChart } from './Skeleton';
 
 export default function GuestDashboard() {
@@ -13,7 +16,7 @@ export default function GuestDashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadAllMockData()
+    loadPublicDashboardData()
       .then((mockData) => {
         setData(mockData);
         setLoading(false);

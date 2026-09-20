@@ -8,6 +8,10 @@ import { buildMapDetailCard, clampMapDetailTooltip } from '../utils/mapDetailCar
 import { oceanScale, OCEAN_LIGHT, BRAND } from '../theme/colors';
 import { addBasemap, buildProvinceMaskRings, addProvinceMask } from '../utils/mapLayers';
 
+// WHAT: Leaflet map na kumukulay sa bawat bayan base sa produksyon.
+// WHY: Ang normName() ay nagba-normalize ng pangalan para kahit magkaiba ang
+//      lakbay ng pangalan (e.g. "City of Alaminos" vs "Alaminos City") ay
+//      mag-match pa rin sa municipalities data.
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
 

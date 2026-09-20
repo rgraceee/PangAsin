@@ -1,3 +1,6 @@
+# WHAT: Admin-only API endpoints (users, records review, stats, data quality,
+#       insight, supply-demand, months).
+# WHY: Lahat ng admin actions ay nasa isang lugar, may iisang _admin_only guard.
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from app.models.production_record import ProductionRecord
@@ -9,30 +12,10 @@ from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from app.services.forecast_service import _monthly_aggregates
+from app.constants import AGE_BUCKET_FIELDS, QUALITY_FIELDS, QUALITY_WEIGHTS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
+from app.utils import _admin_only, _parse_date
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
-
-AGE_BUCKET_FIELDS = (
-    "producers_18_30",
-    "producers_31_40",
-    "producers_41_50",
-    "producers_51_60",
-    "producers_61_plus",
-)
-
-QUALITY_WEIGHTS = {
-    "production_volume": 0.20,
-    "num_salt_beds": 0.10,
-    "area_per_salt_bed": 0.10,
-    "registered_producers": 0.15,
-    "male_producers": 0.10,
-    "female_producers": 0.10,
-    "record_date": 0.05,
-    "production_method": 0.05,
-    "barangay_id": 0.15,
-}
-
-QUALITY_FIELDS = list(QUALITY_WEIGHTS.keys())
 
 
 def _record_submit_user(record):
@@ -85,16 +68,6 @@ def _serialize(record):
         "created_at": record.created_at.isoformat() if record.created_at else None,
         "updated_at": record.updated_at.isoformat() if record.updated_at else None,
     }
-
-
-def _admin_only():
-    return current_user.role != "admin"
-
-
-def _parse_date(date_str):
-    if not date_str:
-        return None
-    return datetime.strptime(date_str, "%Y-%m-%d").date()
 
 
 @admin_api_bp.route("/me", methods=["GET"])
@@ -436,6 +409,8 @@ def stats():
 @admin_api_bp.route("/data-quality", methods=["GET"])
 @login_required
 def data_quality():
+    # WHAT: Compute per-municipality data-completeness scores.
+    # WHY: Tinutukoy kung gaano kumpleto ang records ng bawat bayan bago i-approved.
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
 
@@ -541,19 +516,6 @@ def insight():
 # National-level sector demand breakdown (reference data, MT). Not stored in the
 # demand_benchmarks table (which holds annual supply/demand figures); served here
 # as a labeled reference constant for the sector breakdown visualisation.
-SECTOR_DEMAND = {
-    "household": 320000.0,
-    "foodProcessing": 180000.0,
-    "industry": 120000.0,
-    "agriculture": 63608.0,
-}
-
-SECTOR_DEMAND_NOTE = (
-    "Reference national sector breakdown by end use. Not derived from "
-    "production_records; shown for context only."
-)
-
-
 @admin_api_bp.route("/supply-demand", methods=["GET"])
 @login_required
 def supply_demand():

@@ -1,3 +1,5 @@
+# WHAT: DemandBenchmark table — taunang supply/demand figures (national/provincial).
+# WHY: Reference data para sa supply-demand visualization at reports.
 from app.extensions import db
 from datetime import datetime
 
