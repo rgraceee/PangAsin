@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+instance/
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+node_modules/
+
+# Local AI assistant tooling
+/.agents/
+/.autohand/
+/.claude/
+/.codemaker/
+/.codestudio/
+/.continue/
+/.kilo/
+/skills/
+/skills-lock.json
+
+# Database
+*.db
+*.sqlite3
+
+# Migrations
+migrations/versions/*.py
+!migrations/versions/__init__.py
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Generated report files
+app/static/reports/*.xlsx
+app/static/reports/*.pdf

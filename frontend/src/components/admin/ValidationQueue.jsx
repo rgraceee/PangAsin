@@ -1,0 +1,354 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import {
+  getAdminRecords, getAdminRecord, getAdminMunicipalities, reviewAdminRecord,
+  getAdminEnvironmentReports, reviewAdminEnvironmentReport,
+  getAdminProducerReports, reviewAdminProducerReport,
+} from '../../services/dataService';
+import { useToast } from '../Toast';
+import { SkeletonList } from '../Skeleton';
+import RecordStatusBadge from '../encoder/RecordStatusBadge';
+import { Eye } from 'lucide-react';
+import IconButton from '../IconButton';
+import PageHeader from './PageHeader';
+
+const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
+
+function DetailRow({ label, value }) {
+  return (
+    <tr>
+      <th className="text-muted fw-normal" style={{ width: '35%' }}>{label}</th>
+      <td>{value ?? '—'}</td>
+    </tr>
+  );
+}
+
+export default function ValidationQueue() {
+  const { toastSuccess, toastError } = useToast();
+  const [records, setRecords] = useState([]);
+  const [reportType, setReportType] = useState('production');
+  const [munis, setMunis] = useState([]);
+  const [filters, setFilters] = useState({
+    municipality_id: '',
+    barangay_id: '',
+    status: 'pending',
+    q: '',
+    start: '',
+    end: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [reviewAction, setReviewAction] = useState(null);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback((f, type) => {
+    setLoading(true);
+    setError(null);
+    const params = {};
+    if (f.status) params.status = f.status;
+    if (f.municipality_id) params.municipality_id = f.municipality_id;
+    const request = type === 'environment'
+      ? getAdminEnvironmentReports(params).then((r) => r.reports || [])
+      : type === 'producer'
+        ? getAdminProducerReports(params).then((r) => r.reports || [])
+        : getAdminRecords({ ...params, q: f.q, start: f.start, end: f.end }).then((r) => r.records || []);
+    request
+      .then((rows) => { setRecords(rows); setLoading(false); })
+      .catch((err) => { setError(err.message); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    getAdminMunicipalities().then((res) => setMunis(res.municipalities || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => { load(filters, reportType); }, [filters, load, reportType]);
+
+  const handleFilter = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
+  const handleClear = () => setFilters({
+    municipality_id: '', barangay_id: '', status: 'pending', q: '', start: '', end: '',
+  });
+
+  const handleView = (id) => {
+    if (reportType !== 'production') {
+      setDetail(records.find((row) => row.id === id) || null);
+      setShowDetail(true);
+      setReviewAction(null);
+      setReviewComment('');
+      return;
+    }
+    getAdminRecord(id)
+      .then((r) => { setDetail(r); setShowDetail(true); setReviewAction(null); setReviewComment(''); })
+      .catch((err) => {
+        const message = err.message || 'Could not load this record.';
+        setError(message);
+        toastError(message);
+      });
+  };
+
+  const openReview = (action) => {
+    setReviewAction(action);
+    setReviewComment('');
+  };
+
+  const submitReview = async () => {
+    if (!detail || !reviewAction) return;
+    setSubmitting(true);
+    try {
+      const review = reportType === 'environment'
+        ? reviewAdminEnvironmentReport
+        : reportType === 'producer'
+          ? reviewAdminProducerReport
+          : reviewAdminRecord;
+      const updated = await review(detail.id, {
+        status: reviewAction,
+        reviewer_comment: reviewComment || null,
+      });
+      setDetail(updated);
+      setReviewAction(null);
+      load(filters, reportType);
+      if (reviewAction === 'approved') {
+        toastSuccess(`${reportTypeLabel} #${detail.id} has been approved.`, `${reportTypeLabel} approved`);
+      } else {
+        toastSuccess(`${reportTypeLabel} #${detail.id} has been rejected.`, `${reportTypeLabel} rejected`);
+      }
+    } catch (err) {
+      const message = err.message || 'Could not save the review.';
+      setError(message);
+      toastError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const hasFilter = Boolean(
+    filters.municipality_id || filters.q || filters.start || filters.end || (filters.status && filters.status !== 'pending')
+  );
+  const reportTypeLabel = reportType[0].toUpperCase() + reportType.slice(1);
+
+  return (
+    <>
+      <PageHeader
+        id="admin-validation"
+        variant="sub"
+        title={`${reportTypeLabel} Report Validation`}
+        subtitle={`Review and approve submitted ${reportTypeLabel.toLowerCase()} reports.`}
+      >
+        <div className="admin-page-hero-control" role="group" aria-label="Report type">
+          {['production', 'producer', 'environment'].map((type) => (
+            <Button
+              key={type}
+              type="button"
+              size="sm"
+              variant={reportType === type ? 'primary' : 'outline-secondary'}
+              onClick={() => setReportType(type)}
+            >
+              {type[0].toUpperCase() + type.slice(1)}
+            </Button>
+          ))}
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-status">Status</label>
+          <select id="vq-status" className="form-select admin-page-hero-select" name="status" value={filters.status} onChange={handleFilter}>
+            <option value="">All statuses</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-muni">Municipality</label>
+          <select id="vq-muni" className="form-select admin-page-hero-select" name="municipality_id" value={filters.municipality_id} onChange={handleFilter}>
+            <option value="">All municipalities</option>
+            {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
+        {reportType === 'production' && <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-q">Barangay</label>
+          <input id="vq-q" type="text" className="form-control admin-page-hero-input" name="q" placeholder="Search barangay…" value={filters.q} onChange={handleFilter} />
+        </div>}
+        {reportType === 'production' && <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-start">Start date</label>
+          <input id="vq-start" type="date" className="form-control admin-page-hero-input" name="start" value={filters.start} onChange={handleFilter} />
+        </div>}
+        {reportType === 'production' && <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-end">End date</label>
+          <input id="vq-end" type="date" className="form-control admin-page-hero-input" name="end" value={filters.end} onChange={handleFilter} />
+        </div>}
+      </PageHeader>
+
+      <Card className="encoder-card admin-card">
+        <Card.Body>
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted small">{records.length} record{records.length === 1 ? '' : 's'}</span>
+            {hasFilter && <Button variant="link" size="sm" onClick={handleClear}>Clear filters</Button>}
+          </div>
+
+        {error && <Alert variant="danger">{error}</Alert>}
+        {loading && <div className="text-center py-2"><SkeletonList rows={6} cols={6} /></div>}
+        {!loading && records.length === 0 && (
+          <Alert variant="info">No records match the current filters.</Alert>
+        )}
+        {!loading && records.length > 0 && (
+          <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+            <thead>
+              {reportType === 'production' ? <tr>
+                <th>Municipality</th>
+                <th>Barangay</th>
+                <th>Date</th>
+                <th>Submitter</th>
+                <th>Volume (kg)</th>
+                <th>Status</th>
+                <th></th>
+              </tr> : reportType === 'environment' ? <tr>
+                <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th></th>
+              </tr> : <tr>
+                <th>Municipality</th><th>Producer Entries</th><th>Submitter</th><th>Status</th><th></th>
+              </tr>}
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id}>
+                  {reportType === 'production' ? <>
+                    <td>{r.municipality_name}</td>
+                    <td>{r.barangay}</td>
+                    <td>{r.record_date}</td>
+                    <td>{r.submitter?.name || '—'}</td>
+                    <td>{r.production_volume?.toLocaleString()}</td>
+                    <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
+                  </> : reportType === 'environment' ? <>
+                    <td>{r.municipality_name}</td>
+                    <td>{r.barangay}</td>
+                    <td>{r.num_salt_beds?.toLocaleString()}</td>
+                    <td>{(r.production_methods || []).join(', ')}</td>
+                    <td>{r.submitter?.name || '—'}</td>
+                    <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
+                  </> : <>
+                    <td>{r.municipality_name}</td>
+                    <td>{r.entries?.length || 0}</td>
+                    <td>{r.submitter?.name || '—'}</td>
+                    <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
+                  </>}
+                  <td className="text-nowrap">
+                    <IconButton
+                      icon={Eye}
+                      label={`Review record ${r.id}`}
+                      variant="outline-primary"
+                      onClick={() => handleView(r.id)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card.Body>
+
+      <Modal show={showDetail} onHide={() => setShowDetail(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>{reportTypeLabel} Report #{detail?.id}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {detail && (
+            <>
+              <div className="mb-3">
+                <RecordStatusBadge status={detail.status} reviewerComment={detail.reviewer_comment} />
+                {detail.reviewer_comment && (
+                  <div className="mt-2 small text-muted">Reviewer comment: {detail.reviewer_comment}</div>
+                )}
+              </div>
+              <Table bordered size="sm" className="mb-0">
+                {reportType === 'production' ? <tbody>
+                  <DetailRow label="Municipality" value={detail.municipality_name} />
+                  <DetailRow label="Barangay" value={detail.barangay} />
+                  <DetailRow label="Date Covered" value={detail.record_date} />
+                  <DetailRow label="Production Method" value={detail.production_method ? detail.production_method.charAt(0).toUpperCase() + detail.production_method.slice(1) : null} />
+                  <DetailRow label="Registered Producers" value={detail.registered_producers} />
+                  <DetailRow label="Male Producers" value={detail.male_producers} />
+                  <DetailRow label="Female Producers" value={detail.female_producers} />
+                  <DetailRow label="Total Production Volume" value={detail.production_volume != null ? `${detail.production_volume} kg` : null} />
+                  <DetailRow label="Beds Used" value={detail.num_salt_beds} />
+                  <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
+                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} kg` : null} />
+                  <DetailRow label="Submitted by" value={detail.submitter ? `${detail.submitter.name} (${detail.submitter.email})` : null} />
+                  <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
+                  <DetailRow label="Reviewed by" value={detail.reviewer ? `${detail.reviewer.name} (${detail.reviewer.email})` : null} />
+                  <DetailRow label="Reviewed at" value={detail.reviewed_at ? new Date(detail.reviewed_at).toLocaleString() : null} />
+                  <DetailRow label="Created" value={detail.created_at ? new Date(detail.created_at).toLocaleString() : null} />
+                  <DetailRow label="Last Updated" value={detail.updated_at ? new Date(detail.updated_at).toLocaleString() : null} />
+                </tbody> : reportType === 'environment' ? <tbody>
+                  <DetailRow label="Report Type" value="Environment" />
+                  <DetailRow label="Municipality" value={detail.municipality_name} />
+                  <DetailRow label="Barangay" value={detail.barangay} />
+                  <DetailRow label="Number of Salt Beds" value={detail.num_salt_beds} />
+                  <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
+                  <DetailRow label="Production Area" value={detail.production_area_size != null ? `${detail.production_area_size} m²` : null} />
+                  <DetailRow label="Production Methods" value={(detail.production_methods || []).join(', ')} />
+                  <DetailRow label="Submitted by" value={detail.submitter?.name} />
+                  <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
+                </tbody> : <tbody>
+                  <DetailRow label="Report Type" value="Producer" />
+                  <DetailRow label="Municipality" value={detail.municipality_name} />
+                  <DetailRow label="Producer Entries" value={detail.entries?.length || 0} />
+                  <DetailRow label="Submitted by" value={detail.submitter?.name} />
+                  <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
+                </tbody>}
+              </Table>
+
+              {reportType === 'producer' && (
+                <Table responsive bordered size="sm" className="mt-3 mb-0">
+                  <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Address</th></tr></thead>
+                  <tbody>{(detail.entries || []).map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.name}</td><td>{entry.barangay}</td><td>{entry.age ?? entry.age_bracket ?? '—'}</td><td>{entry.sex}</td><td>{entry.address}</td>
+                    </tr>
+                  ))}</tbody>
+                </Table>
+              )}
+
+              {detail.status === 'pending' && !reviewAction && (
+                <div className="d-flex gap-2 mt-3">
+                  <Button variant="success" onClick={() => openReview('approved')}>Approve</Button>
+                  <Button variant="danger" onClick={() => openReview('rejected')}>Reject</Button>
+                </div>
+              )}
+
+              {reviewAction && (
+                <div className="mt-3">
+                  <Form.Group className="mb-2">
+                    <Form.Label>
+                      {reviewAction === 'approved' ? 'Approval comment (optional)' : 'Rejection reason'}
+                    </Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder={reviewAction === 'approved' ? 'Optional note for the encoder…' : 'Why is this being rejected?'}
+                    />
+                  </Form.Group>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant={reviewAction === 'approved' ? 'success' : 'danger'}
+                      onClick={submitReview}
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Saving…' : `Confirm ${reviewAction === 'approved' ? 'Approve' : 'Reject'}`}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setReviewAction(null)} disabled={submitting}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDetail(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+    </Card>
+    </>
+  );
+}

@@ -1,0 +1,18 @@
+{% extends "landing_base.html" %}
+{% block content %}
+<section class="landing-splash d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 100vh;">
+  <div class="mb-4">
+    <img src="{{ url_for('static', filename='brand/PangAsin_Logo.png') }}" alt="PangAsin Logo" class="landing-logo-img" />
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    setTimeout(function () {
+      window.location.href = "/public-dashboard";
+    }, 3000);
+  })();
+</script>
+{% endblock %}
