@@ -11,6 +11,7 @@ from sqlalchemy import func, case
 from app.extensions import db
 from app.models.municipality import Municipality
 from app.models.production_record import ProductionRecord
+from app.models.producer_report import ProducerReport, ProducerReportEntry
 from app.models.demand_benchmark import DemandBenchmark
 from app.services.forecast_service import _monthly_aggregates
 
@@ -114,6 +115,7 @@ def _demographics():
     province = {a: 0 for a in AGE_FIELDS}
     province["male"] = 0
     province["female"] = 0
+    province["notSpecified"] = 0
     for r in rows:
         age_groups = {a: int(getattr(r, a) or 0) for a in AGE_FIELDS}
         gender = {"male": int(r.male or 0), "female": int(r.female or 0), "notSpecified": 0}
@@ -126,6 +128,50 @@ def _demographics():
         province["male"] += gender["male"]
         province["female"] += gender["female"]
 
+    age_fields_by_label = {
+        "18-30": "producers_18_30",
+        "31-40": "producers_31_40",
+        "41-50": "producers_41_50",
+        "51-60": "producers_51_60",
+        "61+": "producers_61_plus",
+    }
+    producer_rows = (
+        db.session.query(
+            ProducerReport.municipality_id,
+            ProducerReportEntry.age,
+            ProducerReportEntry.age_bracket,
+            ProducerReportEntry.sex,
+            func.count(ProducerReportEntry.id).label("producer_count"),
+        )
+        .join(ProducerReportEntry, ProducerReportEntry.report_id == ProducerReport.id)
+        .filter(ProducerReport.status == "approved")
+        .group_by(ProducerReport.municipality_id, ProducerReportEntry.age, ProducerReportEntry.age_bracket, ProducerReportEntry.sex)
+        .all()
+    )
+    for row in producer_rows:
+        municipality_key = str(row.municipality_id)
+        municipality = by_municipality.setdefault(municipality_key, {
+            "ageGroups": {field: 0 for field in AGE_FIELDS},
+            "genderDistribution": {"male": 0, "female": 0, "notSpecified": 0},
+        })
+        count = int(row.producer_count or 0)
+        if row.age is not None:
+            age_field = (
+                "producers_18_30" if row.age <= 30 else
+                "producers_31_40" if row.age <= 40 else
+                "producers_41_50" if row.age <= 50 else
+                "producers_51_60" if row.age <= 60 else
+                "producers_61_plus"
+            )
+        else:
+            age_field = age_fields_by_label.get(row.age_bracket)
+        if age_field:
+            municipality["ageGroups"][age_field] += count
+            province[age_field] += count
+        sex_key = {"Male": "male", "Female": "female"}.get(row.sex, "notSpecified")
+        municipality["genderDistribution"][sex_key] += count
+        province[sex_key] += count
+
     age_labels = ["18-30", "31-40", "41-50", "51-60", "61+"]
     province_age = {
         label: province[AGE_FIELDS[i]] for i, label in enumerate(age_labels)
@@ -133,7 +179,7 @@ def _demographics():
     province_gender = {
         "male": province["male"],
         "female": province["female"],
-        "notSpecified": 0,
+        "notSpecified": province["notSpecified"],
     }
     return {
         "provinceWide": {
@@ -212,6 +258,8 @@ INSIGHTS = {
 
 
 def _build_municipalities(rows, method_by_muni, window):
+    if not rows:
+        return []
     start, end = window
     municipalities = []
     for r in rows:

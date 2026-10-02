@@ -13,6 +13,7 @@ import DecisionSupport from './components/admin/DecisionSupport';
 import GenerateReports from './components/admin/GenerateReports';
 import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
+import ProducerMasterList from './components/ProducerMasterList';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import usePageTitle from './hooks/usePageTitle';
@@ -23,6 +24,8 @@ const ROUTE_TITLES = {
   '/encoder': 'Encoder Dashboard',
   '/admin': 'Executive Dashboard',
   '/admin/users': 'User Management',
+  '/admin/master-list': 'Master List',
+  '/encoder/master-list': 'Master List',
   '/admin/validation': 'Validation Queue',
   '/admin/data-quality': 'Data Quality',
   '/admin/forecast': 'Forecasting',
@@ -73,6 +76,7 @@ export default function App() {
           }
         >
           <Route index element={<EncoderDashboard />} />
+          <Route path="master-list" element={<ProducerMasterList />} />
         </Route>
         <Route
           path="/admin"
@@ -84,6 +88,7 @@ export default function App() {
         >
           <Route index element={<AdminPage user={user} />} />
           <Route path="users" element={<UsersManagement />} />
+          <Route path="master-list" element={<ProducerMasterList user={user} isAdmin />} />
           <Route path="validation" element={<ValidationQueue />} />
           <Route path="data-quality" element={<DataQualityDashboard />} />
           <Route path="forecast" element={<ForecastDashboard />} />

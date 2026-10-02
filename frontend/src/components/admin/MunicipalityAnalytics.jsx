@@ -169,6 +169,18 @@ export default function MunicipalityAnalytics() {
     fill: METHOD_COLORS[m.key],
   }));
 
+  const environmentRows = (data.environment_by_municipality || [])
+    .filter((row) => chartMuni ? row.municipality_name === chartMuni : !hidden.has(row.municipality_name));
+  const environmentReportCount = environmentRows.reduce((sum, row) => sum + row.report_count, 0);
+  const environmentBedCount = environmentRows.reduce((sum, row) => sum + row.total_salt_beds, 0);
+  const environmentArea = environmentRows.reduce((sum, row) => sum + row.total_production_area_sqm, 0);
+  const environmentMethods = environmentRows.reduce((totals, row) => {
+    Object.entries(row.production_methods || {}).forEach(([method, count]) => {
+      totals[method] = (totals[method] || 0) + count;
+    });
+    return totals;
+  }, {});
+
   function methodCaption() {
     if (methods.length === 0) return null;
     const top = methods.reduce((b, m) => (m.value > b.value ? m : b), methods[0]);
@@ -534,6 +546,56 @@ export default function MunicipalityAnalytics() {
                   {ageCaption()}
                 </div>
               )}
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row className="g-3 mb-4">
+        <Col lg={7}>
+          <Card className="encoder-card h-100">
+            <Card.Header>
+              <div className="admin-card-head">
+                <h5 className="admin-card-head-title">Environment Report Area by Municipality</h5>
+                {chartFilterLabel}
+              </div>
+            </Card.Header>
+            <Card.Body>
+              {environmentRows.length === 0 ? (
+                <div className="chart-empty"><span className="chart-empty-chip">No approved reports</span>No Environment Report data is available for this selection.</div>
+              ) : (
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={environmentRows} margin={{ top: 8, right: 20, bottom: 8, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="municipality_name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip content={<ChartTooltip nameFormatter={(value) => `${Number(value).toLocaleString()} m²`} />} />
+                      <Bar dataKey="total_production_area_sqm" name="Approved environment area" fill={BRAND.green} radius={[5, 5, 0, 0]} maxBarSize={46} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col lg={5}>
+          <Card className="encoder-card h-100">
+            <Card.Header><h5 className="admin-card-head-title mb-0">Approved Environment Reports</h5></Card.Header>
+            <Card.Body>
+              <Row className="g-3 mb-3">
+                <Col xs={4}><div className="small text-muted">Reports</div><strong>{environmentReportCount.toLocaleString()}</strong></Col>
+                <Col xs={4}><div className="small text-muted">Salt beds</div><strong>{environmentBedCount.toLocaleString()}</strong></Col>
+                <Col xs={4}><div className="small text-muted">Area</div><strong>{environmentArea.toLocaleString()} m²</strong></Col>
+              </Row>
+              <div className="small text-muted mb-2">Reported methods</div>
+              {Object.entries(environmentMethods).filter(([, count]) => count > 0).length === 0 ? (
+                <div className="small text-muted">No approved method data.</div>
+              ) : Object.entries(environmentMethods).map(([method, count]) => (
+                <div key={method} className="d-flex justify-content-between border-bottom py-2">
+                  <span className="text-capitalize">{method}</span><strong>{count.toLocaleString()}</strong>
+                </div>
+              ))}
             </Card.Body>
           </Card>
         </Col>

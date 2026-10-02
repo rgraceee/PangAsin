@@ -30,6 +30,7 @@ REPORT_TYPE_NAMES = {
     "gis": "Geographic-Reference",
     "production": "Production",
     "producers": "Producers",
+    "environment": "Environment",
 }
 
 

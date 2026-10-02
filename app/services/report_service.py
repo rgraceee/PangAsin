@@ -8,6 +8,8 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models.production_record import ProductionRecord
+from app.models.producer import Producer
+from app.models.environment_report import EnvironmentReport
 from app.models.municipality import Municipality
 from app.models.barangay import Barangay
 from app.models.user import User
@@ -31,6 +33,7 @@ def build_provincial_data(start, end):
         func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
         func.sum(ProductionRecord.registered_producers).label("total_registered"),
     ).join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+    q = q.filter(ProductionRecord.status == "approved")
     if start:
         q = q.filter(ProductionRecord.record_date >= start)
     if end:
@@ -72,6 +75,7 @@ def build_municipality_data(municipality_id, start, end):
         func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
         func.sum(ProductionRecord.registered_producers).label("total_registered"),
     ).join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
+    q = q.filter(ProductionRecord.status == "approved")
     if municipality_id:
         q = q.filter(ProductionRecord.municipality_id == municipality_id)
     if start:
@@ -115,7 +119,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
             func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
             func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
         ).join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
-        q = q.filter(ProductionRecord.barangay_id == barangay_id)
+        q = q.filter(ProductionRecord.barangay_id == barangay_id, ProductionRecord.status == "approved")
         if start:
             q = q.filter(ProductionRecord.record_date >= start)
         if end:
@@ -151,7 +155,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
             func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
             func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
         ).join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
-        q = q.filter(ProductionRecord.municipality_id == municipality_id)
+        q = q.filter(ProductionRecord.municipality_id == municipality_id, ProductionRecord.status == "approved")
         if start:
             q = q.filter(ProductionRecord.record_date >= start)
         if end:
@@ -184,6 +188,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
         func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
         func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
     ).join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+    q = q.filter(ProductionRecord.status == "approved")
     if start:
         q = q.filter(ProductionRecord.record_date >= start)
     if end:
@@ -215,78 +220,105 @@ def build_production_data(municipality_id, barangay_id, start, end):
 
 
 def build_producers_data(municipality_id, barangay_id, start, end):
-    """Producer-focused report across province, municipality, or barangay scope."""
-    producer_cols = (
-        func.sum(ProductionRecord.registered_producers).label("total_registered"),
-        func.sum(ProductionRecord.male_producers).label("total_male"),
-        func.sum(ProductionRecord.female_producers).label("total_female"),
-        func.count(ProductionRecord.id).label("record_count"),
-        func.sum(ProductionRecord.production_volume).label("total_volume"),
+    """Build a producer-only report from the current worker master list."""
+    query = (
+        db.session.query(
+            Producer,
+            Barangay.name.label("barangay"),
+            Municipality.name.label("municipality"),
+        )
+        .join(Barangay, Barangay.id == Producer.barangay_id)
+        .join(Municipality, Municipality.id == Barangay.municipality_id)
     )
+    if municipality_id is not None:
+        query = query.filter(Barangay.municipality_id == municipality_id)
+    if barangay_id is not None:
+        query = query.filter(Producer.barangay_id == barangay_id)
+    if start:
+        query = query.filter(Producer.created_at >= datetime.combine(start, datetime.min.time()))
+    if end:
+        query = query.filter(Producer.created_at < datetime.combine(end + timedelta(days=1), datetime.min.time()))
 
-    def apply_date(q):
-        if start:
-            q = q.filter(ProductionRecord.record_date >= start)
-        if end:
-            q = q.filter(ProductionRecord.record_date <= end)
-        return q
+    rows = query.order_by(Municipality.name, Barangay.name, Producer.name).all()
+    producers = [
+        {
+            "municipality": municipality,
+            "barangay": barangay,
+            "name": producer.name,
+            "age": producer.age,
+            "age_bracket": producer.age_bracket,
+            "sex": producer.sex,
+            "address": producer.address,
+        }
+        for producer, barangay, municipality in rows
+    ]
+    by_scope = {}
+    for producer in producers:
+        scope_name = producer["municipality"] if barangay_id is None and municipality_id is None else producer["barangay"]
+        aggregate = by_scope.setdefault(scope_name, {
+            "municipality" if barangay_id is None and municipality_id is None else "barangay": scope_name,
+            "registered_producers": 0,
+            "male_producers": 0,
+            "female_producers": 0,
+            "other_producers": 0,
+        })
+        aggregate["registered_producers"] += 1
+        sex_key = {"Male": "male_producers", "Female": "female_producers"}.get(producer["sex"], "other_producers")
+        aggregate[sex_key] += 1
 
+    prefix = "Provincial" if municipality_id is None else (db.session.get(Municipality, municipality_id).name if db.session.get(Municipality, municipality_id) else f"Municipality #{municipality_id}")
     if barangay_id is not None:
         barangay = db.session.get(Barangay, barangay_id)
         prefix = barangay.name if barangay else f"Barangay #{barangay_id}"
-        muni_name = barangay.municipality.name if barangay and barangay.municipality else None
-
-        q = apply_date(db.session.query(Barangay.name.label("barangay"), *producer_cols)
-                       .join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
-                       .filter(ProductionRecord.barangay_id == barangay_id))
-        rows = q.group_by(Barangay.name).all()
-        report_title = f"{prefix} Producers Report"
-        table_key = "by_barangay"
-        level_label = "barangay"
-    elif municipality_id is not None:
-        muni = db.session.get(Municipality, municipality_id)
-        prefix = muni.name if muni else f"Municipality #{municipality_id}"
-
-        q = apply_date(db.session.query(Barangay.name.label("barangay"), *producer_cols)
-                       .join(ProductionRecord, ProductionRecord.barangay_id == Barangay.id)
-                       .filter(ProductionRecord.municipality_id == municipality_id))
-        rows = q.group_by(Barangay.name).all()
-        report_title = f"{prefix} Producers Report"
-        table_key = "by_barangay"
-        level_label = "barangay"
-        muni_name = muni.name if muni else None
-    else:
-        q = apply_date(db.session.query(Municipality.name.label("municipality"), *producer_cols)
-                       .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id))
-        rows = q.group_by(Municipality.name).all()
-        report_title = "Provincial Producers Report"
-        table_key = "by_municipality"
-        level_label = "municipality"
-        muni_name = None
-
-    table_rows = []
-    for r in rows:
-        row = {
-            level_label: r[0],
-            "record_count": r.record_count,
-            "registered_producers": int(r.total_registered or 0),
-            "male_producers": int(r.total_male or 0),
-            "female_producers": int(r.total_female or 0),
-            "production_mt": _volume_mt(r.total_volume),
-        }
-        table_rows.append(row)
-
-    total_registered = sum(row["registered_producers"] for row in table_rows)
-    total_male = sum(row["male_producers"] for row in table_rows)
-    total_female = sum(row["female_producers"] for row in table_rows)
-
     return {
-        "report_title": report_title,
-        "municipality_name": muni_name,
-        table_key: table_rows,
-        "total_registered_producers": total_registered,
-        "total_male_producers": total_male,
-        "total_female_producers": total_female,
+        "report_title": f"{prefix} Producer Report",
+        "producers": producers,
+        "by_municipality" if municipality_id is None and barangay_id is None else "by_barangay": list(by_scope.values()),
+        "total_registered_producers": len(producers),
+        "total_male_producers": sum(producer["sex"] == "Male" for producer in producers),
+        "total_female_producers": sum(producer["sex"] == "Female" for producer in producers),
+        "total_other_producers": sum(producer["sex"] == "Other" for producer in producers),
+    }
+
+
+def build_environment_data(municipality_id, barangay_id, start, end):
+    """Build an environment-only report from approved environment submissions."""
+    query = (
+        db.session.query(EnvironmentReport, Barangay.name.label("barangay"), Municipality.name.label("municipality"))
+        .join(Barangay, Barangay.id == EnvironmentReport.barangay_id)
+        .join(Municipality, Municipality.id == EnvironmentReport.municipality_id)
+        .filter(EnvironmentReport.status == "approved")
+    )
+    if municipality_id is not None:
+        query = query.filter(EnvironmentReport.municipality_id == municipality_id)
+    if barangay_id is not None:
+        query = query.filter(EnvironmentReport.barangay_id == barangay_id)
+    if start:
+        query = query.filter(EnvironmentReport.submitted_at >= datetime.combine(start, datetime.min.time()))
+    if end:
+        query = query.filter(EnvironmentReport.submitted_at < datetime.combine(end + timedelta(days=1), datetime.min.time()))
+
+    rows = query.order_by(Municipality.name, Barangay.name, EnvironmentReport.submitted_at.desc()).all()
+    reports = [
+        {
+            "municipality": municipality,
+            "barangay": barangay,
+            "num_salt_beds": report.num_salt_beds,
+            "area_per_salt_bed_sqm": float(report.area_per_salt_bed),
+            "production_area_sqm": float(report.production_area_size),
+            "production_methods": report.production_methods or [],
+            "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
+        }
+        for report, barangay, municipality in rows
+    ]
+    total_beds = sum(report["num_salt_beds"] for report in reports)
+    total_area = sum(report["production_area_sqm"] for report in reports)
+    return {
+        "report_title": "Environment Report Summary",
+        "environment_reports": reports,
+        "total_reports": len(reports),
+        "total_salt_beds": total_beds,
+        "total_production_area_sqm": round(total_area, 2),
     }
 
 
@@ -453,6 +485,7 @@ BUILDERS = {
     "gis": build_gis_data,
     "production": build_production_data,
     "producers": build_producers_data,
+    "environment": build_environment_data,
 }
 
 
@@ -466,7 +499,7 @@ def build_report_data(report_type, municipality_id=None, barangay_id=None, start
         return fn(municipality_id, start, end)
     if report_type == "provincial":
         return fn(start, end)
-    if report_type in ("production", "producers"):
+    if report_type in ("production", "producers", "environment"):
         return fn(municipality_id, barangay_id, start, end)
     return fn()
 

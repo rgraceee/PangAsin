@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Gauge, Users, ClipboardCheck, DatabaseCheck, Building2, Boxes, Zap, FileDown, LayoutGrid, UserCog, ChartColumn, Compass, LogOut, Target } from 'lucide-react';
+import { Gauge, Users, ClipboardCheck, DatabaseCheck, Building2, Boxes, Zap, FileDown, LayoutGrid, UserCog, ChartColumn, Compass, LogOut, Target, ContactRound } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 
 const SECTIONS = [
   { id: 'admin-dashboard', label: 'Executive Dashboard', icon: Gauge },
   { id: 'admin-users', label: 'User Management', icon: Users },
+  { id: 'admin-master-list', label: 'Master List', icon: ContactRound },
   { id: 'admin-validation', label: 'Validation Queue', icon: ClipboardCheck },
   { id: 'admin-data-quality', label: 'Data Quality', icon: DatabaseCheck },
   { id: 'admin-municipality', label: 'Municipality Analytics', icon: Building2 },
@@ -17,9 +18,9 @@ const SECTIONS = [
 
 const GROUPS = [
   { title: 'Overview', items: SECTIONS.slice(0, 1) },
-  { title: 'Manage', items: SECTIONS.slice(1, 4) },
-  { title: 'Analytics', items: SECTIONS.slice(4, 6) },
-  { title: 'Planning', items: SECTIONS.slice(6, 9) },
+  { title: 'Manage', items: SECTIONS.slice(1, 5) },
+  { title: 'Analytics', items: SECTIONS.slice(5, 7) },
+  { title: 'Planning', items: SECTIONS.slice(7, 10) },
 ];
 
 const GROUP_ICONS = {
@@ -47,8 +48,10 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
       const isReports = location.pathname === '/admin/reports';
       const isValidation = location.pathname === '/admin/validation';
       const isDataQuality = location.pathname === '/admin/data-quality';
+      const isMasterList = location.pathname === '/admin/master-list';
       let fallback = 'admin-dashboard';
       if (isValidation) fallback = 'admin-validation';
+      else if (isMasterList) fallback = 'admin-master-list';
       else if (isDataQuality) fallback = 'admin-data-quality';
       else if (isForecastTarget) fallback = 'admin-forecast-target';
       else if (isForecast) fallback = 'admin-forecast';
@@ -60,7 +63,7 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
     if (!scroller || typeof IntersectionObserver === 'undefined') return;
 
     const elements = SECTIONS
-      .filter((s) => s.id !== 'admin-users' && s.id !== 'admin-forecast' && s.id !== 'admin-forecast-target' && s.id !== 'admin-reports' && s.id !== 'admin-validation' && s.id !== 'admin-data-quality')
+      .filter((s) => s.id !== 'admin-users' && s.id !== 'admin-master-list' && s.id !== 'admin-forecast' && s.id !== 'admin-forecast-target' && s.id !== 'admin-reports' && s.id !== 'admin-validation' && s.id !== 'admin-data-quality')
       .map((s) => scroller.querySelector(`#${s.id}`))
       .filter(Boolean);
 
@@ -79,12 +82,17 @@ export default function AdminSidebar({ scrollRef, onLogout }) {
 
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [scrollRef, onIndex]);
+  }, [scrollRef, onIndex, location.pathname]);
 
   const handleClick = useCallback((id) => {
     const scroller = scrollRef?.current;
     if (id === 'admin-users') {
       navigate('/admin/users');
+      setActiveId(id);
+      return;
+    }
+    if (id === 'admin-master-list') {
+      navigate('/admin/master-list');
       setActiveId(id);
       return;
     }

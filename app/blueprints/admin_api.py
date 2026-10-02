@@ -4,6 +4,9 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from app.models.production_record import ProductionRecord
+from app.models.environment_report import EnvironmentReport
+from app.models.producer_report import ProducerReport, ProducerReportEntry
+from app.models.producer import Producer
 from app.models.barangay import Barangay
 from app.models.municipality import Municipality
 from app.models.user import User
@@ -326,6 +329,176 @@ def review_record(record_id):
     return jsonify(_serialize(record))
 
 
+def _report_review_status(data):
+    status = (data.get("status") or "").strip()
+    if status not in ("approved", "rejected"):
+        return None, jsonify({"error": "status must be 'approved' or 'rejected'."}), 400
+    return status, None, None
+
+
+def _serialize_environment_submission(report):
+    submitter = db.session.get(User, report.submitted_by)
+    reviewer = db.session.get(User, report.reviewed_by) if report.reviewed_by else None
+    return {
+        "id": report.id,
+        "report_type": "environment",
+        "municipality_id": report.municipality_id,
+        "municipality_name": report.barangay.municipality.name if report.barangay and report.barangay.municipality else None,
+        "barangay_id": report.barangay_id,
+        "barangay": report.barangay.name if report.barangay else None,
+        "num_salt_beds": report.num_salt_beds,
+        "area_per_salt_bed": float(report.area_per_salt_bed),
+        "production_methods": report.production_methods or [],
+        "production_area_size": float(report.production_area_size),
+        "status": report.status,
+        "reviewer_comment": report.reviewer_comment,
+        "submitted_by": report.submitted_by,
+        "submitter": {"id": submitter.id, "name": submitter.name, "email": submitter.email} if submitter else None,
+        "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
+        "reviewed_by": report.reviewed_by,
+        "reviewer": {"id": reviewer.id, "name": reviewer.name, "email": reviewer.email} if reviewer else None,
+        "reviewed_at": report.reviewed_at.isoformat() if report.reviewed_at else None,
+        "created_at": report.created_at.isoformat() if report.created_at else None,
+    }
+
+
+def _serialize_producer_submission(report):
+    submitter = db.session.get(User, report.submitted_by)
+    reviewer = db.session.get(User, report.reviewed_by) if report.reviewed_by else None
+    municipality = db.session.get(Municipality, report.municipality_id)
+    return {
+        "id": report.id,
+        "report_type": "producer",
+        "municipality_id": report.municipality_id,
+        "municipality_name": municipality.name if municipality else None,
+        "status": report.status,
+        "reviewer_comment": report.reviewer_comment,
+        "submitted_by": report.submitted_by,
+        "submitter": {"id": submitter.id, "name": submitter.name, "email": submitter.email} if submitter else None,
+        "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
+        "reviewed_by": report.reviewed_by,
+        "reviewer": {"id": reviewer.id, "name": reviewer.name, "email": reviewer.email} if reviewer else None,
+        "reviewed_at": report.reviewed_at.isoformat() if report.reviewed_at else None,
+        "created_at": report.created_at.isoformat() if report.created_at else None,
+        "entries": [
+            {
+                "id": entry.id,
+                "barangay_id": entry.barangay_id,
+                "barangay": entry.barangay.name if entry.barangay else None,
+                "name": entry.name,
+                "age": entry.age,
+                "age_bracket": entry.age_bracket,
+                "sex": entry.sex,
+                "address": entry.address,
+            }
+            for entry in report.entries
+        ],
+    }
+
+
+@admin_api_bp.route("/environment-reports", methods=["GET"])
+@login_required
+def list_environment_submissions():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+    query = EnvironmentReport.query
+    status = request.args.get("status")
+    municipality_id = request.args.get("municipality_id", type=int)
+    if status:
+        query = query.filter(EnvironmentReport.status == status)
+    if municipality_id:
+        query = query.filter(EnvironmentReport.municipality_id == municipality_id)
+    reports = query.order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc()).all()
+    return jsonify({"reports": [_serialize_environment_submission(report) for report in reports]})
+
+
+@admin_api_bp.route("/environment-reports/<int:report_id>/review", methods=["PATCH", "POST"])
+@login_required
+def review_environment_submission(report_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+    report = db.session.get(EnvironmentReport, report_id)
+    if not report:
+        return jsonify({"error": "Environment report not found."}), 404
+    if report.status != "pending":
+        return jsonify({"error": f"Only pending reports can be reviewed. Current status: {report.status}."}), 409
+    status, error_response, error_status = _report_review_status(request.get_json(silent=True) or {})
+    if error_response:
+        return error_response, error_status
+    report.status = status
+    report.reviewer_comment = (request.get_json(silent=True) or {}).get("reviewer_comment") or None
+    report.reviewed_by = current_user.id
+    report.reviewed_at = datetime.utcnow()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Could not save the Environment report review."}), 500
+    return jsonify(_serialize_environment_submission(report))
+
+
+@admin_api_bp.route("/producer-reports", methods=["GET"])
+@login_required
+def list_producer_submissions():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+    query = ProducerReport.query
+    status = request.args.get("status")
+    municipality_id = request.args.get("municipality_id", type=int)
+    if status:
+        query = query.filter(ProducerReport.status == status)
+    if municipality_id:
+        query = query.filter(ProducerReport.municipality_id == municipality_id)
+    reports = query.order_by(ProducerReport.created_at.desc(), ProducerReport.id.desc()).all()
+    return jsonify({"reports": [_serialize_producer_submission(report) for report in reports]})
+
+
+@admin_api_bp.route("/producer-reports/<int:report_id>/review", methods=["PATCH", "POST"])
+@login_required
+def review_producer_submission(report_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+    report = db.session.get(ProducerReport, report_id)
+    if not report:
+        return jsonify({"error": "Producer report not found."}), 404
+    if report.status != "pending":
+        return jsonify({"error": f"Only pending reports can be reviewed. Current status: {report.status}."}), 409
+    data = request.get_json(silent=True) or {}
+    status, error_response, error_status = _report_review_status(data)
+    if error_response:
+        return error_response, error_status
+    report.status = status
+    report.reviewer_comment = data.get("reviewer_comment") or None
+    report.reviewed_by = current_user.id
+    report.reviewed_at = datetime.utcnow()
+    if status == "approved":
+        for entry in report.entries:
+            existing = Producer.query.filter(
+                Producer.barangay_id == entry.barangay_id,
+                func.lower(Producer.name) == entry.name.strip().lower(),
+                func.lower(Producer.address) == entry.address.strip().lower(),
+            ).first()
+            if existing:
+                existing.age = entry.age
+                existing.age_bracket = entry.age_bracket
+                existing.sex = entry.sex
+            else:
+                db.session.add(Producer(
+                    barangay_id=entry.barangay_id,
+                    name=entry.name.strip(),
+                    age=entry.age,
+                    age_bracket=entry.age_bracket,
+                    sex=entry.sex,
+                    address=entry.address.strip(),
+                ))
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Could not save the Producer report review."}), 500
+    return jsonify(_serialize_producer_submission(report))
+
+
 @admin_api_bp.route("/stats", methods=["GET"])
 @login_required
 def stats():
@@ -345,6 +518,7 @@ def stats():
             func.sum(ProductionRecord.female_producers).label("total_female"),
         )
         .join(Municipality, Municipality.id == ProductionRecord.municipality_id)
+        .filter(ProductionRecord.status == "approved")
         .group_by(ProductionRecord.municipality_id, Municipality.name)
         .all()
     )
@@ -360,6 +534,7 @@ def stats():
             func.sum(ProductionRecord.registered_producers).label("total_registered"),
         )
         .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
+        .filter(ProductionRecord.status == "approved")
         .group_by(ProductionRecord.municipality_id, ProductionRecord.barangay_id, Barangay.name)
         .all()
     )
@@ -374,12 +549,121 @@ def stats():
             "total_registered_producers": int(row.total_registered or 0),
         })
 
-    total_volume = db.session.query(func.sum(ProductionRecord.production_volume)).scalar() or 0
-    total_area = db.session.query(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed)).scalar() or 0
-    total_records = db.session.query(func.count(ProductionRecord.id)).scalar() or 0
-    total_beds = db.session.query(func.sum(ProductionRecord.num_salt_beds)).scalar() or 0
-    total_registered = db.session.query(func.sum(ProductionRecord.registered_producers)).scalar() or 0
-    pending_validation_count = ProductionRecord.query.filter_by(status="pending").count()
+    approved_producer_entries = (
+        db.session.query(
+            ProducerReport.municipality_id,
+            ProducerReportEntry.barangay_id,
+            ProducerReportEntry.sex,
+            func.count(ProducerReportEntry.id).label("producer_count"),
+        )
+        .join(ProducerReportEntry, ProducerReportEntry.report_id == ProducerReport.id)
+        .filter(ProducerReport.status == "approved")
+        .group_by(ProducerReport.municipality_id, ProducerReportEntry.barangay_id, ProducerReportEntry.sex)
+        .all()
+    )
+    producer_totals_by_muni = {}
+    producer_totals_by_barangay = {}
+    for row in approved_producer_entries:
+        count = int(row.producer_count or 0)
+        muni_totals = producer_totals_by_muni.setdefault(row.municipality_id, {"registered": 0, "male": 0, "female": 0})
+        barangay_totals = producer_totals_by_barangay.setdefault(
+            (row.municipality_id, row.barangay_id), {"registered": 0},
+        )
+        muni_totals["registered"] += count
+        barangay_totals["registered"] += count
+        if row.sex == "Male":
+            muni_totals["male"] += count
+        elif row.sex == "Female":
+            muni_totals["female"] += count
+
+    for municipality_id, barangays in by_barangay_by_muni.items():
+        for barangay_row in barangays:
+            added = producer_totals_by_barangay.get((municipality_id, barangay_row["barangay_id"]))
+            if added:
+                barangay_row["total_registered_producers"] += added["registered"]
+
+    existing_barangay_keys = {
+        (municipality_id, barangay_row["barangay_id"])
+        for municipality_id, barangays in by_barangay_by_muni.items()
+        for barangay_row in barangays
+    }
+    for (municipality_id, barangay_id), totals in producer_totals_by_barangay.items():
+        if (municipality_id, barangay_id) in existing_barangay_keys:
+            continue
+        barangay = db.session.get(Barangay, barangay_id)
+        by_barangay_by_muni.setdefault(municipality_id, []).append({
+            "barangay_id": barangay_id,
+            "barangay": barangay.name if barangay else "Unknown",
+            "total_volume_kg": 0.0,
+            "record_count": 0,
+            "total_area_sqm": 0.0,
+            "total_registered_producers": totals["registered"],
+        })
+
+    approved_production = ProductionRecord.query.filter_by(status="approved")
+    total_volume = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume), 0)).scalar() or 0
+    total_area = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)).scalar() or 0
+    total_records = approved_production.count()
+    total_beds = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0)).scalar() or 0
+    legacy_registered = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.registered_producers), 0)).scalar() or 0
+    standalone_registered = sum(totals["registered"] for totals in producer_totals_by_muni.values())
+    total_registered = int(legacy_registered or 0) + standalone_registered
+    pending_validation_count = (
+        ProductionRecord.query.filter_by(status="pending").count()
+        + EnvironmentReport.query.filter_by(status="pending").count()
+        + ProducerReport.query.filter_by(status="pending").count()
+    )
+
+    environment_by_muni = {}
+    for report in EnvironmentReport.query.filter_by(status="approved").all():
+        name = report.barangay.municipality.name if report.barangay and report.barangay.municipality else "Unknown"
+        row = environment_by_muni.setdefault(report.municipality_id, {
+            "municipality_id": report.municipality_id,
+            "municipality_name": name,
+            "report_count": 0,
+            "total_salt_beds": 0,
+            "total_production_area_sqm": 0.0,
+            "production_methods": {"solar": 0, "cooked": 0, "hybrid": 0},
+        })
+        row["report_count"] += 1
+        row["total_salt_beds"] += report.num_salt_beds
+        row["total_production_area_sqm"] += float(report.production_area_size or 0)
+        for method in report.production_methods or []:
+            if method in row["production_methods"]:
+                row["production_methods"][method] += 1
+
+    municipality_stats = []
+    for row in by_municipality:
+        producer_totals = producer_totals_by_muni.get(row.municipality_id, {})
+        municipality_stats.append({
+            "municipality_id": row.municipality_id,
+            "municipality_name": row.name,
+            "total_volume_kg": float(row.total_volume or 0),
+            "record_count": row.record_count,
+            "total_area_sqm": float(row.total_area or 0),
+            "total_salt_beds": int(row.total_beds or 0),
+            "total_registered_producers": int(row.total_registered or 0) + producer_totals.get("registered", 0),
+            "total_male_producers": int(row.total_male or 0) + producer_totals.get("male", 0),
+            "total_female_producers": int(row.total_female or 0) + producer_totals.get("female", 0),
+            "by_barangay": by_barangay_by_muni.get(row.municipality_id, []),
+        })
+    existing_municipality_ids = {row["municipality_id"] for row in municipality_stats}
+    for municipality_id, producer_totals in producer_totals_by_muni.items():
+        if municipality_id in existing_municipality_ids:
+            continue
+        municipality = db.session.get(Municipality, municipality_id)
+        municipality_stats.append({
+            "municipality_id": municipality_id,
+            "municipality_name": municipality.name if municipality else "Unknown",
+            "total_volume_kg": 0.0,
+            "record_count": 0,
+            "total_area_sqm": 0.0,
+            "total_salt_beds": 0,
+            "total_registered_producers": producer_totals["registered"],
+            "total_male_producers": producer_totals["male"],
+            "total_female_producers": producer_totals["female"],
+            "by_barangay": by_barangay_by_muni.get(municipality_id, []),
+        })
 
     return jsonify({
         "total_volume_kg": float(total_volume),
@@ -388,21 +672,10 @@ def stats():
         "total_salt_beds": int(total_beds or 0),
         "total_registered_producers": int(total_registered or 0),
         "pending_validation_count": pending_validation_count,
-        "by_municipality": [
-            {
-                "municipality_id": r.municipality_id,
-                "municipality_name": r.name,
-                "total_volume_kg": float(r.total_volume or 0),
-                "record_count": r.record_count,
-                "total_area_sqm": float(r.total_area or 0),
-                "total_salt_beds": int(r.total_beds or 0),
-                "total_registered_producers": int(r.total_registered or 0),
-                "total_male_producers": int(r.total_male or 0),
-                "total_female_producers": int(r.total_female or 0),
-                "by_barangay": by_barangay_by_muni.get(r.municipality_id, []),
-            }
-            for r in by_municipality
-        ],
+        "by_municipality": municipality_stats,
+        "environment_by_municipality": sorted(
+            environment_by_muni.values(), key=lambda item: item["municipality_name"].lower(),
+        ),
     })
 
 

@@ -13,6 +13,7 @@ REPORT_TYPES = (
     "gis",
     "production",
     "producers",
+    "environment",
 )
 
 # Keeps the legacy 'excel' value so older rows stay readable/writable. New

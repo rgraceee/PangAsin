@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Gauge, ClipboardList, LayoutGrid, UserCog, LogOut } from 'lucide-react';
+import { Gauge, ClipboardList, LayoutGrid, UserCog, LogOut, Leaf, ContactRound } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 
 const SECTIONS = [
   { id: 'encoder-overview', label: 'Overview', icon: Gauge },
   { id: 'encoder-submissions', label: 'Submissions', icon: ClipboardList },
+  { id: 'encoder-environment-reports', label: 'Environment Reports', icon: Leaf },
+  { id: 'encoder-master-list', label: 'Master List', icon: ContactRound },
 ];
 
 const GROUPS = [
   { title: 'Overview', items: SECTIONS.slice(0, 1) },
-  { title: 'Records', items: SECTIONS.slice(1, 2) },
+  { title: 'Records', items: SECTIONS.slice(1) },
 ];
 
 const GROUP_ICONS = {
@@ -33,6 +35,10 @@ export default function EncoderSidebar({ user, scrollRef, onLogout }) {
   usePageTitle(muniTitle, muni ? { prefix: '' } : undefined);
 
   useEffect(() => {
+    if (location.pathname === '/encoder/master-list') {
+      setActiveId('encoder-master-list');
+      return;
+    }
     const scroller = scrollRef?.current;
     if (!scroller || typeof IntersectionObserver === 'undefined') return;
 
@@ -58,6 +64,16 @@ export default function EncoderSidebar({ user, scrollRef, onLogout }) {
   }, [scrollRef, location.pathname]);
 
   const handleClick = useCallback((id) => {
+    if (id === 'encoder-master-list') {
+      navigate('/encoder/master-list');
+      setActiveId(id);
+      return;
+    }
+    if (location.pathname !== '/encoder') {
+      navigate('/encoder', { state: { scrollTo: id } });
+      setActiveId(id);
+      return;
+    }
     const scroller = scrollRef?.current;
     const el = scroller?.querySelector(`#${id}`);
     if (scroller && el) {
@@ -65,7 +81,7 @@ export default function EncoderSidebar({ user, scrollRef, onLogout }) {
       scroller.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
       setActiveId(id);
     }
-  }, [scrollRef]);
+  }, [scrollRef, navigate, location.pathname]);
 
   return (
     <aside className="admin-sidebar">

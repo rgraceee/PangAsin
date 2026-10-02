@@ -11,6 +11,7 @@ import PageHeader from './PageHeader';
 const CONTENT_TYPES = [
   { id: 'production', label: 'Production' },
   { id: 'producers', label: 'Producers' },
+  { id: 'environment', label: 'Environment' },
 ];
 
 const REPORT_TYPES = [
@@ -37,6 +38,8 @@ const DATA_SECTIONS = [
   ['by_barangay', 'By Barangay'],
   ['monthly_trend', 'Monthly Trend'],
   ['runs', 'Forecast Runs'],
+  ['producers', 'Producer Entries'],
+  ['environment_reports', 'Environment Reports'],
 ];
 
 const SUMMARY_LINES = [
@@ -44,6 +47,10 @@ const SUMMARY_LINES = [
   ['Total Registered Producers', 'total_registered_producers', (v) => `${v.toLocaleString()}`],
   ['Male Producers', 'total_male_producers', (v) => `${v.toLocaleString()}`],
   ['Female Producers', 'total_female_producers', (v) => `${v.toLocaleString()}`],
+  ['Other Producers', 'total_other_producers', (v) => `${v.toLocaleString()}`],
+  ['Environment Reports', 'total_reports', (v) => `${v.toLocaleString()}`],
+  ['Environment Salt Beds', 'total_salt_beds', (v) => `${v.toLocaleString()}`],
+  ['Environment Production Area', 'total_production_area_sqm', (v) => `${v.toLocaleString()} m²`],
   ['Overall Quality Score', 'overall_quality_score', (v) => `${v}%`],
 ];
 
@@ -66,7 +73,7 @@ function formatCell(value) {
 // matched nothing (e.g. no records in that year/barangay).
 function dataHasRows(data) {
   if (!data) return false;
-  const sectionKeys = ['municipalities', 'by_municipality', 'by_barangay', 'monthly_trend', 'runs'];
+  const sectionKeys = ['municipalities', 'by_municipality', 'by_barangay', 'monthly_trend', 'runs', 'producers', 'environment_reports'];
   if (sectionKeys.some((k) => Array.isArray(data[k]) && data[k].length > 0)) return true;
   const scalarKeys = ['total_production_mt', 'total_registered_producers', 'total_projected'];
   return scalarKeys.some((k) => typeof data[k] === 'number' && data[k] > 0);

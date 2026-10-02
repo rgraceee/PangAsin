@@ -5,13 +5,15 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, Plus } from 'lucide-react';
+import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, Leaf } from 'lucide-react';
 import { getStats, getEncoderMonths } from '../../services/dataService';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import AdminKpiCard from '../admin/AdminKpiCard';
 import PageHeader from '../admin/PageHeader';
 import RecordsTable from './RecordsTable';
 import ProductionRecordForm from './ProductionRecordForm';
+import EnvironmentReports from './EnvironmentReports';
+import ProducerReports from './ProducerReports';
 
 const BRAND_PALETTE = [
   '#0D2B4B',
@@ -97,7 +99,7 @@ export default function EncoderDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [recordsRefreshKey, setRecordsRefreshKey] = useState(0);
-  const [showForm, setShowForm] = useState(false);
+  const [activeReport, setActiveReport] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
@@ -149,23 +151,23 @@ export default function EncoderDashboard() {
 
   const handleEdit = (id) => {
     setEditingId(id);
-    setShowForm(true);
-  };
-
-  const handleAdd = () => {
-    setEditingId(null);
-    setShowForm(true);
+    setActiveReport('production');
   };
 
   const handleClose = () => {
-    setShowForm(false);
+    setActiveReport(null);
     setEditingId(null);
   };
 
   const handleSaved = () => {
-    setShowForm(false);
+    setActiveReport(null);
     setEditingId(null);
     setRecordsRefreshKey((k) => k + 1);
+    loadStats();
+  };
+
+  const handleImported = () => {
+    setRecordsRefreshKey((key) => key + 1);
     loadStats();
   };
 
@@ -225,6 +227,24 @@ export default function EncoderDashboard() {
 
       {error && <Alert variant="danger">{error}</Alert>}
 
+      <Row className="g-3 mb-4" aria-label="Create report">
+        <Col md={4}>
+          <Button className="admin-page-hero-btn w-100" onClick={() => { setEditingId(null); setActiveReport('production'); }}>
+            <Boxes size={16} className="me-2" />Add Production Report
+          </Button>
+        </Col>
+        <Col md={4}>
+          <Button variant="outline-primary" className="w-100" onClick={() => setActiveReport('producer')}>
+            <Users size={16} className="me-2" />Add Producer Report
+          </Button>
+        </Col>
+        <Col md={4}>
+          <Button variant="outline-success" className="w-100" onClick={() => setActiveReport('environment')}>
+            <Leaf size={16} className="me-2" />Add Environment Report
+          </Button>
+        </Col>
+      </Row>
+
       <KPICluster
         title="Your data at a glance"
         accent="ocean"
@@ -262,10 +282,6 @@ export default function EncoderDashboard() {
                 );
               })}
             </select>
-            <Button className="admin-page-hero-btn" onClick={handleAdd}>
-              <Plus size={16} strokeWidth={2.5} className="me-1" />
-              Add Record
-            </Button>
           </div>
         }
       >
@@ -407,14 +423,19 @@ export default function EncoderDashboard() {
       </Row>
 
       <div id="encoder-submissions">
-        <RecordsTable onEdit={handleEdit} onAdd={handleAdd} refreshKey={recordsRefreshKey} />
+        <RecordsTable onEdit={handleEdit} onImported={handleImported} refreshKey={recordsRefreshKey} />
       </div>
 
-      {showForm && (
+      <EnvironmentReports user={user} open={activeReport === 'environment'} onClose={handleClose} onImported={handleImported} />
+      <ProducerReports user={user} open={activeReport === 'producer'} onClose={handleClose} onImported={handleImported} />
+
+      {activeReport === 'production' && (
         <ProductionRecordForm
           editingId={editingId}
+          user={user}
           onClose={handleClose}
           onSaved={handleSaved}
+          onImported={handleImported}
         />
       )}
     </div>

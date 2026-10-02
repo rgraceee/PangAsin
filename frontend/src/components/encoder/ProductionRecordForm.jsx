@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Form, Button, Alert, Row, Col, Modal } from 'react-bootstrap';
-import { getEncoderBarangays, createRecord, updateRecord, getRecord } from '../../services/dataService';
+import { getEncoderBarangays, getEncoderEnvironmentReports, createRecord, updateRecord, getRecord } from '../../services/dataService';
 import { useToast } from '../Toast';
 import { SkeletonForm } from '../Skeleton';
-import { Factory, Users, CheckCircle2 } from 'lucide-react';
+import { Factory, CheckCircle2 } from 'lucide-react';
+import ReportImportActions from './ReportImportActions';
+import { cleanSpreadsheetDate, findBarangay, numberValue, rowError } from './reportImportUtils';
 
 const PRODUCTION_METHODS = [
   { value: '', label: 'Select method…' },
@@ -12,40 +14,33 @@ const PRODUCTION_METHODS = [
   { value: 'hybrid', label: 'Hybrid' },
 ];
 
-const AGE_BUCKETS = [
-  { key: 'producers_18_30', label: '18-30' },
-  { key: 'producers_31_40', label: '31-40' },
-  { key: 'producers_41_50', label: '41-50' },
-  { key: 'producers_51_60', label: '51-60' },
-  { key: 'producers_61_plus', label: '61+' },
-];
-
 const STEPS = [
   { key: 'production', label: 'Production', icon: Factory },
-  { key: 'producer', label: 'Producer', icon: Users },
   { key: 'review', label: 'Review', icon: CheckCircle2 },
 ];
 
-export default function ProductionRecordForm({ editingId = null, onClose, onSaved }) {
+function localDateString() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export default function ProductionRecordForm({ editingId = null, user, onClose, onSaved, onImported }) {
   const { toastSuccess, toastError } = useToast();
   const isEdit = Boolean(editingId);
   const [step, setStep] = useState(0);
 
   const [barangays, setBarangays] = useState([]);
+  const [environmentReports, setEnvironmentReports] = useState([]);
   const [form, setForm] = useState({
     barangay_id: '',
-    record_date: '',
-    male_producers: '',
-    female_producers: '',
+    record_date: localDateString(),
     production_volume: '',
     num_salt_beds: '',
     area_per_salt_bed: '',
     production_method: '',
-    producers_18_30: '',
-    producers_31_40: '',
-    producers_41_50: '',
-    producers_51_60: '',
-    producers_61_plus: '',
   });
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -56,6 +51,9 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
     getEncoderBarangays()
       .then((res) => setBarangays(res.barangays || []))
       .catch((err) => setError(err.message));
+    getEncoderEnvironmentReports()
+      .then((res) => setEnvironmentReports(res.reports || []))
+      .catch(() => {});
 
     if (isEdit) {
       getRecord(editingId)
@@ -63,17 +61,10 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
           setForm({
             barangay_id: r.barangay_id ?? '',
             record_date: r.record_date || '',
-            male_producers: r.male_producers ?? '',
-            female_producers: r.female_producers ?? '',
             production_volume: r.production_volume ?? '',
             num_salt_beds: r.num_salt_beds ?? '',
             area_per_salt_bed: r.area_per_salt_bed ?? '',
             production_method: r.production_method ?? '',
-            producers_18_30: r.producers_18_30 ?? '',
-            producers_31_40: r.producers_31_40 ?? '',
-            producers_41_50: r.producers_41_50 ?? '',
-            producers_51_60: r.producers_51_60 ?? '',
-            producers_61_plus: r.producers_61_plus ?? '',
           });
           setApproved(r.status === 'approved');
           setLoading(false);
@@ -82,48 +73,38 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
     }
   }, [editingId, isEdit]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const selectedEnvironmentReport = environmentReports.find(
+    (report) => String(report.barangay_id) === String(form.barangay_id) && report.status === 'approved',
+  );
 
-  const handleAgeChange = (key, rawValue) => {
-    const totalProducers = (Number(form.male_producers) || 0) + (Number(form.female_producers) || 0);
-    const currentAgeSum = AGE_BUCKETS.reduce((sum, b) => {
-      if (b.key === key) return sum;
-      return sum + (Number(form[b.key]) || 0);
-    }, 0);
-    const nextValue = rawValue === '' ? '' : Math.max(0, Number(rawValue) || 0);
-    if (totalProducers > 0 && typeof nextValue === 'number' && currentAgeSum + nextValue > totalProducers) {
+  useEffect(() => {
+    if (isEdit || !selectedEnvironmentReport) return;
+    setForm((current) => ({
+      ...current,
+      area_per_salt_bed: selectedEnvironmentReport.area_per_salt_bed ?? current.area_per_salt_bed,
+      production_method: selectedEnvironmentReport.production_methods?.[0] || current.production_method,
+    }));
+  }, [isEdit, selectedEnvironmentReport]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'num_salt_beds' && selectedEnvironmentReport && Number(value) > selectedEnvironmentReport.num_salt_beds) {
+      setError(`Beds used cannot exceed the ${selectedEnvironmentReport.num_salt_beds} available beds for this barangay.`);
       return;
     }
-    setForm({ ...form, [key]: nextValue });
+    setError(null);
+    if (name === 'barangay_id' && value !== String(form.barangay_id)) {
+      setForm({
+        ...form,
+        barangay_id: value,
+        num_salt_beds: '',
+        area_per_salt_bed: '',
+        production_method: '',
+      });
+      return;
+    }
+    setForm({ ...form, [name]: value });
   };
-
-  const registeredProducers = useMemo(() => {
-    const male = Number(form.male_producers);
-    const female = Number(form.female_producers);
-    const m = Number.isFinite(male) ? male : 0;
-    const f = Number.isFinite(female) ? female : 0;
-    if (!form.male_producers && !form.female_producers) return '';
-    return (m + f).toLocaleString();
-  }, [form.male_producers, form.female_producers]);
-
-  const totalProducers = useMemo(() => {
-    return (Number(form.male_producers) || 0) + (Number(form.female_producers) || 0);
-  }, [form.male_producers, form.female_producers]);
-
-  const ageSum = useMemo(() => {
-    return AGE_BUCKETS.reduce((sum, b) => sum + (Number(form[b.key]) || 0), 0);
-  }, [form]);
-
-  const ageAllocated = useMemo(() => {
-    return totalProducers > 0 ? `${ageSum} of ${totalProducers} allocated` : '';
-  }, [ageSum, totalProducers]);
-
-  const ageValid = useMemo(() => {
-    if (totalProducers <= 0) return true;
-    return ageSum === totalProducers;
-  }, [ageSum, totalProducers]);
 
   const canProceedFromStep1 = useMemo(() => {
     return (
@@ -131,23 +112,14 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
       form.record_date &&
       form.production_volume !== '' &&
       form.num_salt_beds !== '' &&
+      Number(form.num_salt_beds) > 0 &&
+      (!selectedEnvironmentReport || Number(form.num_salt_beds) <= selectedEnvironmentReport.num_salt_beds) &&
       form.production_method
     );
-  }, [form]);
-
-  const canProceedFromStep2 = useMemo(() => {
-    if (!ageValid) return false;
-    return (
-      form.male_producers !== '' &&
-      form.female_producers !== '' &&
-      Number(form.male_producers) >= 0 &&
-      Number(form.female_producers) >= 0
-    );
-  }, [form, ageValid]);
+  }, [form, selectedEnvironmentReport]);
 
   const handleNext = () => {
     if (step === 0 && canProceedFromStep1) setStep(1);
-    else if (step === 1 && canProceedFromStep2) setStep(2);
   };
 
   const handleBack = () => {
@@ -160,23 +132,27 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
       setError('This record is approved and can no longer be edited.');
       return;
     }
-    if (!ageValid) {
-      setError('Age bracket totals must equal total producers before submitting.');
-      return;
-    }
     setError(null);
     setSaving(true);
     try {
       let record;
+      const productionPayload = {
+        barangay_id: Number(form.barangay_id),
+        record_date: form.record_date,
+        production_volume: Number(form.production_volume),
+        num_salt_beds: Number(form.num_salt_beds),
+        area_per_salt_bed: form.area_per_salt_bed === '' ? '' : Number(form.area_per_salt_bed),
+        production_method: form.production_method,
+      };
       if (isEdit) {
-        record = await updateRecord(editingId, form);
+        record = await updateRecord(editingId, productionPayload);
       } else {
-        record = await createRecord(form);
+        record = await createRecord(productionPayload);
       }
       if (onSaved) onSaved(record);
       toastSuccess(
-        isEdit ? 'The production record has been updated.' : 'The production record has been created.',
-        isEdit ? 'Record updated' : 'Record created',
+        isEdit ? 'Production report updated.' : 'Production report submitted and is pending review.',
+        isEdit ? 'Production report updated' : 'Production report pending',
       );
     } catch (err) {
       const message = err.status === 409
@@ -189,6 +165,52 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
     }
   };
 
+  const importProductionRows = async (rows) => {
+    const errors = [];
+    const prepared = rows.map((row) => {
+      const barangay = findBarangay(row, barangays);
+      const recordDate = cleanSpreadsheetDate(row.record_date);
+      const productionVolume = numberValue(row.production_volume);
+      const numSaltBeds = numberValue(row.num_salt_beds);
+      const areaPerSaltBed = row.area_per_salt_bed === '' ? null : numberValue(row.area_per_salt_bed);
+      const productionMethod = String(row.production_method || '').trim().toLowerCase();
+      if (!barangay) errors.push(rowError(row, 'barangay must match a barangay in your municipality.'));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(recordDate)) errors.push(rowError(row, 'record_date must use YYYY-MM-DD.'));
+      if (!Number.isFinite(productionVolume) || productionVolume < 0) errors.push(rowError(row, 'production_volume must be zero or greater.'));
+      if (!Number.isInteger(numSaltBeds) || numSaltBeds <= 0) errors.push(rowError(row, 'num_salt_beds must be a positive whole number.'));
+      if (areaPerSaltBed !== null && (!Number.isFinite(areaPerSaltBed) || areaPerSaltBed < 0)) errors.push(rowError(row, 'area_per_salt_bed must be zero or greater.'));
+      if (!PRODUCTION_METHODS.some((method) => method.value === productionMethod)) errors.push(rowError(row, 'production_method must be solar, cooked, or hybrid.'));
+      return {
+        barangay_id: barangay?.id,
+        record_date: recordDate,
+        production_volume: productionVolume,
+        num_salt_beds: numSaltBeds,
+        area_per_salt_bed: areaPerSaltBed,
+        production_method: productionMethod,
+        rowNumber: row._row_number,
+      };
+    });
+    if (errors.length) throw new Error(errors.join(' '));
+
+    const failures = [];
+    let imported = 0;
+    for (const row of prepared) {
+      try {
+        const { rowNumber, ...payload } = row;
+        await createRecord(payload);
+        imported += 1;
+      } catch (importError) {
+        failures.push(rowError({ _row_number: row.rowNumber }, importError.message || 'Could not create record.'));
+      }
+    }
+    if (imported) onImported?.();
+    if (!imported) throw new Error(failures.join(' ') || 'No production rows were imported.');
+    return {
+      message: `Imported ${imported} of ${rows.length} production row${rows.length === 1 ? '' : 's'}.${failures.length ? ` ${failures.join(' ')}` : ''}`,
+      isError: failures.length > 0,
+    };
+  };
+
   const progressValue = ((step + 1) / STEPS.length) * 100;
 
   const renderStep = () => {
@@ -197,6 +219,12 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
         <div className="form-step-card">
           <div className="form-section-title">Production Details</div>
           <Row className="g-3">
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label className="form-field-label">Municipality</Form.Label>
+                <Form.Control value={user?.municipality_name || ''} readOnly aria-label="Assigned municipality" />
+              </Form.Group>
+            </Col>
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label className="form-field-label">Barangay <span className="text-danger">*</span></Form.Label>
@@ -240,17 +268,18 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             </Col>
             <Col md={4}>
               <Form.Group className="mb-3">
-                <Form.Label className="form-field-label">Number of Salt Beds <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Beds Used <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="number"
                   min="1"
+                  max={selectedEnvironmentReport?.num_salt_beds}
                   step="1"
                   name="num_salt_beds"
                   value={form.num_salt_beds}
                   onChange={handleChange}
                   required
                   disabled={approved}
-                  placeholder="e.g. 15"
+                  placeholder={selectedEnvironmentReport ? `Up to ${selectedEnvironmentReport.num_salt_beds}` : 'e.g. 15'}
                 />
               </Form.Group>
             </Col>
@@ -265,11 +294,20 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
                   value={form.area_per_salt_bed}
                   onChange={handleChange}
                   disabled={approved}
+                  readOnly={Boolean(selectedEnvironmentReport)}
                   placeholder="e.g. 250"
                 />
               </Form.Group>
             </Col>
           </Row>
+
+          {form.barangay_id && (
+            <div className="small text-muted mb-3">
+              {selectedEnvironmentReport
+                ? `Available beds: ${selectedEnvironmentReport.num_salt_beds}. Enter the number used for this report.`
+                : 'No Environment Report is available for this barangay; enter bed details manually.'}
+            </div>
+          )}
 
           <Form.Group className="mb-0">
             <Form.Label className="form-field-label">Production Method <span className="text-danger">*</span></Form.Label>
@@ -280,7 +318,12 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
               required
               disabled={approved}
             >
-              {PRODUCTION_METHODS.map((opt) => (
+              {PRODUCTION_METHODS.filter((opt) => (
+                !opt.value
+                || !selectedEnvironmentReport?.production_methods?.length
+                || selectedEnvironmentReport.production_methods.includes(opt.value)
+                || opt.value === form.production_method
+              )).map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </Form.Select>
@@ -292,106 +335,16 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
     if (step === 1) {
       return (
         <div className="form-step-card">
-          <div className="form-section-title">Producer Details</div>
-          <Row className="g-3">
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label className="form-field-label">Male Producers <span className="text-danger">*</span></Form.Label>
-                <Form.Control
-                  type="number"
-                  min="0"
-                  step="1"
-                  name="male_producers"
-                  value={form.male_producers}
-                  onChange={handleChange}
-                  required
-                  disabled={approved}
-                  placeholder="e.g. 7"
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label className="form-field-label">Female Producers <span className="text-danger">*</span></Form.Label>
-                <Form.Control
-                  type="number"
-                  min="0"
-                  step="1"
-                  name="female_producers"
-                  value={form.female_producers}
-                  onChange={handleChange}
-                  required
-                  disabled={approved}
-                  placeholder="e.g. 5"
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-
-          <div className="form-meta-line mb-3">
-            Registered Producers: <strong>{registeredProducers || '—'}</strong>
-          </div>
-
-          <Form.Group className="mb-0">
-            <Form.Label className="form-field-label">Producers by Age Bracket</Form.Label>
-            <Row className="g-2">
-              {AGE_BUCKETS.map((bucket) => (
-                <Col md={4} key={bucket.key}>
-                  <Form.Group className="mb-2">
-                    <Form.Label className="form-field-label-small">{bucket.label}</Form.Label>
-                    <Form.Control
-                      type="number"
-                      min="0"
-                      step="1"
-                      name={bucket.key}
-                      value={form[bucket.key]}
-                      onChange={(e) => handleAgeChange(bucket.key, e.target.value)}
-                      disabled={approved}
-                      placeholder="0"
-                    />
-                  </Form.Group>
-                </Col>
-              ))}
-            </Row>
-            {ageAllocated && (
-              <div className={`small mt-2 fw-semibold ${ageValid ? 'text-success' : 'text-danger'}`}>
-                {ageAllocated}
-                {!ageValid && totalProducers > 0 && (
-                  <span> — must equal {totalProducers}</span>
-                )}
-              </div>
-            )}
-          </Form.Group>
-        </div>
-      );
-    }
-
-    if (step === 2) {
-      return (
-        <div className="form-step-card">
-          <div className="form-section-title">Production Details</div>
+          <div className="form-section-title">Review Production Report</div>
           <Row className="g-2 mb-3">
+            <Col md={6}><strong>Report Type:</strong> Production</Col>
+            <Col md={6}><strong>Municipality:</strong> {user?.municipality_name || '—'}</Col>
             <Col md={6}><strong>Barangay:</strong> {barangays.find((b) => String(b.id) === String(form.barangay_id))?.name || '—'}</Col>
             <Col md={6}><strong>Date Covered:</strong> {form.record_date || '—'}</Col>
             <Col md={4}><strong>Volume (kg):</strong> {form.production_volume ?? '—'}</Col>
-            <Col md={4}><strong>Salt Beds:</strong> {form.num_salt_beds ?? '—'}</Col>
+            <Col md={4}><strong>Beds Used:</strong> {form.num_salt_beds ?? '—'}</Col>
             <Col md={4}><strong>Area per Bed (m²):</strong> {form.area_per_salt_bed ?? '—'}</Col>
             <Col md={12}><strong>Method:</strong> {form.production_method || '—'}</Col>
-          </Row>
-
-          <div className="form-section-title">Producer Details</div>
-          <Row className="g-2 mb-3">
-            <Col md={4}><strong>Male Producers:</strong> {form.male_producers ?? '—'}</Col>
-            <Col md={4}><strong>Female Producers:</strong> {form.female_producers ?? '—'}</Col>
-            <Col md={4}><strong>Registered Producers:</strong> {registeredProducers || '—'}</Col>
-          </Row>
-          <Row className="g-2">
-            <Col md={2}><strong>18-30:</strong> {form.producers_18_30 ?? '—'}</Col>
-            <Col md={2}><strong>31-40:</strong> {form.producers_31_40 ?? '—'}</Col>
-            <Col md={2}><strong>41-50:</strong> {form.producers_41_50 ?? '—'}</Col>
-            <Col md={2}><strong>51-60:</strong> {form.producers_51_60 ?? '—'}</Col>
-            <Col md={2}><strong>61+:</strong> {form.producers_61_plus ?? '—'}</Col>
-            <Col md={2}><strong>Allocated:</strong> {ageSum} / {totalProducers}</Col>
           </Row>
         </div>
       );
@@ -402,7 +355,9 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
     <Modal show onHide={onClose} size="lg" centered backdrop="static" className="encoder-form-modal">
       <Modal.Header closeButton className="encoder-form-header">
         <div className="w-100">
-          <Modal.Title className="encoder-form-title">{isEdit ? 'Edit Production Record' : 'New Production Record'}</Modal.Title>
+          <div>
+            <Modal.Title className="encoder-form-title">{isEdit ? 'Edit Production Report' : 'New Production Report'}</Modal.Title>
+          </div>
           <div className="encoder-stepper">
             <div className="encoder-stepper-track">
               <div className="encoder-stepper-fill" style={{ width: `${progressValue}%` }} />
@@ -435,8 +390,17 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
             This record is approved and locked from editing.
           </Alert>
         )}
+        {!loading && !isEdit && (
+          <div className="d-flex justify-content-end mb-3">
+            <ReportImportActions
+              templateUrl="/static/templates/production-report-template.csv"
+              onImport={importProductionRows}
+              disabled={!barangays.length}
+            />
+          </div>
+        )}
         {!loading && (
-          <Form onSubmit={step === 2 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }}>
+          <Form onSubmit={step === 1 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }}>
             {renderStep()}
           </Form>
         )}
@@ -450,20 +414,20 @@ export default function ProductionRecordForm({ editingId = null, onClose, onSave
               Back
             </Button>
           )}
-          {step < 2 && (
-            <Button variant="primary" onClick={handleNext} disabled={saving || approved || (step === 0 ? !canProceedFromStep1 : !canProceedFromStep2)} className="encoder-btn-next">
+            {step < 1 && (
+            <Button variant="primary" onClick={handleNext} disabled={saving || approved || !canProceedFromStep1} className="encoder-btn-next">
               Next
             </Button>
           )}
-          {step === 2 && (
+          {step === 1 && (
             <Button
               type="button"
               variant="primary"
               onClick={handleSubmit}
-              disabled={saving || approved || !ageValid}
+              disabled={saving || approved}
               className="encoder-btn-submit"
             >
-              {saving ? 'Saving…' : 'Submit Record'}
+              {saving ? 'Submitting…' : 'Submit Production Report'}
             </Button>
           )}
         </Modal.Footer>

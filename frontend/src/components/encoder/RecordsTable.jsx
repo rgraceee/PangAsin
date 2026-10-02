@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Alert, Button, Card, Row, Col, Modal } from 'react-bootstrap';
-import { getRecords, getRecord, deleteRecord, getEncoderBarangays } from '../../services/dataService';
+import { getRecords, getRecord, deleteRecord, getEncoderBarangays, createRecord } from '../../services/dataService';
 import { confirmDelete } from '../../services/feedback';
 import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
 import { Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import RecordStatusBadge from './RecordStatusBadge';
+import ReportImportActions from './ReportImportActions';
+import { cleanSpreadsheetDate, findBarangay, numberValue, rowError } from './reportImportUtils';
 
 const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
 const PRODUCTION_METHOD_LABELS = {
@@ -38,7 +40,7 @@ const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) 
   </Button>
 );
 
-export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
+export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
   const { toastSuccess, toastError } = useToast();
   const [records, setRecords] = useState([]);
   const [barangays, setBarangays] = useState([]);
@@ -108,11 +110,68 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
 
   const hasFilter = Boolean(filters.barangay_id || filters.status);
 
+  const importProductionRows = async (rows) => {
+    const errors = [];
+    const prepared = rows.map((row) => {
+      const barangay = findBarangay(row, barangays);
+      const recordDate = cleanSpreadsheetDate(row.record_date);
+      const productionVolume = numberValue(row.production_volume);
+      const numSaltBeds = numberValue(row.num_salt_beds);
+      const areaPerSaltBed = row.area_per_salt_bed === '' ? null : numberValue(row.area_per_salt_bed);
+      const productionMethod = String(row.production_method || '').trim().toLowerCase();
+      if (!barangay) errors.push(rowError(row, 'barangay must match a barangay in your municipality.'));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(recordDate)) errors.push(rowError(row, 'record_date must use YYYY-MM-DD.'));
+      if (!Number.isFinite(productionVolume) || productionVolume < 0) errors.push(rowError(row, 'production_volume must be zero or greater.'));
+      if (!Number.isInteger(numSaltBeds) || numSaltBeds <= 0) errors.push(rowError(row, 'num_salt_beds must be a positive whole number.'));
+      if (areaPerSaltBed !== null && (!Number.isFinite(areaPerSaltBed) || areaPerSaltBed < 0)) errors.push(rowError(row, 'area_per_salt_bed must be zero or greater.'));
+      if (!['solar', 'cooked', 'hybrid'].includes(productionMethod)) errors.push(rowError(row, 'production_method must be solar, cooked, or hybrid.'));
+      return {
+        barangay_id: barangay?.id,
+        record_date: recordDate,
+        production_volume: productionVolume,
+        num_salt_beds: numSaltBeds,
+        area_per_salt_bed: areaPerSaltBed,
+        production_method: productionMethod,
+        rowNumber: row._row_number,
+      };
+    });
+    if (errors.length) throw new Error(errors.join(' '));
+
+    const failures = [];
+    let imported = 0;
+    for (const row of prepared) {
+      try {
+        const { rowNumber, ...payload } = row;
+        await createRecord(payload);
+        imported += 1;
+      } catch (error) {
+        failures.push(rowError({ _row_number: row.rowNumber }, error.message || 'Could not create record.'));
+      }
+    }
+    if (imported) {
+      load(filters);
+      onImported?.();
+    }
+    if (!imported) throw new Error(failures.join(' ') || 'No production rows were imported.');
+    return {
+      message: `Imported ${imported} of ${rows.length} production row${rows.length === 1 ? '' : 's'}.${failures.length ? ` ${failures.join(' ')}` : ''}`,
+      isError: failures.length > 0,
+    };
+  };
+
   return (
     <Card className="encoder-card">
       <Card.Header>
-        <div className="admin-card-head">
-          <h5 className="admin-card-head-title">Submissions</h5>
+        <div className="admin-card-head d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+              <h5 className="admin-card-head-title">Production Reports</h5>
+              <div className="small text-muted">Report Type: Production</div>
+            </div>
+            <ReportImportActions
+              templateUrl="/static/templates/production-report-template.csv"
+              onImport={importProductionRows}
+              disabled={!barangays.length}
+            />
         </div>
       </Card.Header>
       <Card.Body>
@@ -161,14 +220,12 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
           <Table responsive striped hover size="sm" className="mb-0 encoder-table">
             <thead>
               <tr>
+                <th>Report Type</th>
                 <th>Barangay</th>
                 <th>Date</th>
                 <th>Method</th>
-                <th>Reg.</th>
-                <th>M</th>
-                <th>F</th>
                 <th>Volume (kg)</th>
-                <th>Beds</th>
+                <th>Beds Used</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
@@ -178,12 +235,10 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
                 const isApproved = r.status === 'approved';
                 return (
                   <tr key={r.id}>
+                    <td>Production</td>
                     <td>{r.barangay}</td>
                     <td>{r.record_date}</td>
                     <td>{PRODUCTION_METHOD_LABELS[r.production_method] ?? r.production_method ?? '—'}</td>
-                    <td>{r.registered_producers?.toLocaleString()}</td>
-                    <td>{r.male_producers?.toLocaleString()}</td>
-                    <td>{r.female_producers?.toLocaleString()}</td>
                     <td>{r.production_volume?.toLocaleString()}</td>
                     <td>{r.num_salt_beds?.toLocaleString()}</td>
                     <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
@@ -227,7 +282,7 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
 
       <Modal show={showDetail} onHide={() => setShowDetail(false)} size="lg" centered>
         <Modal.Header closeButton>
-          <Modal.Title>Record #{detail?.id}</Modal.Title>
+          <Modal.Title>Production Report #{detail?.id}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {detail && (
@@ -240,14 +295,12 @@ export default function RecordsTable({ onEdit, onAdd, refreshKey = 0 }) {
               </div>
               <Table bordered size="sm" className="mb-0">
                 <tbody>
+                  <DetailRow label="Report Type" value="Production" />
                   <DetailRow label="Barangay" value={detail.barangay} />
                   <DetailRow label="Date Covered" value={detail.record_date} />
                   <DetailRow label="Production Method" value={PRODUCTION_METHOD_LABELS[detail.production_method] ?? detail.production_method} />
-                  <DetailRow label="Registered Producers" value={detail.registered_producers} />
-                  <DetailRow label="Male Producers" value={detail.male_producers} />
-                  <DetailRow label="Female Producers" value={detail.female_producers} />
                   <DetailRow label="Total Production Volume" value={detail.production_volume != null ? `${detail.production_volume} kg` : null} />
-                  <DetailRow label="Number of Salt Beds" value={detail.num_salt_beds} />
+                  <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
                   <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} kg` : null} />
                   <DetailRow label="Submitted" value={detail.created_at ? new Date(detail.created_at).toLocaleString() : null} />

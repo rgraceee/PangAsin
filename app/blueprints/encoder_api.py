@@ -1,9 +1,11 @@
 # WHAT: Encoder API endpoints (barangays, records CRUD, submit, stats, months).
 # WHY: Nasa isang blueprint lahat ng ginagawa ng municipal encoder sa records.
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
 from app.models.production_record import ProductionRecord, PRODUCTION_METHODS
 from app.models.barangay import Barangay
+from app.models.environment_report import EnvironmentReport, ENVIRONMENT_METHODS
+from app.models.producer_report import ProducerReport, ProducerReportEntry
 from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
@@ -69,7 +71,7 @@ def _allocate(record, data):
         record.production_method = data["production_method"]
 
 
-def _validate(data, partial=False):
+def _validate(data, partial=False, existing_record=None):
     # WHAT: Validate one record's incoming payload before save/update.
     # WHY: Pinipigilan ang malisya/mali na data; partial=True kapag update lamang.
     errors = []
@@ -101,19 +103,37 @@ def _validate(data, partial=False):
         except (TypeError, ValueError):
             errors.append("production_volume must be a number (kg).")
 
-    if not partial or "num_salt_beds" in data:
-        value = data.get("num_salt_beds")
+    if not partial or "num_salt_beds" in data or "barangay_id" in data:
+        value = data.get("num_salt_beds", existing_record.num_salt_beds if existing_record else None)
+        beds_used = None
         if value in (None, ""):
             errors.append("num_salt_beds is required.")
         else:
             try:
-                if int(value) <= 0:
+                beds_used = int(value)
+                if beds_used <= 0:
                     errors.append("num_salt_beds must be positive.")
             except (TypeError, ValueError):
                 errors.append("num_salt_beds must be an integer.")
+        barangay_id = data.get("barangay_id", existing_record.barangay_id if existing_record else None)
+        if beds_used is not None and barangay_id:
+            environment_report = (
+                EnvironmentReport.query
+                .filter_by(
+                    municipality_id=current_user.municipality_id,
+                    barangay_id=barangay_id,
+                    status="approved",
+                )
+                .order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc())
+                .first()
+            )
+            if environment_report and beds_used > environment_report.num_salt_beds:
+                errors.append(
+                    f"Beds used cannot exceed the {environment_report.num_salt_beds} available beds for this barangay."
+                )
 
     for field in PRODUCER_COUNT_FIELDS:
-        if not partial or field in data:
+        if field in data:
             value = data.get(field)
             if value in (None, ""):
                 errors.append(f"{field} is required.")
@@ -183,6 +203,266 @@ def barangays():
         "municipality": current_user.municipality.name if current_user.municipality else None,
         "barangays": [{"id": b.id, "name": b.name} for b in query],
     })
+
+
+@encoder_api_bp.route("/barangays", methods=["POST"])
+@login_required
+def create_barangay():
+    if current_user.role != "encoder":
+        return jsonify({"error": "Encoder access only."}), 403
+    if not current_user.municipality_id:
+        return jsonify({"error": "No municipality assigned."}), 400
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Barangay name is required."}), 400
+    if len(name) > 100:
+        return jsonify({"error": "Barangay name must be 100 characters or fewer."}), 400
+
+    barangay = Barangay(municipality_id=current_user.municipality_id, name=name)
+    db.session.add(barangay)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "That barangay already exists in your municipality."}), 409
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Could not add the barangay. Please try again."}), 500
+    return jsonify({"id": barangay.id, "name": barangay.name}), 201
+
+
+def _serialize_environment_report(report):
+    return {
+        "id": report.id,
+        "report_type": "environment",
+        "municipality_id": report.municipality_id,
+        "barangay_id": report.barangay_id,
+        "barangay": report.barangay.name if report.barangay else None,
+        "num_salt_beds": report.num_salt_beds,
+        "area_per_salt_bed": float(report.area_per_salt_bed),
+        "production_methods": report.production_methods or [],
+        "production_area_size": float(report.production_area_size),
+        "status": report.status,
+        "reviewer_comment": report.reviewer_comment,
+        "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
+        "created_at": report.created_at.isoformat() if report.created_at else None,
+    }
+
+
+def _serialize_producer_report(report):
+    return {
+        "id": report.id,
+        "report_type": "producer",
+        "municipality_id": report.municipality_id,
+        "status": report.status,
+        "reviewer_comment": report.reviewer_comment,
+        "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
+        "created_at": report.created_at.isoformat() if report.created_at else None,
+        "entries": [
+            {
+                "id": entry.id,
+                "barangay_id": entry.barangay_id,
+                "barangay": entry.barangay.name if entry.barangay else None,
+                "name": entry.name,
+                "age": entry.age,
+                "age_bracket": entry.age_bracket,
+                "sex": entry.sex,
+                "address": entry.address,
+            }
+            for entry in report.entries
+        ],
+    }
+
+
+@encoder_api_bp.route("/environment-reports", methods=["GET"])
+@login_required
+def list_environment_reports():
+    if current_user.role != "encoder":
+        return jsonify({"error": "Encoder access only."}), 403
+    if not current_user.municipality_id:
+        return jsonify({"error": "No municipality assigned."}), 400
+
+    reports = (
+        EnvironmentReport.query.filter_by(municipality_id=current_user.municipality_id)
+        .order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc())
+        .all()
+    )
+    return jsonify({"reports": [_serialize_environment_report(report) for report in reports]})
+
+
+@encoder_api_bp.route("/environment-reports", methods=["POST"])
+@login_required
+def create_environment_report():
+    if current_user.role != "encoder":
+        return jsonify({"error": "Encoder access only."}), 403
+    if not current_user.municipality_id:
+        return jsonify({"error": "No municipality assigned."}), 400
+
+    data = request.get_json(silent=True) or {}
+    errors = []
+    try:
+        barangay_id = int(data.get("barangay_id"))
+    except (TypeError, ValueError):
+        barangay_id = None
+        errors.append("Select a barangay.")
+
+    barangay = db.session.get(Barangay, barangay_id) if barangay_id else None
+    if barangay_id and (not barangay or barangay.municipality_id != current_user.municipality_id):
+        errors.append("Select a barangay in your municipality.")
+
+    try:
+        num_salt_beds = int(data.get("num_salt_beds"))
+        if num_salt_beds <= 0:
+            errors.append("Number of salt beds must be greater than zero.")
+    except (TypeError, ValueError):
+        num_salt_beds = None
+        errors.append("Number of salt beds must be a whole number.")
+
+    numeric_values = {}
+    for field, label in (
+        ("area_per_salt_bed", "Area per salt bed"),
+        ("production_area_size", "Production area size"),
+    ):
+        try:
+            numeric_values[field] = float(data.get(field))
+            if numeric_values[field] < 0:
+                errors.append(f"{label} cannot be negative.")
+        except (TypeError, ValueError):
+            errors.append(f"{label} must be a number.")
+
+    methods = data.get("production_methods")
+    if not isinstance(methods, list) or not methods:
+        methods = []
+        errors.append("Select at least one production method.")
+    elif any(method not in ENVIRONMENT_METHODS for method in methods):
+        errors.append(f"Production methods must be selected from: {', '.join(ENVIRONMENT_METHODS)}.")
+    else:
+        methods = sorted(set(methods))
+
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    report = EnvironmentReport(
+        municipality_id=current_user.municipality_id,
+        barangay_id=barangay.id,
+        num_salt_beds=num_salt_beds,
+        area_per_salt_bed=numeric_values["area_per_salt_bed"],
+        production_methods=methods,
+        production_area_size=numeric_values["production_area_size"],
+        submitted_by=current_user.id,
+        status="pending",
+        submitted_at=datetime.utcnow(),
+    )
+    db.session.add(report)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed to commit environment report for municipality %s", current_user.municipality_id)
+        return jsonify({"error": "Could not submit the environment report. Please try again."}), 500
+    return jsonify(_serialize_environment_report(report)), 201
+
+
+@encoder_api_bp.route("/producer-reports", methods=["GET"])
+@login_required
+def list_producer_reports():
+    if current_user.role != "encoder":
+        return jsonify({"error": "Encoder access only."}), 403
+    if not current_user.municipality_id:
+        return jsonify({"error": "No municipality assigned."}), 400
+
+    reports = (
+        ProducerReport.query.filter_by(municipality_id=current_user.municipality_id)
+        .order_by(ProducerReport.created_at.desc(), ProducerReport.id.desc())
+        .all()
+    )
+    return jsonify({"reports": [_serialize_producer_report(report) for report in reports]})
+
+
+@encoder_api_bp.route("/producer-reports", methods=["POST"])
+@login_required
+def create_producer_report():
+    if current_user.role != "encoder":
+        return jsonify({"error": "Encoder access only."}), 403
+    if not current_user.municipality_id:
+        return jsonify({"error": "No municipality assigned."}), 400
+
+    data = request.get_json(silent=True) or {}
+    entries = data.get("entries")
+    if not isinstance(entries, list) or not entries:
+        return jsonify({"errors": ["Add at least one producer to the report."]}), 400
+
+    errors = []
+    normalized = []
+    sexes = {"Male", "Female", "Other"}
+    for index, entry in enumerate(entries, start=1):
+        if not isinstance(entry, dict):
+            errors.append(f"Producer {index} is invalid.")
+            continue
+        try:
+            barangay_id = int(entry.get("barangay_id"))
+        except (TypeError, ValueError):
+            barangay_id = None
+        barangay = db.session.get(Barangay, barangay_id) if barangay_id else None
+        if not barangay or barangay.municipality_id != current_user.municipality_id:
+            errors.append(f"Producer {index} must have a barangay in your municipality.")
+
+        name = (entry.get("name") or "").strip()
+        raw_age = entry.get("age")
+        try:
+            if isinstance(raw_age, bool) or isinstance(raw_age, float) and not raw_age.is_integer():
+                raise ValueError
+            age = int(raw_age)
+            if age < 0 or age > 120:
+                errors.append(f"Producer {index} age must be between 0 and 120.")
+        except (TypeError, ValueError):
+            age = None
+            errors.append(f"Producer {index} age must be a whole number.")
+        sex = entry.get("sex")
+        address = (entry.get("address") or "").strip()
+        if not name or len(name) > 150:
+            errors.append(f"Producer {index} name is required and must be 150 characters or fewer.")
+        if sex not in sexes:
+            errors.append(f"Producer {index} sex is invalid.")
+        if not address or len(address) > 255:
+            errors.append(f"Producer {index} address is required and must be 255 characters or fewer.")
+        normalized.append({
+            "barangay": barangay,
+            "name": name,
+            "age": age,
+            "sex": sex,
+            "address": address,
+        })
+
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    report = ProducerReport(
+        municipality_id=current_user.municipality_id,
+        submitted_by=current_user.id,
+        status="pending",
+        submitted_at=datetime.utcnow(),
+    )
+    report.entries = [
+        ProducerReportEntry(
+            barangay=entry["barangay"],
+            name=entry["name"],
+            age=entry["age"],
+            sex=entry["sex"],
+            address=entry["address"],
+        )
+        for entry in normalized
+    ]
+    db.session.add(report)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed to commit producer report for municipality %s", current_user.municipality_id)
+        return jsonify({"error": "Could not submit the producer report. Please try again."}), 500
+    return jsonify(_serialize_producer_report(report)), 201
 
 
 @encoder_api_bp.route("/records", methods=["GET"])
@@ -271,7 +551,7 @@ def update_record(record_id):
         }), 409
 
     data = request.get_json(silent=True) or {}
-    errors = _validate(data, partial=True)
+    errors = _validate(data, partial=True, existing_record=record)
     if errors:
         return jsonify({"errors": errors}), 400
 

@@ -94,6 +94,43 @@ export function getEncoderBarangays() {
   return api('/encoder/barangays');
 }
 
+export function createEncoderBarangay(name) {
+  return api('/encoder/barangays', { method: 'POST', body: JSON.stringify({ name }) });
+}
+
+export function getEncoderEnvironmentReports() {
+  return api('/encoder/environment-reports');
+}
+
+export function createEncoderEnvironmentReport(payload) {
+  return api('/encoder/environment-reports', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function getEncoderProducerReports() {
+  return api('/encoder/producer-reports');
+}
+
+export function createEncoderProducerReport(payload) {
+  return api('/encoder/producer-reports', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function getProducers(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/producers${qs ? `?${qs}` : ''}`);
+}
+
+export function createProducer(payload) {
+  return api('/producers', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateProducer(id, payload) {
+  return api(`/producers/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function deleteProducer(id) {
+  return api(`/producers/${id}`, { method: 'DELETE' });
+}
+
 export function getEncoderMonths() {
   return api('/encoder/months');
 }
@@ -156,6 +193,24 @@ export function getAdminRecord(id) {
 
 export function reviewAdminRecord(id, payload) {
   return api(`/admin/records/${id}/review`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function getAdminEnvironmentReports(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/environment-reports${qs ? `?${qs}` : ''}`);
+}
+
+export function reviewAdminEnvironmentReport(id, payload) {
+  return api(`/admin/environment-reports/${id}/review`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function getAdminProducerReports(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/producer-reports${qs ? `?${qs}` : ''}`);
+}
+
+export function reviewAdminProducerReport(id, payload) {
+  return api(`/admin/producer-reports/${id}/review`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
 export function getAdminStats() {

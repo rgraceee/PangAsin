@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import {
   getAdminRecords, getAdminRecord, getAdminMunicipalities, reviewAdminRecord,
+  getAdminEnvironmentReports, reviewAdminEnvironmentReport,
+  getAdminProducerReports, reviewAdminProducerReport,
 } from '../../services/dataService';
 import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
@@ -24,6 +26,7 @@ function DetailRow({ label, value }) {
 export default function ValidationQueue() {
   const { toastSuccess, toastError } = useToast();
   const [records, setRecords] = useState([]);
+  const [reportType, setReportType] = useState('production');
   const [munis, setMunis] = useState([]);
   const [filters, setFilters] = useState({
     municipality_id: '',
@@ -41,17 +44,19 @@ export default function ValidationQueue() {
   const [reviewComment, setReviewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const load = useCallback((f) => {
+  const load = useCallback((f, type) => {
     setLoading(true);
     setError(null);
     const params = {};
     if (f.status) params.status = f.status;
     if (f.municipality_id) params.municipality_id = f.municipality_id;
-    if (f.q) params.q = f.q;
-    if (f.start) params.start = f.start;
-    if (f.end) params.end = f.end;
-    getAdminRecords(params)
-      .then((r) => { setRecords(r.records || []); setLoading(false); })
+    const request = type === 'environment'
+      ? getAdminEnvironmentReports(params).then((r) => r.reports || [])
+      : type === 'producer'
+        ? getAdminProducerReports(params).then((r) => r.reports || [])
+        : getAdminRecords({ ...params, q: f.q, start: f.start, end: f.end }).then((r) => r.records || []);
+    request
+      .then((rows) => { setRecords(rows); setLoading(false); })
       .catch((err) => { setError(err.message); setLoading(false); });
   }, []);
 
@@ -59,7 +64,7 @@ export default function ValidationQueue() {
     getAdminMunicipalities().then((res) => setMunis(res.municipalities || [])).catch(() => {});
   }, []);
 
-  useEffect(() => { load(filters); }, [filters, load]);
+  useEffect(() => { load(filters, reportType); }, [filters, load, reportType]);
 
   const handleFilter = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
   const handleClear = () => setFilters({
@@ -67,6 +72,13 @@ export default function ValidationQueue() {
   });
 
   const handleView = (id) => {
+    if (reportType !== 'production') {
+      setDetail(records.find((row) => row.id === id) || null);
+      setShowDetail(true);
+      setReviewAction(null);
+      setReviewComment('');
+      return;
+    }
     getAdminRecord(id)
       .then((r) => { setDetail(r); setShowDetail(true); setReviewAction(null); setReviewComment(''); })
       .catch((err) => {
@@ -85,17 +97,22 @@ export default function ValidationQueue() {
     if (!detail || !reviewAction) return;
     setSubmitting(true);
     try {
-      const updated = await reviewAdminRecord(detail.id, {
+      const review = reportType === 'environment'
+        ? reviewAdminEnvironmentReport
+        : reportType === 'producer'
+          ? reviewAdminProducerReport
+          : reviewAdminRecord;
+      const updated = await review(detail.id, {
         status: reviewAction,
         reviewer_comment: reviewComment || null,
       });
       setDetail(updated);
       setReviewAction(null);
-      load(filters);
+      load(filters, reportType);
       if (reviewAction === 'approved') {
-        toastSuccess(`Record #${detail.id} has been approved.`, 'Record approved');
+        toastSuccess(`${reportTypeLabel} #${detail.id} has been approved.`, `${reportTypeLabel} approved`);
       } else {
-        toastSuccess(`Record #${detail.id} has been rejected.`, 'Record rejected');
+        toastSuccess(`${reportTypeLabel} #${detail.id} has been rejected.`, `${reportTypeLabel} rejected`);
       }
     } catch (err) {
       const message = err.message || 'Could not save the review.';
@@ -109,15 +126,29 @@ export default function ValidationQueue() {
   const hasFilter = Boolean(
     filters.municipality_id || filters.q || filters.start || filters.end || (filters.status && filters.status !== 'pending')
   );
+  const reportTypeLabel = reportType[0].toUpperCase() + reportType.slice(1);
 
   return (
     <>
       <PageHeader
         id="admin-validation"
         variant="sub"
-        title="Validation Queue"
-        subtitle="Review and approve submitted production records."
+        title={`${reportTypeLabel} Report Validation`}
+        subtitle={`Review and approve submitted ${reportTypeLabel.toLowerCase()} reports.`}
       >
+        <div className="admin-page-hero-control" role="group" aria-label="Report type">
+          {['production', 'producer', 'environment'].map((type) => (
+            <Button
+              key={type}
+              type="button"
+              size="sm"
+              variant={reportType === type ? 'primary' : 'outline-secondary'}
+              onClick={() => setReportType(type)}
+            >
+              {type[0].toUpperCase() + type.slice(1)}
+            </Button>
+          ))}
+        </div>
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-status">Status</label>
           <select id="vq-status" className="form-select admin-page-hero-select" name="status" value={filters.status} onChange={handleFilter}>
@@ -134,18 +165,18 @@ export default function ValidationQueue() {
             {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
-        <div className="admin-page-hero-control">
+        {reportType === 'production' && <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-q">Barangay</label>
           <input id="vq-q" type="text" className="form-control admin-page-hero-input" name="q" placeholder="Search barangay…" value={filters.q} onChange={handleFilter} />
-        </div>
-        <div className="admin-page-hero-control">
+        </div>}
+        {reportType === 'production' && <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-start">Start date</label>
           <input id="vq-start" type="date" className="form-control admin-page-hero-input" name="start" value={filters.start} onChange={handleFilter} />
-        </div>
-        <div className="admin-page-hero-control">
+        </div>}
+        {reportType === 'production' && <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-end">End date</label>
           <input id="vq-end" type="date" className="form-control admin-page-hero-input" name="end" value={filters.end} onChange={handleFilter} />
-        </div>
+        </div>}
       </PageHeader>
 
       <Card className="encoder-card admin-card">
@@ -163,7 +194,7 @@ export default function ValidationQueue() {
         {!loading && records.length > 0 && (
           <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
             <thead>
-              <tr>
+              {reportType === 'production' ? <tr>
                 <th>Municipality</th>
                 <th>Barangay</th>
                 <th>Date</th>
@@ -171,17 +202,35 @@ export default function ValidationQueue() {
                 <th>Volume (kg)</th>
                 <th>Status</th>
                 <th></th>
-              </tr>
+              </tr> : reportType === 'environment' ? <tr>
+                <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th></th>
+              </tr> : <tr>
+                <th>Municipality</th><th>Producer Entries</th><th>Submitter</th><th>Status</th><th></th>
+              </tr>}
             </thead>
             <tbody>
               {records.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.municipality_name}</td>
-                  <td>{r.barangay}</td>
-                  <td>{r.record_date}</td>
-                  <td>{r.submitter?.name || '—'}</td>
-                  <td>{r.production_volume?.toLocaleString()}</td>
-                  <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
+                  {reportType === 'production' ? <>
+                    <td>{r.municipality_name}</td>
+                    <td>{r.barangay}</td>
+                    <td>{r.record_date}</td>
+                    <td>{r.submitter?.name || '—'}</td>
+                    <td>{r.production_volume?.toLocaleString()}</td>
+                    <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
+                  </> : reportType === 'environment' ? <>
+                    <td>{r.municipality_name}</td>
+                    <td>{r.barangay}</td>
+                    <td>{r.num_salt_beds?.toLocaleString()}</td>
+                    <td>{(r.production_methods || []).join(', ')}</td>
+                    <td>{r.submitter?.name || '—'}</td>
+                    <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
+                  </> : <>
+                    <td>{r.municipality_name}</td>
+                    <td>{r.entries?.length || 0}</td>
+                    <td>{r.submitter?.name || '—'}</td>
+                    <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
+                  </>}
                   <td className="text-nowrap">
                     <IconButton
                       icon={Eye}
@@ -199,7 +248,7 @@ export default function ValidationQueue() {
 
       <Modal show={showDetail} onHide={() => setShowDetail(false)} size="lg" centered>
         <Modal.Header closeButton>
-          <Modal.Title>Record #{detail?.id}</Modal.Title>
+          <Modal.Title>{reportTypeLabel} Report #{detail?.id}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {detail && (
@@ -211,7 +260,7 @@ export default function ValidationQueue() {
                 )}
               </div>
               <Table bordered size="sm" className="mb-0">
-                <tbody>
+                {reportType === 'production' ? <tbody>
                   <DetailRow label="Municipality" value={detail.municipality_name} />
                   <DetailRow label="Barangay" value={detail.barangay} />
                   <DetailRow label="Date Covered" value={detail.record_date} />
@@ -220,7 +269,7 @@ export default function ValidationQueue() {
                   <DetailRow label="Male Producers" value={detail.male_producers} />
                   <DetailRow label="Female Producers" value={detail.female_producers} />
                   <DetailRow label="Total Production Volume" value={detail.production_volume != null ? `${detail.production_volume} kg` : null} />
-                  <DetailRow label="Number of Salt Beds" value={detail.num_salt_beds} />
+                  <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
                   <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} kg` : null} />
                   <DetailRow label="Submitted by" value={detail.submitter ? `${detail.submitter.name} (${detail.submitter.email})` : null} />
@@ -229,8 +278,35 @@ export default function ValidationQueue() {
                   <DetailRow label="Reviewed at" value={detail.reviewed_at ? new Date(detail.reviewed_at).toLocaleString() : null} />
                   <DetailRow label="Created" value={detail.created_at ? new Date(detail.created_at).toLocaleString() : null} />
                   <DetailRow label="Last Updated" value={detail.updated_at ? new Date(detail.updated_at).toLocaleString() : null} />
-                </tbody>
+                </tbody> : reportType === 'environment' ? <tbody>
+                  <DetailRow label="Report Type" value="Environment" />
+                  <DetailRow label="Municipality" value={detail.municipality_name} />
+                  <DetailRow label="Barangay" value={detail.barangay} />
+                  <DetailRow label="Number of Salt Beds" value={detail.num_salt_beds} />
+                  <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
+                  <DetailRow label="Production Area" value={detail.production_area_size != null ? `${detail.production_area_size} m²` : null} />
+                  <DetailRow label="Production Methods" value={(detail.production_methods || []).join(', ')} />
+                  <DetailRow label="Submitted by" value={detail.submitter?.name} />
+                  <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
+                </tbody> : <tbody>
+                  <DetailRow label="Report Type" value="Producer" />
+                  <DetailRow label="Municipality" value={detail.municipality_name} />
+                  <DetailRow label="Producer Entries" value={detail.entries?.length || 0} />
+                  <DetailRow label="Submitted by" value={detail.submitter?.name} />
+                  <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
+                </tbody>}
               </Table>
+
+              {reportType === 'producer' && (
+                <Table responsive bordered size="sm" className="mt-3 mb-0">
+                  <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Address</th></tr></thead>
+                  <tbody>{(detail.entries || []).map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.name}</td><td>{entry.barangay}</td><td>{entry.age ?? entry.age_bracket ?? '—'}</td><td>{entry.sex}</td><td>{entry.address}</td>
+                    </tr>
+                  ))}</tbody>
+                </Table>
+              )}
 
               {detail.status === 'pending' && !reviewAction && (
                 <div className="d-flex gap-2 mt-3">
