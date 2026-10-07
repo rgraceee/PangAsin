@@ -1,9 +1,19 @@
 import React from 'react';
 import { Card } from 'react-bootstrap';
 
-export default function AdminKpiCard({ icon: Icon, title, value, supporting, accent, valueClassName }) {
+export default function AdminKpiCard({
+  icon: Icon,
+  title,
+  value,
+  supporting,
+  accent,
+  valueClassName,
+  className = '',
+}) {
+  const classes = ['admin-kpi', className].filter(Boolean).join(' ');
+
   return (
-    <Card className="admin-kpi">
+    <Card className={classes}>
       <Card.Body className="admin-kpi-body">
         {Icon && (
           <div className={`admin-kpi-icon admin-kpi-accent-${accent}bg`}>
