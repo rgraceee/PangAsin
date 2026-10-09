@@ -42,6 +42,11 @@
 
   /* Elevation */
   --ui-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  /* WHAT: Modal overlay + elevation para sa encoder report forms.
+     WHY: isang source of truth para sa backdrop at white modal surface. */
+  --ui-overlay: rgba(17, 24, 39, 0.4);
+  --ui-shadow-modal: 0 24px 60px -20px rgba(16, 24, 40, 0.35);
+  --ui-radius-input: 10px;
 
   /* Motion */
   --ui-t-fast: 150ms ease;

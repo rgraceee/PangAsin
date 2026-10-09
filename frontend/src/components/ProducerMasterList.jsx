@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
-import { Pencil, Plus, Trash2, Users, ContactRound, CalendarDays } from 'lucide-react';
+import { Alert, Badge, Card, OverlayTrigger, Spinner, Table, Tooltip } from 'react-bootstrap';
+import { Pencil, Plus, Search, Trash2, Users, ContactRound, CalendarDays } from 'lucide-react';
 import { createProducer, deleteProducer, getProducers, updateProducer } from '../services/dataService';
 import { confirmDelete } from '../services/feedback';
 import { useToast } from './Toast';
@@ -9,9 +9,27 @@ import KpiCard from './ui/KpiCard';
 import KpiGrid from './ui/KpiGrid';
 import PageHeader from './admin/PageHeader';
 import MunicipalityMapArt from './encoder/MunicipalityMapArt';
-import IconButton from './IconButton';
+import ReportModal from './encoder/ReportModal';
+import ReportField from './encoder/ReportField';
 
 const EMPTY_FORM = { name: '', age: '', sex: '', address: '', barangay_id: '' };
+
+/* WHAT: 32px ghost row action na may tooltip at aria-label.
+   WHY: neutral gray ang edit, muted red ang delete; tokens-only para pantay sa bagong look. */
+function RowAction({ icon: Icon, label, tone = 'neutral', onClick }) {
+  return (
+    <OverlayTrigger placement="top" overlay={<Tooltip>{label}</Tooltip>}>
+      <button
+        type="button"
+        className={`master-row-action${tone === 'danger' ? ' master-row-action--danger' : ''}`}
+        aria-label={label}
+        onClick={onClick}
+      >
+        <Icon size={16} strokeWidth={2} aria-hidden="true" />
+      </button>
+    </OverlayTrigger>
+  );
+}
 
 export default function ProducerMasterList({ user, isAdmin = false }) {
   const outlet = useOutletContext();
@@ -29,6 +47,29 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editing, setEditing] = useState(null);
+
+  /* WHAT: Buksan ang Add Worker modal sa fresh form. WHY: inuulit dati sa button markup. */
+  const openAdd = () => {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setError('');
+    setShowAdd(true);
+  };
+
+  const closeModal = () => {
+    setShowAdd(false);
+    setEditing(null);
+  };
+
+  /* WHAT: Required ang age kapag bagong worker o walang exact age ang ini-edit.
+     WHY: tinutumbas nito ang dating form logic, hindi binabago ang validation. */
+  const ageRequired = editing ? editing.age != null : true;
+  /* WHAT: Disabled ang submit kapag kulang ang required fields.
+     WHY: visual affordance lang; server validation pa rin ang source of truth. */
+  const canSubmit = Boolean(
+    form.barangay_id && form.name.trim() && form.sex && form.address.trim()
+    && (!ageRequired || form.age !== ''),
+  );
 
   const load = () => {
     setLoading(true);
@@ -123,7 +164,6 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         subtitle={adminView ? 'Registered workers across Pangasinan, organized by municipality and barangay.' : `Registered workers in ${activeUser?.municipality_name || 'your municipality'}.`}
         art={adminView ? undefined : <MunicipalityMapArt highlightName={activeUser?.municipality_name} />}
         compact={!adminView}
-        action={<Button type="button" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setError(''); setShowAdd(true); }}><Plus size={16} className="me-1" />Add Worker</Button>}
       >
         {adminView && (
           <div className="admin-page-hero-control">
@@ -142,8 +182,11 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           </select>
         </div>
         <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="master-search">Search workers</label>
-          <input id="master-search" className="form-control admin-page-hero-input" name="q" value={filters.q} onChange={updateFilter} placeholder="Name or address" />
+          <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
+          <div className="ui-search">
+            <Search size={16} className="ui-search-icon" aria-hidden="true" />
+            <input id="master-search" className="form-control admin-page-hero-input" name="q" value={filters.q} onChange={updateFilter} placeholder="Search workers" />
+          </div>
         </div>
       </PageHeader>
 
@@ -162,9 +205,16 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       </KpiGrid>
 
       <Card className="encoder-card admin-card">
-        <Card.Header className="d-flex align-items-center justify-content-between">
+        <Card.Header className="master-toolbar">
           <h2 className="h6 mb-0"><Users size={16} className="me-2" />Workers</h2>
-          <Badge bg="light" text="dark">{rows.length.toLocaleString()} shown</Badge>
+          {/* WHAT: Count + Add Worker sa kanang bahagi ng toolbar; full-width ang button sa mobile.
+             WHY: inilipat dito mula sa page header para malapit sa data ang action. */}
+          <div className="master-toolbar__actions">
+            <Badge bg="light" text="dark">{rows.length.toLocaleString()} shown</Badge>
+            <button type="button" className="ui-btn-primary ui-btn-primary--sm" onClick={openAdd}>
+              <Plus size={16} aria-hidden="true" />Add Worker
+            </button>
+          </div>
         </Card.Header>
         <Card.Body className="p-0">
           {loading ? <div className="text-center py-5"><Spinner animation="border" size="sm" /></div> : rows.length === 0 ? (
@@ -181,8 +231,8 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
                   <td>{worker.barangay}</td>
                   <td>{worker.address}</td>
                   <td className="text-nowrap">
-                    <IconButton icon={Pencil} label={`Edit ${worker.name}`} variant="outline-primary" onClick={() => openEdit(worker)} />
-                    <IconButton icon={Trash2} label={`Delete ${worker.name}`} variant="outline-danger" onClick={() => removeWorker(worker)} />
+                    <RowAction icon={Pencil} label={`Edit ${worker.name}`} onClick={() => openEdit(worker)} />
+                    <RowAction icon={Trash2} label={`Delete ${worker.name}`} tone="danger" onClick={() => removeWorker(worker)} />
                   </td>
                 </tr>
               ))}</tbody>
@@ -211,34 +261,97 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         </Card.Body>
       </Card>
 
-      <Modal show={showAdd} onHide={() => { setShowAdd(false); setEditing(null); }} centered>
-        <Form onSubmit={handleAdd}>
-          <Modal.Header closeButton><Modal.Title>{editing ? 'Edit Worker' : 'Add Worker'}</Modal.Title></Modal.Header>
-          <Modal.Body>
-            {error && <Alert variant="danger">{error}</Alert>}
-            <Form.Group className="mb-3">
-              <Form.Label>Barangay</Form.Label>
-              <Form.Select required value={form.barangay_id} onChange={(event) => setForm((current) => ({ ...current, barangay_id: event.target.value }))}>
-                <option value="">Select barangay</option>
-                {barangays.map((item) => <option key={item.id} value={item.id}>{item.name}{adminView ? ` · ${item.municipality}` : ''}</option>)}
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Full name</Form.Label>
-              <Form.Control required maxLength={150} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-            </Form.Group>
-            <Row className="g-3">
-              <Col sm={6}><Form.Group className="mb-3"><Form.Label>Age</Form.Label><Form.Control type="number" min="0" max="120" step="1" required={editing ? editing.age != null : true} value={form.age} onChange={(event) => setForm((current) => ({ ...current, age: event.target.value }))} /></Form.Group></Col>
-              <Col sm={6}><Form.Group className="mb-3"><Form.Label>Sex</Form.Label><Form.Select required value={form.sex} onChange={(event) => setForm((current) => ({ ...current, sex: event.target.value }))}><option value="">Select</option><option>Female</option><option>Male</option><option>Other</option></Form.Select></Form.Group></Col>
-            </Row>
-            <Form.Group><Form.Label>Address</Form.Label><Form.Control required maxLength={255} value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} /></Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button type="button" variant="outline-secondary" onClick={() => { setShowAdd(false); setEditing(null); }}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Add worker'}</Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      {/* WHAT: Parehong shell ng report forms para sa Add/Edit Worker.
+         WHY: isang white modal, 520px, mobile full-screen, focus trap, at tokens-only. */}
+      <ReportModal
+        show={showAdd}
+        narrow
+        title={editing ? 'Edit worker' : 'Add worker'}
+        municipality={adminView ? 'All municipalities' : (activeUser?.municipality_name || 'Your municipality')}
+        onClose={closeModal}
+        busy={saving}
+        footer={(
+          <>
+            <div className="ui-report-foot__spacer" />
+            <button type="button" className="ui-btn-ghost" onClick={closeModal} disabled={saving}>Cancel</button>
+            <button type="submit" form="worker-form" className="ui-btn-primary" disabled={saving || !canSubmit}>
+              {saving
+                ? <><Spinner animation="border" size="sm" aria-hidden="true" />Saving…</>
+                : <><Plus size={16} aria-hidden="true" />{editing ? 'Save worker' : 'Add worker'}</>}
+            </button>
+          </>
+        )}
+      >
+        <form id="worker-form" className="ui-section__body" onSubmit={handleAdd}>
+          {error && <div className="ui-field__error" id="worker-form-error" role="alert">{error}</div>}
+          <ReportField label="Barangay" htmlFor="worker-barangay" required>
+            <select
+              id="worker-barangay"
+              className="form-select"
+              required
+              value={form.barangay_id}
+              onChange={(event) => setForm((current) => ({ ...current, barangay_id: event.target.value }))}
+              aria-describedby={error ? 'worker-form-error' : undefined}
+            >
+              <option value="">Select barangay</option>
+              {barangays.map((item) => <option key={item.id} value={item.id}>{item.name}{adminView ? ` · ${item.municipality}` : ''}</option>)}
+            </select>
+          </ReportField>
+          <ReportField label="Full name" htmlFor="worker-name" required>
+            <input
+              id="worker-name"
+              className="form-control"
+              required
+              maxLength={150}
+              value={form.name}
+              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+              aria-describedby={error ? 'worker-form-error' : undefined}
+            />
+          </ReportField>
+          <div className="ui-form-grid">
+            <ReportField label="Age" htmlFor="worker-age" required={ageRequired}>
+              <input
+                id="worker-age"
+                type="number"
+                className="form-control"
+                min="0"
+                max="120"
+                step="1"
+                required={ageRequired}
+                value={form.age}
+                onChange={(event) => setForm((current) => ({ ...current, age: event.target.value }))}
+                aria-describedby={error ? 'worker-form-error' : undefined}
+              />
+            </ReportField>
+            <ReportField label="Sex" htmlFor="worker-sex" required>
+              <select
+                id="worker-sex"
+                className="form-select"
+                required
+                value={form.sex}
+                onChange={(event) => setForm((current) => ({ ...current, sex: event.target.value }))}
+                aria-describedby={error ? 'worker-form-error' : undefined}
+              >
+                <option value="">Select</option>
+                <option>Female</option>
+                <option>Male</option>
+                <option>Other</option>
+              </select>
+            </ReportField>
+          </div>
+          <ReportField label="Address" htmlFor="worker-address" required>
+            <input
+              id="worker-address"
+              className="form-control"
+              required
+              maxLength={255}
+              value={form.address}
+              onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+              aria-describedby={error ? 'worker-form-error' : undefined}
+            />
+          </ReportField>
+        </form>
+      </ReportModal>
     </>
   );
 }

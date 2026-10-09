@@ -2513,317 +2513,759 @@ body {
   box-shadow: none;
 }
 
-/* ===== Production Record Form ===== */
-.encoder-form-modal .modal-content {
+/* ===== Encoder Report Forms (shared shell + stepper + fields) ===== */
+/* WHAT: White modal surface, 20px radius, soft shadow; 180ms fade+8px rise.
+   WHY: Isang clean shell para sa Production/Producer/Environment forms. */
+.ui-report-modal .modal-content {
   border: none;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px -15px rgba(12, 35, 64, 0.35);
+  border-radius: 20px;
+  box-shadow: var(--ui-shadow-modal);
   overflow: hidden;
+  max-height: calc(100vh - 3.5rem);
 }
 
-.encoder-form-header {
-  background: linear-gradient(135deg, #0c233f 0%, #1565c0 100%);
-  color: #fff;
-  border-bottom: none;
-  padding: 1.1rem 1.5rem;
+.ui-report-modal .modal-dialog {
+  max-width: 720px;
 }
 
-.encoder-form-header .btn-close {
-  filter: invert(1) grayscale(100%) brightness(200%);
-  opacity: 0.8;
+/* WHAT: Masikip na bersyon para sa maliit na form (Add/Edit Worker). WHY: 520px spec. */
+.ui-report-modal .ui-report-dialog--narrow {
+  max-width: 520px;
 }
 
-.encoder-form-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 0.9rem;
+.ui-report-modal.fade .modal-dialog {
+  transition: transform 180ms ease, opacity 180ms ease;
+  transform: translateY(8px);
+}
+
+.ui-report-modal.show .modal-dialog {
+  transform: translateY(0);
+}
+
+/* WHAT: Backdrop overlay + light blur. WHY: design spec na rgba(17,24,39,0.4). */
+.ui-report-backdrop.show {
+  background: var(--ui-overlay);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 1;
+}
+
+.ui-report-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+/* WHAT: White header na walang dark blue gradient. WHY: bagong clean look. */
+.ui-report-head__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ui-text);
   letter-spacing: -0.2px;
 }
 
-.encoder-stepper {
-  position: relative;
+.ui-report-head__subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ui-text-2);
 }
 
-.encoder-stepper-track {
-  position: absolute;
-  top: 14px;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 99px;
-  overflow: hidden;
-  z-index: 0;
-}
-
-.encoder-stepper-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4fc3f7, #ffffff);
-  border-radius: 99px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
-}
-
-.encoder-stepper-steps {
-  display: flex;
-  justify-content: space-between;
-  position: relative;
-  z-index: 1;
-}
-
-.encoder-stepper-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  transition: transform 0.2s ease;
-}
-
-.encoder-stepper-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
+/* WHAT: 36px ghost close button na may focus ring. WHY: malinaw at accessible. */
+.ui-report-close {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.7);
-  transition: all 0.3s ease;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-input);
+  background: transparent;
+  color: var(--ui-text-2);
+  cursor: pointer;
+  transition: background var(--ui-t-fast), color var(--ui-t-fast);
 }
 
-.encoder-stepper-item.active .encoder-stepper-icon {
-  background: #ffffff;
-  color: #1565c0;
-  border-color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: scale(1.1);
+.ui-report-close:hover {
+  background: var(--ui-hover-bg);
+  color: var(--ui-text);
 }
 
-.encoder-stepper-item.complete .encoder-stepper-icon {
-  background: #4caf50;
-  border-color: #4caf50;
-  color: #fff;
+.ui-report-close:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
-.encoder-stepper-check {
-  font-size: 14px;
-  font-weight: 700;
+.ui-report-stepper {
+  flex: 0 0 auto;
+  padding: 14px 24px;
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-report-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--ui-surface);
+  min-height: 240px;
+}
+
+/* WHAT: Sticky white footer na may top border. WHY: fixed ang actions habang scroll ang body. */
+.ui-report-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  background: var(--ui-surface);
+  border-top: 1px solid var(--ui-border);
+}
+
+.ui-report-foot__spacer {
+  flex: 1 1 auto;
+}
+
+/* ===== Flat stepper ===== */
+.ui-stepper {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-stepper__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ui-stepper__item:not(:last-child) {
+  flex: 1 1 auto;
+}
+
+/* WHAT: 2px connector line sa pagitan ng circles. WHY: flat na stepper. */
+.ui-stepper__item:not(:last-child)::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 2px;
+  margin: 0 12px;
+  background: var(--ui-guide);
+}
+
+.ui-stepper__item--done:not(:last-child)::after {
+  background: var(--ui-accent);
+}
+
+.ui-stepper__dot {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
   line-height: 1;
 }
 
-.encoder-stepper-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.65);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: color 0.3s ease;
+.ui-stepper__item--done .ui-stepper__dot {
+  background: var(--ui-accent);
+  color: #fff;
 }
 
-.encoder-stepper-item.active .encoder-stepper-label {
-  color: #ffffff;
-  font-weight: 700;
+.ui-stepper__item--current .ui-stepper__dot {
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  border: 2px solid var(--ui-accent);
 }
 
-.encoder-stepper-item.complete .encoder-stepper-label {
-  color: rgba(255, 255, 255, 0.9);
+.ui-stepper__item--upcoming .ui-stepper__dot {
+  background: var(--ui-active-bg);
+  color: var(--ui-text-muted);
+  border: 1px solid var(--ui-guide);
 }
 
-.encoder-form-body {
-  padding: 1.5rem;
-  background: #f8fafc;
-  min-height: 280px;
-}
-
-.encoder-form-alert {
-  border-radius: 10px;
-  border: none;
-  padding: 0.85rem 1rem;
-  font-size: 13.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.encoder-form-footer {
-  padding: 1rem 1.5rem;
-  background: #fff;
-  border-top: 1px solid rgba(21, 35, 58, 0.06);
-  gap: 0.5rem;
-}
-
-.encoder-btn-cancel {
-  color: #6b7280;
-  font-weight: 600;
-  font-size: 13.5px;
-  padding: 0.5rem 0.75rem;
-  text-decoration: none;
-}
-
-.encoder-btn-cancel:hover {
-  color: #374151;
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.encoder-btn-back {
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 13.5px;
-  padding: 0.55rem 1.2rem;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.encoder-btn-back:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.encoder-btn-next,
-.encoder-btn-submit {
-  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 13.5px;
-  padding: 0.55rem 1.5rem;
-  box-shadow: 0 4px 14px rgba(21, 101, 200, 0.35);
-  transition: all 0.2s ease;
-}
-
-.encoder-btn-next:hover,
-.encoder-btn-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(21, 101, 200, 0.45);
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-}
-
-.encoder-btn-next:disabled,
-.encoder-btn-submit:disabled {
-  opacity: 0.6;
-  transform: none;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-.encoder-btn-submit:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
-  box-shadow: 0 2px 8px rgba(21, 101, 200, 0.4);
-}
-
-.form-step-card {
-  position: relative;
+.ui-stepper__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-text-2);
+  white-space: nowrap;
   overflow: hidden;
-  background: #ffffff;
-  border: 1px solid rgba(21, 35, 58, 0.08);
-  border-radius: 14px;
-  padding: 1.3rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(12, 35, 64, 0.15);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-  animation: formFadeIn 0.35s ease;
+  text-overflow: ellipsis;
 }
 
-.form-step-card::before {
-  content: '';
+.ui-stepper__item--current .ui-stepper__label {
+  color: var(--ui-text);
+  font-weight: 600;
+}
+
+.ui-stepper__item--upcoming .ui-stepper__label {
+  color: var(--ui-text-muted);
+}
+
+/* ===== Sections + fields ===== */
+.ui-section + .ui-section {
+  margin-top: 24px;
+}
+
+.ui-section__title {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-text);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+/* WHAT: 16px na agwat sa pagitan ng blocks sa loob ng isang section. */
+.ui-section__body > * + * {
+  margin-top: 16px;
+}
+
+.ui-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ui-form-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ui-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-text);
+}
+
+/* WHAT: Maliit na red dot kaysa heavy red star. WHY: mas banayad ang required marker. */
+.ui-field__req {
+  color: var(--ui-danger);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.ui-field__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ui-field__control.has-unit .form-control,
+.ui-field__control.has-unit .form-select {
+  padding-right: 46px;
+}
+
+.ui-field__unit {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #1565c0 0%, #4fc3f7 60%, rgba(79, 195, 247, 0) 100%);
-  opacity: 0.9;
+  right: 12px;
+  font-size: 13px;
+  color: var(--ui-text-2);
+  pointer-events: none;
 }
 
-@keyframes formFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.ui-field__lock {
+  position: absolute;
+  right: 12px;
+  display: inline-flex;
+  color: var(--ui-text-muted);
+  pointer-events: none;
 }
 
-.form-step-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 12px 32px -12px rgba(12, 35, 64, 0.2);
+.ui-field__control.has-unit .ui-field__lock {
+  right: 46px;
 }
 
-.form-section-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  color: #1565c0;
-  margin-bottom: 1rem;
+.ui-field__hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ui-text-2);
+}
+
+.ui-field__error {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ui-danger);
+}
+
+.ui-report-body .form-control,
+.ui-report-body .form-select {
+  height: 40px;
+  border-radius: var(--ui-radius-input);
+  border: 1px solid var(--ui-guide);
+  background-color: var(--ui-surface);
+  font-size: 14px;
+  color: var(--ui-text);
+}
+
+.ui-report-body .form-control::placeholder {
+  color: var(--ui-text-muted);
+}
+
+.ui-report-body .form-control:focus,
+.ui-report-body .form-select:focus {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+  background-color: var(--ui-surface);
+}
+
+.ui-report-body .form-control:disabled,
+.ui-report-body .form-select:disabled,
+.ui-report-body .form-control[readonly],
+.ui-field__control.is-readonly .form-control {
+  background-color: #f9fafb;
+  opacity: 1;
+  color: var(--ui-text-2);
+}
+
+.ui-report-body .form-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+/* ===== Review summary ===== */
+.ui-summary__section + .ui-summary__section {
+  margin-top: 24px;
+}
+
+.ui-summary__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-summary__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.ui-summary__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.ui-summary__edit:hover {
+  background: var(--ui-accent-tint);
+}
+
+.ui-summary__edit:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.ui-summary__list {
+  margin: 0;
+  padding: 0;
+}
+
+.ui-summary__row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.ui-summary__row dt {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ui-text-2);
+}
+
+.ui-summary__row dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-text);
+}
+
+/* ===== Report rows inside forms (Producer) ===== */
+.ui-report-table-wrap {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.ui-add-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.ui-inline-add {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.form-section-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(21, 101, 200, 0.15);
+.ui-inline-add .form-control {
+  flex: 1 1 auto;
 }
 
-.form-field-label {
-  font-size: 12.5px;
-  font-weight: 650;
-  color: #1f2937;
-  margin-bottom: 6px;
-  letter-spacing: 0.1px;
+.ui-report-row-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--ui-radius-input);
+  background: transparent;
+  color: var(--ui-text-muted);
+  cursor: pointer;
 }
 
-.form-field-label-small {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #6b7280;
-  margin-bottom: 4px;
+.ui-report-row-remove:hover {
+  background: var(--ui-danger-tint);
+  color: var(--ui-danger);
 }
 
-.form-meta-line {
+.ui-report-row-remove:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.ui-report-table {
+  width: 100%;
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
   font-size: 13px;
-  color: #6b7280;
-  padding: 0.6rem 0.85rem;
-  background: #f3f4f6;
-  border-radius: 8px;
-  border-left: 3px solid #1565c0;
 }
 
-.form-step-card .form-control,
-.form-step-card .form-select {
-  border-radius: 9px;
-  border-color: #e5e7eb;
-  font-size: 13.5px;
-  padding: 0.55rem 0.8rem;
-  background-color: #fff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+.ui-report-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--ui-hover-bg);
+  color: var(--ui-text-2);
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid var(--ui-guide);
 }
 
-.form-step-card .form-control:hover:not(:disabled),
-.form-step-card .form-select:hover:not(:disabled) {
-  border-color: #b9c6d6;
+.ui-report-table td {
+  height: 36px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--ui-border);
+  color: var(--ui-text);
+  vertical-align: middle;
 }
 
-.form-step-card .form-control:focus,
-.form-step-card .form-select:focus {
-  border-color: #1565c0;
-  box-shadow: 0 0 0 4px rgba(21, 101, 200, 0.12);
-  background-color: #fff;
+.ui-report-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.form-step-card .form-control:disabled,
-.form-step-card .form-select:disabled {
-  background-color: #f9fafb;
-  opacity: 0.7;
+.ui-report-table .form-control,
+.ui-report-table .form-select {
+  height: 34px;
+}
+
+.ui-report-skeleton {
+  padding: 4px;
+}
+
+/* WHAT: Inline ghost buttons (Import CSV/XLSX, CSV template, Add row). */
+.ui-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-btn-ghost:hover:not(:disabled) {
+  background: var(--ui-hover-bg);
+  color: var(--ui-text);
+}
+
+.ui-btn-ghost:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-.form-step-card .form-select {
+.ui-btn-ghost:focus-visible,
+.ui-btn-primary:focus-visible,
+.ui-btn-outline:focus-visible,
+.ui-btn-text:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* WHAT: Primary action = solid accent green with dark text (contrast ~6.2:1).
+   WHY: Pass sa 4.5:1; disabled state = gray bg + gray text. */
+.ui-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-accent);
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+.ui-btn-primary:hover:not(:disabled) {
+  background: var(--ui-accent-dark);
+  color: #fff;
+}
+
+.ui-btn-primary:disabled {
+  background: var(--ui-active-bg);
+  color: var(--ui-text-muted);
+  cursor: not-allowed;
+}
+
+.ui-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-btn-outline:hover:not(:disabled) {
+  background: var(--ui-hover-bg);
+}
+
+.ui-btn-outline:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-btn-text {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--ui-radius-input);
+  background: transparent;
+  color: var(--ui-text-2);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-btn-text:hover:not(:disabled) {
+  color: var(--ui-text);
+  background: var(--ui-hover-bg);
+}
+
+.ui-btn-text:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* WHAT: 36px na bersyon ng primary button para sa table toolbar. WHY: siksik na header row. */
+.ui-btn-primary--sm {
+  height: 36px;
+  padding: 0 14px;
+}
+
+/* ===== Master List toolbar + row actions ===== */
+/* WHAT: Isang row na toolbar: title sa kaliwa, count + Add Worker sa kanan.
+   WHY: inilipat ang action mula page header papunta sa tabi ng data. */
+.master-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.master-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* WHAT: 32px ghost icon button na may tooltip. WHY: neutral gray edit, muted red delete. */
+.master-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--ui-radius-input);
+  background: transparent;
+  color: var(--ui-text-2);
+  cursor: pointer;
+  transition: background var(--ui-t-fast), color var(--ui-t-fast);
+}
+
+.master-row-action:hover {
+  background: var(--ui-hover-bg);
+  color: var(--ui-text);
+}
+
+.master-row-action:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.master-row-action--danger {
+  color: var(--ui-danger);
+}
+
+.master-row-action--danger:hover {
+  background: var(--ui-danger-tint);
+  color: var(--ui-danger);
+}
+
+/* WHAT: Mobile = full-width na Add Worker sa ilalim ng title. WHY: madaling i-tap. */
+@media (max-width: 639.98px) {
+  .master-toolbar__actions {
+    width: 100%;
+  }
+
+  .master-toolbar__actions .ui-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.ui-report-alert {
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  padding: 12px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+/* ===== Import actions + preview ===== */
+.ui-import-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ui-import-panel {
+  width: 100%;
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  padding: 12px 14px;
+  font-size: 13px;
+  background: var(--ui-surface);
+}
+
+.ui-import-panel--warning {
+  background: var(--ui-warning-tint);
+  border-color: var(--ui-guide);
+}
+
+.ui-import-panel--success {
+  background: var(--ui-accent-tint);
+  border-color: var(--ui-guide);
+}
+
+.ui-import-panel__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* WHAT: Mobile full-screen sheet. WHY: maliit na screen = buong viewport ang form. */
+@media (max-width: 639.98px) {
+  .ui-report-modal .modal-dialog {
+    max-width: 100%;
+    margin: 0;
+    height: 100%;
+  }
+
+  .ui-report-modal .modal-content {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .ui-report-head,
+  .ui-report-stepper,
+  .ui-report-body,
+  .ui-report-foot {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .ui-form-grid,
+  .ui-form-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-stepper__label {
+    display: none;
+  }
+
+  .ui-summary__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-report-modal.fade .modal-dialog,
+  .ui-report-modal.show .modal-dialog {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* Report preview tables */
@@ -3191,10 +3633,6 @@ body {
 
 .skeleton-dashboard .skeleton-card {
   height: 100%;
-}
-
-.encoder-form-skeleton {
-  padding: 0.5rem 0.25rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

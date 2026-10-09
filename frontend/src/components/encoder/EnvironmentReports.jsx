@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Card, Form, Spinner, Table } from 'react-bootstrap';
 import { Leaf, Plus } from 'lucide-react';
 import {
   createEncoderBarangay,
@@ -8,6 +8,10 @@ import {
   getEncoderEnvironmentReports,
 } from '../../services/dataService';
 import { useToast } from '../Toast';
+import ReportModal from './ReportModal';
+import ReportSection from './ReportSection';
+import ReportField from './ReportField';
+import ReportSummary from './ReportSummary';
 import ReportImportActions from './ReportImportActions';
 import { findBarangay, numberValue, rowError } from './reportImportUtils';
 
@@ -15,6 +19,11 @@ const METHODS = [
   { id: 'cooked', label: 'Cooked' },
   { id: 'solar', label: 'Solar' },
   { id: 'hybrid', label: 'Hybrid' },
+];
+
+const STEPS = [
+  { key: 'environment', label: 'Environment' },
+  { key: 'review', label: 'Review' },
 ];
 
 const STATUS_VARIANTS = {
@@ -41,6 +50,15 @@ function EnvironmentReportForm({ user, onClose, onSaved, onImport, barangays: av
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(0);
+
+  // WHAT: May unsaved input ba? WHY: para may confirm bago isara ang modal.
+  const hasData = Boolean(
+    form.barangay_id
+    || form.num_salt_beds
+    || form.area_per_salt_bed
+    || form.production_area_size
+    || form.production_methods.length,
+  );
 
   useEffect(() => {
     if (availableBarangays?.length) {
@@ -115,155 +133,160 @@ function EnvironmentReportForm({ user, onClose, onSaved, onImport, barangays: av
   );
 
   return (
-    <Modal show onHide={onClose} centered size="lg" backdrop="static" className="encoder-form-modal">
-      <Modal.Header closeButton className="encoder-form-header">
-        <div>
-            <Modal.Title className="encoder-form-title">New Environment Report</Modal.Title>
-            <div className="encoder-stepper mt-3">
-              <div className="encoder-stepper-track">
-                <div className="encoder-stepper-fill" style={{ width: `${(step + 1) * 50}%` }} />
-              </div>
-              <div className="encoder-stepper-steps">
-                <div className={`encoder-stepper-item ${step === 0 ? 'active' : 'complete'}`}>
-                  <div className="encoder-stepper-icon"><Leaf size={18} /></div>
-                  <span className="encoder-stepper-label">Environment</span>
-                </div>
-                <div className={`encoder-stepper-item ${step === 1 ? 'active' : ''}`}>
-                  <div className="encoder-stepper-icon">{step === 1 ? <Leaf size={18} /> : <span className="encoder-stepper-check">✓</span>}</div>
-                  <span className="encoder-stepper-label">Review</span>
-                </div>
-              </div>
-            </div>
-        </div>
-      </Modal.Header>
-      <Modal.Body className="encoder-form-body">
-        {!loading && (
-          <div className="d-flex justify-content-end mb-3">
-            <ReportImportActions
-              templateUrl="/static/templates/environment-report-template.csv"
-              onImport={onImport}
-              disabled={!barangays.length}
-            />
-          </div>
-        )}
-        {error && <Alert variant="danger" className="encoder-form-alert">{error}</Alert>}
-        {loading ? (
-          <div className="d-flex justify-content-center py-5"><Spinner animation="border" size="sm" /></div>
-        ) : step === 0 ? (
-          <Form id="environment-report-form" onSubmit={goToReview}>
-            <div className="form-step-card">
-              <div className="form-section-title">Environment Details</div>
-              <Row className="g-3">
-                <Col md={6}>
-                  <Form.Group>
-                    <Form.Label className="form-field-label">Municipality</Form.Label>
-                    <Form.Control value={user?.municipality_name || ''} readOnly aria-label="Assigned municipality" />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group>
-                    <Form.Label className="form-field-label">Barangay <span className="text-danger">*</span></Form.Label>
-                    <Form.Select
-                      required
-                      value={form.barangay_id}
-                      onChange={(event) => setForm((current) => ({ ...current, barangay_id: event.target.value }))}
-                    >
-                      <option value="">Select barangay...</option>
-                      {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.name}</option>)}
-                    </Form.Select>
-                    {!addingBarangay ? (
-                      <Button variant="link" className="p-0 mt-2" onClick={() => setAddingBarangay(true)}>
-                        <Plus size={14} className="me-1" />Add a barangay
-                      </Button>
-                    ) : (
-                      <div className="d-flex gap-2 mt-2">
-                        <Form.Control
-                          aria-label="New barangay name"
-                          placeholder="Barangay name"
-                          maxLength={100}
-                          value={newBarangay}
-                          onChange={(event) => setNewBarangay(event.target.value)}
-                        />
-                        <Button type="button" variant="outline-primary" onClick={handleAddBarangay} disabled={!newBarangay.trim()}>
-                          Add
-                        </Button>
-                        <Button type="button" variant="outline-secondary" onClick={() => setAddingBarangay(false)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <Row className="g-3 mt-1">
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="form-field-label">Number of Salt Beds <span className="text-danger">*</span></Form.Label>
-                    <Form.Control type="number" min="1" step="1" required value={form.num_salt_beds} onChange={(event) => setForm((current) => ({ ...current, num_salt_beds: event.target.value }))} />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="form-field-label">Area per Salt Bed (m²) <span className="text-danger">*</span></Form.Label>
-                    <Form.Control type="number" min="0" step="0.01" required value={form.area_per_salt_bed} onChange={(event) => setForm((current) => ({ ...current, area_per_salt_bed: event.target.value }))} />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="form-field-label">Production Area Size (m²) <span className="text-danger">*</span></Form.Label>
-                    <Form.Control type="number" min="0" step="0.01" required value={form.production_area_size} onChange={(event) => setForm((current) => ({ ...current, production_area_size: event.target.value }))} />
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <Form.Group className="mt-3">
-                <Form.Label className="form-field-label">Production Methods <span className="text-danger">*</span></Form.Label>
-                <div className="d-flex flex-wrap gap-4">
-                  {METHODS.map((method) => (
-                    <Form.Check
-                      key={method.id}
-                      type="checkbox"
-                      id={`environment-method-${method.id}`}
-                      label={method.label}
-                      checked={form.production_methods.includes(method.id)}
-                      onChange={(event) => handleMethodChange(method.id, event.target.checked)}
-                    />
-                  ))}
-                </div>
-              </Form.Group>
-            </div>
-          </Form>
-        ) : (
-            <div className="form-step-card">
-              <div className="form-section-title">Review Environment Report</div>
-              <Row className="g-3">
-                <Col md={6}><strong>Report Type:</strong> Environment</Col>
-                <Col md={6}><strong>Municipality:</strong> {user?.municipality_name || '—'}</Col>
-                <Col md={6}><strong>Barangay:</strong> {barangays.find((barangay) => String(barangay.id) === String(form.barangay_id))?.name || '—'}</Col>
-                <Col md={6}><strong>Number of Salt Beds:</strong> {form.num_salt_beds || '—'}</Col>
-                <Col md={6}><strong>Area per Salt Bed:</strong> {form.area_per_salt_bed || '—'} m²</Col>
-                <Col md={6}><strong>Production Area:</strong> {form.production_area_size || '—'} m²</Col>
-                <Col md={12}><strong>Production Methods:</strong> {form.production_methods.map((method) => method[0].toUpperCase() + method.slice(1)).join(', ') || '—'}</Col>
-              </Row>
-            </div>
-          )}
-      </Modal.Body>
-      {!loading && (
-        <Modal.Footer className="encoder-form-footer">
-          <Button variant="link" onClick={onClose} disabled={saving} className="encoder-btn-cancel">Cancel</Button>
-          <div className="flex-grow-1" />
-          {step === 0 ? (
-            <Button type="submit" form="environment-report-form" variant="primary" disabled={!canReview} className="encoder-btn-next">Review</Button>
-          ) : (
-            <>
-              <Button variant="outline-secondary" onClick={() => setStep(0)} disabled={saving} className="encoder-btn-back">Edit</Button>
-              <Button variant="primary" onClick={submitReport} disabled={saving} className="encoder-btn-submit">{saving ? 'Submitting...' : 'Submit Environment Report'}</Button>
-            </>
-          )}
-        </Modal.Footer>
+    <ReportModal
+      title="New Environment Report"
+      municipality={user?.municipality_name}
+      steps={STEPS}
+      currentStep={step}
+      onClose={onClose}
+      dirty={hasData}
+      busy={saving}
+      footer={step === 0 ? (
+        <>
+          <button type="button" className="ui-btn-text" onClick={onClose} disabled={saving}>Cancel</button>
+          <div className="ui-report-foot__spacer" />
+          <button
+            type="submit"
+            form="environment-report-form"
+            className="ui-btn-primary"
+            disabled={!canReview}
+            title={!canReview ? 'Fill in all required fields to continue.' : undefined}
+          >
+            Review
+          </button>
+        </>
+      ) : (
+        <>
+          <button type="button" className="ui-btn-text" onClick={onClose} disabled={saving}>Cancel</button>
+          <div className="ui-report-foot__spacer" />
+          <button type="button" className="ui-btn-outline" onClick={() => setStep(0)} disabled={saving}>Edit</button>
+          <button type="button" className="ui-btn-primary" onClick={submitReport} disabled={saving}>
+            {saving ? 'Submitting…' : 'Submit Environment Report'}
+          </button>
+        </>
       )}
-    </Modal>
+    >
+      {error && <div className="ui-import-panel ui-import-panel--warning ui-report-alert" role="alert">{error}</div>}
+      {!loading && (
+        <ReportImportActions
+          templateUrl="/static/templates/environment-report-template.csv"
+          onImport={onImport}
+          disabled={!barangays.length}
+        />
+      )}
+      {loading ? (
+        <div className="ui-report-skeleton d-flex justify-content-center py-4"><Spinner animation="border" size="sm" /></div>
+      ) : step === 0 ? (
+        <Form id="environment-report-form" onSubmit={goToReview}>
+          <ReportSection title="Environment Details">
+            <div className="ui-form-grid">
+              <ReportField label="Municipality" readOnly>
+                <Form.Control value={user?.municipality_name || ''} readOnly aria-label="Assigned municipality" />
+              </ReportField>
+              <ReportField label="Barangay" required htmlFor="environment-barangay">
+                <Form.Select
+                  id="environment-barangay"
+                  required
+                  value={form.barangay_id}
+                  onChange={(event) => setForm((current) => ({ ...current, barangay_id: event.target.value }))}
+                >
+                  <option value="">Select barangay…</option>
+                  {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.name}</option>)}
+                </Form.Select>
+              </ReportField>
+            </div>
+
+            {!addingBarangay ? (
+              <div className="ui-add-row">
+                <button type="button" className="ui-btn-ghost" onClick={() => setAddingBarangay(true)}>
+                  <Plus size={15} aria-hidden="true" />Add a barangay
+                </button>
+              </div>
+            ) : (
+              <div className="ui-inline-add">
+                <Form.Control
+                  aria-label="New barangay name"
+                  placeholder="Barangay name"
+                  maxLength={100}
+                  value={newBarangay}
+                  onChange={(event) => setNewBarangay(event.target.value)}
+                />
+                <button type="button" className="ui-btn-primary" onClick={handleAddBarangay} disabled={!newBarangay.trim()}>Add</button>
+                <button type="button" className="ui-btn-outline" onClick={() => setAddingBarangay(false)}>Cancel</button>
+              </div>
+            )}
+
+            <div className="ui-form-grid ui-form-grid--3">
+              <ReportField label="Number of Salt Beds" required htmlFor="environment-beds">
+                <Form.Control
+                  id="environment-beds"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  value={form.num_salt_beds}
+                  onChange={(event) => setForm((current) => ({ ...current, num_salt_beds: event.target.value }))}
+                />
+              </ReportField>
+              <ReportField label="Area per Salt Bed" required unit="m²" htmlFor="environment-area-bed">
+                <Form.Control
+                  id="environment-area-bed"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={form.area_per_salt_bed}
+                  onChange={(event) => setForm((current) => ({ ...current, area_per_salt_bed: event.target.value }))}
+                />
+              </ReportField>
+              <ReportField label="Production Area Size" required unit="m²" htmlFor="environment-area-size">
+                <Form.Control
+                  id="environment-area-size"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={form.production_area_size}
+                  onChange={(event) => setForm((current) => ({ ...current, production_area_size: event.target.value }))}
+                />
+              </ReportField>
+            </div>
+
+            <div className="ui-field">
+              <span className="ui-field__label">Production Methods <span className="ui-field__req" aria-hidden="true">*</span></span>
+              <div className="d-flex flex-wrap gap-4">
+                {METHODS.map((method) => (
+                  <Form.Check
+                    key={method.id}
+                    type="checkbox"
+                    id={`environment-method-${method.id}`}
+                    label={method.label}
+                    checked={form.production_methods.includes(method.id)}
+                    onChange={(event) => handleMethodChange(method.id, event.target.checked)}
+                  />
+                ))}
+              </div>
+            </div>
+          </ReportSection>
+        </Form>
+      ) : (
+        <ReportSummary
+          sections={[{
+            title: 'Review Environment Report',
+            onEdit: () => setStep(0),
+            rows: [
+              ['Report Type', 'Environment'],
+              ['Municipality', user?.municipality_name || '—'],
+              ['Barangay', barangays.find((barangay) => String(barangay.id) === String(form.barangay_id))?.name || '—'],
+              ['Number of Salt Beds', form.num_salt_beds || '—'],
+              ['Area per Salt Bed', form.area_per_salt_bed !== '' ? `${form.area_per_salt_bed} m²` : '—'],
+              ['Production Area', form.production_area_size !== '' ? `${form.production_area_size} m²` : '—'],
+              ['Production Methods', form.production_methods.map((method) => method[0].toUpperCase() + method.slice(1)).join(', ') || '—'],
+            ],
+          }]}
+        />
+      )}
+    </ReportModal>
   );
 }
 

@@ -184,6 +184,15 @@
   font-weight: 600;
 }
 
+/* WHAT: Walang accent ring sa active row. WHY: nananatiling naka-focus ang button
+   pagkatapos ng click sa ilang browser; may sarili nang gray na indicator ang active. */
+.p-row.active,
+.p-row.active:focus,
+.p-row.active:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .p-row-icon {
   flex: 0 0 auto;
   width: 20px;

@@ -20,7 +20,9 @@ export default function PageHeader({
       <header className={headerClass} id={id}>
         {hasArt ? (
           <>
-            <div className="ui-pageheader-art" aria-hidden="true">{art}</div>
+            {/* WHAT: Walang aria-hidden sa container para mabasa ang legend.
+               WHY: ang SVG mismo ng mapa ang naka-aria-hidden (decorative) sa component. */}
+            <div className="ui-pageheader-art">{art}</div>
             <div className="ui-pageheader-art-glow" aria-hidden="true" />
             <div className="ui-pageheader-art-grid" aria-hidden="true">
               <svg width="100%" height="100%" role="presentation" focusable="false">

@@ -97,7 +97,7 @@
 }
 
 .ui-pageheader-controls .admin-page-hero-field {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   text-transform: none;
   letter-spacing: normal;
@@ -112,7 +112,7 @@
   color: var(--ui-text);
   background: var(--ui-surface);
   border: 1px solid var(--ui-guide);
-  border-radius: var(--ui-radius-row);
+  border-radius: var(--ui-radius-input);
 }
 
 .ui-pageheader-controls .admin-page-hero-select:focus,
@@ -120,6 +120,25 @@
   outline: none;
   border-color: var(--ui-accent);
   box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+/* WHAT: Magnifier icon sa loob ng search input. WHY: malinaw na search affordance. */
+.ui-pageheader-controls .ui-search {
+  position: relative;
+  display: flex;
+}
+
+.ui-pageheader-controls .ui-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ui-text-muted);
+  pointer-events: none;
+}
+
+.ui-pageheader-controls .ui-search .admin-page-hero-input {
+  padding-left: 36px;
 }
 
 /* WHAT: Staking ng header blocks sa maliit na screen.
@@ -139,21 +158,29 @@
    WHAT: "Art" na hero para sa encoder header (maps + layering).
    WHY: tokens-only na decorasyon; hindi kinkin ang admin/guest.
    ============================================================ */
+/* WHAT: Maliit pa rin ang header (min-height lang); ang mapa ay absolute na
+   sumasakop sa buong taas nito kaya HINDI nito pinapalaki ang header.
+   WHY: ang request ay i-zoom at i-center lang ang MAPA, hindi palakihin ang header. */
 .ui-pageheader--art {
   position: relative;
   overflow: hidden;
   min-height: 200px;
   padding: 28px 32px;
+  /* WHAT: Malambot na gradient na may tuktok sa likod ng mapa (~66%), hindi sa gilid.
+     WHY: kumukupas mula sa puting text area pakanan; hindi na "solid accent" ang dulo. */
   background:
-    radial-gradient(120% 140% at 100% 0%, var(--ui-accent-tint) 0%, transparent 55%),
-    linear-gradient(90deg, var(--ui-surface) 28%, var(--ui-accent-tint) 100%);
+    radial-gradient(70% 130% at 66% 46%, var(--ui-accent-tint) 0%, transparent 68%),
+    linear-gradient(90deg, var(--ui-surface) 30%, var(--ui-accent-tint) 64%);
 }
 
+/* WHAT: Text block sa kaliwa — limitado sa 52% para mag-wrap ang subtitle/selects.
+   WHY: hindi umaabot sa ilalim ng mapa (right panel) kaya walang overlap. */
 .ui-pageheader--art .ui-pageheader-main,
 .ui-pageheader--art .ui-pageheader-controls {
   position: relative;
   z-index: 1;
-  max-width: 60%;
+  max-width: 52%;
+  min-width: 0;
 }
 
 .ui-pageheader--art .ui-pageheader-title {
@@ -177,31 +204,39 @@
   mask-image: linear-gradient(90deg, transparent 0%, #000 42%, #000 100%);
 }
 
-/* WHAT: Malambot na accent glow sa likod ng mapa. */
+/* WHAT: Malambot na accent glow na naka-puwesto sa likod ng right panel. */
 .ui-pageheader-art-glow {
   position: absolute;
-  top: -60px;
-  right: -50px;
-  width: 340px;
-  height: 340px;
+  top: 50%;
+  right: 32px;
+  transform: translateY(-50%);
+  width: 42%;
+  height: 90%;
+  max-height: 340px;
   background: radial-gradient(circle, var(--ui-accent) 0%, transparent 65%);
   opacity: 0.1;
   pointer-events: none;
 }
 
-/* WHAT: Mapang nasa loob ng card (hindi na lumalabas), vertically centered.
-   WHY: 32px ang right inset at 400px ang lapad para buo at hindi putol ang highlight. */
+/* WHAT: Right panel (~42% ng card): kanan 32px, taas 18px.
+   WHY: Dito naka-center (xMidYMid) ang mapa — nasa kanang hati pa rin ng card (right-leaning)
+        pero hindi na dumidikit sa dulong kanan. `overflow:hidden` + left fade mask para
+        hindi ito tumagos sa kaliwa (title/subtitle/selects). */
 .ui-pageheader-art {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 18px;
+  bottom: 18px;
   right: 32px;
-  width: 400px;
+  left: auto;
+  width: 42%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 0;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 22%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 22%);
 }
 
 .ui-pageheader-art .munimap {
@@ -218,10 +253,6 @@
   font-size: 24px;
 }
 
-.ui-pageheader--compact .ui-pageheader-art {
-  width: 190px;
-}
-
 /* WHAT: Motion para sa map. */
 @keyframes ui-art-in {
   from { opacity: 0; transform: translateY(8px); }
@@ -231,6 +262,8 @@
 /* ============================================================
    WHAT: Estilo ng inline SVG map (.munimap) para sa header.
    ============================================================ */
+/* WHAT: Puno ang mapa sa panel; ang svg ang nag-a-align (xMidYMid) sa loob nito.
+   WHY: height:100% + width:100% para controlled ng preserveAspectRatio ang fit/posisyon. */
 .munimap {
   width: 100%;
   height: 100%;
@@ -240,12 +273,11 @@
   color: var(--ui-text);
 }
 
-/* WHAT: height:auto + max-height para sundan ang aspect ng viewBox pero hindi
-   lumampas sa card; overflow visible para buo ang label pill at pulse. */
+/* WHAT: width/height 100% + overflow visible. WHY: ang preserveAspectRatio="xMaxYMid meet"
+   sa component ang nag-fifit ng lalawigan (right-aligned) sa loob ng element. */
 .munimap-svg {
   width: 100%;
-  height: auto;
-  max-height: 100%;
+  height: 100%;
   display: block;
   overflow: visible;
 }
@@ -264,6 +296,66 @@
 .munimap-shape--active {
   fill: var(--ui-accent);
   stroke-width: 2;
+}
+
+/* WHAT: Province mode — buong mapa neutral, ang 7 salt accent na mas maliwanag.
+   WHY: opacity para mag-mukhang "set" ang 7 at hindi kasing-tindi ng single highlight. */
+.munimap-shape--province {
+  fill: var(--ui-accent);
+  opacity: 0.55;
+}
+
+/* WHAT: Hover tooltips lang ang kailangan ng pointer events sa province mode.
+   WHY: muling i-enable sa shapes (kahit pointer-events:none ang parent) para
+        hindi harangin ang header controls; SVG lang ang interactive. */
+.munimap--province .munimap-shape {
+  pointer-events: auto;
+}
+
+/* WHAT: Province mode ay column para may espasyo ang legend sa ilalim ng mapa. */
+.munimap--province {
+  flex-direction: column;
+}
+
+/* WHAT: Sa province mode, binibigyan ng espasyo ang legend sa ilalim ng mapa. */
+.munimap--province .munimap-svg {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+/* WHAT: Compact na legend (12px muted). WHY: ipaliwanag ang kulay ng mga munisipyo. */
+.munimap-legend {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  justify-content: center;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ui-text-muted);
+}
+
+.munimap-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.munimap-legend__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.munimap-legend__dot--salt {
+  background: var(--ui-accent);
+}
+
+.munimap-legend__dot--other {
+  background: var(--ui-border);
+  border: 1px solid var(--ui-guide);
 }
 
 .munimap-glow {
@@ -307,19 +399,8 @@
   100% { transform: scale(2.4); opacity: 0; }
 }
 
-/* WHAT: Responsive sizing ng mapa. */
-@media (max-width: 1023.98px) {
-  .ui-pageheader--art .ui-pageheader-art {
-    width: 300px;
-    right: 24px;
-  }
-
-  .ui-pageheader--art .ui-pageheader-main,
-  .ui-pageheader--art .ui-pageheader-controls {
-    max-width: 68%;
-  }
-}
-
+/* WHAT: ISANG fixed layout lang sa lahat ng lapad >=768px (walang per-breakpoint resize).
+   WHY: pare-pareho ang mapa sa 1920/1440/1024; mismong <768px lang ang nagtatago. */
 @media (max-width: 767.98px) {
   .ui-pageheader--art {
     padding: 24px;

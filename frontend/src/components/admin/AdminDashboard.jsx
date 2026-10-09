@@ -23,6 +23,7 @@ const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 
 function ChartTooltip({ active, payload, label, suffix = '', nameFormatter }) {
@@ -138,11 +139,14 @@ export default function AdminDashboard({ user }) {
 
   return (
     <div>
+      {/* WHAT: Kaparehong clean look ng encoder (white->accent-tint, 20px radius, 1px border).
+         WHY: province-wide view na may buong Pangasinan map sa kanan (province mode). */}
       <PageHeader
         id="admin-dashboard"
-        variant="main"
-        title="Executive Dashboard"
-        subtitle={`Welcome, ${user?.name} · Province-wide overview across all municipalities.`}
+        variant="clean"
+        title="Dashboard"
+        subtitle="Province-wide salt production monitoring for Pangasinan."
+        art={<MunicipalityMapArt mode="province" />}
       />
 
       <MunicipalityMap muniData={muniData} />

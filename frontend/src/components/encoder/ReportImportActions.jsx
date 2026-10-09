@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Alert, Button, Spinner } from 'react-bootstrap';
+import { Spinner } from 'react-bootstrap';
 import { Download, FileUp } from 'lucide-react';
 import Papa from 'papaparse';
 
@@ -112,7 +112,7 @@ export default function ReportImportActions({ templateUrl, onImport, onValidate,
   };
 
   return (
-    <div className="d-flex flex-wrap align-items-center justify-content-end gap-2">
+    <div className="ui-import-row">
       <input
         ref={fileInput}
         type="file"
@@ -122,37 +122,42 @@ export default function ReportImportActions({ templateUrl, onImport, onValidate,
         disabled={busy || disabled}
         onChange={handleFile}
       />
-      <Button type="button" variant="outline-primary" size="sm" onClick={() => fileInput.current?.click()} disabled={busy || disabled}>
-        {busy ? <Spinner size="sm" className="me-1" /> : <FileUp size={15} className="me-1" />}
+      {/* WHAT: Quiet ghost buttons sa halip na blue outlined buttons. WHY: bagong clean look. */}
+      <button type="button" className="ui-btn-ghost" onClick={() => fileInput.current?.click()} disabled={busy || disabled}>
+        {busy ? <Spinner animation="border" size="sm" /> : <FileUp size={15} aria-hidden="true" />}
         {busy ? 'Importing…' : 'Import CSV / XLSX'}
-      </Button>
-      <Button as="a" href={templateUrl} download variant="outline-secondary" size="sm">
-        <Download size={15} className="me-1" />CSV template
-      </Button>
+      </button>
+      <a className="ui-btn-ghost" href={templateUrl} download>
+        <Download size={15} aria-hidden="true" />CSV template
+      </a>
       {pendingRows && (
-        <Alert variant="warning" className="w-100 py-2 mb-0 small" role="status" aria-live="polite">
+        <div className="ui-import-panel ui-import-panel--warning" role="status" aria-live="polite">
           <div className="fw-semibold mb-1">
             Review before importing — {pendingRows.length} row{pendingRows.length === 1 ? '' : 's'} flagged:
           </div>
-          <ul className="mb-2 ps-3">
+          <ul className="mb-0 ps-3">
             {previewWarnings.map((warning, index) => (
               <li key={index}>{warning}</li>
             ))}
           </ul>
-          <div className="d-flex gap-2">
-            <Button type="button" size="sm" variant="warning" onClick={confirmImport} disabled={busy}>
+          <div className="ui-import-panel__actions">
+            <button type="button" className="ui-btn-primary" onClick={confirmImport} disabled={busy}>
               Import anyway
-            </Button>
-            <Button type="button" size="sm" variant="outline-secondary" onClick={cancelPreview} disabled={busy}>
+            </button>
+            <button type="button" className="ui-btn-outline" onClick={cancelPreview} disabled={busy}>
               Cancel
-            </Button>
+            </button>
           </div>
-        </Alert>
+        </div>
       )}
       {message && (
-          <Alert variant={isError ? 'warning' : 'success'} className="w-100 py-2 mb-0 small" role="status" aria-live="polite">
+        <div
+          className={`ui-import-panel ${isError ? 'ui-import-panel--warning' : 'ui-import-panel--success'}`}
+          role="status"
+          aria-live="polite"
+        >
           {message}
-        </Alert>
+        </div>
       )}
     </div>
   );
