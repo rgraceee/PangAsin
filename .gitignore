@@ -26,7 +26,7 @@ node_modules/
 *.sqlite3
 
 # Migrations
-migrations/versions/*.py
+# migrations/versions/*.py
 !migrations/versions/__init__.py
 
 # IDE
