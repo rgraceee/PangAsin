@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Row, Col, Alert, Card, Button } from 'react-bootstrap';
-import { useOutletContext } from 'react-router-dom';
+import { Row, Col, Alert, Card } from 'react-bootstrap';
+import { useOutletContext, useLocation, useNavigate } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, Leaf } from 'lucide-react';
+import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, MapPin } from 'lucide-react';
 import { getStats, getEncoderMonths } from '../../services/dataService';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import AdminKpiCard from '../admin/AdminKpiCard';
@@ -73,15 +73,20 @@ function PieTooltip({ active, payload, total }) {
 }
 
 function KPICluster({ title, accent, actions, children }) {
+  /* WHAT: Optional na label row para sa KPI cards.
+     WHY: inalis na ang "Your data at a glance" row (nilipat ang selects sa header). */
+  const showLabel = Boolean(title || actions);
   return (
     <div className="mb-4">
-      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
-        <div className={`d-flex align-items-center gap-2 admin-kpi-cluster admin-kpi-cluster-${accent}`}>
-          <span className={`admin-kpi-cluster-bar admin-kpi-accent-${accent}`} />
-          <span className="admin-kpi-cluster-title">{title}</span>
+      {showLabel && (
+        <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+          <div className={`d-flex align-items-center gap-2 admin-kpi-cluster admin-kpi-cluster-${accent}`}>
+            <span className={`admin-kpi-cluster-bar admin-kpi-accent-${accent}`} />
+            <span className="admin-kpi-cluster-title">{title}</span>
+          </div>
+          {actions}
         </div>
-        {actions}
-      </div>
+      )}
       <Row className="g-3">{children}</Row>
     </div>
   );
@@ -89,6 +94,8 @@ function KPICluster({ title, accent, actions, children }) {
 
 export default function EncoderDashboard() {
   const { user } = useOutletContext();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const now = new Date();
   const initialYear = now.getFullYear();
@@ -108,6 +115,16 @@ export default function EncoderDashboard() {
       .then((res) => setMonths(res.months || []))
       .catch(() => {});
   }, []);
+
+  /* WHAT: Buksan ang add-modal kapag galing sa sidebar action item.
+     WHY: pinapasa ng EncoderSidebar ang openReport sa location state. */
+  useEffect(() => {
+    const wanted = location.state?.openReport;
+    if (!wanted) return;
+    if (wanted === 'production') setEditingId(null);
+    setActiveReport(wanted);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
 
   const availableYears = useMemo(() => {
     const years = new Set();
@@ -217,45 +234,29 @@ export default function EncoderDashboard() {
     return <Alert variant="danger">{error}</Alert>;
   }
 
+  /* WHAT: Priority ng municipality name: user ( agad may value pagkalogin) -> stats -> fallback.
+     WHY: para walang flash ng fallback text habang naglo-load pa ang stats. */
+  const municipalityName = user?.municipality_name || stats?.municipality_name || 'your municipality';
+
   return (
     <div>
       <PageHeader
         id="encoder-overview"
-        variant="main"
-        title={stats?.municipality_name || user?.municipality_name || 'Encoder Dashboard'}
-        subtitle={`Welcome, ${user?.name}. Record, review, and manage your municipality's production data.`}
-      />
-
-      {error && <Alert variant="danger">{error}</Alert>}
-
-      <Row className="g-3 mb-4" aria-label="Create report">
-        <Col md={4}>
-          <Button className="admin-page-hero-btn w-100" onClick={() => { setEditingId(null); setActiveReport('production'); }}>
-            <Boxes size={16} className="me-2" />Add Production Report
-          </Button>
-        </Col>
-        <Col md={4}>
-          <Button variant="outline-primary" className="w-100" onClick={() => setActiveReport('producer')}>
-            <Users size={16} className="me-2" />Add Producer Report
-          </Button>
-        </Col>
-        <Col md={4}>
-          <Button variant="outline-success" className="w-100" onClick={() => setActiveReport('environment')}>
-            <Leaf size={16} className="me-2" />Add Environment Report
-          </Button>
-        </Col>
-      </Row>
-
-      <KPICluster
-        title="Your data at a glance"
-        accent="ocean"
+        variant="clean"
+        eyebrow={`Encoder · ${municipalityName}`}
+        title="Dashboard"
+        subtitle={`Record, review, and manage salt production data for ${municipalityName}.`}
         actions={
-          <div className="d-flex align-items-center gap-2">
-            <label className="small fw-semibold text-muted" htmlFor="encoder-year">Period</label>
+          <>
+            {/* WHAT: Chip ng assigned municipality. WHY: dynamic sa login, hindi hardcoded. */}
+            <span className="ui-pageheader-chip" aria-label={`Assigned municipality: ${municipalityName}`}>
+              <MapPin size={14} strokeWidth={1.5} aria-hidden="true" />
+              {municipalityName}
+            </span>
+            {/* WHAT: Period selectors. WHY: dating nasa KPI label row, nasa header na ngayon. */}
             <select
               id="encoder-year"
-              className="form-select form-select-sm"
-              style={{ maxWidth: 110 }}
+              className="ui-pageheader-select"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               aria-label="Select year"
@@ -266,8 +267,7 @@ export default function EncoderDashboard() {
             </select>
             <select
               id="encoder-month"
-              className="form-select form-select-sm"
-              style={{ maxWidth: 150 }}
+              className="ui-pageheader-select"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               aria-label="Select month"
@@ -283,9 +283,13 @@ export default function EncoderDashboard() {
                 );
               })}
             </select>
-          </div>
+          </>
         }
-      >
+      />
+
+      {error && <Alert variant="danger">{error}</Alert>}
+
+      <KPICluster>
         <Col md={4} lg>
           <AdminKpiCard
             icon={Boxes}

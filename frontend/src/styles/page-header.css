@@ -1,0 +1,144 @@
+/* WHAT: "Clean" na page header (puting surface) na tokens-only.
+   WHY: hiwalay sa admin hero classes para hindi magalaw ang admin/guest pages. */
+.ui-pageheader {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-shell);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.ui-pageheader-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ui-pageheader-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ui-pageheader-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ui-text-muted);
+}
+
+.ui-pageheader-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ui-text);
+}
+
+.ui-pageheader-sub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-text-2);
+}
+
+.ui-pageheader-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ui-pageheader-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ui-pageheader-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ui-pageheader-select {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-row);
+  transition: border-color var(--ui-t-fast), box-shadow var(--ui-t-fast);
+}
+
+.ui-pageheader-select:focus {
+  outline: none;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+.ui-pageheader-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* WHAT: Ina-align ang master list filter fields sa clean header tokens.
+   WHY: scoped sa .ui-pageheader-controls lang, kaya hindi naaapektuhan ang admin hero. */
+.ui-pageheader-controls .admin-page-hero-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ui-pageheader-controls .admin-page-hero-field {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ui-text-muted);
+}
+
+.ui-pageheader-controls .admin-page-hero-select,
+.ui-pageheader-controls .admin-page-hero-input {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-row);
+}
+
+.ui-pageheader-controls .admin-page-hero-select:focus,
+.ui-pageheader-controls .admin-page-hero-input:focus {
+  outline: none;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+/* WHAT: Staking ng header blocks sa maliit na screen.
+   WHY: below 768px, mag-stack ang left/right at full width ang selects. */
+@media (max-width: 767.98px) {
+  .ui-pageheader-actions {
+    width: 100%;
+  }
+
+  .ui-pageheader-actions .ui-pageheader-select {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

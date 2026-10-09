@@ -1,198 +1,128 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Gauge, Users, ClipboardCheck, DatabaseCheck, Building2, Boxes, Zap, FileDown, LayoutGrid, UserCog, ChartColumn, Compass, LogOut, Target, ContactRound } from 'lucide-react';
-import usePageTitle from '../../hooks/usePageTitle';
+import {
+  LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, ContactRound, Users,
+} from 'lucide-react';
+import { getAdminStats } from '../../services/dataService';
+import {
+  CollapseControl, Divider, NavGroup, NavItem, SidebarLogo, UserBlock,
+} from '../shell/sidebarKit';
 
-const SECTIONS = [
-  { id: 'admin-dashboard', label: 'Executive Dashboard', icon: Gauge },
-  { id: 'admin-users', label: 'User Management', icon: Users },
-  { id: 'admin-master-list', label: 'Master List', icon: ContactRound },
-  { id: 'admin-validation', label: 'Validation Queue', icon: ClipboardCheck },
-  { id: 'admin-data-quality', label: 'Data Quality', icon: DatabaseCheck },
-  { id: 'admin-municipality', label: 'Municipality Analytics', icon: Building2 },
-  { id: 'admin-supply-demand', label: 'Supply & Demand', icon: Boxes },
-  { id: 'admin-forecast', label: 'Forecasting', icon: Zap },
-  { id: 'admin-forecast-target', label: 'Target Evaluation', icon: Target },
-  { id: 'admin-reports', label: 'Generate Reports', icon: FileDown },
+const MAIN_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
+  { id: 'validation', label: 'Validation Queue', icon: ClipboardCheck, path: '/admin/validation' },
+  { id: 'data-quality', label: 'Data Quality', icon: DatabaseCheck, path: '/admin/data-quality' },
 ];
 
-const GROUPS = [
-  { title: 'Overview', items: SECTIONS.slice(0, 1) },
-  { title: 'Manage', items: SECTIONS.slice(1, 5) },
-  { title: 'Analytics', items: SECTIONS.slice(5, 7) },
-  { title: 'Planning', items: SECTIONS.slice(7, 10) },
-];
-
-const GROUP_ICONS = {
-  Overview: LayoutGrid,
-  Manage: UserCog,
-  Analytics: ChartColumn,
-  Planning: Compass,
+const FORECAST_GROUP = {
+  id: 'forecast',
+  label: 'Forecasting',
+  icon: Zap,
+  items: [
+    { id: 'forecast', label: 'Forecast', path: '/admin/forecast' },
+    { id: 'forecast-target', label: 'Target Evaluation', path: '/admin/forecast/target' },
+  ],
 };
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MANAGE_ITEMS = [
+  { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
+  { id: 'master-list', label: 'Producer Master List', icon: ContactRound, path: '/admin/master-list' },
+  { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
+];
+
+/* WHAT: I-map ang kasalukuyang URL papunta sa active nav id.
+   WHY: pathname lang ang basehan, kaya simple at walang IntersectionObserver. */
+function activeIdFromPath(pathname) {
+  if (pathname === '/admin/validation') return 'validation';
+  if (pathname === '/admin/data-quality') return 'data-quality';
+  if (pathname === '/admin/forecast/target') return 'forecast-target';
+  if (pathname === '/admin/forecast') return 'forecast';
+  if (pathname === '/admin/reports') return 'reports';
+  if (pathname === '/admin/master-list') return 'master-list';
+  if (pathname === '/admin/users') return 'users';
+  return 'dashboard';
 }
 
-export default function AdminSidebar({ scrollRef, onLogout }) {
+export default function AdminSidebar({ user, collapsed, onToggle, onLogout, closeMobile }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const onIndex = location.pathname === '/admin';
-  const [activeId, setActiveId] = useState('admin-dashboard');
-  usePageTitle(SECTIONS.find((s) => s.id === activeId)?.label);
+  const activeId = activeIdFromPath(location.pathname);
+  const [pendingCount, setPendingCount] = useState(0);
 
+  /* WHAT: Kunin ang pending count mula sa existing /admin/stats.
+     WHY: reuse lang ang endpoint na meron na, walang bagong API. */
   useEffect(() => {
-    if (!onIndex) {
-      const isForecast = location.pathname === '/admin/forecast';
-      const isForecastTarget = location.pathname === '/admin/forecast/target';
-      const isReports = location.pathname === '/admin/reports';
-      const isValidation = location.pathname === '/admin/validation';
-      const isDataQuality = location.pathname === '/admin/data-quality';
-      const isMasterList = location.pathname === '/admin/master-list';
-      let fallback = 'admin-dashboard';
-      if (isValidation) fallback = 'admin-validation';
-      else if (isMasterList) fallback = 'admin-master-list';
-      else if (isDataQuality) fallback = 'admin-data-quality';
-      else if (isForecastTarget) fallback = 'admin-forecast-target';
-      else if (isForecast) fallback = 'admin-forecast';
-      else if (isReports) fallback = 'admin-reports';
-      setActiveId(fallback);
-      return;
-    }
-    const scroller = scrollRef?.current;
-    if (!scroller || typeof IntersectionObserver === 'undefined') return;
+    let cancelled = false;
+    getAdminStats()
+      .then((s) => {
+        if (!cancelled) setPendingCount(s?.pending_validation_count ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
 
-    const elements = SECTIONS
-      .filter((s) => s.id !== 'admin-users' && s.id !== 'admin-master-list' && s.id !== 'admin-forecast' && s.id !== 'admin-forecast-target' && s.id !== 'admin-reports' && s.id !== 'admin-validation' && s.id !== 'admin-data-quality')
-      .map((s) => scroller.querySelector(`#${s.id}`))
-      .filter(Boolean);
-
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter((e) => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      if (visible.length > 0) {
-        setActiveId(visible[0].target.id);
-      }
-    }, {
-      root: scroller,
-      rootMargin: '-10% 0px -75% 0px',
-      threshold: 0,
-    });
-
-    elements.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [scrollRef, onIndex, location.pathname]);
-
-  const handleClick = useCallback((id) => {
-    const scroller = scrollRef?.current;
-    if (id === 'admin-users') {
-      navigate('/admin/users');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-master-list') {
-      navigate('/admin/master-list');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-forecast') {
-      navigate('/admin/forecast');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-forecast-target') {
-      navigate('/admin/forecast/target');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-reports') {
-      navigate('/admin/reports');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-validation') {
-      navigate('/admin/validation');
-      setActiveId(id);
-      return;
-    }
-    if (id === 'admin-data-quality') {
-      navigate('/admin/data-quality');
-      setActiveId(id);
-      return;
-    }
-    if (!onIndex) {
-      navigate('/admin', { state: { scrollTo: id } });
-      setActiveId(id);
-      return;
-    }
-    const el = scroller?.querySelector(`#${id}`);
-    if (scroller && el) {
-      const top = (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12);
-      scroller.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-      setActiveId(id);
-    }
-  }, [scrollRef, navigate, onIndex]);
+  /* WHAT: Isara ang mobile drawer bago mag-navigate. WHY: para hindi manatiling bukas. */
+  const go = useCallback((path) => () => {
+    if (closeMobile) closeMobile();
+    navigate(path);
+  }, [navigate, closeMobile]);
+  const goItem = useCallback((item) => {
+    if (closeMobile) closeMobile();
+    navigate(item.path);
+  }, [navigate, closeMobile]);
 
   return (
-    <aside className="admin-sidebar">
-      <div className="admin-watermark" aria-hidden="true" />
-      <div className="admin-sidebar-inner">
-        <div className="admin-sidebar-header">
-          <img
-            src="/static/brand/Logo_with_PangAsin.png"
-            alt="PangAsin ASIN Center"
-            className="admin-logo-word"
-          />
-        </div>
+    <aside className="p-sidebar" aria-label="Admin navigation">
+      <div className="p-sidebar-inner">
+        <SidebarLogo collapsed={collapsed} homePath="/admin" />
 
-        <div className="admin-checkerband" aria-hidden="true" />
+        {/* WHAT: Pangunahing nav. WHY: aria-label="Main" para sa screen readers. */}
+        <nav className="p-nav" aria-label="Main">
+          <div className="p-navlist">
+            {MAIN_ITEMS.map((item) => (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                active={activeId === item.id}
+                badge={item.id === 'validation' ? pendingCount : 0}
+                collapsed={collapsed}
+                onClick={go(item.path)}
+              />
+            ))}
 
-        <nav aria-label="Admin sections">
-          {GROUPS.map((group) => {
-            const GroupIcon = GROUP_ICONS[group.title];
-            return (
-            <div key={group.title}>
-              <div className="admin-sidebar-section">
-                <GroupIcon size={10} strokeWidth={2.5} className="me-1" />
-                {group.title}
-              </div>
-              {group.items.map((s) => (
-                <SidebarLink
-                  key={s.id}
-                  {...s}
-                  active={activeId === s.id}
-                  onClick={() => handleClick(s.id)}
-                />
-              ))}
-            </div>
-            );
-          })}
+            <Divider />
+
+            <NavGroup
+              id={FORECAST_GROUP.id}
+              icon={FORECAST_GROUP.icon}
+              label={FORECAST_GROUP.label}
+              items={FORECAST_GROUP.items}
+              activeId={activeId}
+              collapsed={collapsed}
+              onNavigate={goItem}
+            />
+            {MANAGE_ITEMS.map((item) => (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                active={activeId === item.id}
+                collapsed={collapsed}
+                onClick={go(item.path)}
+              />
+            ))}
+          </div>
         </nav>
 
-        <div className="admin-sidebar-footer">
-          <button type="button" className="admin-logout" onClick={onLogout}>
-            <LogOut size={16} strokeWidth={2} />
-            <span>Logout</span>
-          </button>
+        <div className="p-bottom">
+          <CollapseControl collapsed={collapsed} onToggle={onToggle} />
+          <Divider />
+          <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />
         </div>
       </div>
     </aside>
-  );
-}
-
-function SidebarLink({ id, label, icon: Icon, active, onClick }) {
-  return (
-    <button
-      type="button"
-      className={`admin-sidebar-link ${active ? 'active' : ''}`}
-      onClick={onClick}
-      aria-label={`Jump to ${label}`}
-      aria-current={active ? 'true' : undefined}
-      tabIndex={0}
-    >
-      <Icon size={16} strokeWidth={2} />
-      <span>{label}</span>
-    </button>
   );
 }

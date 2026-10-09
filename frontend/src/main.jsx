@@ -5,6 +5,9 @@ import { ToastProvider } from './components/Toast';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import './index.css';
+import './styles/ui-tokens.css';
+import './styles/sidebar.css';
+import './styles/page-header.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

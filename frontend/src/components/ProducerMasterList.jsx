@@ -123,9 +123,12 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
 
   return (
     <>
+      {/* WHAT: Parehos na clean header sa encoder, sub hero pa rin sa admin.
+         WHY: bawal magbago ang admin markup; encoder gets the token-based look. */}
       <PageHeader
         id="producer-master-list"
-        variant="sub"
+        variant={adminView ? 'sub' : 'clean'}
+        eyebrow={adminView ? undefined : `Encoder · ${activeUser?.municipality_name || 'your municipality'}`}
         title="Master List"
         subtitle={adminView ? 'Registered workers across Pangasinan, organized by municipality and barangay.' : `Registered workers in ${activeUser?.municipality_name || 'your municipality'}.`}
         action={<Button type="button" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setError(''); setShowAdd(true); }}><Plus size={16} className="me-1" />Add Worker</Button>}

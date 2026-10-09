@@ -1,154 +1,117 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Gauge, ClipboardList, LayoutGrid, UserCog, LogOut, Leaf, ContactRound } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Leaf, Users, ContactRound, Boxes } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
+import {
+  CollapseControl, Divider, NavItem, SidebarLogo, UserBlock,
+} from '../shell/sidebarKit';
 
-const SECTIONS = [
-  { id: 'encoder-overview', label: 'Overview', icon: Gauge },
-  { id: 'encoder-submissions', label: 'Submissions', icon: ClipboardList },
-  { id: 'encoder-environment-reports', label: 'Environment Reports', icon: Leaf },
-  { id: 'encoder-master-list', label: 'Master List', icon: ContactRound },
+/* WHAT: Mga page/section link sa /encoder. section = scroll target sa dashboard.
+   WHY: walang sariling route ang records kaya scroll ang behavior. */
+const SECTION_ITEMS = [
+  { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, section: 'encoder-overview' },
+  { id: 'records', label: 'Production Records', icon: ClipboardList, section: 'encoder-submissions' },
 ];
 
-const GROUPS = [
-  { title: 'Overview', items: SECTIONS.slice(0, 1) },
-  { title: 'Records', items: SECTIONS.slice(1) },
+/* WHAT: Mga action item na nagbubukas ng add-modal (hindi page).
+   WHY: dati nasa dashboard ang 3 buttons, inilipat dito sa sidebar. */
+const ACTION_ITEMS = [
+  { id: 'add-production', label: 'Add Production Report', icon: Boxes, report: 'production' },
+  { id: 'add-producer', label: 'Add Producer Report', icon: Users, report: 'producer' },
+  { id: 'add-environment', label: 'Add Environment Report', icon: Leaf, report: 'environment' },
 ];
 
-const GROUP_ICONS = {
-  Overview: LayoutGrid,
-  Records: UserCog,
-};
+const MASTER_ITEM = { id: 'master-list', label: 'Master List', icon: ContactRound, path: '/encoder/master-list' };
 
 function prefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return typeof window !== 'undefined'
+    && window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export default function EncoderSidebar({ user, scrollRef, onLogout }) {
+export default function EncoderSidebar({ user, scrollRef, collapsed, onToggle, onLogout, closeMobile }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeId, setActiveId] = useState('encoder-overview');
+  /* WHAT: Derive ang active item direkta sa pathname, walang useState/scroll-spy.
+     WHY: dati nag-i-stale ang activeId sa back/forward kaya mali ang highlight. */
+  const activeId = location.pathname === '/encoder/master-list' ? 'master-list' : 'overview';
 
   const muni = user?.municipality_name;
-  const muniTitle = muni || 'Encoder Dashboard';
+  usePageTitle(muni || 'Encoder Dashboard', muni ? { prefix: '' } : undefined);
 
-  usePageTitle(muniTitle, muni ? { prefix: '' } : undefined);
-
-  useEffect(() => {
-    if (location.pathname === '/encoder/master-list') {
-      setActiveId('encoder-master-list');
-      return;
-    }
-    const scroller = scrollRef?.current;
-    if (!scroller || typeof IntersectionObserver === 'undefined') return;
-
-    const elements = SECTIONS
-      .map((s) => scroller.querySelector(`#${s.id}`))
-      .filter(Boolean);
-
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter((e) => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      if (visible.length > 0) {
-        setActiveId(visible[0].target.id);
-      }
-    }, {
-      root: scroller,
-      rootMargin: '-10% 0px -75% 0px',
-      threshold: 0,
-    });
-
-    elements.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [scrollRef, location.pathname]);
-
-  const handleClick = useCallback((id) => {
-    if (id === 'encoder-master-list') {
-      navigate('/encoder/master-list');
-      setActiveId(id);
+  /* WHAT: Page/section shortcut handler. WHY: Production Records ay scroll lang, hindi active. */
+  const handleItem = useCallback((item) => {
+    if (closeMobile) closeMobile();
+    if (item.path) {
+      navigate(item.path);
       return;
     }
     if (location.pathname !== '/encoder') {
-      navigate('/encoder', { state: { scrollTo: id } });
-      setActiveId(id);
+      navigate('/encoder', { state: { scrollTo: item.section } });
       return;
     }
     const scroller = scrollRef?.current;
-    const el = scroller?.querySelector(`#${id}`);
+    const el = scroller?.querySelector(`#${item.section}`);
     if (scroller && el) {
       const top = (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12);
       scroller.scrollTo({ top, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-      setActiveId(id);
     }
-  }, [scrollRef, navigate, location.pathname]);
+  }, [navigate, scrollRef, location.pathname, closeMobile]);
+
+  /* WHAT: Buksan ang add-modal kahit saang encoder route. WHY: action item, hindi page (walang active highlight). */
+  const openReport = useCallback((report) => {
+    if (closeMobile) closeMobile();
+    navigate('/encoder', { state: { openReport: report } });
+  }, [navigate, closeMobile]);
 
   return (
-    <aside className="admin-sidebar">
-      <div className="admin-watermark" aria-hidden="true" />
-      <div className="admin-sidebar-inner">
-        <div className="admin-sidebar-header">
-          <img
-            src="/static/brand/Logo_with_PangAsin.png"
-            alt="PangAsin ASIN Center"
-            className="admin-logo-word"
-          />
-        </div>
+    <aside className="p-sidebar" aria-label="Encoder navigation">
+      <div className="p-sidebar-inner">
+        <SidebarLogo collapsed={collapsed} homePath="/encoder" />
 
-        <div className="admin-checkerband" aria-hidden="true" />
+        <nav className="p-nav" aria-label="Main">
+          <div className="p-navlist">
+            {SECTION_ITEMS.map((item) => (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                active={activeId === item.id}
+                collapsed={collapsed}
+                onClick={() => handleItem(item)}
+              />
+            ))}
 
-        <nav aria-label="Encoder sections">
-          {GROUPS.map((group) => {
-            const GroupIcon = GROUP_ICONS[group.title];
-            return (
-            <div key={group.title}>
-              <div className="admin-sidebar-section">
-                <GroupIcon size={10} strokeWidth={2.5} className="me-1" />
-                {group.title}
-              </div>
-              {group.items.map((s) => (
-                <SidebarLink
-                  key={s.id}
-                  {...s}
-                  active={activeId === s.id}
-                  onClick={() => handleClick(s.id)}
-                />
-              ))}
-            </div>
-            );
-          })}
+            <Divider />
+
+            {ACTION_ITEMS.map((item) => (
+              <NavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                collapsed={collapsed}
+                onClick={() => openReport(item.report)}
+              />
+            ))}
+
+            <Divider />
+
+            <NavItem
+              icon={MASTER_ITEM.icon}
+              label={MASTER_ITEM.label}
+              active={activeId === MASTER_ITEM.id}
+              collapsed={collapsed}
+              onClick={() => handleItem(MASTER_ITEM)}
+            />
+          </div>
         </nav>
 
-        {user && (
-          <div className="encoder-sidebar-user">
-            <div className="encoder-sidebar-user-name">{user.name}</div>
-            {user.municipality_name && <div className="encoder-sidebar-user-muni">{user.municipality_name}</div>}
-          </div>
-        )}
-
-        <div className="admin-sidebar-footer">
-          <button type="button" className="admin-logout" onClick={onLogout}>
-            <LogOut size={16} strokeWidth={2} />
-            <span>Logout</span>
-          </button>
+        <div className="p-bottom">
+          <CollapseControl collapsed={collapsed} onToggle={onToggle} />
+          <Divider />
+          <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />
         </div>
       </div>
     </aside>
-  );
-}
-
-function SidebarLink({ id, label, icon: Icon, active, onClick }) {
-  return (
-    <button
-      type="button"
-      className={`admin-sidebar-link ${active ? 'active' : ''}`}
-      onClick={onClick}
-      aria-label={`Jump to ${label}`}
-      aria-current={active ? 'true' : undefined}
-      tabIndex={0}
-    >
-      <Icon size={16} strokeWidth={2} />
-      <span>{label}</span>
-    </button>
   );
 }

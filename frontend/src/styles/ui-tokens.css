@@ -1,0 +1,42 @@
+/* WHAT: Shared UI design tokens for the PangAsin dashboard shell.
+   WHY: later UI phases reuse one source of truth instead of hard-coding values. */
+:root {
+  /* Surfaces */
+  --ui-page-bg: #F5F6F8;
+  --ui-surface: #FFFFFF;
+  --ui-border: #EEF0F3;
+  --ui-guide: #E5E7EB;
+
+  /* Text */
+  --ui-text: #111827;
+  --ui-text-2: #6B7280;
+  --ui-text-muted: #9CA3AF;
+
+  /* Accent - taken from the PangAsin logo palette (leaf green #29B039) */
+  --ui-accent: #29B039;
+  --ui-accent-dark: #146B1F;
+  --ui-accent-tint: #EBF7EC;
+
+  /* States */
+  --ui-active-bg: #F3F4F6;
+  --ui-hover-bg: #F9FAFB;
+
+  /* Shape */
+  /* WHAT: rows + badges 8px. WHY: flat, hand-designed na sidebar (rule 3). */
+  --ui-radius-row: 8px;
+  --ui-radius-card: 16px;
+  --ui-radius-shell: 20px;
+  --ui-radius-pill: 9999px;
+
+  /* Elevation */
+  --ui-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+
+  /* Motion */
+  --ui-t-fast: 150ms ease;
+  --ui-t-slow: 200ms ease;
+
+  /* Sidebar geometry (consumed by the shell layout) */
+  /* WHAT: 240/64 at walang gap. WHY: flat sidebar na dikit sa left edge (rule 1-2). */
+  --ui-sidebar-expanded: 240px;
+  --ui-sidebar-collapsed: 64px;
+}

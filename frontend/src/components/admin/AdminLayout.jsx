@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { Container } from 'react-bootstrap';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutAPI } from '../../services/dataService';
 import { useToast } from '../Toast';
+import AppShell from '../shell/AppShell';
 import AdminSidebar from './AdminSidebar';
 
 export default function AdminLayout({ user, setUser }) {
@@ -14,9 +14,9 @@ export default function AdminLayout({ user, setUser }) {
   useEffect(() => {
     const target = location.state?.scrollTo;
     if (!target) return;
-    const el = scrollRef.current?.querySelector(`#${target}`);
-    if (scrollRef.current && el) {
-      const scroller = scrollRef.current;
+    const scroller = scrollRef.current;
+    const el = scroller?.querySelector(`#${target}`);
+    if (scroller && el) {
       const top = (el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12);
       scroller.scrollTo({ top, behavior: 'auto' });
     }
@@ -35,19 +35,16 @@ export default function AdminLayout({ user, setUser }) {
   };
 
   return (
-    <div className="encoder-layout admin-layout">
-      <div className="admin-shell">
-        <div className="admin-dock">
-          <AdminSidebar scrollRef={scrollRef} onLogout={handleLogout} />
-        </div>
-        <div className="admin-main-content">
-          <div className="admin-page-scroll" ref={scrollRef}>
-            <Container fluid className="encoder-content admin-content">
-              <Outlet />
-            </Container>
-          </div>
-        </div>
-      </div>
-    </div>
+    <AppShell scrollRef={scrollRef}>
+      {({ collapsed, onToggle, closeMobile }) => (
+        <AdminSidebar
+          user={user}
+          collapsed={collapsed}
+          onToggle={onToggle}
+          onLogout={handleLogout}
+          closeMobile={closeMobile}
+        />
+      )}
+    </AppShell>
   );
 }
