@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { getAdminStats } from '../../services/dataService';
 import {
-  CollapseControl, Divider, NavGroup, NavItem, SidebarLogo, UserBlock,
+  CollapseControl, Divider, NavGroup, NavItem, SectionLabel, SidebarLogo, UserBlock,
 } from '../shell/sidebarKit';
 
 const MAIN_ITEMS = [
@@ -81,6 +81,7 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
         {/* WHAT: Pangunahing nav. WHY: aria-label="Main" para sa screen readers. */}
         <nav className="p-nav" aria-label="Main">
           <div className="p-navlist">
+            <SectionLabel collapsed={collapsed}>Main</SectionLabel>
             {MAIN_ITEMS.map((item) => (
               <NavItem
                 key={item.id}
@@ -95,6 +96,7 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
 
             <Divider />
 
+            <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
             <NavGroup
               id={FORECAST_GROUP.id}
               icon={FORECAST_GROUP.icon}
@@ -119,7 +121,6 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
 
         <div className="p-bottom">
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
-          <Divider />
           <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />
         </div>
       </div>

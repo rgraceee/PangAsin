@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ClipboardList, Leaf, Users, ContactRound, Boxes } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import {
-  CollapseControl, Divider, NavItem, SidebarLogo, UserBlock,
+  CollapseControl, Divider, NavItem, SectionLabel, SidebarLogo, UserBlock,
 } from '../shell/sidebarKit';
 
 /* WHAT: Mga page/section link sa /encoder. section = scroll target sa dashboard.
@@ -16,7 +16,7 @@ const SECTION_ITEMS = [
 /* WHAT: Mga action item na nagbubukas ng add-modal (hindi page).
    WHY: dati nasa dashboard ang 3 buttons, inilipat dito sa sidebar. */
 const ACTION_ITEMS = [
-  { id: 'add-production', label: 'Add Production Report', icon: Boxes, report: 'production' },
+  { id: 'add-production', label: 'Add Production Report', icon: Boxes, report: 'production', accent: true },
   { id: 'add-producer', label: 'Add Producer Report', icon: Users, report: 'producer' },
   { id: 'add-environment', label: 'Add Environment Report', icon: Leaf, report: 'environment' },
 ];
@@ -71,6 +71,7 @@ export default function EncoderSidebar({ user, scrollRef, collapsed, onToggle, o
 
         <nav className="p-nav" aria-label="Main">
           <div className="p-navlist">
+            <SectionLabel collapsed={collapsed}>Main</SectionLabel>
             {SECTION_ITEMS.map((item) => (
               <NavItem
                 key={item.id}
@@ -84,11 +85,13 @@ export default function EncoderSidebar({ user, scrollRef, collapsed, onToggle, o
 
             <Divider />
 
+            <SectionLabel collapsed={collapsed}>Reports</SectionLabel>
             {ACTION_ITEMS.map((item) => (
               <NavItem
                 key={item.id}
                 icon={item.icon}
                 label={item.label}
+                iconAccent={item.accent}
                 collapsed={collapsed}
                 onClick={() => openReport(item.report)}
               />
@@ -96,6 +99,7 @@ export default function EncoderSidebar({ user, scrollRef, collapsed, onToggle, o
 
             <Divider />
 
+            <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
             <NavItem
               icon={MASTER_ITEM.icon}
               label={MASTER_ITEM.label}
@@ -108,7 +112,6 @@ export default function EncoderSidebar({ user, scrollRef, collapsed, onToggle, o
 
         <div className="p-bottom">
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
-          <Divider />
           <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />
         </div>
       </div>

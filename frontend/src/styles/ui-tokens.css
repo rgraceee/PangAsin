@@ -22,8 +22,8 @@
   --ui-hover-bg: #F9FAFB;
 
   /* Shape */
-  /* WHAT: rows + badges 8px. WHY: flat, hand-designed na sidebar (rule 3). */
-  --ui-radius-row: 8px;
+  /* WHAT: rows 12px radius. WHY: back sa floating-card sidebar look. */
+  --ui-radius-row: 12px;
   --ui-radius-card: 16px;
   --ui-radius-shell: 20px;
   --ui-radius-pill: 9999px;
@@ -36,7 +36,8 @@
   --ui-t-slow: 200ms ease;
 
   /* Sidebar geometry (consumed by the shell layout) */
-  /* WHAT: 240/64 at walang gap. WHY: flat sidebar na dikit sa left edge (rule 1-2). */
-  --ui-sidebar-expanded: 240px;
-  --ui-sidebar-collapsed: 64px;
+  /* WHAT: 264/72 na may 12px gap. WHY: floating-card sidebar na may margin sa viewport. */
+  --ui-sidebar-expanded: 264px;
+  --ui-sidebar-collapsed: 72px;
+  --ui-sidebar-gap: 12px;
 }
