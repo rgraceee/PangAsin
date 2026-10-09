@@ -164,8 +164,8 @@ export default function DecisionSupport() {
                     <ComposedChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(value) => [`${Math.round(value).toLocaleString()} kg`, undefined]} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v).toLocaleString()}`} />
+                      <Tooltip formatter={(value) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 })} MT`, undefined]} />
                       <Legend />
                       <Bar dataKey="forecast" name="Forecast" fill={BRAND.ocean} radius={[3, 3, 0, 0]} isAnimationActive />
                       <Line type="monotone" dataKey="target" name="Monthly Target" stroke={BRAND.gold} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive />
@@ -182,8 +182,8 @@ export default function DecisionSupport() {
                     <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(value) => [`${Math.round(value).toLocaleString()} kg`, undefined]} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v).toLocaleString()}`} />
+                      <Tooltip formatter={(value) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 })} MT`, undefined]} />
                       <Legend />
                       <Line type="monotone" dataKey="cumForecast" name="Cumulative Forecast" stroke={BRAND.ocean} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive />
                       <Line type="monotone" dataKey="cumTarget" name="Cumulative Target" stroke={BRAND.gold} strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive />
@@ -201,8 +201,8 @@ export default function DecisionSupport() {
                     <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(value) => [`${Math.round(value).toLocaleString()} kg`, undefined]} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v).toLocaleString()}`} />
+                      <Tooltip formatter={(value) => [`${Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 })} MT`, undefined]} />
                       <Bar dataKey="gap" name="Forecast − Monthly Target" isAnimationActive>
                         {chartData.map((entry, i) => (
                           <Cell key={i} fill={entry.gap >= 0 ? BRAND.green : '#DC3545'} radius={[3, 3, 0, 0]} />

@@ -6,8 +6,9 @@ import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
 import { Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import RecordStatusBadge from './RecordStatusBadge';
+import { formatMT } from '../../utils/volumeFormat';
 import ReportImportActions from './ReportImportActions';
-import { cleanSpreadsheetDate, findBarangay, numberValue, rowError } from './reportImportUtils';
+import { prepareProductionRows, rowError } from './reportImportUtils';
 
 const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
 const PRODUCTION_METHOD_LABELS = {
@@ -40,8 +41,9 @@ const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) 
   </Button>
 );
 
-export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
+export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user }) {
   const { toastSuccess, toastError } = useToast();
+  const volumeCapMt = Number(user?.max_monthly_volume_mt) || 2000;
   const [records, setRecords] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const [filters, setFilters] = useState({ barangay_id: '', status: '' });
@@ -110,31 +112,15 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
 
   const hasFilter = Boolean(filters.barangay_id || filters.status);
 
+  // WHAT: Preview lang — validation + soft warning bago pa mag-import.
+  // WHY: Nakikita agad ng encoder ang 3x-historical warning bago kanselahin.
+  const previewProductionRows = (rows) => {
+    const { errors, warnings } = prepareProductionRows(rows, barangays, volumeCapMt);
+    return { errors, warnings };
+  };
+
   const importProductionRows = async (rows) => {
-    const errors = [];
-    const prepared = rows.map((row) => {
-      const barangay = findBarangay(row, barangays);
-      const recordDate = cleanSpreadsheetDate(row.record_date);
-      const productionVolume = numberValue(row.production_volume);
-      const numSaltBeds = numberValue(row.num_salt_beds);
-      const areaPerSaltBed = row.area_per_salt_bed === '' ? null : numberValue(row.area_per_salt_bed);
-      const productionMethod = String(row.production_method || '').trim().toLowerCase();
-      if (!barangay) errors.push(rowError(row, 'barangay must match a barangay in your municipality.'));
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(recordDate)) errors.push(rowError(row, 'record_date must use YYYY-MM-DD.'));
-      if (!Number.isFinite(productionVolume) || productionVolume < 0) errors.push(rowError(row, 'production_volume must be zero or greater.'));
-      if (!Number.isInteger(numSaltBeds) || numSaltBeds <= 0) errors.push(rowError(row, 'num_salt_beds must be a positive whole number.'));
-      if (areaPerSaltBed !== null && (!Number.isFinite(areaPerSaltBed) || areaPerSaltBed < 0)) errors.push(rowError(row, 'area_per_salt_bed must be zero or greater.'));
-      if (!['solar', 'cooked', 'hybrid'].includes(productionMethod)) errors.push(rowError(row, 'production_method must be solar, cooked, or hybrid.'));
-      return {
-        barangay_id: barangay?.id,
-        record_date: recordDate,
-        production_volume: productionVolume,
-        num_salt_beds: numSaltBeds,
-        area_per_salt_bed: areaPerSaltBed,
-        production_method: productionMethod,
-        rowNumber: row._row_number,
-      };
-    });
+    const { errors, warnings, prepared } = prepareProductionRows(rows, barangays, volumeCapMt);
     if (errors.length) throw new Error(errors.join(' '));
 
     const failures = [];
@@ -153,8 +139,9 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
       onImported?.();
     }
     if (!imported) throw new Error(failures.join(' ') || 'No production rows were imported.');
+    const warningNote = warnings.length ? ` Note: ${warnings.join(' ')}` : '';
     return {
-      message: `Imported ${imported} of ${rows.length} production row${rows.length === 1 ? '' : 's'}.${failures.length ? ` ${failures.join(' ')}` : ''}`,
+      message: `Imported ${imported} of ${rows.length} production row${rows.length === 1 ? '' : 's'}.${failures.length ? ` ${failures.join(' ')}` : ''}${warningNote}`,
       isError: failures.length > 0,
     };
   };
@@ -170,6 +157,7 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
             <ReportImportActions
               templateUrl="/static/templates/production-report-template.csv"
               onImport={importProductionRows}
+              onValidate={previewProductionRows}
               disabled={!barangays.length}
             />
         </div>
@@ -224,7 +212,7 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
                 <th>Barangay</th>
                 <th>Date</th>
                 <th>Method</th>
-                <th>Volume (kg)</th>
+                <th>Volume (MT)</th>
                 <th>Beds Used</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
@@ -239,7 +227,7 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
                     <td>{r.barangay}</td>
                     <td>{r.record_date}</td>
                     <td>{PRODUCTION_METHOD_LABELS[r.production_method] ?? r.production_method ?? '—'}</td>
-                    <td>{r.production_volume?.toLocaleString()}</td>
+                    <td>{formatMT(r.production_volume_mt)}</td>
                     <td>{r.num_salt_beds?.toLocaleString()}</td>
                     <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
                     <td className="text-end text-nowrap">
@@ -299,10 +287,10 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0 }) {
                   <DetailRow label="Barangay" value={detail.barangay} />
                   <DetailRow label="Date Covered" value={detail.record_date} />
                   <DetailRow label="Production Method" value={PRODUCTION_METHOD_LABELS[detail.production_method] ?? detail.production_method} />
-                  <DetailRow label="Total Production Volume" value={detail.production_volume != null ? `${detail.production_volume} kg` : null} />
+                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} MT` : null} />
                   <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
-                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} kg` : null} />
+                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} MT` : null} />
                   <DetailRow label="Submitted" value={detail.created_at ? new Date(detail.created_at).toLocaleString() : null} />
                   <DetailRow label="Last Updated" value={detail.updated_at ? new Date(detail.updated_at).toLocaleString() : null} />
                 </tbody>

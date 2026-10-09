@@ -53,7 +53,7 @@ def _serialize(record):
         "male_producers": record.male_producers,
         "female_producers": record.female_producers,
         **{f: getattr(record, f) for f in AGE_BUCKET_FIELDS},
-        "production_volume": float(record.production_volume) if record.production_volume is not None else None,
+        "production_volume_mt": float(record.production_volume_mt) if record.production_volume_mt is not None else None,
         "num_salt_beds": record.num_salt_beds,
         "area_per_salt_bed": float(record.area_per_salt_bed) if record.area_per_salt_bed is not None else None,
         "production_method": record.production_method,
@@ -65,8 +65,8 @@ def _serialize(record):
         "reviewed_by": record.reviewed_by,
         "reviewer": _record_reviewer(record),
         "reviewed_at": record.reviewed_at.isoformat() if record.reviewed_at else None,
-        "output_per_bed": round(float(record.production_volume) / record.num_salt_beds, 2)
-        if record.production_volume is not None and record.num_salt_beds
+        "output_per_bed": round(float(record.production_volume_mt) / record.num_salt_beds, 3)
+        if record.production_volume_mt is not None and record.num_salt_beds
         else None,
         "created_at": record.created_at.isoformat() if record.created_at else None,
         "updated_at": record.updated_at.isoformat() if record.updated_at else None,
@@ -509,7 +509,7 @@ def stats():
         db.session.query(
             ProductionRecord.municipality_id,
             Municipality.name,
-            func.sum(ProductionRecord.production_volume).label("total_volume"),
+            func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
             func.count(ProductionRecord.id).label("record_count"),
             func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
             func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
@@ -528,7 +528,7 @@ def stats():
             ProductionRecord.municipality_id,
             ProductionRecord.barangay_id,
             Barangay.name,
-            func.sum(ProductionRecord.production_volume).label("total_volume"),
+            func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
             func.count(ProductionRecord.id).label("record_count"),
             func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
             func.sum(ProductionRecord.registered_producers).label("total_registered"),
@@ -543,7 +543,7 @@ def stats():
         by_barangay_by_muni.setdefault(row.municipality_id, []).append({
             "barangay_id": row.barangay_id,
             "barangay": row.name,
-            "total_volume_kg": float(row.total_volume or 0),
+            "total_volume_mt": float(row.total_volume or 0),
             "record_count": row.record_count,
             "total_area_sqm": float(row.total_area or 0),
             "total_registered_producers": int(row.total_registered or 0),
@@ -594,14 +594,14 @@ def stats():
         by_barangay_by_muni.setdefault(municipality_id, []).append({
             "barangay_id": barangay_id,
             "barangay": barangay.name if barangay else "Unknown",
-            "total_volume_kg": 0.0,
+            "total_volume_mt": 0.0,
             "record_count": 0,
             "total_area_sqm": 0.0,
             "total_registered_producers": totals["registered"],
         })
 
     approved_production = ProductionRecord.query.filter_by(status="approved")
-    total_volume = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume), 0)).scalar() or 0
+    total_volume = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
     total_area = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)).scalar() or 0
     total_records = approved_production.count()
     total_beds = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0)).scalar() or 0
@@ -638,7 +638,7 @@ def stats():
         municipality_stats.append({
             "municipality_id": row.municipality_id,
             "municipality_name": row.name,
-            "total_volume_kg": float(row.total_volume or 0),
+            "total_volume_mt": float(row.total_volume or 0),
             "record_count": row.record_count,
             "total_area_sqm": float(row.total_area or 0),
             "total_salt_beds": int(row.total_beds or 0),
@@ -655,7 +655,7 @@ def stats():
         municipality_stats.append({
             "municipality_id": municipality_id,
             "municipality_name": municipality.name if municipality else "Unknown",
-            "total_volume_kg": 0.0,
+            "total_volume_mt": 0.0,
             "record_count": 0,
             "total_area_sqm": 0.0,
             "total_salt_beds": 0,
@@ -666,7 +666,7 @@ def stats():
         })
 
     return jsonify({
-        "total_volume_kg": float(total_volume),
+        "total_volume_mt": float(total_volume),
         "total_area_sqm": float(total_area or 0),
         "record_count": total_records,
         "total_salt_beds": int(total_beds or 0),
@@ -757,22 +757,22 @@ def insight():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
 
-    total_volume = db.session.query(func.sum(ProductionRecord.production_volume)).scalar() or 0
+    total_volume = db.session.query(func.sum(ProductionRecord.production_volume_mt)).scalar() or 0
     pending = ProductionRecord.query.filter_by(status="pending").count()
     approved = ProductionRecord.query.filter_by(status="approved").count()
     rejected = ProductionRecord.query.filter_by(status="rejected").count()
     top_muni = (
-        db.session.query(Municipality.name, func.sum(ProductionRecord.production_volume).label("v"))
+        db.session.query(Municipality.name, func.sum(ProductionRecord.production_volume_mt).label("v"))
         .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
         .group_by(Municipality.name)
-        .order_by(func.sum(ProductionRecord.production_volume).desc())
+        .order_by(func.sum(ProductionRecord.production_volume_mt).desc())
         .first()
     )
 
     if top_muni:
         text = (
             f"Top producing municipality is {top_muni.name} "
-            f"({float(top_muni.v):,.0f} kg). "
+            f"({float(top_muni.v):,.3f} MT). "
             f"{pending} record(s) awaiting validation, {approved} approved, {rejected} rejected."
         )
     else:
@@ -798,13 +798,13 @@ def supply_demand():
     provincial = DemandBenchmark.query.filter_by(geographic_scope="provincial").order_by(DemandBenchmark.year.desc()).first()
     national = DemandBenchmark.query.filter_by(geographic_scope="national").order_by(DemandBenchmark.year.desc()).first()
 
-    pangasinan_local_kg = (
-        db.session.query(func.sum(ProductionRecord.production_volume))
+    pangasinan_local_mt = (
+        db.session.query(func.sum(ProductionRecord.production_volume_mt))
         .filter(ProductionRecord.status == "approved")
         .scalar()
         or 0
     )
-    local_production_mt = round(pangasinan_local_kg / 1000, 2)
+    local_production_mt = round(float(pangasinan_local_mt), 3)
 
     pangasinan = {
         "year": provincial.year if provincial else datetime.utcnow().year,
@@ -879,14 +879,14 @@ def trends():
             return jsonify({"error": "month must be in YYYY-MM format."}), 400
         labels, values, _ = _monthly_aggregates(None, month_start, month_end - timedelta(days=1))
         trend = [
-            {"month": labels[i], "total": round(values[i] / 1000, 2)}
+            {"month": labels[i], "total": round(values[i], 3)}
             for i in range(len(labels))
         ]
         by_muni = (
             db.session.query(
                 Municipality.id,
                 Municipality.name,
-                func.sum(ProductionRecord.production_volume).label("v"),
+                func.sum(ProductionRecord.production_volume_mt).label("v"),
             )
             .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
             .filter(ProductionRecord.status == "approved")
@@ -898,7 +898,7 @@ def trends():
         by_muni_prev = (
             db.session.query(
                 Municipality.id,
-                func.sum(ProductionRecord.production_volume).label("v"),
+                func.sum(ProductionRecord.production_volume_mt).label("v"),
             )
             .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
             .filter(ProductionRecord.status == "approved")
@@ -910,8 +910,8 @@ def trends():
         prev_map = {r.id: float(r.v or 0) for r in by_muni_prev}
         municipalities = []
         for r in by_muni:
-            current_mt = round(float(r.v or 0) / 1000, 2)
-            previous_mt = round(prev_map.get(r.id, 0) / 1000, 2)
+            current_mt = round(float(r.v or 0), 3)
+            previous_mt = round(prev_map.get(r.id, 0), 3)
             change_pct = None
             if previous_mt:
                 change_pct = round(((current_mt - previous_mt) / previous_mt) * 100, 1)
@@ -933,7 +933,7 @@ def trends():
 
     labels, values, _ = _monthly_aggregates(None, start, end)
     trend = [
-        {"month": labels[i], "total": round(values[i] / 1000, 2)}
+        {"month": labels[i], "total": round(values[i], 3)}
         for i in range(len(labels))
     ]
 
@@ -941,7 +941,7 @@ def trends():
         db.session.query(
             Municipality.id,
             Municipality.name,
-            func.sum(ProductionRecord.production_volume).label("v"),
+            func.sum(ProductionRecord.production_volume_mt).label("v"),
         )
         .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
         .filter(ProductionRecord.status == "approved")
@@ -953,7 +953,7 @@ def trends():
     by_muni_prev = (
         db.session.query(
             Municipality.id,
-            func.sum(ProductionRecord.production_volume).label("v"),
+            func.sum(ProductionRecord.production_volume_mt).label("v"),
         )
         .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
         .filter(ProductionRecord.status == "approved")
@@ -966,8 +966,8 @@ def trends():
 
     municipalities = []
     for r in by_muni:
-        current_mt = round(float(r.v or 0) / 1000, 2)
-        previous_mt = round(prev_map.get(r.id, 0) / 1000, 2)
+        current_mt = round(float(r.v or 0), 3)
+        previous_mt = round(prev_map.get(r.id, 0), 3)
         change_pct = None
         if previous_mt:
             change_pct = round(((current_mt - previous_mt) / previous_mt) * 100, 1)

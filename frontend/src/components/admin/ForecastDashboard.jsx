@@ -183,13 +183,13 @@ function ForecastTooltip({ active, payload, label }) {
       {rows.map((p, i) => (
         <div className="fc-tooltip-row" key={i}>
           <span>{p.name}</span>
-          <b>{Math.round(p.value).toLocaleString()} kg</b>
+          <b>{Number(p.value).toLocaleString(undefined, { maximumFractionDigits: 3 })} MT</b>
         </div>
       ))}
       {prev && (
         <div className="fc-tooltip-row" style={{ color: '#b6c6e2' }}>
           <span>Prev forecast</span>
-          <b>{Math.round(prev.value).toLocaleString()} kg</b>
+          <b>{Number(prev.value).toLocaleString(undefined, { maximumFractionDigits: 3 })} MT</b>
         </div>
       )}
     </div>
@@ -202,7 +202,7 @@ function SeasonTooltip({ active, payload }) {
   return (
     <div className="fc-tooltip">
       <div className="fc-tooltip-label">{d.label}</div>
-      <div className="fc-tooltip-row"><span>Projected</span><b>{Math.round(d.value).toLocaleString()} kg</b></div>
+      <div className="fc-tooltip-row"><span>Projected</span><b>{Number(d.value).toLocaleString(undefined, { maximumFractionDigits: 3 })} MT</b></div>
     </div>
   );
 }
@@ -255,7 +255,7 @@ function computeInsights(currentRun, outlook, demandBenchmark) {
   }
 
   if (currentRun.projected_total !== null && currentRun.projected_total !== undefined) {
-    const projectedMT = currentRun.projected_total / 1000;
+    const projectedMT = currentRun.projected_total;
     if (demandBenchmark !== null && demandBenchmark !== undefined && demandBenchmark > 0) {
       const gap = Math.round(projectedMT - demandBenchmark);
       const sign = gap >= 0 ? '+' : '';
@@ -279,11 +279,11 @@ function computeInsights(currentRun, outlook, demandBenchmark) {
   }
 
   if (currentRun.projected_total !== null && currentRun.projected_total !== undefined) {
-    insights.regional.total = `${Math.round(currentRun.projected_total / 1000).toLocaleString()} MT`;
+    insights.regional.total = `${Math.round(currentRun.projected_total).toLocaleString()} MT`;
     if (demandBenchmark !== null && demandBenchmark !== undefined && demandBenchmark > 0) {
-      insights.regional.pct = ((currentRun.projected_total / 1000) / demandBenchmark) * 100;
+      insights.regional.pct = (currentRun.projected_total / demandBenchmark) * 100;
     }
-    const demandGap = currentRun.projected_total / 1000 - demandBenchmark;
+    const demandGap = currentRun.projected_total - demandBenchmark;
     if (demandGap >= 0) {
       insights.regional.detail = `Combined projected supply across all municipalities is expected to exceed the demand benchmark by ${Math.abs(Math.round(demandGap)).toLocaleString()} MT.`;
     } else {
@@ -451,8 +451,7 @@ export default function ForecastDashboard() {
     return <Alert variant="danger">{error}</Alert>;
   }
 
-  const projectedKg = currentRun?.projected_total ?? 0;
-  const projectedMT = projectedKg / 1000;
+  const projectedMT = currentRun?.projected_total ?? 0;
 
   const sdPct = insights.supplyDemand.pct;
   const sdBarPct = sdPct == null ? 0 : Math.max(0, Math.min(100, sdPct));
@@ -489,7 +488,7 @@ export default function ForecastDashboard() {
             {runs.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.municipality_name || 'All'} &middot; {r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}
-                {r.projected_total != null ? ` (${formatMT(r.projected_total / 1000)})` : ''}
+                {r.projected_total != null ? ` (${formatMT(r.projected_total)})` : ''}
               </option>
             ))}
           </Form.Select>
@@ -666,7 +665,7 @@ export default function ForecastDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
                       <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${Math.round(v).toLocaleString()}`} />
                       <Tooltip content={<ForecastTooltip />} />
                       <Legend />
                       {showBand && view === 'line' && (
@@ -751,7 +750,7 @@ export default function ForecastDashboard() {
                       interval={0}
                       tickLine={false}
                     />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} width={44} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v).toLocaleString()}`} width={44} />
                     <Tooltip content={<SeasonTooltip />} />
                     <Area type="monotone" dataKey="value" stroke={BRAND.gold} strokeWidth={2} fill="url(#fcSeasonFill)" dot={{ r: 3 }} isAnimationActive />
                   </AreaChart>

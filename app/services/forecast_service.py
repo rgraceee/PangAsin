@@ -35,7 +35,7 @@ def _monthly_aggregates(municipality_id: Optional[int], start: date, end: date):
         q = q.filter(ProductionRecord.municipality_id == municipality_id)
     q = q.with_entities(
         db.func.date_trunc("month", ProductionRecord.record_date).label("month"),
-        db.func.sum(ProductionRecord.production_volume).label("volume"),
+        db.func.sum(ProductionRecord.production_volume_mt).label("volume"),
     ).group_by(db.text("1")).order_by(db.text("1"))
     rows = q.all()
     labels = []
@@ -329,7 +329,7 @@ def _forecast_anchored_2025(labels, values, forecast_horizon: int = 12):
     for the next `forecast_horizon` months, so the projection resumes the real
     dry-season / rainy-season rhythm instead of the censored dip.
 
-    Returns (preds, note) where preds is a list of monthly predicted values (kg).
+    Returns (preds, note) where preds is a list of monthly predicted values (metric tons).
     """
     profile = _seasonal_profile(labels, values, 2025)
     note = ""

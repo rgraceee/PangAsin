@@ -3,6 +3,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.user import User
+from app.constants import MAX_MONTHLY_VOLUME_MT
 from app.extensions import db
 from datetime import datetime
 
@@ -33,6 +34,7 @@ def login():
         "role": user.role,
         "municipality_id": user.municipality_id,
         "municipality_name": user.municipality.name if user.municipality else None,
+        "max_monthly_volume_mt": MAX_MONTHLY_VOLUME_MT,
     })
 
 
@@ -53,4 +55,5 @@ def me():
         "role": current_user.role,
         "municipality_id": current_user.municipality_id,
         "municipality_name": current_user.municipality.name if current_user.municipality else None,
+        "max_monthly_volume_mt": MAX_MONTHLY_VOLUME_MT,
     })

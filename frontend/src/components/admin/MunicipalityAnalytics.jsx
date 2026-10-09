@@ -72,7 +72,7 @@ export default function MunicipalityAnalytics() {
       .map((m) => ({
         id: m.municipality_id,
         name: m.municipality_name,
-        volumeMT: Math.round((m.total_volume_kg || 0) / 1000 * 100) / 100,
+        volumeMT: Math.round((m.total_volume_mt || 0) * 1000) / 1000,
         beds: m.total_salt_beds,
         area: Math.round(m.total_area_sqm || 0),
         registered: m.total_registered_producers,

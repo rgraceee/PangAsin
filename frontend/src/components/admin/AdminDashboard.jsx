@@ -116,14 +116,14 @@ export default function AdminDashboard({ user }) {
     return stats.by_municipality
       .map((m) => ({
         name: m.municipality_name,
-        volumeMT: Math.round((m.total_volume_kg || 0) / 1000 * 100) / 100,
+        volumeMT: Math.round((m.total_volume_mt || 0) * 1000) / 1000,
         beds: m.total_salt_beds,
         area: m.total_area_sqm,
         registered: m.total_registered_producers,
         male: m.total_male_producers,
         female: m.total_female_producers,
         records: m.record_count,
-        efficiency: m.total_salt_beds > 0 ? Math.round((m.total_volume_kg / m.total_salt_beds) * 100) / 100 : 0,
+        efficiency: m.total_salt_beds > 0 ? Math.round((m.total_volume_mt / m.total_salt_beds) * 1000) / 1000 : 0,
       }))
       .sort((a, b) => b.volumeMT - a.volumeMT);
   }, [stats]);
@@ -145,7 +145,7 @@ export default function AdminDashboard({ user }) {
     return <Alert variant="danger">{error}</Alert>;
   }
 
-  const totalVolumeMT = Math.round((stats.total_volume_kg / 1000) * 100) / 100;
+  const totalVolumeMT = Math.round((stats.total_volume_mt || 0) * 1000) / 1000;
   const demandBenchmark = supplyDemand?.pangasinan?.demand_volume ?? 0;
   const supplyDemandGap = demandBenchmark ? totalVolumeMT - demandBenchmark : null;
   const supplyDemandLabel = supplyDemandGap == null ? 'N/A' : (supplyDemandGap >= 0 ? 'Surplus' : 'Shortage');
@@ -166,7 +166,7 @@ export default function AdminDashboard({ user }) {
 
       <Row className="g-3 mb-4">
         <Col md={4}>
-          <KPIStat icon={Boxes} title="Total Production" value={`${totalVolumeMT.toLocaleString()} MT`} supporting={`${stats.total_volume_kg.toLocaleString()} kg`} accent="ocean" />
+          <KPIStat icon={Boxes} title="Total Production" value={`${totalVolumeMT.toLocaleString()} MT`} supporting={`${totalVolumeMT.toLocaleString()} MT recorded`} accent="ocean" />
         </Col>
         <Col md={4}>
           <KPIStat icon={Ruler} title="Production Area" value={`${stats.total_area_sqm.toLocaleString()}\u00A0m\u00B2`} supporting="Combined area of all beds" accent="ocean" />
@@ -288,7 +288,7 @@ function MunicipalityMap({ muniData }) {
         ['Salt Beds', (m.beds || 0).toLocaleString()],
         ['Registered Producers', (m.registered || 0).toLocaleString()],
         ['Male / Female', genderText],
-        ['Kg per Bed', (m.efficiency ?? 0).toLocaleString()],
+        ['MT per Bed', (m.efficiency ?? 0).toLocaleString()],
       ],
     });
   }, []);

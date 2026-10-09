@@ -10,6 +10,7 @@ import { SkeletonList } from '../Skeleton';
 import RecordStatusBadge from '../encoder/RecordStatusBadge';
 import { Eye } from 'lucide-react';
 import IconButton from '../IconButton';
+import { formatMT } from '../../utils/volumeFormat';
 import PageHeader from './PageHeader';
 
 const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
@@ -199,7 +200,7 @@ export default function ValidationQueue() {
                 <th>Barangay</th>
                 <th>Date</th>
                 <th>Submitter</th>
-                <th>Volume (kg)</th>
+                <th>Volume (MT)</th>
                 <th>Status</th>
                 <th></th>
               </tr> : reportType === 'environment' ? <tr>
@@ -216,7 +217,7 @@ export default function ValidationQueue() {
                     <td>{r.barangay}</td>
                     <td>{r.record_date}</td>
                     <td>{r.submitter?.name || '—'}</td>
-                    <td>{r.production_volume?.toLocaleString()}</td>
+                    <td>{formatMT(r.production_volume_mt)}</td>
                     <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
                   </> : reportType === 'environment' ? <>
                     <td>{r.municipality_name}</td>
@@ -268,10 +269,10 @@ export default function ValidationQueue() {
                   <DetailRow label="Registered Producers" value={detail.registered_producers} />
                   <DetailRow label="Male Producers" value={detail.male_producers} />
                   <DetailRow label="Female Producers" value={detail.female_producers} />
-                  <DetailRow label="Total Production Volume" value={detail.production_volume != null ? `${detail.production_volume} kg` : null} />
+                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} MT` : null} />
                   <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
-                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} kg` : null} />
+                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} MT` : null} />
                   <DetailRow label="Submitted by" value={detail.submitter ? `${detail.submitter.name} (${detail.submitter.email})` : null} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                   <DetailRow label="Reviewed by" value={detail.reviewer ? `${detail.reviewer.name} (${detail.reviewer.email})` : null} />

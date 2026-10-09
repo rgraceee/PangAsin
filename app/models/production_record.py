@@ -13,7 +13,7 @@ class ProductionRecord(db.Model):
     municipality_id = db.Column(db.Integer, db.ForeignKey("municipalities.id"), nullable=False)
     barangay_id = db.Column(db.Integer, db.ForeignKey("barangays.id"), nullable=False, index=True)
     record_date = db.Column(db.Date, nullable=False)
-    production_volume = db.Column(db.Numeric(12, 2), nullable=False)
+    production_volume_mt = db.Column(db.Numeric(12, 5), nullable=False)
     num_salt_beds = db.Column(db.Integer, nullable=False)
     area_per_salt_bed = db.Column(db.Numeric(10, 2), nullable=True)
     registered_producers = db.Column(db.Integer, nullable=False, default=0)
@@ -43,7 +43,7 @@ class ProductionRecord(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("municipality_id", "barangay_id", "record_date", name="uq_production_records_barangay_date"),
-        db.CheckConstraint("production_volume >= 0", name="chk_production_volume"),
+        db.CheckConstraint("production_volume_mt >= 0", name="chk_production_volume_mt"),
         db.CheckConstraint("num_salt_beds > 0", name="chk_num_salt_beds"),
         db.CheckConstraint("registered_producers >= 0", name="chk_registered_producers"),
         db.CheckConstraint("male_producers >= 0", name="chk_male_producers"),

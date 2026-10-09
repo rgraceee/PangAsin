@@ -157,7 +157,7 @@ export default function MunicipalityMapSection() {
             const changePct = m.productionChangePercent;
             const trendSymbol = changePct != null ? (changePct >= 0 ? '↑' : '↓') : '';
             const changeText = changePct != null ? `${trendSymbol} ${Math.abs(changePct)}%` : '—';
-            const kgPerBed = m.saltBeds > 0 ? `${Math.round((m.productionMT * 1000) / m.saltBeds).toLocaleString()} kg` : '—';
+            const mtPerBed = m.saltBeds > 0 ? `${Math.round((m.productionMT / m.saltBeds) * 1000) / 1000} MT` : '—';
             const html = buildMapDetailCard({
               name: m.name,
               rows: [
@@ -167,7 +167,7 @@ export default function MunicipalityMapSection() {
                 ['Salt Beds', (m.saltBeds || 0).toLocaleString()],
                 ['Dominant Method', m.dominantMethod.charAt(0).toUpperCase() + m.dominantMethod.slice(1)],
                 ['Male / Female', genderText],
-                ['Kg per Bed', kgPerBed],
+                ['MT per Bed', mtPerBed],
               ],
             });
             const b = layer.getBounds();

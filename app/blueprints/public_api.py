@@ -54,11 +54,11 @@ def _municipality_summary():
             Municipality.longitude,
             Municipality.geojson_ref,
             func.coalesce(func.sum(
-                case((ProductionRecord.record_date.between(start, end), ProductionRecord.production_volume), else_=0)
-            ), 0).label("current_kg"),
+                case((ProductionRecord.record_date.between(start, end), ProductionRecord.production_volume_mt), else_=0)
+            ), 0).label("current_mt"),
             func.coalesce(func.sum(
-                case((ProductionRecord.record_date.between(prev_start, start), ProductionRecord.production_volume), else_=0)
-            ), 0).label("previous_kg"),
+                case((ProductionRecord.record_date.between(prev_start, start), ProductionRecord.production_volume_mt), else_=0)
+            ), 0).label("previous_mt"),
             func.coalesce(func.sum(
                 case((ProductionRecord.record_date.between(start, end), ProductionRecord.num_salt_beds), else_=0)
             ), 0).label("current_beds"),
@@ -83,17 +83,17 @@ def _municipality_summary():
             ProductionRecord.municipality_id,
             ProductionRecord.production_method,
             func.sum(case(
-                (ProductionRecord.record_date.between(start, end), ProductionRecord.production_volume),
+                (ProductionRecord.record_date.between(start, end), ProductionRecord.production_volume_mt),
                 else_=0,
-            )).label("kg"),
+            )).label("mt"),
         )
         .filter(ProductionRecord.status == "approved")
         .group_by(ProductionRecord.municipality_id, ProductionRecord.production_method)
         .all()
     )
     method_by_muni = {}
-    for muni_id, method, kg in method_rows:
-        method_by_muni.setdefault(muni_id, {})[method] = float(kg or 0)
+    for muni_id, method, mt in method_rows:
+        method_by_muni.setdefault(muni_id, {})[method] = float(mt or 0)
 
     return rows, method_by_muni, (start, end)
 
@@ -197,10 +197,10 @@ def _production():
     start = date(2020, 1, 1)
     labels, values, _ = _monthly_aggregates(None, start, latest)
     records = [
-        {"year": int(lbl[:4]), "month": int(lbl[5:7]), "totalMT": round(v / 1000, 2)}
+        {"year": int(lbl[:4]), "month": int(lbl[5:7]), "totalMT": round(v, 3)}
         for lbl, v in zip(labels, values)
     ]
-    province_total_mt = round(sum(values) / 1000, 2)
+    province_total_mt = round(sum(values), 3)
     return {"provinceTotalMT": province_total_mt, "records": records}
 
 
@@ -215,14 +215,14 @@ def _supply_demand():
         .order_by(DemandBenchmark.year.desc())
         .first()
     )
-    pangasinan_local_kg = (
-        db.session.query(func.sum(ProductionRecord.production_volume))
+    pangasinan_local_mt = (
+        db.session.query(func.sum(ProductionRecord.production_volume_mt))
         .filter(ProductionRecord.status == "approved")
         .scalar()
         or 0
     )
     pangasinan = {
-        "localSupply": round(pangasinan_local_kg / 1000, 2),
+        "localSupply": round(float(pangasinan_local_mt), 3),
         "demandBenchmark": float(provincial.demand_volume) if provincial else None,
         "year": provincial.year if provincial else datetime.utcnow().year,
     }
@@ -264,16 +264,16 @@ def _build_municipalities(rows, method_by_muni, window):
     municipalities = []
     for r in rows:
         muni_id = r.id
-        current_mt = round((r.current_kg or 0) / 1000, 2)
-        previous_mt = round((r.previous_kg or 0) / 1000, 2) if r.previous_kg is not None else None
+        current_mt = round((r.current_mt or 0), 3)
+        previous_mt = round((r.previous_mt or 0), 3) if r.previous_mt is not None else None
         change_pct = None
         if previous_mt:
             change_pct = round(((current_mt - previous_mt) / previous_mt) * 100, 1)
 
         methods = method_by_muni.get(muni_id, {})
-        solar = round((methods.get("solar", 0)) / 1000, 2)
-        cooked = round((methods.get("cooked", 0)) / 1000, 2)
-        hybrid = round((methods.get("hybrid", 0)) / 1000, 2)
+        solar = round((methods.get("solar", 0)), 3)
+        cooked = round((methods.get("cooked", 0)), 3)
+        hybrid = round((methods.get("hybrid", 0)), 3)
         dominant = max(
             (("solar", solar), ("cooked", cooked), ("hybrid", hybrid)),
             key=lambda x: x[1],
@@ -309,7 +309,7 @@ def _historical(municipality_id):
     rows = (
         db.session.query(
             func.extract("year", ProductionRecord.record_date).label("year"),
-            func.sum(ProductionRecord.production_volume).label("kg"),
+            func.sum(ProductionRecord.production_volume_mt).label("mt"),
         )
         .filter(
             ProductionRecord.municipality_id == municipality_id,
@@ -319,7 +319,7 @@ def _historical(municipality_id):
         .order_by(func.extract("year", ProductionRecord.record_date))
         .all()
     )
-    return {int(r.year): round(float(r.kg) / 1000, 1) for r in rows}
+    return {int(r.year): round(float(r.mt), 3) for r in rows}
 
 
 @public_api_bp.route("/dashboard", methods=["GET"])

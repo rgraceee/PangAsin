@@ -41,7 +41,7 @@ export default function DataQualityDashboard() {
   if (!data) return null;
 
   const fieldLabels = {
-    production_volume: 'Salt Production (kg)',
+    production_volume_mt: 'Salt Production (MT)',
     num_salt_beds: 'Number of Salt Beds',
     area_per_salt_bed: 'Area per Salt Bed (m\u00B2)',
     registered_producers: 'Total Producers Listed',

@@ -10,7 +10,7 @@ from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from app.constants import AGE_BUCKET_FIELDS
+from app.constants import AGE_BUCKET_FIELDS, MAX_MONTHLY_VOLUME_MT
 from app.utils import _parse_date
 
 encoder_api_bp = Blueprint("encoder_api", __name__, url_prefix="/api/encoder")
@@ -36,7 +36,7 @@ def _serialize(record):
         "male_producers": record.male_producers,
         "female_producers": record.female_producers,
         **{f: getattr(record, f) for f in AGE_BUCKET_FIELDS},
-        "production_volume": float(record.production_volume) if record.production_volume is not None else None,
+        "production_volume_mt": float(record.production_volume_mt) if record.production_volume_mt is not None else None,
         "num_salt_beds": record.num_salt_beds,
         "area_per_salt_bed": float(record.area_per_salt_bed) if record.area_per_salt_bed is not None else None,
         "production_method": record.production_method,
@@ -45,8 +45,8 @@ def _serialize(record):
         "reviewed_by": record.reviewed_by,
         "reviewed_at": record.reviewed_at.isoformat() if record.reviewed_at else None,
         "submitted_by": record.submitted_by,
-        "output_per_bed": round(float(record.production_volume) / record.num_salt_beds, 2)
-        if record.production_volume is not None and record.num_salt_beds
+        "output_per_bed": round(float(record.production_volume_mt) / record.num_salt_beds, 3)
+        if record.production_volume_mt is not None and record.num_salt_beds
         else None,
         "created_at": record.created_at.isoformat() if record.created_at else None,
         "updated_at": record.updated_at.isoformat() if record.updated_at else None,
@@ -59,7 +59,7 @@ def _allocate(record, data):
     date_str = data.get("record_date")
     if date_str:
         record.record_date = _parse_date(date_str)
-    for field in ("production_volume", "num_salt_beds") + PRODUCER_COUNT_FIELDS:
+    for field in ("production_volume_mt", "num_salt_beds") + PRODUCER_COUNT_FIELDS:
         if field in data:
             setattr(record, field, data[field])
     for field in AGE_BUCKET_FIELDS:
@@ -95,13 +95,17 @@ def _validate(data, partial=False, existing_record=None):
             except (TypeError, ValueError):
                 errors.append("record_date must be a date in YYYY-MM-DD format.")
 
-    if not partial or "production_volume" in data:
+    if not partial or "production_volume_mt" in data:
         try:
-            vol = float(data.get("production_volume"))
+            vol = float(data.get("production_volume_mt"))
             if vol < 0:
-                errors.append("production_volume must be non-negative.")
+                errors.append("production_volume_mt must be non-negative.")
+            elif vol > MAX_MONTHLY_VOLUME_MT:
+                errors.append(
+                    f"production_volume_mt cannot exceed {MAX_MONTHLY_VOLUME_MT} metric tons per month."
+                )
         except (TypeError, ValueError):
-            errors.append("production_volume must be a number (kg).")
+            errors.append("production_volume_mt must be a number (metric tons).")
 
     if not partial or "num_salt_beds" in data or "barangay_id" in data:
         value = data.get("num_salt_beds", existing_record.num_salt_beds if existing_record else None)
@@ -184,6 +188,7 @@ def me():
         "role": current_user.role,
         "municipality_id": current_user.municipality_id,
         "municipality_name": current_user.municipality.name if current_user.municipality else None,
+        "max_monthly_volume_mt": MAX_MONTHLY_VOLUME_MT,
     })
 
 
@@ -199,9 +204,23 @@ def barangays():
         .order_by(Barangay.name)
         .all()
     )
+    max_rows = (
+        db.session.query(
+            ProductionRecord.barangay_id,
+            func.max(ProductionRecord.production_volume_mt).label("max_volume"),
+        )
+        .filter(ProductionRecord.municipality_id == current_user.municipality_id)
+        .group_by(ProductionRecord.barangay_id)
+        .all()
+    )
+    historical_max = {r.barangay_id: float(r.max_volume) for r in max_rows if r.max_volume is not None}
     return jsonify({
         "municipality": current_user.municipality.name if current_user.municipality else None,
-        "barangays": [{"id": b.id, "name": b.name} for b in query],
+        "max_monthly_volume_mt": MAX_MONTHLY_VOLUME_MT,
+        "barangays": [
+            {"id": b.id, "name": b.name, "historical_max_volume_mt": historical_max.get(b.id)}
+            for b in query
+        ],
     })
 
 
@@ -642,7 +661,7 @@ def _by_barangay_query():
         db.session.query(
             ProductionRecord.barangay_id,
             Barangay.name,
-            func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("total_volume"),
+            func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0).label("total_volume"),
             func.count(ProductionRecord.id).label("record_count"),
             func.coalesce(
                 func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed),
@@ -702,7 +721,7 @@ def stats():
             db.session.query(
                 ProductionRecord.barangay_id,
                 Barangay.name,
-                func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("total_volume"),
+                func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0).label("total_volume"),
                 func.count(ProductionRecord.id).label("record_count"),
                 func.coalesce(
                     func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed),
@@ -722,7 +741,7 @@ def stats():
                 func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
                 ProductionRecord.barangay_id.label("barangay_id"),
                 Barangay.name.label("barangay"),
-                func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("volume"),
+                func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0).label("volume"),
             )
             .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
             .group_by(
@@ -753,7 +772,7 @@ def stats():
             for bname in barangay_names:
                 row[bname] = series.get(bname, {}).get(m, 0.0)
             by_month.append(row)
-        total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume), 0)).scalar() or 0
+        total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
         total_area = base.with_entities(
             func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)
         ).scalar() or 0
@@ -769,7 +788,7 @@ def stats():
                 "start": month_start.isoformat(),
                 "end": (month_end - timedelta(days=1)).isoformat(),
             },
-            "total_volume_kg": float(total_volume),
+            "total_volume_mt": float(total_volume),
             "total_area_sqm": float(total_area or 0),
             "record_count": record_count,
             "total_salt_beds": int(total_beds or 0),
@@ -778,7 +797,7 @@ def stats():
                 {
                     "barangay_id": b.barangay_id,
                     "barangay": b.name,
-                    "total_volume_kg": float(b.total_volume or 0),
+                    "total_volume_mt": float(b.total_volume or 0),
                     "record_count": b.record_count,
                     "total_area_sqm": float(b.total_area or 0),
                     "total_registered_producers": int(b.total_registered or 0),
@@ -798,7 +817,7 @@ def stats():
     by_barangay_q, _, _ = _apply_period(by_barangay_q, start_raw, end_raw)
     by_barangay = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
 
-    total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume), 0)).scalar() or 0
+    total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
     total_area = base.with_entities(
         func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)
     ).scalar() or 0
@@ -813,7 +832,7 @@ def stats():
             func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
             ProductionRecord.barangay_id.label("barangay_id"),
             Barangay.name.label("barangay"),
-            func.coalesce(func.sum(ProductionRecord.production_volume), 0).label("volume"),
+            func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0).label("volume"),
         )
         .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
         .group_by(
@@ -854,7 +873,7 @@ def stats():
             "start": start_d.isoformat() if start_d else None,
             "end": end_d.isoformat() if end_d else None,
         },
-        "total_volume_kg": float(total_volume),
+        "total_volume_mt": float(total_volume),
         "total_area_sqm": float(total_area or 0),
         "record_count": record_count,
         "total_salt_beds": int(total_beds or 0),
@@ -863,7 +882,7 @@ def stats():
             {
                 "barangay_id": b.barangay_id,
                 "barangay": b.name,
-                "total_volume_kg": float(b.total_volume or 0),
+                "total_volume_mt": float(b.total_volume or 0),
                 "record_count": b.record_count,
                 "total_area_sqm": float(b.total_area or 0),
                 "total_registered_producers": int(b.total_registered or 0),

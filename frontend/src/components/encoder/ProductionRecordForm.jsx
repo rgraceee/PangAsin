@@ -5,7 +5,7 @@ import { useToast } from '../Toast';
 import { SkeletonForm } from '../Skeleton';
 import { Factory, CheckCircle2 } from 'lucide-react';
 import ReportImportActions from './ReportImportActions';
-import { cleanSpreadsheetDate, findBarangay, numberValue, rowError } from './reportImportUtils';
+import { prepareProductionRows, rowError } from './reportImportUtils';
 
 const PRODUCTION_METHODS = [
   { value: '', label: 'Select method…' },
@@ -30,6 +30,7 @@ function localDateString() {
 export default function ProductionRecordForm({ editingId = null, user, onClose, onSaved, onImported }) {
   const { toastSuccess, toastError } = useToast();
   const isEdit = Boolean(editingId);
+  const volumeCapMt = Number(user?.max_monthly_volume_mt) || 2000;
   const [step, setStep] = useState(0);
 
   const [barangays, setBarangays] = useState([]);
@@ -37,7 +38,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
   const [form, setForm] = useState({
     barangay_id: '',
     record_date: localDateString(),
-    production_volume: '',
+    production_volume_mt: '',
     num_salt_beds: '',
     area_per_salt_bed: '',
     production_method: '',
@@ -61,7 +62,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
           setForm({
             barangay_id: r.barangay_id ?? '',
             record_date: r.record_date || '',
-            production_volume: r.production_volume ?? '',
+            production_volume_mt: r.production_volume_mt ?? '',
             num_salt_beds: r.num_salt_beds ?? '',
             area_per_salt_bed: r.area_per_salt_bed ?? '',
             production_method: r.production_method ?? '',
@@ -75,6 +76,13 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
 
   const selectedEnvironmentReport = environmentReports.find(
     (report) => String(report.barangay_id) === String(form.barangay_id) && report.status === 'approved',
+  );
+  const selectedBarangay = barangays.find((b) => String(b.id) === String(form.barangay_id));
+  const historicalMaxMt = Number(selectedBarangay?.historical_max_volume_mt) || 0;
+  const volumeSoftWarning = (
+    form.production_volume_mt !== ''
+    && historicalMaxMt > 0
+    && Number(form.production_volume_mt) > historicalMaxMt * 3
   );
 
   useEffect(() => {
@@ -90,6 +98,10 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
     const { name, value } = e.target;
     if (name === 'num_salt_beds' && selectedEnvironmentReport && Number(value) > selectedEnvironmentReport.num_salt_beds) {
       setError(`Beds used cannot exceed the ${selectedEnvironmentReport.num_salt_beds} available beds for this barangay.`);
+      return;
+    }
+    if (name === 'production_volume_mt' && value !== '' && Number(value) > volumeCapMt) {
+      setError(`Production volume cannot exceed ${volumeCapMt} metric tons per month.`);
       return;
     }
     setError(null);
@@ -110,7 +122,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
     return (
       form.barangay_id &&
       form.record_date &&
-      form.production_volume !== '' &&
+      form.production_volume_mt !== '' &&
       form.num_salt_beds !== '' &&
       Number(form.num_salt_beds) > 0 &&
       (!selectedEnvironmentReport || Number(form.num_salt_beds) <= selectedEnvironmentReport.num_salt_beds) &&
@@ -139,7 +151,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
       const productionPayload = {
         barangay_id: Number(form.barangay_id),
         record_date: form.record_date,
-        production_volume: Number(form.production_volume),
+        production_volume_mt: Number(form.production_volume_mt),
         num_salt_beds: Number(form.num_salt_beds),
         area_per_salt_bed: form.area_per_salt_bed === '' ? '' : Number(form.area_per_salt_bed),
         production_method: form.production_method,
@@ -165,31 +177,15 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
     }
   };
 
+  // WHAT: Preview lang — validation + soft warning bago pa mag-import.
+  // WHY: Nakikita agad ng encoder ang 3x-historical warning bago kanselahin.
+  const previewProductionRows = (rows) => {
+    const { errors, warnings } = prepareProductionRows(rows, barangays, volumeCapMt);
+    return { errors, warnings };
+  };
+
   const importProductionRows = async (rows) => {
-    const errors = [];
-    const prepared = rows.map((row) => {
-      const barangay = findBarangay(row, barangays);
-      const recordDate = cleanSpreadsheetDate(row.record_date);
-      const productionVolume = numberValue(row.production_volume);
-      const numSaltBeds = numberValue(row.num_salt_beds);
-      const areaPerSaltBed = row.area_per_salt_bed === '' ? null : numberValue(row.area_per_salt_bed);
-      const productionMethod = String(row.production_method || '').trim().toLowerCase();
-      if (!barangay) errors.push(rowError(row, 'barangay must match a barangay in your municipality.'));
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(recordDate)) errors.push(rowError(row, 'record_date must use YYYY-MM-DD.'));
-      if (!Number.isFinite(productionVolume) || productionVolume < 0) errors.push(rowError(row, 'production_volume must be zero or greater.'));
-      if (!Number.isInteger(numSaltBeds) || numSaltBeds <= 0) errors.push(rowError(row, 'num_salt_beds must be a positive whole number.'));
-      if (areaPerSaltBed !== null && (!Number.isFinite(areaPerSaltBed) || areaPerSaltBed < 0)) errors.push(rowError(row, 'area_per_salt_bed must be zero or greater.'));
-      if (!PRODUCTION_METHODS.some((method) => method.value === productionMethod)) errors.push(rowError(row, 'production_method must be solar, cooked, or hybrid.'));
-      return {
-        barangay_id: barangay?.id,
-        record_date: recordDate,
-        production_volume: productionVolume,
-        num_salt_beds: numSaltBeds,
-        area_per_salt_bed: areaPerSaltBed,
-        production_method: productionMethod,
-        rowNumber: row._row_number,
-      };
-    });
+    const { errors, warnings, prepared } = prepareProductionRows(rows, barangays, volumeCapMt);
     if (errors.length) throw new Error(errors.join(' '));
 
     const failures = [];
@@ -205,8 +201,9 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
     }
     if (imported) onImported?.();
     if (!imported) throw new Error(failures.join(' ') || 'No production rows were imported.');
+    const warningNote = warnings.length ? ` Note: ${warnings.join(' ')}` : '';
     return {
-      message: `Imported ${imported} of ${rows.length} production row${rows.length === 1 ? '' : 's'}.${failures.length ? ` ${failures.join(' ')}` : ''}`,
+      message: `Imported ${imported} of ${rows.length} production row${rows.length === 1 ? '' : 's'}.${failures.length ? ` ${failures.join(' ')}` : ''}${warningNote}`,
       isError: failures.length > 0,
     };
   };
@@ -252,13 +249,13 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
           <Row className="g-3">
             <Col md={4}>
               <Form.Group className="mb-3">
-                <Form.Label className="form-field-label">Production Volume (kg) <span className="text-danger">*</span></Form.Label>
+                <Form.Label className="form-field-label">Production Volume (MT) <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="number"
                   min="0"
                   step="any"
-                  name="production_volume"
-                  value={form.production_volume}
+                  name="production_volume_mt"
+                  value={form.production_volume_mt}
                   onChange={handleChange}
                   required
                   disabled={approved}
@@ -301,6 +298,12 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
             </Col>
           </Row>
 
+          {volumeSoftWarning && (
+            <Alert variant="warning" className="py-2 small mb-3">
+              This volume is more than 3x the highest recorded month for {selectedBarangay?.name}. Double-check the unit (metric tons) and value.
+            </Alert>
+          )}
+
           {form.barangay_id && (
             <div className="small text-muted mb-3">
               {selectedEnvironmentReport
@@ -341,7 +344,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
             <Col md={6}><strong>Municipality:</strong> {user?.municipality_name || '—'}</Col>
             <Col md={6}><strong>Barangay:</strong> {barangays.find((b) => String(b.id) === String(form.barangay_id))?.name || '—'}</Col>
             <Col md={6}><strong>Date Covered:</strong> {form.record_date || '—'}</Col>
-            <Col md={4}><strong>Volume (kg):</strong> {form.production_volume ?? '—'}</Col>
+            <Col md={4}><strong>Volume (MT):</strong> {form.production_volume_mt ?? '—'}</Col>
             <Col md={4}><strong>Beds Used:</strong> {form.num_salt_beds ?? '—'}</Col>
             <Col md={4}><strong>Area per Bed (m²):</strong> {form.area_per_salt_bed ?? '—'}</Col>
             <Col md={12}><strong>Method:</strong> {form.production_method || '—'}</Col>
@@ -395,6 +398,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
             <ReportImportActions
               templateUrl="/static/templates/production-report-template.csv"
               onImport={importProductionRows}
+              onValidate={previewProductionRows}
               disabled={!barangays.length}
             />
           </div>

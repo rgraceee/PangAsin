@@ -16,7 +16,7 @@ AGE_BUCKET_FIELDS = (
 # WHY: The admin Data Quality view and the report generator score records
 #      against the same field weights, so they must not drift apart.
 QUALITY_WEIGHTS = {
-    "production_volume": 0.20,
+    "production_volume_mt": 0.20,
     "num_salt_beds": 0.10,
     "area_per_salt_bed": 0.10,
     "registered_producers": 0.15,
@@ -30,6 +30,11 @@ QUALITY_WEIGHTS = {
 # WHAT: Field names used when computing data-quality scores.
 # WHY: Derived once from QUALITY_WEIGHTS so the two can never disagree.
 QUALITY_FIELDS = list(QUALITY_WEIGHTS.keys())
+
+# WHAT: Hard upper bound for a single monthly production record, in metric tons.
+# WHY: Region-scale monthly output per barangay stays far below this; the cap
+#      catches unit mistakes (e.g. encoding kg with the value in MT) and typos.
+MAX_MONTHLY_VOLUME_MT = 2000
 
 # National-level sector demand breakdown (reference data, MT). Not stored in the
 # demand_benchmarks table (which holds annual supply/demand figures); served as a

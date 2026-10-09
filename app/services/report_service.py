@@ -19,15 +19,15 @@ from app.services.forecast_service import _monthly_aggregates
 from app.constants import SECTOR_DEMAND
 
 
-def _volume_mt(kg):
-    return round((kg or 0) / 1000, 2)
+def _volume_mt(value):
+    return round(float(value or 0), 3)
 
 
 def build_provincial_data(start, end):
     q = db.session.query(
         Municipality.id,
         Municipality.name,
-        func.sum(ProductionRecord.production_volume).label("total_volume"),
+        func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
         func.count(ProductionRecord.id).label("record_count"),
         func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
         func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
@@ -47,7 +47,6 @@ def build_provincial_data(start, end):
         "by_municipality": [
             {
                 "municipality": r.name,
-                "production_kg": round(float(r.total_volume or 0), 2),
                 "production_mt": _volume_mt(r.total_volume),
                 "record_count": r.record_count,
                 "total_salt_beds": int(r.total_beds or 0),
@@ -57,7 +56,7 @@ def build_provincial_data(start, end):
             for r in rows
         ],
         "monthly_trend": [
-            {"month": labels[i], "production_mt": round(values[i] / 1000, 2)}
+            {"month": labels[i], "production_mt": round(values[i], 3)}
             for i in range(len(labels))
         ],
     }
@@ -69,7 +68,7 @@ def build_municipality_data(municipality_id, start, end):
 
     q = db.session.query(
         Barangay.name.label("barangay"),
-        func.sum(ProductionRecord.production_volume).label("total_volume"),
+        func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
         func.count(ProductionRecord.id).label("record_count"),
         func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
         func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
@@ -92,7 +91,6 @@ def build_municipality_data(municipality_id, start, end):
         "by_barangay": [
             {
                 "barangay": r.barangay,
-                "production_kg": round(float(r.total_volume or 0), 2),
                 "production_mt": _volume_mt(r.total_volume),
                 "record_count": r.record_count,
                 "total_salt_beds": int(r.total_beds or 0),
@@ -114,7 +112,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
 
         q = db.session.query(
             Barangay.name.label("barangay"),
-            func.sum(ProductionRecord.production_volume).label("total_volume"),
+            func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
             func.count(ProductionRecord.id).label("record_count"),
             func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
             func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
@@ -133,7 +131,6 @@ def build_production_data(municipality_id, barangay_id, start, end):
             "by_barangay": [
                 {
                     "barangay": r.barangay,
-                    "production_kg": round(float(r.total_volume or 0), 2),
                     "production_mt": _volume_mt(r.total_volume),
                     "record_count": r.record_count,
                     "total_salt_beds": int(r.total_beds or 0),
@@ -150,7 +147,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
 
         q = db.session.query(
             Barangay.name.label("barangay"),
-            func.sum(ProductionRecord.production_volume).label("total_volume"),
+            func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
             func.count(ProductionRecord.id).label("record_count"),
             func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
             func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
@@ -169,7 +166,6 @@ def build_production_data(municipality_id, barangay_id, start, end):
             "by_barangay": [
                 {
                     "barangay": r.barangay,
-                    "production_kg": round(float(r.total_volume or 0), 2),
                     "production_mt": _volume_mt(r.total_volume),
                     "record_count": r.record_count,
                     "total_salt_beds": int(r.total_beds or 0),
@@ -183,7 +179,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
     q = db.session.query(
         Municipality.id,
         Municipality.name,
-        func.sum(ProductionRecord.production_volume).label("total_volume"),
+        func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
         func.count(ProductionRecord.id).label("record_count"),
         func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
         func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
@@ -203,7 +199,6 @@ def build_production_data(municipality_id, barangay_id, start, end):
         "by_municipality": [
             {
                 "municipality": r.name,
-                "production_kg": round(float(r.total_volume or 0), 2),
                 "production_mt": _volume_mt(r.total_volume),
                 "record_count": r.record_count,
                 "total_salt_beds": int(r.total_beds or 0),
@@ -212,7 +207,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
             for r in rows
         ],
         "monthly_trend": [
-            {"month": labels[i], "production_mt": round(values[i] / 1000, 2)}
+            {"month": labels[i], "production_mt": round(values[i], 3)}
             for i in range(len(labels))
         ],
         "total_production_mt": _volume_mt(total_volume),
@@ -337,9 +332,9 @@ def build_forecast_data():
             "reliability": r.reliability,
             "trend_direction": r.trend_direction,
             "expected_change_pct": float(r.expected_change_pct) if r.expected_change_pct is not None else None,
-            "projected_total_mt": round(float(r.projected_total or 0) / 1000, 2) if r.projected_total is not None else None,
-            "mae": float(r.mae) if r.mae is not None else None,
-            "rmse": float(r.rmse) if r.rmse is not None else None,
+            "projected_total_mt": round(float(r.projected_total or 0), 3) if r.projected_total is not None else None,
+            "mae": round(float(r.mae), 3) if r.mae is not None else None,
+            "rmse": round(float(r.rmse), 3) if r.rmse is not None else None,
             "mape": float(r.mape) if r.mape is not None else None,
             "r2": float(r.r2) if r.r2 is not None else None,
             "period": f"{r.period_start.isoformat()} to {r.period_end.isoformat()}",
@@ -366,7 +361,7 @@ def build_data_quality_data():
     records = ProductionRecord.query.all()
     total = len(records)
     WEIGHTS = {
-        "production_volume": 0.20,
+        "production_volume_mt": 0.20,
         "num_salt_beds": 0.10,
         "area_per_salt_bed": 0.10,
         "registered_producers": 0.15,
@@ -428,17 +423,17 @@ def build_data_quality_data():
 def build_supply_demand_data():
     provincial = DemandBenchmark.query.filter_by(geographic_scope="provincial").order_by(DemandBenchmark.year.desc()).first()
     national = DemandBenchmark.query.filter_by(geographic_scope="national").order_by(DemandBenchmark.year.desc()).first()
-    local_kg = db.session.query(func.sum(ProductionRecord.production_volume)).filter(ProductionRecord.status == "approved").scalar() or 0
-    local_mt = round(local_kg / 1000, 2)
+    local_total_mt = db.session.query(func.sum(ProductionRecord.production_volume_mt)).filter(ProductionRecord.status == "approved").scalar() or 0
+    local_mt = round(float(local_total_mt), 3)
 
     def scope(row):
         if row is None:
             return {}
         return {
             "year": row.year,
-            "demand_volume_mt": float(row.demand_volume),
-            "local_production_mt": float(row.local_production) if row.local_production is not None else None,
-            "import_volume_mt": float(row.import_volume) if row.import_volume is not None else None,
+            "demand_volume_mt": round(float(row.demand_volume), 3),
+            "local_production_mt": round(float(row.local_production), 3) if row.local_production is not None else None,
+            "import_volume_mt": round(float(row.import_volume), 3) if row.import_volume is not None else None,
             "source": row.source_name,
         }
 
@@ -446,8 +441,8 @@ def build_supply_demand_data():
         "report_title": "Supply & Demand Report",
         "pangasinan": {
             "year": provincial.year if provincial else datetime.utcnow().year,
-            "demand_volume_mt": float(provincial.demand_volume) if provincial else None,
-            "local_production_mt": local_mt if local_mt > 0 else (float(provincial.local_production) if provincial and provincial.local_production else None),
+            "demand_volume_mt": round(float(provincial.demand_volume), 3) if provincial else None,
+            "local_production_mt": local_mt if local_mt > 0 else (round(float(provincial.local_production), 3) if provincial and provincial.local_production else None),
             "source": provincial.source_name if provincial else None,
         },
         "philippines": scope(national),

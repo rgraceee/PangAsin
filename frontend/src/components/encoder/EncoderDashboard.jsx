@@ -12,6 +12,7 @@ import AdminKpiCard from '../admin/AdminKpiCard';
 import PageHeader from '../admin/PageHeader';
 import RecordsTable from './RecordsTable';
 import ProductionRecordForm from './ProductionRecordForm';
+import { formatMT } from '../../utils/volumeFormat';
 import EnvironmentReports from './EnvironmentReports';
 import ProducerReports from './ProducerReports';
 
@@ -51,7 +52,7 @@ function ChartTooltip({ active, payload, label }) {
       {label != null && <div className="ct-label">{label}</div>}
       {payload.map((entry, i) => (
         <div key={entry.dataKey || i}>
-          <div className="ct-value">{Number(entry.value).toLocaleString()} kg</div>
+          <div className="ct-value">{Number(entry.value).toLocaleString()} MT</div>
           <div className="ct-sub">{entry.name}</div>
         </div>
       ))}
@@ -66,7 +67,7 @@ function PieTooltip({ active, payload, total }) {
   return (
     <div className="admin-chart-tooltip">
       <div className="ct-label">{p.name}</div>
-      <div className="ct-value">{p.value.toLocaleString()} kg{formatPct(share)}</div>
+      <div className="ct-value">{p.value.toLocaleString()} MT{formatPct(share)}</div>
     </div>
   );
 }
@@ -174,9 +175,9 @@ export default function EncoderDashboard() {
   const pieData = useMemo(() => {
     if (!stats) return [];
     return [...(stats.by_barangay || [])]
-      .filter((b) => (b.total_volume_kg || 0) > 0)
+      .filter((b) => (b.total_volume_mt || 0) > 0)
       .sort((a, b) => a.barangay.localeCompare(b.barangay))
-      .map((b) => ({ name: b.barangay, value: Math.round(b.total_volume_kg) }));
+      .map((b) => ({ name: b.barangay, value: Math.round((b.total_volume_mt || 0) * 1000) / 1000 }));
   }, [stats]);
 
   const pieTotal = useMemo(
@@ -289,8 +290,8 @@ export default function EncoderDashboard() {
           <AdminKpiCard
             icon={Boxes}
             title="Total Production"
-            value={`${((stats.total_volume_kg || 0) / 1000).toFixed(2)} MT`}
-            supporting={`${(stats.total_volume_kg || 0).toLocaleString()} kg recorded`}
+            value={`${(stats.total_volume_mt || 0).toFixed(3)} MT`}
+            supporting={`${formatMT(stats.total_volume_mt)} MT recorded`}
             accent="ocean"
           />
         </Col>
@@ -423,7 +424,7 @@ export default function EncoderDashboard() {
       </Row>
 
       <div id="encoder-submissions">
-        <RecordsTable onEdit={handleEdit} onImported={handleImported} refreshKey={recordsRefreshKey} />
+        <RecordsTable onEdit={handleEdit} onImported={handleImported} refreshKey={recordsRefreshKey} user={user} />
       </div>
 
       <EnvironmentReports user={user} open={activeReport === 'environment'} onClose={handleClose} onImported={handleImported} />

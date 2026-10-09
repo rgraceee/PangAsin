@@ -148,7 +148,7 @@ export default function SupplyDemandAnalytics() {
                   <ResponsiveContainer width="100%" height="100%">
 <BarChart data={bulletData} layout="vertical" margin={{ top: 5, right: 70, bottom: 5, left: 10 }} barCategoryGap="30%">
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" horizontal={false} />
-                        <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, bulletMax]} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+                        <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, bulletMax]} tickFormatter={(v) => `${Math.round(v).toLocaleString()}`} />
                         <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={120} />
                         <Tooltip content={bulletTooltip} cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }} />
                         <Bar dataKey="value" name="Local Supply" radius={[0, 6, 6, 0]} maxBarSize={34} isAnimationActive background={{ fill: 'rgba(12, 35, 64, 0.08)', radius: [0, 6, 6, 0] }}>
