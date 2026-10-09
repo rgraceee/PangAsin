@@ -1,26 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
-import { Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Pencil, Plus, Trash2, Users, ContactRound, CalendarDays } from 'lucide-react';
 import { createProducer, deleteProducer, getProducers, updateProducer } from '../services/dataService';
 import { confirmDelete } from '../services/feedback';
 import { useToast } from './Toast';
+import KpiCard from './ui/KpiCard';
+import KpiGrid from './ui/KpiGrid';
 import PageHeader from './admin/PageHeader';
+import MunicipalityMapArt from './encoder/MunicipalityMapArt';
 import IconButton from './IconButton';
 
 const EMPTY_FORM = { name: '', age: '', sex: '', address: '', barangay_id: '' };
-
-function Stat({ label, value, note }) {
-  return (
-    <Card className="encoder-card h-100">
-      <Card.Body>
-        <div className="small text-muted">{label}</div>
-        <div className="h3 mb-1">{value}</div>
-        {note && <div className="small text-muted">{note}</div>}
-      </Card.Body>
-    </Card>
-  );
-}
 
 export default function ProducerMasterList({ user, isAdmin = false }) {
   const outlet = useOutletContext();
@@ -128,9 +119,10 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       <PageHeader
         id="producer-master-list"
         variant={adminView ? 'sub' : 'clean'}
-        eyebrow={adminView ? undefined : `Encoder · ${activeUser?.municipality_name || 'your municipality'}`}
         title="Master List"
         subtitle={adminView ? 'Registered workers across Pangasinan, organized by municipality and barangay.' : `Registered workers in ${activeUser?.municipality_name || 'your municipality'}.`}
+        art={adminView ? undefined : <MunicipalityMapArt highlightName={activeUser?.municipality_name} />}
+        compact={!adminView}
         action={<Button type="button" onClick={() => { setEditing(null); setForm(EMPTY_FORM); setError(''); setShowAdd(true); }}><Plus size={16} className="me-1" />Add Worker</Button>}
       >
         {adminView && (
@@ -156,12 +148,18 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       </PageHeader>
 
       {error && !showAdd && <Alert variant="danger">{error}</Alert>}
-      <Row className="g-3 mb-4">
-        <Col sm={6} xl={3}><Stat label="Registered workers" value={statistics.total.toLocaleString()} /></Col>
-        <Col sm={6} xl={3}><Stat label="Women" value={statistics.female.toLocaleString()} /></Col>
-        <Col sm={6} xl={3}><Stat label="Men" value={statistics.male.toLocaleString()} /></Col>
-        <Col sm={6} xl={3}><Stat label="Average age" value={statistics.average_age == null ? '—' : `${statistics.average_age}`} note={`Other sex: ${statistics.other.toLocaleString()} worker${statistics.other === 1 ? '' : 's'}`} /></Col>
-      </Row>
+      <KpiGrid columns={4}>
+        <KpiCard icon={Users} title="Registered workers" value={statistics.total} accent="ocean" />
+        <KpiCard icon={ContactRound} title="Women" value={statistics.female} accent="green" />
+        <KpiCard icon={ContactRound} title="Men" value={statistics.male} accent="gold" />
+        <KpiCard
+          icon={CalendarDays}
+          title="Average age"
+          value={statistics.average_age == null ? '—' : statistics.average_age}
+          supporting={`Other sex: ${statistics.other.toLocaleString()} worker${statistics.other === 1 ? '' : 's'}`}
+          accent="brown"
+        />
+      </KpiGrid>
 
       <Card className="encoder-card admin-card">
         <Card.Header className="d-flex align-items-center justify-content-between">

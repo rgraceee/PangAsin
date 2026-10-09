@@ -5,11 +5,13 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Boxes, LayoutGrid, Ruler, ClipboardList, Users, MapPin } from 'lucide-react';
+import { Boxes, LayoutGrid, ClipboardList, Users, MapPin } from 'lucide-react';
 import { getStats, getEncoderMonths } from '../../services/dataService';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
-import AdminKpiCard from '../admin/AdminKpiCard';
+import KpiCard from '../ui/KpiCard';
+import KpiGrid from '../ui/KpiGrid';
 import PageHeader from '../admin/PageHeader';
+import MunicipalityMapArt from './MunicipalityMapArt';
 import RecordsTable from './RecordsTable';
 import ProductionRecordForm from './ProductionRecordForm';
 import { formatMT } from '../../utils/volumeFormat';
@@ -68,26 +70,6 @@ function PieTooltip({ active, payload, total }) {
     <div className="admin-chart-tooltip">
       <div className="ct-label">{p.name}</div>
       <div className="ct-value">{p.value.toLocaleString()} MT{formatPct(share)}</div>
-    </div>
-  );
-}
-
-function KPICluster({ title, accent, actions, children }) {
-  /* WHAT: Optional na label row para sa KPI cards.
-     WHY: inalis na ang "Your data at a glance" row (nilipat ang selects sa header). */
-  const showLabel = Boolean(title || actions);
-  return (
-    <div className="mb-4">
-      {showLabel && (
-        <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
-          <div className={`d-flex align-items-center gap-2 admin-kpi-cluster admin-kpi-cluster-${accent}`}>
-            <span className={`admin-kpi-cluster-bar admin-kpi-accent-${accent}`} />
-            <span className="admin-kpi-cluster-title">{title}</span>
-          </div>
-          {actions}
-        </div>
-      )}
-      <Row className="g-3">{children}</Row>
     </div>
   );
 }
@@ -243,99 +225,76 @@ export default function EncoderDashboard() {
       <PageHeader
         id="encoder-overview"
         variant="clean"
-        eyebrow={`Encoder · ${municipalityName}`}
         title="Dashboard"
         subtitle={`Record, review, and manage salt production data for ${municipalityName}.`}
-        actions={
-          <>
-            {/* WHAT: Chip ng assigned municipality. WHY: dynamic sa login, hindi hardcoded. */}
-            <span className="ui-pageheader-chip" aria-label={`Assigned municipality: ${municipalityName}`}>
-              <MapPin size={14} strokeWidth={1.5} aria-hidden="true" />
-              {municipalityName}
-            </span>
-            {/* WHAT: Period selectors. WHY: dating nasa KPI label row, nasa header na ngayon. */}
-            <select
-              id="encoder-year"
-              className="ui-pageheader-select"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              aria-label="Select year"
-            >
-              {availableYears.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <select
-              id="encoder-month"
-              className="ui-pageheader-select"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              aria-label="Select month"
-              disabled={!monthsInYear.length}
-            >
-              {monthsInYear.map((m) => {
-                const [y, mo] = m.split('-');
-                const d = new Date(Number(y), Number(mo) - 1);
-                return (
-                  <option key={m} value={m}>
-                    {d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-                  </option>
-                );
-              })}
-            </select>
-          </>
-        }
-      />
+        art={<MunicipalityMapArt highlightName={municipalityName} />}
+      >
+        {/* WHAT: Chip ng assigned municipality. WHY: dynamic sa login, hindi hardcoded. */}
+        <span className="ui-pageheader-chip" aria-label={`Assigned municipality: ${municipalityName}`}>
+          <MapPin size={14} strokeWidth={1.5} aria-hidden="true" />
+          {municipalityName}
+        </span>
+        {/* WHAT: Period selectors. WHY: dating nasa KPI label row, nasa header na ngayon. */}
+        <select
+          id="encoder-year"
+          className="ui-pageheader-select"
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
+          aria-label="Select year"
+        >
+          {availableYears.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <select
+          id="encoder-month"
+          className="ui-pageheader-select"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          aria-label="Select month"
+          disabled={!monthsInYear.length}
+        >
+          {monthsInYear.map((m) => {
+            const [y, mo] = m.split('-');
+            const d = new Date(Number(y), Number(mo) - 1);
+            return (
+              <option key={m} value={m}>
+                {d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+              </option>
+            );
+          })}
+        </select>
+      </PageHeader>
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <KPICluster>
-        <Col md={4} lg>
-          <AdminKpiCard
-            icon={Boxes}
-            title="Total Production"
-            value={`${(stats.total_volume_mt || 0).toFixed(3)} MT`}
-            supporting={`${formatMT(stats.total_volume_mt)} MT recorded`}
-            accent="ocean"
-          />
-        </Col>
-        <Col md={4} lg>
-          <AdminKpiCard
-            icon={Ruler}
-            title="Salt Area"
-            value={`${(stats.total_area_sqm || 0).toLocaleString()} m²`}
-            supporting="Beds × area per bed"
-            accent="gold"
-          />
-        </Col>
-        <Col md={4} lg>
-          <AdminKpiCard
-            icon={LayoutGrid}
-            title="Total Salt Beds"
-            value={(stats.total_salt_beds || 0).toLocaleString()}
-            supporting="Across all records"
-            accent="green"
-          />
-        </Col>
-        <Col md={4} lg>
-          <AdminKpiCard
-            icon={ClipboardList}
-            title="Records"
-            value={stats.record_count || 0}
-            supporting="Barangay-level entries"
-            accent="brown"
-          />
-        </Col>
-        <Col md={4} lg>
-          <AdminKpiCard
-            icon={Users}
-            title="Registered Producers"
-            value={(stats.total_registered_producers || 0).toLocaleString()}
-            supporting="Across submitted records"
-            accent="ocean"
-          />
-        </Col>
-      </KPICluster>
+      <KpiGrid columns={4}>
+        <KpiCard
+          icon={Boxes}
+          title="Total Production"
+          value={formatMT(stats.total_volume_mt)}
+          unit="MT"
+          info="Sum of production volume across all your records for the selected period."
+        />
+        <KpiCard
+          icon={LayoutGrid}
+          title="Total Salt Beds"
+          value={stats.total_salt_beds}
+          info="Total salt beds counted across your records for the selected period."
+        />
+        <KpiCard
+          icon={ClipboardList}
+          title="Records"
+          value={stats.record_count}
+          info="Barangay-level entries you submitted for the selected period."
+        />
+        <KpiCard
+          icon={Users}
+          title="Registered Producers"
+          value={stats.total_registered_producers}
+          info="Total registered producers counted across your records for the selected period."
+        />
+      </KpiGrid>
 
       <Row className="g-3 mb-4">
         <Col lg={7}>

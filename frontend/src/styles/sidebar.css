@@ -25,7 +25,7 @@
 /* WHAT: Dock = sidebar width + gap sa magkabilang gilid. WHY: floating card na may margin. */
 .p-dock {
   flex: 0 0 auto;
-  width: calc(var(--p-sidebar-w) + (var(--ui-sidebar-gap) * 2));
+  width: calc(var(--p-sidebar-w) + (var(--ui-shell-gap) * 2));
   overflow: visible;
   transition: width var(--ui-t-slow);
 }
@@ -45,11 +45,21 @@
   scroll-behavior: smooth;
 }
 
+/* WHAT: Isang token lang ang gamit sa shell padding (top/right/bottom + gutter).
+   WHY: para pantay ang top edge at gutter ng content sa floating sidebar card;
+        zero ang left padding dahil may natitirang gap na pagkatapos ng dock. */
+.p-content {
+  padding-top: var(--ui-shell-gap);
+  padding-bottom: var(--ui-shell-gap);
+  padding-right: var(--ui-shell-gap);
+  padding-left: 0;
+}
+
 /* ===== Sidebar container (floating card) ===== */
 .p-sidebar {
   width: var(--p-sidebar-w);
-  height: calc(100% - (var(--ui-sidebar-gap) * 2));
-  margin: var(--ui-sidebar-gap);
+  height: calc(100% - (var(--ui-shell-gap) * 2));
+  margin: var(--ui-shell-gap);
   background: var(--ui-surface);
   border-radius: var(--ui-radius-shell);
   box-shadow: var(--ui-shadow);
@@ -156,34 +166,28 @@
   outline-offset: 2px;
 }
 
+/* WHAT: Walang green ring kapag mouse click o pagbalik ng focus mula sa modal.
+   WHY: keyboard (:focus-visible) lang ang dapat may accent ring. */
+.p-row:focus:not(:focus-visible),
+.p-subrow:focus:not(:focus-visible),
+.p-logo:focus:not(:focus-visible),
+.p-user-logout:focus:not(:focus-visible),
+.p-hamburger:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* WHAT: Active state = soft gray bg + primary text + weight 600. WHY: walang green bar. */
 .p-row.active {
   background: var(--ui-active-bg);
   color: var(--ui-text);
   font-weight: 600;
 }
 
-/* WHAT: 3px x 20px rounded accent bar sa left. WHY: accent indicator ng active item. */
-.p-row.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: var(--ui-radius-pill);
-  background: var(--ui-accent);
-}
-
 .p-row-icon {
   flex: 0 0 auto;
   width: 20px;
   height: 20px;
-}
-
-/* WHAT: Accent tint sa icon lang ng "Add Production Report".
-   WHY: bahagyang pag-stand-out pero pareho pa rin ang row style. */
-.p-row-icon-accent {
-  color: var(--ui-accent);
 }
 
 .p-row-label {
@@ -461,14 +465,14 @@
 
   .p-sidebar {
     position: fixed;
-    top: var(--ui-sidebar-gap);
-    bottom: var(--ui-sidebar-gap);
-    left: var(--ui-sidebar-gap);
+    top: var(--ui-shell-gap);
+    bottom: var(--ui-shell-gap);
+    left: var(--ui-shell-gap);
     width: var(--ui-sidebar-expanded) !important;
     height: auto;
     margin: 0;
     z-index: 60;
-    transform: translateX(calc(-100% - var(--ui-sidebar-gap) - 8px));
+    transform: translateX(calc(-100% - var(--ui-shell-gap) - 8px));
     transition: transform var(--ui-t-slow);
   }
 

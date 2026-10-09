@@ -141,10 +141,9 @@ export function Divider() {
   return <div className="p-divider" role="separator" />;
 }
 
-export function NavItem({ icon: Icon, label, active, badge = 0, onClick, collapsed, iconAccent }) {
+export function NavItem({ icon: Icon, label, active, badge = 0, onClick, collapsed }) {
   const showBadge = badge > 0;
   const tipText = showBadge ? `${label} (${badge})` : label;
-  const iconClass = `p-row-icon${iconAccent ? ' p-row-icon-accent' : ''}`;
 
   return (
     <Tip label={tipText} disabled={!collapsed}>
@@ -155,7 +154,7 @@ export function NavItem({ icon: Icon, label, active, badge = 0, onClick, collaps
         aria-label={collapsed ? tipText : undefined}
         aria-current={active ? 'page' : undefined}
       >
-        {Icon ? <Icon className={iconClass} size={20} strokeWidth={1.5} /> : null}
+        {Icon ? <Icon className="p-row-icon" size={20} strokeWidth={1.5} /> : null}
         <span className="p-row-label">{label}</span>
         {showBadge ? <span className="p-badge">{badge}</span> : null}
       </button>

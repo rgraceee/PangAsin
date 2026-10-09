@@ -16,7 +16,7 @@ const SECTION_ITEMS = [
 /* WHAT: Mga action item na nagbubukas ng add-modal (hindi page).
    WHY: dati nasa dashboard ang 3 buttons, inilipat dito sa sidebar. */
 const ACTION_ITEMS = [
-  { id: 'add-production', label: 'Add Production Report', icon: Boxes, report: 'production', accent: true },
+  { id: 'add-production', label: 'Add Production Report', icon: Boxes, report: 'production' },
   { id: 'add-producer', label: 'Add Producer Report', icon: Users, report: 'producer' },
   { id: 'add-environment', label: 'Add Environment Report', icon: Leaf, report: 'environment' },
 ];
@@ -91,7 +91,6 @@ export default function EncoderSidebar({ user, scrollRef, collapsed, onToggle, o
                 key={item.id}
                 icon={item.icon}
                 label={item.label}
-                iconAccent={item.accent}
                 collapsed={collapsed}
                 onClick={() => openReport(item.report)}
               />

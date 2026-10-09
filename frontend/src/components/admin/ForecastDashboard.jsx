@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Row, Col, Card, Alert, Form, Button, Modal } from 'react-bootstrap';
 import {
   ComposedChart, Line, Area, Bar, BarChart, LabelList, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -32,31 +32,6 @@ function formatPct(val) {
   return `${sign}${val.toFixed(1)}%`;
 }
 
-function useCountUp(target, duration = 700) {
-  const [display, setDisplay] = useState(0);
-  const prevRef = useRef(0);
-  const frameRef = useRef();
-
-  useEffect(() => {
-    const from = prevRef.current;
-    const to = target || 0;
-    if (from === to) return;
-    const start = performance.now();
-    const tick = (now) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      const val = from + (to - from) * eased;
-      setDisplay(val);
-      if (t < 1) frameRef.current = requestAnimationFrame(tick);
-      else prevRef.current = to;
-    };
-    frameRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameRef.current);
-  }, [target, duration]);
-
-  return display;
-}
-
 function StatShell({ icon: Icon, title, children, support, accent }) {
   return (
     <Col md={3} sm={6}>
@@ -71,8 +46,7 @@ function StatShell({ icon: Icon, title, children, support, accent }) {
 }
 
 function AnimatedStat({ icon, title, value, support, accent, format }) {
-  const raw = useCountUp(value);
-  const formatted = format ? format(raw) : raw;
+  const formatted = format ? format(value) : value;
   return (
     <StatShell icon={icon} title={title} support={support} accent={accent}>
       <div className="fc-stat-value">{formatted}</div>

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Alert, Card, Table } from 'react-bootstrap';
+import { Alert, Card, Table } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { BadgeCheck, ClipboardCheck, Building2 } from 'lucide-react';
 import { getDataQuality } from '../../services/dataService';
 import { BRAND } from '../../theme/colors';
-import AdminKpiCard from './AdminKpiCard';
+import KpiCard from '../ui/KpiCard';
+import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import { SkeletonBlock, SkeletonCards } from '../Skeleton';
 
@@ -78,36 +79,30 @@ export default function DataQualityDashboard() {
         subtitle="How well-filled are our records across all municipalities."
       />
 
-      <Row className="g-3 mb-4">
-        <Col md={4}>
-          <AdminKpiCard
-            icon={BadgeCheck}
-            title="Overall Completeness Score"
-            value={`${data.overall_quality_score}%`}
-            supporting="Based on how many required fields are filled in"
-            accent="green"
-            valueClassName={scoreClass(data.overall_quality_score)}
-          />
-        </Col>
-        <Col md={4}>
-          <AdminKpiCard
-            icon={ClipboardCheck}
-            title="Total Records Reviewed"
-            value={data.total_records.toLocaleString()}
-            supporting="From all municipalities combined"
-            accent="ocean"
-          />
-        </Col>
-        <Col md={4}>
-          <AdminKpiCard
-            icon={Building2}
-            title="Municipalities Covered"
-            value={(data.municipalities || []).length}
-            supporting="With submitted records"
-            accent="gold"
-          />
-        </Col>
-      </Row>
+      <KpiGrid columns={3}>
+        <KpiCard
+          icon={BadgeCheck}
+          title="Overall Completeness Score"
+          value={`${data.overall_quality_score}%`}
+          supporting="Based on how many required fields are filled in"
+          accent="green"
+          tone={data.overall_quality_score >= 85 ? 'default' : data.overall_quality_score >= 65 ? 'warning' : 'danger'}
+        />
+        <KpiCard
+          icon={ClipboardCheck}
+          title="Total Records Reviewed"
+          value={data.total_records}
+          supporting="From all municipalities combined"
+          accent="ocean"
+        />
+        <KpiCard
+          icon={Building2}
+          title="Municipalities Covered"
+          value={(data.municipalities || []).length}
+          supporting="With submitted records"
+          accent="gold"
+        />
+      </KpiGrid>
 
       <Card className="encoder-card mb-4">
         <Card.Header as="h5">How Complete Is Each Field? (Province-wide)</Card.Header>

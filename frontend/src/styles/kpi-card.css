@@ -1,0 +1,187 @@
+/* WHAT: One reusable KPI/stat card + grid para sa buong dashboard.
+   WHY: iisang visual language ang encoder/admin/guest stats; tokens-only
+        para hindi mag-hardcode ng kulay at pantay lahat ng row. */
+
+/* ---------- Grid ---------- */
+.ui-kpi-grid {
+  display: grid;
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 1.5rem;
+}
+
+/* WHAT: Desktop columns by card count. WHY: 3/4/5 ang usual na row sizes. */
+.ui-kpi-grid[data-cols="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ui-kpi-grid[data-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ui-kpi-grid[data-cols="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ui-kpi-grid[data-cols="5"] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+/* ---------- Card ---------- */
+.ui-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  padding: 20px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-card);
+  background: linear-gradient(180deg, var(--ui-surface) 0%, #FBFCFB 100%);
+  box-shadow: var(--ui-shadow);
+}
+
+/* WHAT: Top row = icon badge + label. WHY: kaagad makita ang context ng metric. */
+.ui-kpi__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ui-kpi__label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ui-kpi__label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ui-text-2);
+}
+
+/* WHAT: 40px circular icon badge, light-brown tint + brown outline icon.
+   WHY: isang brown hue lang sa lahat; sapat ang contrast (5.79:1) sa tint. */
+.ui-kpi__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ui-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ui-brown-tint);
+  border: 1px solid var(--ui-brown-border);
+  color: var(--ui-brown);
+}
+
+/* ---------- Value ---------- */
+.ui-kpi__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ui-kpi__value {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-kpi__unit {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ui-text-2);
+}
+
+/* WHAT: Tone shifts the value color only para hindi maingay ang buong card. */
+.ui-kpi--warning .ui-kpi__value { color: var(--ui-warning); }
+.ui-kpi--danger .ui-kpi__value { color: var(--ui-danger); }
+
+/* ---------- Trend ---------- */
+.ui-kpi__trend {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ui-kpi__trend-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ui-kpi__trend-label {
+  font-size: 12px;
+  color: var(--ui-text-muted);
+}
+
+.ui-kpi__trend--good .ui-kpi__trend-main { color: var(--ui-accent-dark); }
+.ui-kpi__trend--bad .ui-kpi__trend-main { color: var(--ui-danger); }
+.ui-kpi__trend--neutral .ui-kpi__trend-main { color: var(--ui-text-2); }
+
+/* ---------- Supporting ---------- */
+.ui-kpi__supporting {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ui-text-muted);
+}
+
+/* ---------- Info button + tooltip ---------- */
+.ui-kpi__info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ui-kpi__info:hover,
+.ui-kpi__info:focus-visible {
+  color: var(--ui-text-2);
+}
+
+.ui-kpi__tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  width: max-content;
+  max-width: 220px;
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-row);
+  background: var(--ui-text);
+  color: var(--ui-surface);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  box-shadow: 0 10px 24px -12px rgba(12, 35, 64, 0.6);
+}
+
+/* ---------- Skeleton ---------- */
+.ui-kpi--skeleton {
+  pointer-events: none;
+}
+
+.ui-kpi__skeleton-block {
+  border-radius: var(--ui-radius-row);
+  background: var(--ui-active-bg);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 992px) {
+  .ui-kpi-grid[data-cols="5"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 768px) {
+  .ui-kpi-grid[data-cols] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .ui-kpi-grid[data-cols] { grid-template-columns: 1fr; }
+}

@@ -21,6 +21,18 @@
   --ui-active-bg: #F3F4F6;
   --ui-hover-bg: #F9FAFB;
 
+  /* WHAT: Brown icon palette para sa KPI badges (dito lang dine-define).
+     WHY: light tint surface, mid stroke, at border mula sa isang hue. */
+  --ui-brown-tint: #F3EBE2;
+  --ui-brown: #7A5230;
+  --ui-brown-border: #E8DCCD;
+
+  /* WHAT: KPI semantic tones. WHY: warning/danger lang ang hindi default green. */
+  --ui-warning: #F59E0B;
+  --ui-warning-tint: #FEF6E7;
+  --ui-danger: #DC2626;
+  --ui-danger-tint: #FDECEC;
+
   /* Shape */
   /* WHAT: rows 12px radius. WHY: back sa floating-card sidebar look. */
   --ui-radius-row: 12px;
@@ -35,9 +47,11 @@
   --ui-t-fast: 150ms ease;
   --ui-t-slow: 200ms ease;
 
-  /* Sidebar geometry (consumed by the shell layout) */
-  /* WHAT: 264/72 na may 12px gap. WHY: floating-card sidebar na may margin sa viewport. */
+  /* Shell geometry (consumed by the sidebar + content so parehas ang alignment) */
+  /* WHAT: 264/72 na may 16px shell gap.
+     WHY: isang token para sa sidebar margin, dock width, at content padding
+          para pantay ang top edge at gutter ng sidebar at header card. */
   --ui-sidebar-expanded: 264px;
   --ui-sidebar-collapsed: 72px;
-  --ui-sidebar-gap: 12px;
+  --ui-shell-gap: 16px;
 }

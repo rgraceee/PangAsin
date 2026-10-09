@@ -110,7 +110,8 @@ export default function AppShell({ scrollRef, outletContext, children }) {
 
         <div className="p-main">
           <div className="p-scroll" ref={scrollRef}>
-            <Container fluid className="encoder-content admin-content">
+            {/* WHAT: p-content para sa shared shell padding token. WHY: pantay sa sidebar. */}
+            <Container fluid className="encoder-content admin-content p-content">
               <Outlet context={outletContext} />
             </Container>
           </div>

@@ -4,7 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { Boxes, Target, Percent, Info } from 'lucide-react';
 import { getAdminSupplyDemand } from '../../services/dataService';
 import { BRAND, STATUS } from '../../theme/colors';
-import AdminKpiCard from './AdminKpiCard';
+import KpiCard from '../ui/KpiCard';
+import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 
@@ -102,35 +103,31 @@ export default function SupplyDemandAnalytics() {
         subtitle="Domestic salt supply compared with demand benchmarks."
       />
 
-      <Row className="g-3 mb-3">
-        <Col md={4}>
-          <AdminKpiCard
-            icon={Boxes}
-            title="Local Supply"
-            value={`${localSupply.toLocaleString()} MT`}
-            supporting={`Pangasinan production (${pangasinan.year})`}
-            accent="ocean"
-          />
-        </Col>
-        <Col md={4}>
-          <AdminKpiCard
-            icon={Target}
-            title="Demand Benchmark"
-            value={`${demandBenchmark.toLocaleString()} MT`}
-            supporting={`Target demand (${pangasinan.year})`}
-            accent="gold"
-          />
-        </Col>
-        <Col md={4}>
-          <AdminKpiCard
-            icon={Percent}
-            title="Sufficiency"
-            value={`${sufficiency}%`}
-            supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} MT`}
-            accent="green"
-          />
-        </Col>
-      </Row>
+      <KpiGrid columns={3}>
+        <KpiCard
+          icon={Boxes}
+          title="Local Supply"
+          value={localSupply}
+          unit="MT"
+          supporting={`Pangasinan production (${pangasinan.year})`}
+          accent="ocean"
+        />
+        <KpiCard
+          icon={Target}
+          title="Demand Benchmark"
+          value={demandBenchmark}
+          unit="MT"
+          supporting={`Target demand (${pangasinan.year})`}
+          accent="gold"
+        />
+        <KpiCard
+          icon={Percent}
+          title="Sufficiency"
+          value={`${sufficiency}%`}
+          supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} MT`}
+          accent="green"
+        />
+      </KpiGrid>
 
       {gap < 0 && (
         <Alert variant="warning" className="mb-3">

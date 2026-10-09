@@ -20,27 +20,10 @@ const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
 
 const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
-import AdminKpiCard from './AdminKpiCard';
+import KpiCard from '../ui/KpiCard';
+import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
-
-function KPIStat({ title, value, supporting, accent, icon }) {
-  return (
-    <AdminKpiCard icon={icon} title={title} value={value} supporting={supporting} accent={accent} />
-  );
-}
-
-function KPICluster({ title, accent, children }) {
-  return (
-    <div className="mb-4">
-      <div className={`d-flex align-items-center gap-2 admin-kpi-cluster admin-kpi-cluster-${accent}`}>
-        <span className={`admin-kpi-cluster-bar admin-kpi-accent-${accent}`} />
-        <span className="admin-kpi-cluster-title">{title}</span>
-      </div>
-      <Row className="g-3">{children}</Row>
-    </div>
-  );
-}
 
 function ChartTooltip({ active, payload, label, suffix = '', nameFormatter }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -164,41 +147,30 @@ export default function AdminDashboard({ user }) {
 
       <MunicipalityMap muniData={muniData} />
 
-      <Row className="g-3 mb-4">
-        <Col md={4}>
-          <KPIStat icon={Boxes} title="Total Production" value={`${totalVolumeMT.toLocaleString()} MT`} supporting={`${totalVolumeMT.toLocaleString()} MT recorded`} accent="ocean" />
-        </Col>
-        <Col md={4}>
-          <KPIStat icon={Ruler} title="Production Area" value={`${stats.total_area_sqm.toLocaleString()}\u00A0m\u00B2`} supporting="Combined area of all beds" accent="ocean" />
-        </Col>
-        <Col md={4}>
-          <KPIStat
-            icon={Scale}
-            title="Supply-Demand Balance"
-            value={supplyDemandGap == null ? 'N/A' : `${supplyDemandLabel} ${Math.abs(Math.round(supplyDemandGap)).toLocaleString()} MT`}
-            supporting={demandBenchmark ? `vs ${demandBenchmark.toLocaleString()} MT demand benchmark` : 'No demand benchmark available'}
-            accent="gold"
-          />
-        </Col>
-      </Row>
+      <KpiGrid columns={3}>
+        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="MT" supporting={`${totalVolumeMT.toLocaleString()} MT recorded`} accent="ocean" />
+        <KpiCard icon={Ruler} title="Production Area" value={stats.total_area_sqm} unit="m²" supporting="Combined area of all beds" accent="ocean" />
+        <KpiCard
+          icon={Scale}
+          title="Supply-Demand Balance"
+          value={supplyDemandGap == null ? 'N/A' : `${supplyDemandLabel} ${Math.abs(Math.round(supplyDemandGap)).toLocaleString()}`}
+          unit={supplyDemandGap == null ? undefined : 'MT'}
+          supporting={demandBenchmark ? `vs ${demandBenchmark.toLocaleString()} MT demand benchmark` : 'No demand benchmark available'}
+          accent="gold"
+        />
+      </KpiGrid>
 
-      <Row className="g-3 mb-4">
-        <Col md={4}>
-          <KPIStat icon={LayoutGrid} title="Total Salt Beds" value={stats.total_salt_beds.toLocaleString()} supporting="Active production beds" accent="ocean" />
-        </Col>
-        <Col md={4}>
-          <KPIStat icon={Hourglass} title="Pending Validation" value={stats.pending_validation_count.toLocaleString()} supporting="Awaiting admin review" accent="green" />
-        </Col>
-        <Col md={4}>
-          <KPIStat
-            icon={CalendarCheck}
-            title="Forecast Availability"
-            value={`${readyMunis} / ${totalMunis}`}
-            supporting="Municipalities with forecast data"
-            accent="gold"
-          />
-        </Col>
-      </Row>
+      <KpiGrid columns={3}>
+        <KpiCard icon={LayoutGrid} title="Total Salt Beds" value={stats.total_salt_beds} supporting="Active production beds" accent="ocean" />
+        <KpiCard icon={Hourglass} title="Pending Validation" value={stats.pending_validation_count} supporting="Awaiting admin review" accent="gold" tone="warning" />
+        <KpiCard
+          icon={CalendarCheck}
+          title="Forecast Availability"
+          value={`${readyMunis} / ${totalMunis}`}
+          supporting="Municipalities with forecast data"
+          accent="green"
+        />
+      </KpiGrid>
 
       <Row className="g-3 mb-4">
         <Col lg={12}>

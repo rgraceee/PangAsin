@@ -23,14 +23,6 @@
   min-width: 0;
 }
 
-.ui-pageheader-eyebrow {
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ui-text-muted);
-}
-
 .ui-pageheader-title {
   margin: 0;
   font-size: 24px;
@@ -140,5 +132,214 @@
   .ui-pageheader-actions .ui-pageheader-select {
     flex: 1 1 0;
     min-width: 0;
+  }
+}
+
+/* ============================================================
+   WHAT: "Art" na hero para sa encoder header (maps + layering).
+   WHY: tokens-only na decorasyon; hindi kinkin ang admin/guest.
+   ============================================================ */
+.ui-pageheader--art {
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+  padding: 28px 32px;
+  background:
+    radial-gradient(120% 140% at 100% 0%, var(--ui-accent-tint) 0%, transparent 55%),
+    linear-gradient(90deg, var(--ui-surface) 28%, var(--ui-accent-tint) 100%);
+}
+
+.ui-pageheader--art .ui-pageheader-main,
+.ui-pageheader--art .ui-pageheader-controls {
+  position: relative;
+  z-index: 1;
+  max-width: 60%;
+}
+
+.ui-pageheader--art .ui-pageheader-title {
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.ui-pageheader--art .ui-pageheader-sub {
+  max-width: 46ch;
+}
+
+/* WHAT: Dotted grid na kumukupas papuntang kaliwa para malinis ang text. */
+.ui-pageheader-art-grid {
+  position: absolute;
+  inset: 0;
+  color: var(--ui-text);
+  opacity: 0.05;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 42%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 42%, #000 100%);
+}
+
+/* WHAT: Malambot na accent glow sa likod ng mapa. */
+.ui-pageheader-art-glow {
+  position: absolute;
+  top: -60px;
+  right: -50px;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, var(--ui-accent) 0%, transparent 65%);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+/* WHAT: Mapang nasa loob ng card (hindi na lumalabas), vertically centered.
+   WHY: 32px ang right inset at 400px ang lapad para buo at hindi putol ang highlight. */
+.ui-pageheader-art {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 32px;
+  width: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ui-pageheader-art .munimap {
+  animation: ui-art-in 400ms ease both;
+}
+
+/* WHAT: Compact na bersyon para sa Master List (mas maliit na mapa). */
+.ui-pageheader--compact {
+  min-height: 150px;
+  padding: 22px 28px;
+}
+
+.ui-pageheader--compact .ui-pageheader-title {
+  font-size: 24px;
+}
+
+.ui-pageheader--compact .ui-pageheader-art {
+  width: 190px;
+}
+
+/* WHAT: Motion para sa map. */
+@keyframes ui-art-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   WHAT: Estilo ng inline SVG map (.munimap) para sa header.
+   ============================================================ */
+.munimap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-text);
+}
+
+/* WHAT: height:auto + max-height para sundan ang aspect ng viewBox pero hindi
+   lumampas sa card; overflow visible para buo ang label pill at pulse. */
+.munimap-svg {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.munimap-shape {
+  fill: var(--ui-border);
+  stroke: var(--ui-surface);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.munimap-shape--salt {
+  fill: var(--ui-guide);
+}
+
+.munimap-shape--active {
+  fill: var(--ui-accent);
+  stroke-width: 2;
+}
+
+.munimap-glow {
+  flood-color: var(--ui-accent);
+  flood-opacity: 0.4;
+}
+
+.munimap-waves {
+  color: var(--ui-accent);
+  opacity: 0.06;
+}
+
+.munimap-dot {
+  fill: var(--ui-accent-dark);
+}
+
+.munimap-pill rect {
+  fill: var(--ui-surface);
+  stroke: var(--ui-border);
+  stroke-width: 1;
+}
+
+.munimap-pill text {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--ui-text);
+}
+
+.munimap-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  fill: none;
+  stroke: var(--ui-accent);
+  stroke-width: 1.5;
+  animation: ui-map-pulse 2.4s ease-out infinite;
+}
+
+@keyframes ui-map-pulse {
+  0% { transform: scale(0.6); opacity: 0.55; }
+  70% { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* WHAT: Responsive sizing ng mapa. */
+@media (max-width: 1023.98px) {
+  .ui-pageheader--art .ui-pageheader-art {
+    width: 300px;
+    right: 24px;
+  }
+
+  .ui-pageheader--art .ui-pageheader-main,
+  .ui-pageheader--art .ui-pageheader-controls {
+    max-width: 68%;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ui-pageheader--art {
+    padding: 24px;
+  }
+
+  .ui-pageheader--art .ui-pageheader-art {
+    display: none;
+  }
+
+  .ui-pageheader--art .ui-pageheader-main,
+  .ui-pageheader--art .ui-pageheader-controls {
+    max-width: 100%;
+  }
+}
+
+/* WHAT: Igalang ang prefers-reduced-motion.
+   WHY: Walang looping animation maliban sa pulse; patayin lahat kapag hilingin. */
+@media (prefers-reduced-motion: reduce) {
+  .ui-pageheader-art .munimap,
+  .munimap-pulse {
+    animation: none !important;
   }
 }

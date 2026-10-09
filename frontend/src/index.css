@@ -1174,44 +1174,11 @@ body {
   color: var(--gray-500);
 }
 
-.admin-kpi-accent {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-}
-
-.admin-kpi-accent-ocean { background: var(--ocean-blue); }
-.admin-kpi-accent-gold { background: var(--harvest-gold); }
-.admin-kpi-accent-green { background: var(--leaf-green); }
-.admin-kpi-accent-brown { background: var(--earth-brown); }
-.admin-kpi-accent-warning { background: #f59e0b; }
-
 .admin-kpi-accent-oceanbg { background: linear-gradient(135deg, #1565c8, #0d47a1); }
 .admin-kpi-accent-goldbg { background: linear-gradient(135deg, #fbbf24, #f09a28); }
 .admin-kpi-accent-greenbg { background: linear-gradient(135deg, #34d399, #29b039); }
 .admin-kpi-accent-brownbg { background: linear-gradient(135deg, #9c6f3f, #574326); }
 .admin-kpi-accent-warningbg { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
-
-.admin-kpi-cluster {
-  margin-bottom: 0.5rem;
-}
-
-.admin-kpi-cluster-bar {
-  width: 4px;
-  height: 20px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.admin-kpi-cluster-title {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--gray-600);
-}
 
 .admin-card .card-header {
   font-weight: 700;
