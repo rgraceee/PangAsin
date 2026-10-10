@@ -1,20 +1,23 @@
 import React, { useId } from 'react';
 
 export default function PageHeader({
-  id, title, subtitle, children, action, actions, chips, variant = 'main', eyebrow,
-  art, compact = false,
+  id, title, subtitle, children, action, actions, variant = 'main', eyebrow,
+  art, compact = false, status, stat, className = '',
 }) {
   const rawId = useId();
   const dotId = `ph-dots-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   /* WHAT: Bagong "clean" na header gamit lang ang ui tokens.
      WHY: para sa encoder pages habang byte-identical pa rin ang admin/guest na hero.
-     ADDITIVE: ang art/compact ay hindi ginagamit ng admin/guest (variant main/sub). */
+      ADDITIVE: ang art/compact/status/className ay hindi ginagamit ng admin/guest (variant main/sub).
+      Ang `status` ay ang compact chip strip sa ilalim ng subtitle (hal. admin dashboard).
+      Ang `stat` ay ang equal-width stat strip sa ilalim ng top row (hal. admin dashboard hero). */
   if (variant === 'clean') {
     const hasArt = Boolean(art);
     const headerClass = [
       'ui-pageheader',
       hasArt ? 'ui-pageheader--art' : '',
       compact ? 'ui-pageheader--compact' : '',
+      className,
     ].filter(Boolean).join(' ');
     return (
       <header className={headerClass} id={id}>
@@ -40,14 +43,11 @@ export default function PageHeader({
           <div className="ui-pageheader-left">
             <h1 className="ui-pageheader-title">{title}</h1>
             {subtitle ? <p className="ui-pageheader-sub">{subtitle}</p> : null}
-            {chips && chips.length ? (
-              <div className="ui-pageheader-chips">
-                {chips.map((chip, i) => <span className="ui-pageheader-chip" key={i}>{chip}</span>)}
-              </div>
-            ) : null}
+            {status ? <div className="ui-pageheader-status">{status}</div> : null}
           </div>
           {(actions || action) ? <div className="ui-pageheader-actions">{actions || action}</div> : null}
         </div>
+        {stat ? <div className="ui-pageheader-statstrip">{stat}</div> : null}
         {children ? <div className="ui-pageheader-controls">{children}</div> : null}
       </header>
     );

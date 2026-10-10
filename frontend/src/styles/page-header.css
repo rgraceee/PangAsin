@@ -1,11 +1,16 @@
-/* WHAT: "Clean" na page header (puting surface) na tokens-only.
-   WHY: hiwalay sa admin hero classes para hindi magalaw ang admin/guest pages. */
+/* ============================================================
+   WHAT: "Clean" na page header (puting surface) na tokens-only.
+   WHY: hiwalay sa admin hero classes para hindi magalaw ang admin/guest pages.
+   ============================================================ */
+/* WHAT: 20px radius + 1px border + overflow hidden para sa lahat ng clean header.
+   WHY: parehas ang card shell gamit ang ui-tokens; ang .--dashboard may art wash. */
 .ui-pageheader {
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-shell);
   padding: 24px;
   margin-bottom: 16px;
+  overflow: hidden;
 }
 
 .ui-pageheader-main {
@@ -35,13 +40,6 @@
   margin: 0;
   font-size: 14px;
   color: var(--ui-text-2);
-}
-
-.ui-pageheader-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
 }
 
 .ui-pageheader-chip {
@@ -302,7 +300,7 @@
    WHY: opacity para mag-mukhang "set" ang 7 at hindi kasing-tindi ng single highlight. */
 .munimap-shape--province {
   fill: var(--ui-accent);
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
 /* WHAT: Hover tooltips lang ang kailangan ng pointer events sa province mode.
@@ -413,6 +411,212 @@
   .ui-pageheader--art .ui-pageheader-main,
   .ui-pageheader--art .ui-pageheader-controls {
     max-width: 100%;
+  }
+}
+
+/* ============================================================
+   WHAT: Admin dashboard header (variant clean, may art).
+   WHY: Polished hero matching the encoder style: 20px radius, 1px border,
+        overflow hidden, white-to-accent-tint horizontal wash peaking behind
+        the map, faint dot pattern (4-6% opacity) fading out toward the left.
+   ============================================================ */
+.ui-pageheader--dashboard {
+  padding: 24px 28px;
+  /* WHAT: White surface with a soft horizontal wash that peaks behind the map panel.
+     WHY: keeps the left text area clean while the right panel glows faintly. */
+  background:
+    linear-gradient(90deg, var(--ui-surface) 0%, var(--ui-surface) 38%, var(--ui-accent-tint) 66%, var(--ui-accent-tint) 100%),
+    var(--ui-surface);
+}
+
+/* WHAT: Faint dot grid overlay that fades out toward the left (text area stays readable).
+   WHY: same family as the encoder header — decorative only, never under the controls. */
+.ui-pageheader--dashboard .ui-pageheader-art-grid {
+  position: absolute;
+  inset: 0;
+  color: var(--ui-text);
+  opacity: 0.05;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 100%);
+}
+
+/* WHAT: Soft accent glow behind the right map panel. */
+.ui-pageheader--dashboard .ui-pageheader-art-glow {
+  position: absolute;
+  top: 50%;
+  right: 32px;
+  transform: translateY(-50%);
+  width: 42%;
+  height: 90%;
+  max-height: 340px;
+  background: radial-gradient(circle, var(--ui-accent) 0%, transparent 65%);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.ui-pageheader--dashboard .ui-pageheader-title {
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* WHAT: Left block max-width 52% so the subtitle/selects never overlap the map panel.
+   WHY: same family as the encoder header — text wraps cleanly, map sits on the right. */
+.ui-pageheader--dashboard .ui-pageheader-main,
+.ui-pageheader--dashboard .ui-pageheader-controls {
+  position: relative;
+  z-index: 1;
+  max-width: 52%;
+  min-width: 0;
+}
+
+.ui-pageheader--dashboard .ui-pageheader-left {
+  flex: 1 1 auto;
+}
+
+/* WHAT: Compact chip strip moved into the stat strip; kept for backwards compat. */
+.ui-pageheader--dashboard .ui-pageheader-status {
+  margin-top: 10px;
+}
+
+/* WHAT: Equal-width stat strip inside the same card, below the top row, separated by a 1px divider.
+   WHY: no boxes or chips — just muted labels, 22px 650 values, optional trend text.
+   Becomes a 2x2 grid below 768px. */
+.ui-pageheader--dashboard .ui-pageheader-statstrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  margin-top: 20px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.ui-dashstat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  min-width: 0;
+}
+
+.ui-dashstat--divided {
+  border-left: 1px solid var(--ui-border);
+}
+
+.ui-dashstat__label {
+  font-size: 12px;
+  color: var(--ui-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.ui-dashstat__value {
+  font-size: 22px;
+  font-weight: 650;
+  color: var(--ui-text);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-dashstat__value--warn {
+  color: var(--ui-warning);
+}
+
+.ui-dashstat__link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.ui-dashstat__link:hover {
+  text-decoration: underline;
+}
+
+.ui-dashstat__trend {
+  font-size: 11.5px;
+  color: var(--ui-text-2);
+  font-weight: 500;
+}
+
+/* WHAT: Province-mode value labels next to salt-producing municipalities.
+   WHY: show "Bolinao 1.2k MT" only when production is already loaded;
+   hidden labels that overlap, full name exposed via <title> tooltip. */
+.munimap-valuelabel rect {
+  fill: var(--ui-surface);
+  stroke: var(--ui-border);
+  stroke-width: 1;
+}
+
+.munimap-valuelabel text {
+  font-size: 9.5px;
+  font-weight: 600;
+  fill: var(--ui-text);
+  font-family: inherit;
+}
+
+/* WHAT: Province mode — 7 salt municipalities in a lighter accent tint than the encoder.
+   WHY: keeps the "set" look without competing with the single-municipality highlight. */
+.munimap-shape--province {
+  fill: var(--ui-accent);
+  opacity: 0.45;
+}
+
+/* WHAT: 40px select na 10px radius (matches .ui-btn-* sa right block). */
+.ui-pageheader--dashboard .ui-dashselect {
+  border-radius: var(--ui-radius-input);
+}
+
+/* WHAT: Link-buttons sa header ay walang underline (button look). */
+.ui-pageheader--dashboard .ui-pageheader-actions a.ui-btn-outline,
+.ui-pageheader--dashboard .ui-pageheader-actions a.ui-btn-primary {
+  text-decoration: none;
+}
+
+/* WHAT: <1024px — bumaba ang kanang block sa ilalim ng kaliwa, full width. */
+@media (max-width: 1023.98px) {
+  .ui-pageheader--dashboard .ui-pageheader-actions {
+    width: 100%;
+  }
+}
+
+/* WHAT: <640px — full-width ang buttons; nag-wrap na rin ang chips. */
+@media (max-width: 639.98px) {
+  .ui-pageheader--dashboard {
+    padding: 20px;
+  }
+
+  .ui-pageheader--dashboard .ui-pageheader-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ui-pageheader--dashboard .ui-pageheader-actions > * {
+    width: 100%;
+  }
+
+  .ui-pageheader--dashboard .ui-pageheader-actions a.ui-btn-outline,
+  .ui-pageheader--dashboard .ui-pageheader-actions a.ui-btn-primary {
+    justify-content: center;
+  }
+}
+
+/* WHAT: <768px — hide the map art; stat strip becomes a 2x2 grid; actions remain visible.
+   WHY: map is decorative on small screens; the stat strip and actions stay usable. */
+@media (max-width: 767.98px) {
+  .ui-pageheader--dashboard .ui-pageheader-art {
+    display: none;
+  }
+
+  .ui-pageheader--dashboard .ui-pageheader-main,
+  .ui-pageheader--dashboard .ui-pageheader-controls {
+    max-width: 100%;
+  }
+
+  .ui-pageheader--dashboard .ui-pageheader-statstrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ui-pageheader--dashboard {
+    padding: 20px;
   }
 }
 

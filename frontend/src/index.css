@@ -111,9 +111,10 @@ body {
 /* Map */
 .map-wrapper {
   position: relative;
-  border-radius: 10px;
+  border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--gray-200);
+  background: var(--white);
 }
 
 .map-container {
@@ -121,6 +122,14 @@ body {
   min-height: 460px;
   width: 100%;
   background: #DCECFB;
+}
+
+/* WHAT: Light basemap tint for the admin "Salt Production Across Pangasinan" map.
+   WHY: no new provider or API key — just a rounded 16px container with a subtle
+        border and a reduced dark overlay so the map reads light. Interaction,
+        labels, and popups are unchanged. */
+.admin-map-section .map-container {
+  background: #E8F1FC;
 }
 
 .map-container .leaflet-interactive:focus:not(:focus-visible) {

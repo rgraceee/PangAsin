@@ -51,7 +51,7 @@ export function addProvinceMask(map, rings) {
   L.polygon(rings, {
     interactive: false,
     stroke: false,
-    fillColor: '#334155',
-    fillOpacity: 0.75,
+    fillColor: '#94A3B8',
+    fillOpacity: 0.35,
   }).addTo(map);
 }
