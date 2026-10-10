@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Row, Col, Alert, Card, Table } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, LabelList } from 'recharts';
 import { getAdminStats, loadPublicDashboardData, getMunicipalityProduction, getDemographicsByMunicipality } from '../../services/dataService';
@@ -91,6 +92,26 @@ export default function MunicipalityAnalytics() {
   }, [rows, hidden]);
 
   const muniColor = (name) => MUNICIPALITY_COLORS[name] || BRAND.ocean;
+
+  /* WHAT: Isalamin ang global municipality filter (URL ?muni=) sa sariling chips nito.
+     WHY: para parehas ang scope ng hero at ng analytics; hindi ito nakikipag-away sa
+          manual na chip clicks (umaandar lang kapag nagbago ang URL muni o ang data). */
+  const [searchParams] = useSearchParams();
+  const urlMuni = searchParams.get('muni') || '';
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const match = rows.find((r) => r.name === urlMuni);
+    if (urlMuni && match) {
+      setChartMuni(urlMuni);
+      setProvinceMode(false);
+      setHidden(new Set(rows.map((r) => r.name).filter((n) => n !== urlMuni)));
+    } else {
+      setChartMuni(null);
+      setProvinceMode(true);
+      setHidden(new Set());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlMuni, rows]);
 
   if (loading) {
     return (
@@ -616,7 +637,7 @@ export default function MunicipalityAnalytics() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {visibleRows.map((r) => (
                 <tr key={r.id}>
                   <td className="fw-semibold">{r.name}</td>
                   <td>{r.volumeMT.toLocaleString()}</td>

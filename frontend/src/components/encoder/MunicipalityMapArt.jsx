@@ -12,17 +12,6 @@ import {
 /* WHAT: Ayos ng 7 salt-producing municipalities para sa province mode dots/legend. */
 const SALT_LIST = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta', 'San Fabian'];
 
-/* WHAT: Format MT value for compact province labels (e.g. "1.2k MT").
-   WHY: reuse the same rounding as formatMT but shorten for tight SVG pills. */
-function formatMTCompact(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '—';
-  const abs = Math.abs(n);
-  if (abs >= 1000) return `${(Math.round(n / 100) / 10).toFixed(1).replace(/\.0$/, '')}k`;
-  if (abs >= 100) return `${Math.round(n / 10) / 100}`.replace(/\.0$/, '');
-  return String(Math.round(n));
-}
-
 /* WHAT: Static na inline SVG na mapa ng Pangasinan (hindi Leaflet, walang tiles).
    WHY: Magaan na decorasyon para sa clean page header. Encoder (single) ay naka-ZOOM
         (focus) sa sariling munisipyo; admin (province) ay buong lalawigan. Parehong
@@ -30,7 +19,7 @@ function formatMTCompact(value) {
    WHY: default ay 'single' pa rin — ang AdminDashboard lang ang nagpasa ng explicit
         mode="province"; kung 'province' ang default ay nagbago ang /encoder at
         ProducerMasterList na walang mode mula sa pag-focus sa sariling bayan. */
-export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, muniData = null }) {
+export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, selectedName = '' }) {
   const rawId = useId();
   const uid = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
   /* WHAT: buildMunicipalityArt is module-level cached and never null, but guard anyway
@@ -39,59 +28,10 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
   const { width = 0, height = 0, shapes = [], centroids = {}, bounds = {} } = art;
   const isProvince = mode === 'province';
 
-  /* WHAT: Map of normalized municipality name -> production value for province labels.
-     WHY: only render a value label when production is already loaded (muniData). */
-  const prodByNorm = useMemo(() => {
-    const m = {};
-    if (Array.isArray(muniData)) {
-      muniData.forEach((d) => {
-        if (!d || !d.name) return;
-        m[normalizeMunicipalityName(d.name)] = d.volumeMT;
-      });
-    }
-    return m;
-  }, [muniData]);
-
-  /* WHAT: Collision-aware label placement for province mode.
-     WHY: hide labels that overlap; show full name in a title tooltip.
-     Guarded: only runs when the projected geometry exists (width/height > 0). */
-  const labelPlacements = useMemo(() => {
-    if (!isProvince || !width || !height) return [];
-    const placed = [];
-    const frameBox = { x: 0, y: 0, w: width, h: height };
-    const pad = 4;
-    const sorted = SALT_LIST.map((n) => normalizeMunicipalityName(n))
-      .filter((k) => centroids[k])
-      .sort((a, b) => (centroids[a]?.x ?? 0) - (centroids[b]?.x ?? 0));
-    for (const key of sorted) {
-      const c = centroids[key];
-      if (!c) continue;
-      const name = c.name;
-      const pillW = name.length * 6.2 + 18;
-      const pillH = 18;
-      let best = null;
-      for (const side of ['above', 'below', 'left', 'right']) {
-        const px = side === 'left' ? c.x - pillW / 2 - 6 : side === 'right' ? c.x + pillW / 2 + 6 : c.x;
-        const py = side === 'above' ? c.y - 16 : side === 'below' ? c.y + 16 : c.y;
-        const x0 = px - pillW / 2;
-        const y0 = py - pillH / 2;
-        const x1 = px + pillW / 2;
-        const y1 = py + pillH / 2;
-        if (x0 < pad || y0 < pad || x1 > width - pad || y1 > height - pad) continue;
-        const overlap = placed.some((p) => !(x1 <= p.x0 || x0 >= p.x1 || y1 <= p.y0 || y0 >= p.y1));
-        if (overlap) continue;
-        best = { px, py, pillW, pillH, x0, y0, x1, y1, side };
-        break;
-      }
-      if (best) {
-        best.name = name;
-        best.key = key;
-        best.value = prodByNorm[key];
-        placed.push(best);
-      }
-    }
-    return placed;
-  }, [isProvince, centroids, width, height, prodByNorm]);
+  /* WHAT: Selected municipality ng /admin filter ('' = Pangasinan / walang highlight).
+     WHY: province mode — ang napiling bayan ay solid accent + pangalan + kuat na pulse;
+          ang ibang 6 ay light green na walang pill (hindi na value labels). */
+  const selectedKey = selectedName ? normalizeMunicipalityName(selectedName) : '';
 
   const highlightSet = useMemo(() => {
     if (isProvince) return SALT_MUNICIPALITY_NAMES;
@@ -161,14 +101,18 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
 
         {isProvince ? (
           /* WHAT: Buong lalawigan; ang 7 salt ay accent (mas maliwanag) para mag-mukhang set.
-             WHY: title child para sa hover tooltip na pangalan ng munisipyo. */
+             WHY: title child para sa hover tooltip na pangalan ng munisipyo.
+             Ang napiling bayan (selectedKey) ay solid accent + glow; ang iba ay light green. */
           shapes.map((s) => {
-            const salt = SALT_MUNICIPALITY_NAMES.has(normalizeMunicipalityName(s.name));
+            const norm = normalizeMunicipalityName(s.name);
+            const salt = SALT_MUNICIPALITY_NAMES.has(norm);
+            const selected = salt && selectedKey === norm;
             return (
               <path
                 key={s.key}
                 d={s.d}
-                className={`munimap-shape${salt ? ' munimap-shape--province' : ''}`}
+                className={`munimap-shape${salt ? (selected ? ' munimap-shape--active' : ' munimap-shape--province') : ''}`}
+                filter={selected ? `url(#${uid}-glow)` : undefined}
               >
                 <title>{s.name}</title>
               </path>
@@ -213,10 +157,15 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
           ? saltOrder.map((key, i) => {
             const c = centroids[key];
             if (!c) return null;
+            const selected = selectedKey === key;
             return (
               <g key={`dot-${key}`} transform={`translate(${c.x} ${c.y})`}>
-                <circle className="munimap-pulse" r="6" style={{ animationDelay: `${i * 150}ms` }} />
-                <circle className="munimap-dot" r="3" />
+                <circle
+                  className={`munimap-pulse${selected ? ' munimap-pulse--strong' : ''}`}
+                  r={selected ? 8 : 6}
+                  style={selected ? undefined : { animationDelay: `${i * 150}ms` }}
+                />
+                <circle className="munimap-dot" r={selected ? 3.5 : 3} />
               </g>
             );
           })
@@ -240,26 +189,20 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
             );
           })}
 
-        {/* WHAT: Province-mode value labels (e.g. "Bolinao 1.2k MT") with collision avoidance.
-           WHY: only show when production is already loaded; overlapping labels are hidden;
-           full name is exposed via <title> tooltip. */}
-        {isProvince
-          ? labelPlacements.map((p) => {
-            const label = p.value != null ? `${p.name} ${formatMTCompact(p.value)} MT` : p.name;
+        {/* WHAT: Pangalan pill ng napiling municipality sa province mode ('' = wala).
+           WHY: naka-anchor sa centroid nito na walang overlap; nagbibigay ng konteksto
+                kung aling bayan ang kasalukuyang naka-filter sa dashboard. */}
+        {isProvince && selectedKey && centroids[selectedKey]
+          ? (() => {
+            const c = centroids[selectedKey];
+            const place = computeLabelPlacement(c.x, c.y, c.name, frameBox);
             return (
-              <g key={`lbl-${p.key}`} className="munimap-valuelabel">
-                <title>{p.name}</title>
-                <rect
-                  x={p.px - p.pillW / 2}
-                  y={p.py - p.pillH / 2}
-                  width={p.pillW}
-                  height={p.pillH}
-                  rx="9"
-                />
-                <text x={p.px} y={p.py} textAnchor="middle" dominantBaseline="central">{label}</text>
+              <g className="munimap-pill" transform={`translate(${place.px} ${place.py})`}>
+                <rect x={-place.pillW / 2} y={-place.pillH / 2} width={place.pillW} height={place.pillH} rx="9" />
+                <text x="0" y="0" textAnchor="middle" dominantBaseline="central">{c.name}</text>
               </g>
             );
-          })
+          })()
           : null}
       </svg>
 

@@ -1,12 +1,8 @@
 import React, { Component, useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Row, Col, Alert, Card } from 'react-bootstrap';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend,
-} from 'recharts';
 import L from 'leaflet';
-import { Boxes, LayoutGrid, Ruler, Hourglass, Scale, CalendarCheck, ChartLine, MapPin } from 'lucide-react';
+import { Boxes, LayoutGrid, Ruler, Hourglass, Scale, CalendarCheck, MapPin } from 'lucide-react';
 import {
   getAdminStats, getAdminTrends, getAdminMonths,
   getMunicipalityOutlook, getAdminSupplyDemand,
@@ -52,60 +48,75 @@ class HeroMapErrorBoundary extends Component {
   }
 }
 
-/* WHAT: Format ng admin month key (YYYY-MM) papuntang "Mon YYYY".
-   WHY: Pare-parehong label sa month select ng header at dati sa trend card. */
-function monthLabel(ym) {
-  const [y, mo] = String(ym || '').split('-');
-  const d = new Date(Number(y), Number(mo) - 1);
-  return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-}
+/* WHAT: Mga pagpipilian sa Municipality filter (7 salt-producing + Pangasinan).
+   WHY: parehas na ayos sa SALT_LIST ng MunicipalityMapArt para tugma ang highlight. */
+const MUNI_OPTIONS = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta', 'San Fabian'];
 
-function ChartTooltip({ active, payload, label, suffix = '', nameFormatter }) {
-  if (!active || !payload || payload.length === 0) return null;
-  return (
-    <div className="admin-chart-tooltip">
-      {label != null && <div className="ct-label">{label}</div>}
-      {payload.map((entry, i) => (
-        <div key={entry.dataKey || i}>
-          <div className="ct-value">{nameFormatter ? nameFormatter(entry.value) : `${Number(entry.value).toLocaleString()}${suffix}`}</div>
-          <div className="ct-sub">{entry.name}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function trendCaption(series) {
-  if (!series || series.length === 0) return null;
-  const peak = series.reduce((best, m) => (m.total > best.total ? m : best), series[0]);
-  return (
-    <div className="chart-caption">
-      <b>{peak.month}</b> was the highest-output month across the province
-      at <b>{peak.total.toLocaleString()} MT</b>.
-    </div>
-  );
-}
+/* WHAT: Maikling pangalan ng buwan para sa Month dropdown (Jan..Dec).
+   WHY: compact na opsyon lang; ang buong period ay binubuo mula Month + Year. */
+const MONTH_SHORTS = Array.from({ length: 12 }, (_, i) =>
+  new Date(2000, i, 1).toLocaleString(undefined, { month: 'short' }));
+const MONTH_NUMBERS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState(null);
-  const [trendSeries, setTrendSeries] = useState([]);
   const [reportingMunis, setReportingMunis] = useState([]);
-  const [period, setPeriod] = useState(null);
   const [outlook, setOutlook] = useState([]);
   const [supplyDemand, setSupplyDemand] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [adminMonths, setAdminMonths] = useState([]);
-  const [selectedAdminMonth, setSelectedAdminMonth] = useState(() => new Date().toISOString().slice(0, 7));
+
+  /* WHAT: URL-driven filters (muni/month/year) gamit ang query params.
+     WHY: shareable/reload-safe ang view; ang dashboard ay view lang (walang bagong API). */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlMuni = searchParams.get('muni') || '';
+  const urlMonthRaw = searchParams.get('month') || '';
+  const urlYearRaw = searchParams.get('year') || '';
+
+  /* WHAT: Sanitize ang URL month/year — huwag ipadala ang invalid na value sa trends.
+     WHY: ang '/trends?month=13' ay magbabalik ng 400; i-ignore na lang ang invalid. */
+  const isAllMonths = urlMonthRaw === 'all';
+  const monthNumber = Number(urlMonthRaw);
+  const hasValidMonth = !isAllMonths && urlMonthRaw !== '' && Number.isInteger(monthNumber) && monthNumber >= 1 && monthNumber <= 12;
+  const hasValidYear = /^\d{4}$/.test(urlYearRaw);
+
+  const todayIso = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  /* WHAT: Default na period = ngayong buwan; kung wala ito sa adminMonths ay
+     gamitin ang pinakahuling buwan na may data (kaparehas ng dating behavior).
+     WHY: kapag walang URL params, may sensible na default pa rin ang dashboard. */
+  const resolvedDefaultMonth = useMemo(() => {
+    if (adminMonths.length > 0 && !adminMonths.includes(todayIso)) {
+      return adminMonths[adminMonths.length - 1];
+    }
+    return todayIso;
+  }, [adminMonths, todayIso]);
+
+  const selectedMuni = urlMuni; // '' = Pangasinan (province-wide)
+  const selYear = hasValidYear ? urlYearRaw : resolvedDefaultMonth.slice(0, 4);
+  const selMonth = isAllMonths ? '' : (hasValidMonth ? urlMonthRaw : resolvedDefaultMonth.slice(5, 7));
+  /* WHAT: Pinagsamang period key (YYYY-MM) o '' kapag "All months".
+     WHY: ito ang ipinapasa sa /trends para sa month-scoped reporting stats. */
+  const selectedAdminMonth = (isAllMonths || !selMonth)
+    ? ''
+    : `${selYear}-${String(Number(selMonth)).padStart(2, '0')}`;
+
+  const yearOptions = useMemo(() => {
+    const years = new Set(adminMonths.map((m) => m.slice(0, 4)));
+    years.add(String(new Date().getFullYear()));
+    if (resolvedDefaultMonth) years.add(resolvedDefaultMonth.slice(0, 4));
+    if (hasValidYear) years.add(urlYearRaw);
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [adminMonths, resolvedDefaultMonth, hasValidYear, urlYearRaw]);
 
   useEffect(() => {
     getAdminMonths()
       .then((res) => {
-        const months = res.months || [];
-        setAdminMonths(months);
-        if (months.length > 0 && !months.includes(selectedAdminMonth)) {
-          setSelectedAdminMonth(months[months.length - 1]);
-        }
+        setAdminMonths(res.months || []);
       })
       .catch(() => {});
   }, []);
@@ -121,11 +132,9 @@ export default function AdminDashboard({ user }) {
     ])
       .then(([s, tr, ol, sd]) => {
         setStats(s);
-        setTrendSeries(tr.trend || []);
         /* WHAT: Mga munisipyo na may approved records sa panahon (galing sa trends).
-           WHY: ito ang "municipalities reporting" na chip; wala tayong bagong API call. */
+           WHY: ito ang "municipalities reporting"; wala tayong bagong API call. */
         setReportingMunis(tr.municipalities || []);
-        setPeriod(tr.period || null);
         setOutlook(ol.municipalities || []);
         setSupplyDemand(sd);
         setLoading(false);
@@ -161,6 +170,16 @@ export default function AdminDashboard({ user }) {
       .filter((t) => Number.isFinite(t));
     return stamps.length ? new Date(Math.max(...stamps)) : null;
   }, [outlook]);
+
+  /* WHAT: Hanapin ang napiling munisipalidad sa naka-load na muniData at trends.
+     WHY: para maging muni-scoped ang stat strip nang walang bagong API call;
+          null-safe ang lahat (— kapag wala ang data). */
+  const selectedMuniData = selectedMuni
+    ? (muniData.find((m) => normName(m.name) === normName(selectedMuni)) || null)
+    : null;
+  const muniReportingNow = selectedMuni
+    ? reportingMunis.some((r) => normName(typeof r === 'string' ? r : (r && r.name) || '') === normName(selectedMuni))
+    : null;
 
   if (loading) {
     return (
@@ -203,37 +222,69 @@ export default function AdminDashboard({ user }) {
   const reportingCount = Math.min(reportingMunis.length, saltTotal);
 
   /* WHAT: Stat strip (3-4 equal columns, 1px dividers) inside the same card below the top row.
-     WHY: show only items whose data is already loaded; pending links to /admin/validation
-          and is amber when N>0. Strip becomes a 2x2 grid below 768px. */
+     WHY: show only items whose data is already loaded; naka-label ang scope ng bawat stat
+          (muni vs province-wide). Pending links to /admin/validation (amber when N>0). */
   const statItems = [];
-  statItems.push({
-    label: 'Total production',
-    value: `${totalVolumeMT.toLocaleString()} MT`,
-    trend: null,
-  });
-  statItems.push({
-    label: 'Pending validation',
-    value: pendingValidation > 0 ? String(pendingValidation) : 'All caught up',
-    tone: pendingValidation > 0 ? 'warn' : 'neutral',
-    link: '/admin/validation',
-  });
-  statItems.push({
-    label: 'Municipalities reporting',
-    value: `${reportingCount} of ${saltTotal}`,
-  });
-  if (lastRunAt) {
+  if (selectedMuni) {
+    /* WHAT: Muni-scoped stats gamit lang ang loaded data. WHY: para hindi misleading. */
     statItems.push({
-      label: 'Last forecast run',
-      value: lastRunAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      label: `Production · ${selectedMuni}`,
+      value: selectedMuniData ? `${selectedMuniData.volumeMT.toLocaleString()} MT` : '—',
     });
+    statItems.push({
+      label: 'Reporting this period',
+      value: muniReportingNow ? 'Yes' : 'No',
+      tone: muniReportingNow ? 'ok' : 'muted',
+    });
+    statItems.push({
+      label: 'Pending validation · province-wide',
+      value: pendingValidation > 0 ? String(pendingValidation) : 'All caught up',
+      tone: pendingValidation > 0 ? 'warn' : 'neutral',
+      link: '/admin/validation',
+    });
+    if (lastRunAt) {
+      statItems.push({
+        label: 'Last forecast run · province-wide',
+        value: lastRunAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      });
+    }
+  } else {
+    statItems.push({
+      label: 'Total production',
+      value: `${totalVolumeMT.toLocaleString()} MT`,
+      trend: null,
+    });
+    statItems.push({
+      label: 'Pending validation',
+      value: pendingValidation > 0 ? String(pendingValidation) : 'All caught up',
+      tone: pendingValidation > 0 ? 'warn' : 'neutral',
+      link: '/admin/validation',
+    });
+    statItems.push({
+      label: 'Municipalities reporting',
+      value: `${reportingCount} of ${saltTotal}`,
+    });
+    if (lastRunAt) {
+      statItems.push({
+        label: 'Last forecast run',
+        value: lastRunAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      });
+    }
   }
+
+  const statToneClass = (tone) => (
+    tone === 'warn' ? ' ui-dashstat__value--warn'
+      : tone === 'ok' ? ' ui-dashstat__value--ok'
+        : tone === 'muted' ? ' ui-dashstat__value--muted'
+          : ''
+  );
 
   const statStrip = (
     <div className="ui-dashstats" role="list">
       {statItems.map((item, idx) => (
         <div key={item.label} className={`ui-dashstat${idx > 0 ? ' ui-dashstat--divided' : ''}`} role="listitem">
           <div className="ui-dashstat__label">{item.label}</div>
-          <div className={`ui-dashstat__value${item.tone === 'warn' ? ' ui-dashstat__value--warn' : ''}`}>
+          <div className={`ui-dashstat__value${statToneClass(item.tone)}`}>
             {item.link ? <Link to={item.link} className="ui-dashstat__link">{item.value}</Link> : item.value}
           </div>
           {item.trend ? <div className="ui-dashstat__trend">{item.trend}</div> : null}
@@ -242,21 +293,48 @@ export default function AdminDashboard({ user }) {
     </div>
   );
 
-  /* WHAT: Kanang block ng header: month selector + dalawang actions.
-     WHY: Hindi binago ang existing state/handler ng selector (selectedAdminMonth). */
+  /* WHAT: Filter bar (municipality / month / year) sa kanang block ng hero.
+     WHY: pinapalitan ang dating "Generate report" at "Validation queue" buttons;
+          URL-driven ang state para shareable/reload-safe; may Reset kapag non-default. */
+  const updateParam = (key, value) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next);
+  };
+  const resetFilters = () => setSearchParams({});
+  const isDefaultFilters = urlMuni === '' && urlMonthRaw === '' && urlYearRaw === '';
+  const periodHasData = selectedAdminMonth === '' || adminMonths.includes(selectedAdminMonth);
+
   const headerActions = (
-    <>
-      <select
-        className="ui-pageheader-select ui-dashselect"
-        value={selectedAdminMonth}
-        onChange={(e) => setSelectedAdminMonth(e.target.value)}
-        aria-label="Select month"
-      >
-        {adminMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
-      </select>
-      <Link className="ui-btn-outline" to="/admin/reports">Generate report</Link>
-      <Link className="ui-btn-primary" to="/admin/validation">Validation queue</Link>
-    </>
+    <div className="dashboard-filters">
+      <label className="dashboard-filter">
+        <span className="dashboard-filter__label">Municipality</span>
+        <select value={selectedMuni} onChange={(e) => updateParam('muni', e.target.value)}>
+          <option value="">Pangasinan</option>
+          {MUNI_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </label>
+      <label className="dashboard-filter">
+        <span className="dashboard-filter__label">Month</span>
+        <select value={selMonth} onChange={(e) => updateParam('month', e.target.value === '' ? 'all' : e.target.value)}>
+          <option value="">All months</option>
+          {MONTH_NUMBERS.map((num, i) => <option key={num} value={num}>{MONTH_SHORTS[i]}</option>)}
+        </select>
+      </label>
+      <label className="dashboard-filter">
+        <span className="dashboard-filter__label">Year</span>
+        <select value={selYear} onChange={(e) => updateParam('year', e.target.value)}>
+          {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </label>
+      {!isDefaultFilters && (
+        <button type="button" className="dashboard-filter-reset" onClick={resetFilters}>Reset</button>
+      )}
+      {!periodHasData && (
+        <p className="dashboard-filter-note" role="status">No data for this period.</p>
+      )}
+    </div>
   );
 
 return (
@@ -270,17 +348,19 @@ return (
         variant="clean"
         className="ui-pageheader--dashboard"
         title="Dashboard"
-        subtitle="Province-wide salt production monitoring for Pangasinan."
+        subtitle={selectedMuni
+          ? `Production monitoring for ${selectedMuni}, Pangasinan.`
+          : 'Province-wide salt production monitoring for Pangasinan.'}
         stat={statStrip}
         actions={headerActions}
         art={(
           <HeroMapErrorBoundary>
-            <MunicipalityMapArt mode="province" muniData={muniData || []} />
+            <MunicipalityMapArt mode="province" selectedName={selectedMuni} />
           </HeroMapErrorBoundary>
         )}
       />
 
-      <MunicipalityMap muniData={muniData} />
+      <MunicipalityMap muniData={muniData} selectedName={selectedMuni} />
 
       <KpiGrid columns={3}>
         <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="MT" supporting={`${totalVolumeMT.toLocaleString()} MT recorded`} accent="ocean" />
@@ -314,11 +394,16 @@ return (
   );
 }
 
-function MunicipalityMap({ muniData }) {
+function MunicipalityMap({ muniData, selectedName }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const geoJsonLayerRef = useRef(null);
   const detailOpenRef = useRef(false);
+  /* WHAT: Ref na nagdadala ng pinakabagong selectedName papasok sa Leaflet handlers.
+     WHY: ang mouseout handler ay na-closure noong init, kaya kailangan ng ref
+          para hindi ito makaluma kapag nagbago ang filter. */
+  const selectedNameRef = useRef(selectedName);
+  selectedNameRef.current = selectedName;
 
   const { min, max } = useMemo(() => {
     const values = muniData.map((m) => m.volumeMT);
@@ -459,8 +544,15 @@ function MunicipalityMap({ muniData }) {
             target.openTooltip();
           },
           mouseout: (e) => {
-            geoJsonLayerRef.current.resetStyle(e.target);
-            e.target.closeTooltip();
+            const target = e.target;
+            geoJsonLayerRef.current.resetStyle(target);
+            /* WHAT: Kung ang layer na ito ang napiling muni, ibalik ang highlight.
+               WHY: ang resetStyle ay nagwawala sa highlight kapag na-hover ito. */
+            const selKey = selectedNameRef.current ? normName(selectedNameRef.current) : '';
+            if (selKey && normName(target.feature?.properties?.name) === selKey) {
+              target.setStyle({ fillColor: BRAND.ocean, fillOpacity: 0.96, weight: 3, color: '#ffffff', opacity: 1 });
+            }
+            target.closeTooltip();
           },
           click: (e) => {
             L.DomEvent.stopPropagation(e.originalEvent);
@@ -508,6 +600,21 @@ if (geoJsonLayerRef.current) {
       }
     }
   }, [muniData, min, max, renderPopup]);
+
+  /* WHAT: I-highlight ang napiling munisipalidad sa malaking mapa (reset muna lahat).
+     WHY: solid accent + puting border para malinaw kung alin ang naka-filter;
+          naiposisyon pagkatapos ng init effect para may layers nang mai-istyle. */
+  useEffect(() => {
+    const gl = geoJsonLayerRef.current;
+    if (!gl) return;
+    const selKey = selectedName ? normName(selectedName) : '';
+    gl.eachLayer((layer) => {
+      gl.resetStyle(layer);
+      if (selKey && normName(layer.feature?.properties?.name) === selKey) {
+        layer.setStyle({ fillColor: BRAND.ocean, fillOpacity: 0.96, weight: 3, color: '#ffffff', opacity: 1 });
+      }
+    });
+  }, [selectedName]);
 
   return (
     <Row className="g-3 mb-4">

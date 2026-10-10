@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Row, Col, Card, Alert } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
 import { Boxes, Target, Percent, Info } from 'lucide-react';
@@ -39,6 +40,12 @@ export default function SupplyDemandAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  /* WHAT: Rinig kung may naka-filter na munisipalidad sa dashboard.
+     WHY: ang supply & demand ay province-wide benchmark; dapat itong ipaalam
+          kapag may naka-select na muni para hindi ito misleading. */
+  const [searchParams] = useSearchParams();
+  const hasMuniFilter = Boolean(searchParams.get('muni'));
 
   useEffect(() => {
     getAdminSupplyDemand()
@@ -102,6 +109,12 @@ export default function SupplyDemandAnalytics() {
         title="Supply &amp; Demand Analytics"
         subtitle="Domestic salt supply compared with demand benchmarks."
       />
+
+      {hasMuniFilter && (
+        <p className="text-muted small mb-3">
+          Province-wide benchmark &mdash; not affected by the municipality filter.
+        </p>
+      )}
 
       <KpiGrid columns={3}>
         <KpiCard
