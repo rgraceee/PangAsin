@@ -12,6 +12,20 @@ import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 
 const GRADIENT = [BRAND.ocean, BRAND.gold, BRAND.green, STATUS.not_ready];
 
+// WHAT: I-round para sa consistent decimals + thousands separators.
+// WHY: max 2 decimals ang MT sa buong dashboard, hindi 3+.
+const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+// WHAT: Nice ceiling sa multiples (1/2/5 x 10^n) para even ang axis ticks.
+// WHY: hindi bastang val*1.15 na pwedeng mag-iwan ng weird na max tick.
+function niceCeil(value) {
+  if (value <= 0) return 10;
+  const pow = 10 ** Math.floor(Math.log10(value));
+  const n = value / pow;
+  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  return nice * pow;
+}
+
 function bulletTooltip({ active, payload }) {
   if (!active || !payload || payload.length === 0) return null;
   const entry = payload.find((p) => p.name === 'Local Supply') || payload[0];
@@ -58,7 +72,7 @@ export default function SupplyDemandAnalytics() {
 
   const localSupply = pangasinan?.local_production != null ? pangasinan.local_production : 0;
   const demandBenchmark = pangasinan?.demand_volume != null ? pangasinan.demand_volume : 0;
-  const bulletMax = Math.max(localSupply, demandBenchmark, 1) * 1.15;
+  const bulletMax = niceCeil(Math.max(localSupply, demandBenchmark, 1) * 1.15);
 
   const bulletData = useMemo(() => [
     { name: 'Local Supply', value: localSupply, fill: BRAND.ocean },
@@ -73,6 +87,8 @@ export default function SupplyDemandAnalytics() {
       }))
       .sort((a, b) => b.value - a.value);
   }, [sectorDemand]);
+
+  const sectorMax = niceCeil(sectorData.reduce((mx, s) => Math.max(mx, s.value), 0) * 1.05);
 
   if (loading) {
     return (
@@ -105,7 +121,7 @@ export default function SupplyDemandAnalytics() {
     <div>
       <PageHeader
         id="admin-supply-demand"
-        variant="sub"
+        variant="section"
         title="Supply &amp; Demand Analytics"
         subtitle="Domestic salt supply compared with demand benchmarks."
       />
@@ -120,25 +136,23 @@ export default function SupplyDemandAnalytics() {
         <KpiCard
           icon={Boxes}
           title="Local Supply"
-          value={localSupply}
+          value={Math.round(localSupply * 100) / 100}
           unit="MT"
           supporting={`Pangasinan production (${pangasinan.year})`}
-          accent="ocean"
         />
         <KpiCard
           icon={Target}
           title="Demand Benchmark"
-          value={demandBenchmark}
+          value={Math.round(demandBenchmark * 100) / 100}
           unit="MT"
           supporting={`Target demand (${pangasinan.year})`}
-          accent="gold"
         />
         <KpiCard
           icon={Percent}
           title="Sufficiency"
-          value={`${sufficiency}%`}
+          value={sufficiency}
+          unit="%"
           supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} MT`}
-          accent="green"
         />
       </KpiGrid>
 
@@ -154,14 +168,17 @@ export default function SupplyDemandAnalytics() {
             <Card.Header as="h5">Supply vs Demand (MT)</Card.Header>
             <Card.Body>
               <div>
-                <div style={{ height: 300 }}>
+                {/* WHAT: Compact bullet — maliit na height, may benchmark line.
+                   WHY: 190px lang para hindi ubusin ang row; axis 0..niceMax na may
+                        even ticks at thousands separators. */}
+                <div style={{ height: 190 }}>
                   <ResponsiveContainer width="100%" height="100%">
-<BarChart data={bulletData} layout="vertical" margin={{ top: 5, right: 70, bottom: 5, left: 10 }} barCategoryGap="30%">
+<BarChart data={bulletData} layout="vertical" margin={{ top: 10, right: 70, bottom: 5, left: 10 }} barCategoryGap="30%">
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" horizontal={false} />
-                        <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, bulletMax]} tickFormatter={(v) => `${Math.round(v).toLocaleString()}`} />
+                        <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, bulletMax]} tickFormatter={fmtMT} />
                         <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={120} />
                         <Tooltip content={bulletTooltip} cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }} />
-                        <Bar dataKey="value" name="Local Supply" radius={[0, 6, 6, 0]} maxBarSize={34} isAnimationActive background={{ fill: 'rgba(12, 35, 64, 0.08)', radius: [0, 6, 6, 0] }}>
+                        <Bar dataKey="value" name="Local Supply" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive background={{ fill: 'rgba(12, 35, 64, 0.08)', radius: [0, 6, 6, 0] }}>
                           {bulletData.map((b, i) => (
                             <Cell key={i} fill={b.fill} />
                           ))}
@@ -171,7 +188,7 @@ export default function SupplyDemandAnalytics() {
                           stroke={BRAND.gold}
                           strokeDasharray="5 3"
                           strokeWidth={2}
-                          label={{ value: `Benchmark ${demandBenchmark.toLocaleString()} MT`, position: 'insideTopLeft', fill: BRAND.gold, fontSize: 11, fontWeight: 800 }}
+                          label={{ value: `Benchmark ${fmtMT(demandBenchmark)} MT`, position: 'insideTopLeft', fill: BRAND.gold, fontSize: 11, fontWeight: 800 }}
                         />
                       </BarChart>
                   </ResponsiveContainer>
@@ -200,23 +217,30 @@ export default function SupplyDemandAnalytics() {
                 <div>
                   <div style={{ height: 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={sectorData} layout="vertical" margin={{ top: 5, right: 80, bottom: 5, left: 0 }}>
+                      <BarChart data={sectorData} layout="vertical" margin={{ top: 30, right: 80, bottom: 5, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" horizontal={false} />
-                        <XAxis type="number" tick={{ fontSize: 12 }} />
+                        {/* WHAT: Sensible axis — 0..niceMax, even ticks, thousands separators. */}
+                        <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, sectorMax]} tickFormatter={fmtMT} />
                         <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} />
                         <Tooltip
                           formatter={(value) => [`${Number(value).toLocaleString()} MT`, 'Sector demand']}
                           cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }}
+                          // WHAT: Pin-up ang tooltip sa may margin area sa itaas ng plot.
+                          // WHY: hindi nito tinatakpan ang mga bar at value labels kapag naka-hover.
+                          position={{ x: 14, y: -36 }}
+                          wrapperStyle={{ pointerEvents: 'none' }}
                         />
                         <Bar dataKey="value" name="Sector demand (MT)" radius={[0, 6, 6, 0]} maxBarSize={28} isAnimationActive>
                           {sectorData.map((s, i) => (
-                            <Cell key={i} fill={s.fill} fillOpacity={0.45} stroke={s.fill} strokeOpacity={0.4} strokeWidth={1} />
+                            <Cell key={i} fill={s.fill} />
                           ))}
+                          {/* WHAT: Full-opacity na value labels (kayumanggi, hindi gray).
+                             WHY: basahin kaagad nang hindi umaasa sa tooltip. */}
                           <LabelList
                             dataKey="value"
                             position="right"
-                            formatter={(v) => `${Number(v).toLocaleString()} MT`}
-                            style={{ fontSize: 11, fontWeight: 700, fill: 'var(--gray-500)' }}
+                            formatter={fmtMT}
+                            style={{ fontSize: 11, fontWeight: 700, fill: '#343A40', opacity: 1 }}
                           />
                         </Bar>
                       </BarChart>

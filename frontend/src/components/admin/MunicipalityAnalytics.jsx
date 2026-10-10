@@ -88,7 +88,7 @@ export default function MunicipalityAnalytics() {
     const visible = rows.filter((r) => !hidden.has(r.name));
     return [...visible]
       .sort((a, b) => b.registered - a.registered)
-      .map((r) => ({ name: r.name, registered: r.registered, fill: MUNICIPALITY_COLORS[r.name] || BRAND.ocean }));
+      .map((r) => ({ name: r.name, registered: r.registered }));
   }, [rows, hidden]);
 
   const muniColor = (name) => MUNICIPALITY_COLORS[name] || BRAND.ocean;
@@ -285,23 +285,25 @@ export default function MunicipalityAnalytics() {
     <div>
       <PageHeader
         id="admin-municipality"
-        variant="sub"
+        variant="section"
         title="Municipality Analytics"
         subtitle="Deep-dive production breakdown for each municipality."
       />
 
-      <div className="muni-toggle">
+      {/* WHAT: Horizontally scrollable segmented chips — walang checkbox swatch.
+         WHY: hindi na "checkbox" ang itsura; isang row lang, nagiging scrollable
+              sa maliit na screen (walang orphan wrap). */}
+      <div className="muni-toggle" role="group" aria-label="Municipality filter">
         <button
           key="pangasinan"
           type="button"
           className={`muni-chip ${provinceMode ? 'muni-chip--on' : 'muni-chip--off'}`}
-          style={provinceMode ? { background: BRAND.ocean, borderColor: BRAND.ocean, color: '#fff', boxShadow: `0 4px 14px -4px ${BRAND.ocean}66` } : undefined}
+          style={provinceMode ? { background: BRAND.ocean, borderColor: BRAND.ocean, color: '#fff' } : undefined}
           onClick={selectPangasinan}
           aria-pressed={provinceMode}
           title="Whole-province aggregate"
         >
-          <span className="muni-chip-swatch" style={{ background: provinceMode ? 'rgba(255,255,255,0.9)' : BRAND.ocean }} />
-          <span className="muni-chip-name">Pangasinan</span>
+          Pangasinan
         </button>
         {MUNI_ORDER.map((name) => {
           const inData = present.has(name);
@@ -317,15 +319,14 @@ export default function MunicipalityAnalytics() {
               key={name}
               type="button"
               className={cls.join(' ')}
-              style={isOn ? { background: color, borderColor: color, color: '#fff', boxShadow: `0 4px 14px -4px ${color}66` } : undefined}
+              style={isOn ? { background: color, borderColor: color, color: '#fff' } : undefined}
               onClick={() => inData && toggleMuni(name)}
               disabled={!inData}
               aria-pressed={isOn}
               aria-disabled={!inData}
               title={!inData ? `${name} has no data` : isOff ? `Show ${name}` : `Hide ${name}`}
             >
-              <span className="muni-chip-swatch" style={{ background: inData ? (isOn ? 'rgba(255,255,255,0.9)' : color) : 'transparent' }} />
-              <span className="muni-chip-name">{name}</span>
+              {name}
               {!inData && <span className="muni-chip-none">no data</span>}
             </button>
           );
@@ -355,23 +356,27 @@ export default function MunicipalityAnalytics() {
                 <div>
                   <div style={{ height: 300 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={registeredData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                        <defs>
-                          {registeredData.map((entry, i) => (
-                            <linearGradient key={i} id={`regGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={entry.fill} stopOpacity={0.95} />
-                              <stop offset="100%" stopColor={entry.fill} stopOpacity={0.55} />
-                            </linearGradient>
-                          ))}
-                        </defs>
+                      <BarChart data={registeredData} margin={{ top: 18, right: 20, bottom: 5, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                        <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                        {/* WHAT: Ipakita ang LAHAT ng x labels (niliko kapag mahaba).
+                           WHY: dati ay nilaktawan ng recharts ang Alaminos City. */}
+                        <XAxis dataKey="name" interval={0} angle={-32} textAnchor="end" height={72} tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 12 }} allowDecimals={false} tickFormatter={(v) => Number(v).toLocaleString()} />
                         <Tooltip cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }} content={<ChartTooltip />} />
                         <Bar dataKey="registered" name="Registered producers" radius={[6, 6, 0, 0]} maxBarSize={46}>
+                          {/* WHAT: Isang pangunahing kulay; ang top bar (index 0) lang ang highlight.
+                             WHY: walang gradient at walang per-muni colors — malinaw ang hierarchy. */}
                           {registeredData.map((entry, i) => (
-                            <Cell key={i} fill={`url(#regGrad-${i})`} />
+                            <Cell key={i} fill={i === 0 ? BRAND.gold : BRAND.ocean} />
                           ))}
+                          {/* WHAT: Value labels sa tuktok ng bawat bar, may thousands separator.
+                             WHY: hindi na kailangan i-hover para malaman ang eksaktong bilang. */}
+                          <LabelList
+                            dataKey="registered"
+                            position="top"
+                            formatter={(v) => Number(v).toLocaleString()}
+                            style={{ fontSize: 10.5, fontWeight: 700, fill: '#343A40' }}
+                          />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -421,14 +426,15 @@ export default function MunicipalityAnalytics() {
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    <div>
+                    <div className="donut-legend">
                       {methods.map((m) => {
                         const pct = methodsTotal > 0 ? ((m.value / methodsTotal) * 100).toFixed(1) : 0;
                         return (
-                          <div key={m.key} className="d-flex align-items-center gap-2 mb-2">
-                            <span style={{ width: 10, height: 10, borderRadius: 3, background: METHOD_COLORS[m.key], flexShrink: 0 }} />
-                            <span className="small fw-semibold" style={{ minWidth: 130 }}>{METHOD_LABELS[m.key]}</span>
-                            <span className="small text-muted">{pct}%</span>
+                          <div key={m.key} className="donut-legend-item">
+                            <span className="donut-legend-swatch" style={{ background: METHOD_COLORS[m.key] }} />
+                            <span className="donut-legend-name">{METHOD_LABELS[m.key]}</span>
+                            <span className="donut-legend-value">{Math.round(m.value).toLocaleString()} MT</span>
+                            <span className="donut-legend-pct">{pct}%</span>
                           </div>
                         );
                       })}
@@ -492,12 +498,15 @@ export default function MunicipalityAnalytics() {
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    <div>
+                    <div className="donut-legend">
                       {genderPieData.map((g) => (
-                        <div key={g.name} className="d-flex align-items-center gap-2 mb-2">
-                          <span style={{ width: 10, height: 10, borderRadius: 3, background: g.fill, flexShrink: 0 }} />
-                          <span className="small fw-semibold" style={{ minWidth: 130 }}>{g.name}</span>
-                          <span className="small text-muted">{g.value.toLocaleString()}</span>
+                        <div key={g.name} className="donut-legend-item">
+                          <span className="donut-legend-swatch" style={{ background: g.fill }} />
+                          <span className="donut-legend-name">{g.name}</span>
+                          <span className="donut-legend-value">{g.value.toLocaleString()}</span>
+                          <span className="donut-legend-pct">
+                            {demogTotal > 0 ? `${((g.value / demogTotal) * 100).toFixed(1)}%` : ''}
+                          </span>
                         </div>
                       ))}
                     </div>

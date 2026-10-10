@@ -11,6 +11,19 @@ export default function PageHeader({
       ADDITIVE: ang art/compact/status/className ay hindi ginagamit ng admin/guest (variant main/sub).
       Ang `status` ay ang compact chip strip sa ilalim ng subtitle (hal. admin dashboard).
       Ang `stat` ay ang equal-width stat strip sa ilalim ng top row (hal. admin dashboard hero). */
+  /* WHAT: Section title sa loob ng isang pahina — heading + subtext + maikling accent.
+     WHY: malayo ang agwat sa box sa itaas at sa ibaba (hindi nakadikit sa alinman);
+          walang art, walang grid banner, walang card shell — malinis na hierarchy. */
+  if (variant === 'section') {
+    return (
+      <header className="ui-section" id={id}>
+        <h2 className="ui-section-title">{title}</h2>
+        {subtitle ? <p className="ui-section-sub">{subtitle}</p> : null}
+        <div className="ui-section-rule" aria-hidden="true" />
+      </header>
+    );
+  }
+
   if (variant === 'clean') {
     const hasArt = Boolean(art);
     const headerClass = [
@@ -19,6 +32,7 @@ export default function PageHeader({
       compact ? 'ui-pageheader--compact' : '',
       className,
     ].filter(Boolean).join(' ');
+
     return (
       <header className={headerClass} id={id}>
         {hasArt ? (

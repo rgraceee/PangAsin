@@ -5,7 +5,7 @@ import SupplyDemandAnalytics from './SupplyDemandAnalytics';
 
 export default function AdminPage({ user }) {
   return (
-    <div className="admin-single-page">
+    <div className="admin-single-page admin-dashboard-shell">
       <AdminDashboard user={user} />
       <MunicipalityAnalytics />
       <SupplyDemandAnalytics />

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Card } from 'react-bootstrap';
+import { MapPin } from 'lucide-react';
 import L from 'leaflet';
 import geojson from '../data/pangasinan_municipalities.json';
 import geojsonAll from '../data/pangasinan_municipalities_all.json';
@@ -27,6 +28,9 @@ export default function MunicipalityMapSection() {
   const values = sorted.map((m) => m.productionMT);
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 0;
+  // WHAT: Midpoint para sa legend ticks (min / mid / max).
+  // WHY: mas madaling basahin ang sequential color scale kung may gitnang tick.
+  const mid = Math.round((min + max) / 2);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -52,6 +56,8 @@ export default function MunicipalityMapSection() {
       }).setView(provinceBounds.getCenter(), 8);
     mapInstanceRef.current = map;
 
+    // WHAT: Parehas sa admin map — OSM basemap + default province mask.
+    // WHY: para mag-identikal ang public at admin na hitsura (walang API key/watermark).
     addBasemap(map);
     addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds));
 
@@ -217,14 +223,27 @@ export default function MunicipalityMapSection() {
       <Card className="encoder-card">
         <Card.Header>
           <div className="admin-card-head">
-            <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
-            <span className="fw-normal text-muted small ms-1">Distribution by municipality</span>
+            <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><MapPin size={16} strokeWidth={2} /></span>
+            <div>
+              <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
+              <span className="fw-normal text-muted small ms-1">Recorded production distribution by municipality</span>
+            </div>
           </div>
         </Card.Header>
         <Card.Body>
-          <div className="map-wrapper">
+          {/* WHAT: Region na may descriptive label para sa screen readers.
+             WHY: ang Leaflet map ay biswal; ang label + sr-only summary ang nagbibigay ng teksto. */}
+          <div
+            className="map-wrapper"
+            role="region"
+            aria-label="Choropleth map of Pangasinan showing recorded salt production per municipality. Hover or select a shaded municipality to view its production details."
+          >
             <div className="map-container" ref={mapRef}></div>
           </div>
+          <p className="public-sr-only">
+            Map summary: the producing municipalities shown are {sorted.map((m) => m.name).join(', ')}, with recorded
+            production ranging from {min.toLocaleString()} to {max.toLocaleString()} MT.
+          </p>
           <div className="map-legend" aria-label="Map legend">
             <div className="map-gradient-caption">
               <span className="map-legend-label">Lower production</span>
@@ -234,6 +253,12 @@ export default function MunicipalityMapSection() {
               className="map-gradient-legend"
               style={{ backgroundImage: `linear-gradient(90deg, ${OCEAN_LIGHT} 0%, ${BRAND.ocean} 100%)` }}
             ></div>
+            {/* WHAT: Ticks sa ilalim ng gradient (min / mid / max). WHY: mabasa ang scale agad. */}
+            <div className="map-gradient-ticks" aria-hidden="true">
+              <span>{min.toLocaleString()}</span>
+              <span>{mid.toLocaleString()}</span>
+              <span>{max.toLocaleString()}</span>
+            </div>
             <p className="map-range-note">
               {min.toLocaleString()} MT → {max.toLocaleString()} MT across the {sorted.length} producing municipalities
             </p>

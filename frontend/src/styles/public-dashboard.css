@@ -1,0 +1,184 @@
+/* ============================================================
+   WHAT: Public dashboard refinements (Public/Guest page only).
+   WHY: Ini-align ang public page sa clean header ng Admin/Encoder
+        nang HINDI ginagalaw ang admin/encoder. Naka-scope lahat sa
+        .public-dashboard o sa .public-* na klase, kaya walang epekto
+        sa ibang pages. Additive lang — walang binabago sa index.css.
+   ============================================================ */
+
+/* ---------- KPI strip ---------- */
+/* WHAT: Bahagyang pag-angat + mas malalim na shadow sa hover.
+   WHY: parehas sa hover ng admin KPI cards; naka-scope para public lang. */
+.public-dashboard .ui-kpi {
+  transition: transform var(--ui-t-slow), box-shadow var(--ui-t-slow);
+}
+
+.public-dashboard .ui-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -18px rgba(12, 35, 64, 0.45);
+}
+
+.public-kpi-grid {
+  margin-bottom: 1.75rem;
+}
+
+/* ---------- Chart caption as a callout ---------- */
+/* WHAT: Flex layout para may espasyo ang icon sa tabi ng teksto.
+   WHY: dating plain bordered note; ngayon may tone + icon pero backward compatible
+        (`<ChartCaption>text</ChartCaption>` pa rin ang rendering kapag walang icon). */
+.public-chart-caption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-700, #495057);
+  margin: 0 0 1rem;
+  line-height: 1.55;
+  border-radius: 0 10px 10px 0;
+  border-left: 3px solid var(--ocean-blue, #1565c8);
+  padding: 0.55rem 0.85rem 0.55rem 0.75rem;
+  background: linear-gradient(90deg, rgba(21, 101, 200, 0.06), transparent 75%);
+}
+
+.public-chart-caption__icon {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  color: var(--ocean-blue, #1565c8);
+}
+
+.public-chart-caption__text {
+  min-width: 0;
+}
+
+/* WHAT: Tone modifiers. WHY: info=ocean (default), accent=green, warning=gold. */
+.public-chart-caption--accent {
+  border-left-color: var(--ui-accent);
+  background: linear-gradient(90deg, var(--ui-accent-tint), transparent 75%);
+}
+.public-chart-caption--accent .public-chart-caption__icon {
+  color: var(--ui-accent-dark);
+}
+
+.public-chart-caption--warning {
+  border-left-color: var(--p-gold, #f09a28);
+  background: linear-gradient(90deg, rgba(240, 154, 40, 0.1), transparent 75%);
+}
+.public-chart-caption--warning .public-chart-caption__icon {
+  color: #b26a06;
+}
+
+/* ---------- Map legend ticks ---------- */
+/* WHAT: Min / mid / max na label sa ilalim ng gradient legend.
+   WHY: mas mabilis basahin ang sequential scale kung may tick marks. */
+.map-gradient-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.15rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500, #6c757d);
+  font-variant-numeric: tabular-nums;
+}
+
+/* WHAT: Container background na kaparehas ng admin map.
+   WHY: para mag-hitsura na identikal ang public at admin na mapa (light tint,
+        hindi na kailangan ng ibang provider). Naka-scope sa .public-section lang. */
+.public-section .map-container {
+  background: #e8f1fc;
+}
+
+/* ---------- Accessibility helper ---------- */
+/* WHAT: Visually-hidden na teksto para sa screen readers (map summary, atbp.). */
+.public-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Footer ---------- */
+/* WHAT: Navy attribution footer na rounded card (brand shell look).
+   WHY: malinaw na pinagmulan ng datos + credit sa ASIN Center / PSU. */
+.public-footer {
+  margin: 0.5rem 0 2rem;
+  padding: 2rem 2rem 1.25rem;
+  border-radius: var(--ui-radius-shell);
+  background: linear-gradient(135deg, #0c2340 0%, #0d47a1 100%);
+  color: #e7ecf3;
+}
+
+.public-footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 1.5rem 2rem;
+}
+
+.public-footer-block {
+  min-width: 0;
+}
+
+/* WHAT: Puting pill sa likod ng logo para laging kita kahit dark ang background. */
+.public-footer-logo {
+  display: block;
+  height: 42px;
+  width: auto;
+  margin-bottom: 0.9rem;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.public-footer-org {
+  margin: 0 0 0.4rem;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #ffffff;
+}
+
+.public-footer-support {
+  margin: 0;
+  font-size: 12.5px;
+  color: rgba(231, 236, 243, 0.7);
+}
+
+.public-footer-eyebrow {
+  margin-bottom: 0.45rem;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--p-gold, #f09a28);
+}
+
+.public-footer-meta {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: rgba(231, 236, 243, 0.8);
+}
+
+.public-footer-bottom {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 12.5px;
+  color: rgba(231, 236, 243, 0.7);
+}
+
+@media (max-width: 767.98px) {
+  .public-footer {
+    padding: 1.5rem 1.25rem 1rem;
+  }
+
+  .public-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}

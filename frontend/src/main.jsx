@@ -9,6 +9,8 @@ import './styles/ui-tokens.css';
 import './styles/sidebar.css';
 import './styles/page-header.css';
 import './styles/kpi-card.css';
+import './styles/admin-dashboard.css';
+import './styles/public-dashboard.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

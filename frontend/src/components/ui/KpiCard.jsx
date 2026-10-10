@@ -26,6 +26,7 @@ export default function KpiCard({
   tone = 'default',
   info,
   trend,
+  badge,
   loading = false,
   className = '',
 }) {
@@ -52,12 +53,16 @@ export default function KpiCard({
 
   const display = renderValue(value);
   const ariaValue = unit ? `${display} ${unit}` : `${display}`;
+  // WHAT: Badge ay maaaring string lang o {text, tone}.
+  // WHY: tinitipid ang call site — string default good (green), object para sa warn/bad.
+  const badgeText = typeof badge === 'string' ? badge : (badge && badge.text) || null;
+  const badgeTone = typeof badge === 'object' && badge && badge.tone ? badge.tone : 'good';
   const trendText = trend
     ? `${trend.direction === 'up' ? 'up' : 'down'} ${Math.abs(trend.value)} percent ${trend.label || 'versus last month'}, ${trendClass(trend.direction, trend.goodWhen || 'up').endsWith('good') ? 'good' : trendClass(trend.direction, trend.goodWhen || 'up').endsWith('bad') ? 'bad' : 'neutral'}`
     : '';
 
   return (
-    <div className={classes} role="group" aria-label={`${title}: ${ariaValue}`}>
+    <div className={classes} role="group" aria-label={`${title}: ${ariaValue}${badgeText ? `, ${badgeText}` : ''}`}>
       <div className="ui-kpi__top">
         <div className="ui-kpi__label-wrap">
           {Icon && (
@@ -92,6 +97,7 @@ export default function KpiCard({
       <div className="ui-kpi__value-row">
         <span className="ui-kpi__value">{display}</span>
         {unit && <span className="ui-kpi__unit">{unit}</span>}
+        {badgeText && <span className={`ui-kpi__badge ui-kpi__badge--${badgeTone}`}>{badgeText}</span>}
       </div>
 
       {trend && (

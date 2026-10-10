@@ -1,14 +1,14 @@
 import React, { Component, useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Row, Col, Alert, Card } from 'react-bootstrap';
+import { useSearchParams } from 'react-router-dom';
+import { Alert, Card } from 'react-bootstrap';
 import L from 'leaflet';
-import { Boxes, LayoutGrid, Ruler, Hourglass, Scale, CalendarCheck, MapPin } from 'lucide-react';
+import { Boxes, Ruler, Scale, MapPin } from 'lucide-react';
 import {
-  getAdminStats, getAdminTrends, getAdminMonths,
-  getMunicipalityOutlook, getAdminSupplyDemand,
+  getAdminStats, getAdminMonths,
+  getAdminSupplyDemand,
 } from '../../services/dataService';
 import { BRAND, oceanScale, OCEAN_LIGHT } from '../../theme/colors';
-import { addBasemap, buildProvinceMaskRings, addProvinceMask } from '../../utils/mapLayers';
+import { buildProvinceMaskRings, addProvinceMask, addLightBasemap } from '../../utils/mapLayers';
 import { buildMapDetailCard, clampMapDetailTooltip } from '../../utils/mapDetailCard';
 import geojson from '../../data/pangasinan_municipalities.json';
 import geojsonAll from '../../data/pangasinan_municipalities_all.json';
@@ -22,6 +22,10 @@ const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
 
 const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
+
+/* WHAT: Consistent MT formatting — max 2 decimals + thousands separators.
+   WHY: pareho ang pagtitingnan ng lahat ng volume sa buong dashboard. */
+const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 /* WHAT: Tiny error boundary that wraps ONLY the hero map art.
    WHY: a projection or render error inside the decorative SVG must never
@@ -60,8 +64,6 @@ const MONTH_NUMBERS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState(null);
-  const [reportingMunis, setReportingMunis] = useState([]);
-  const [outlook, setOutlook] = useState([]);
   const [supplyDemand, setSupplyDemand] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -126,21 +128,15 @@ export default function AdminDashboard({ user }) {
     setError(null);
     Promise.all([
       getAdminStats(),
-      getAdminTrends({ month: selectedAdminMonth || undefined }).catch(() => ({ trend: [], municipalities: [] })),
-      getMunicipalityOutlook().catch(() => ({ municipalities: [] })),
       getAdminSupplyDemand().catch(() => null),
     ])
-      .then(([s, tr, ol, sd]) => {
+      .then(([s, sd]) => {
         setStats(s);
-        /* WHAT: Mga munisipyo na may approved records sa panahon (galing sa trends).
-           WHY: ito ang "municipalities reporting"; wala tayong bagong API call. */
-        setReportingMunis(tr.municipalities || []);
-        setOutlook(ol.municipalities || []);
         setSupplyDemand(sd);
         setLoading(false);
       })
       .catch((err) => { setError(err.message); setLoading(false); });
-  }, [selectedAdminMonth]);
+  }, []);
 
   /* WHAT: muniData mula sa stats (default: [] habang/sa hindi pa ready).
      WHY: null-safe — kung wala pa ang stats o nawawala ang by_municipality
@@ -150,7 +146,7 @@ export default function AdminDashboard({ user }) {
     return (stats.by_municipality || [])
       .map((m) => ({
         name: m.municipality_name,
-        volumeMT: Math.round((m.total_volume_mt || 0) * 1000) / 1000,
+        volumeMT: Math.round((m.total_volume_mt || 0) * 100) / 100,
         beds: m.total_salt_beds,
         area: m.total_area_sqm,
         registered: m.total_registered_producers,
@@ -162,45 +158,19 @@ export default function AdminDashboard({ user }) {
       .sort((a, b) => b.volumeMT - a.volumeMT);
   }, [stats]);
 
-  /* WHAT: Pinakahuling forecast run date mula sa outlook (may last_run_at na).
-     WHY: Ito lang ang available na "last run" data sa dashboard; walang bagong fetch. */
-  const lastRunAt = useMemo(() => {
-    const stamps = outlook
-      .map((o) => (o.last_run_at ? new Date(o.last_run_at).getTime() : NaN))
-      .filter((t) => Number.isFinite(t));
-    return stamps.length ? new Date(Math.max(...stamps)) : null;
-  }, [outlook]);
-
-  /* WHAT: Hanapin ang napiling munisipalidad sa naka-load na muniData at trends.
-     WHY: para maging muni-scoped ang stat strip nang walang bagong API call;
-          null-safe ang lahat (— kapag wala ang data). */
-  const selectedMuniData = selectedMuni
-    ? (muniData.find((m) => normName(m.name) === normName(selectedMuni)) || null)
-    : null;
-  const muniReportingNow = selectedMuni
-    ? reportingMunis.some((r) => normName(typeof r === 'string' ? r : (r && r.name) || '') === normName(selectedMuni))
-    : null;
-
   if (loading) {
     return (
       <div className="skeleton-dashboard">
         <div className="ui-pageheader ui-pageheader--dashboard">
-          {/* WHAT: Skeleton placeholders para sa hero title/subtitle at stat strip.
+          {/* WHAT: Skeleton placeholders para sa hero title/subtitle.
              WHY: habang nagi-load pa ang stats, may nakikitang loading state sa
-                  header (hindi blank), bago lumabas ang totoong art/stat. */}
+                  header (hindi blank), bago lumabas ang totoong art. */}
           <SkeletonBlock width="100%" height={24} />
           <SkeletonBlock className="mt-2" width="60%" height={13} />
-          <div className="mt-3 d-flex gap-2">
-            <div className="skeleton-card" style={{ flex: 1, height: 60 }} />
-            <div className="skeleton-card" style={{ flex: 1, height: 60 }} />
-            <div className="skeleton-card" style={{ flex: 1, height: 60 }} />
-            <div className="skeleton-card" style={{ flex: 1, height: 60 }} />
-          </div>
         </div>
-        <div className="mt-4"><SkeletonCards count={4} /></div>
+        <div className="mt-4"><SkeletonCards count={3} /></div>
         <div className="row g-3 mt-1">
-          <div className="col-lg-7"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
-          <div className="col-lg-5"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
+          <div className="col-lg-12"><div className="skeleton-card"><SkeletonChart height={480} /></div></div>
         </div>
       </div>
     );
@@ -209,89 +179,10 @@ export default function AdminDashboard({ user }) {
     return <Alert variant="danger">{error}</Alert>;
   }
 
-  const totalVolumeMT = Math.round((stats.total_volume_mt || 0) * 1000) / 1000;
+  const totalVolumeMT = Math.round((stats.total_volume_mt || 0) * 100) / 100;
   const demandBenchmark = supplyDemand?.pangasinan?.demand_volume ?? 0;
   const supplyDemandGap = demandBenchmark ? totalVolumeMT - demandBenchmark : null;
   const supplyDemandLabel = supplyDemandGap == null ? 'N/A' : (supplyDemandGap >= 0 ? 'Surplus' : 'Shortage');
-
-  const readyMunis = outlook.filter((o) => o.readiness !== 'not_ready').length;
-  const totalMunis = outlook.length || muniData.length;
-
-  const pendingValidation = stats.pending_validation_count ?? 0;
-  const saltTotal = geojson.features.length;
-  const reportingCount = Math.min(reportingMunis.length, saltTotal);
-
-  /* WHAT: Stat strip (3-4 equal columns, 1px dividers) inside the same card below the top row.
-     WHY: show only items whose data is already loaded; naka-label ang scope ng bawat stat
-          (muni vs province-wide). Pending links to /admin/validation (amber when N>0). */
-  const statItems = [];
-  if (selectedMuni) {
-    /* WHAT: Muni-scoped stats gamit lang ang loaded data. WHY: para hindi misleading. */
-    statItems.push({
-      label: `Production · ${selectedMuni}`,
-      value: selectedMuniData ? `${selectedMuniData.volumeMT.toLocaleString()} MT` : '—',
-    });
-    statItems.push({
-      label: 'Reporting this period',
-      value: muniReportingNow ? 'Yes' : 'No',
-      tone: muniReportingNow ? 'ok' : 'muted',
-    });
-    statItems.push({
-      label: 'Pending validation · province-wide',
-      value: pendingValidation > 0 ? String(pendingValidation) : 'All caught up',
-      tone: pendingValidation > 0 ? 'warn' : 'neutral',
-      link: '/admin/validation',
-    });
-    if (lastRunAt) {
-      statItems.push({
-        label: 'Last forecast run · province-wide',
-        value: lastRunAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-      });
-    }
-  } else {
-    statItems.push({
-      label: 'Total production',
-      value: `${totalVolumeMT.toLocaleString()} MT`,
-      trend: null,
-    });
-    statItems.push({
-      label: 'Pending validation',
-      value: pendingValidation > 0 ? String(pendingValidation) : 'All caught up',
-      tone: pendingValidation > 0 ? 'warn' : 'neutral',
-      link: '/admin/validation',
-    });
-    statItems.push({
-      label: 'Municipalities reporting',
-      value: `${reportingCount} of ${saltTotal}`,
-    });
-    if (lastRunAt) {
-      statItems.push({
-        label: 'Last forecast run',
-        value: lastRunAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-      });
-    }
-  }
-
-  const statToneClass = (tone) => (
-    tone === 'warn' ? ' ui-dashstat__value--warn'
-      : tone === 'ok' ? ' ui-dashstat__value--ok'
-        : tone === 'muted' ? ' ui-dashstat__value--muted'
-          : ''
-  );
-
-  const statStrip = (
-    <div className="ui-dashstats" role="list">
-      {statItems.map((item, idx) => (
-        <div key={item.label} className={`ui-dashstat${idx > 0 ? ' ui-dashstat--divided' : ''}`} role="listitem">
-          <div className="ui-dashstat__label">{item.label}</div>
-          <div className={`ui-dashstat__value${statToneClass(item.tone)}`}>
-            {item.link ? <Link to={item.link} className="ui-dashstat__link">{item.value}</Link> : item.value}
-          </div>
-          {item.trend ? <div className="ui-dashstat__trend">{item.trend}</div> : null}
-        </div>
-      ))}
-    </div>
-  );
 
   /* WHAT: Filter bar (municipality / month / year) sa kanang block ng hero.
      WHY: pinapalitan ang dating "Generate report" at "Validation queue" buttons;
@@ -338,7 +229,7 @@ export default function AdminDashboard({ user }) {
   );
 
 return (
-    <div>
+    <div className="admin-dashboard-page">
       {/* WHAT: Polished hero card matching the encoder style: 20px radius, 1px border,
          overflow hidden, white-to-accent-tint horizontal wash, faint dot pattern fading
          to the left, province-mode map art with salt municipalities highlighted and
@@ -351,7 +242,6 @@ return (
         subtitle={selectedMuni
           ? `Production monitoring for ${selectedMuni}, Pangasinan.`
           : 'Province-wide salt production monitoring for Pangasinan.'}
-        stat={statStrip}
         actions={headerActions}
         art={(
           <HeroMapErrorBoundary>
@@ -360,36 +250,25 @@ return (
         )}
       />
 
-      <MunicipalityMap muniData={muniData} selectedName={selectedMuni} />
-
       <KpiGrid columns={3}>
-        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="MT" supporting={`${totalVolumeMT.toLocaleString()} MT recorded`} accent="ocean" />
-        <KpiCard icon={Ruler} title="Production Area" value={stats.total_area_sqm} unit="m²" supporting="Combined area of all beds" accent="ocean" />
+        {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
+           WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
+                (Pang-general ang values — province-wide, hindi sumasabay sa muni filter.) */}
+        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="MT" supporting={`${fmtMT(totalVolumeMT)} MT recorded`} />
         <KpiCard
           icon={Scale}
           title="Supply-Demand Balance"
-          value={supplyDemandGap == null ? 'N/A' : `${supplyDemandLabel} ${Math.abs(Math.round(supplyDemandGap)).toLocaleString()}`}
+          value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
           unit={supplyDemandGap == null ? undefined : 'MT'}
-          supporting={demandBenchmark ? `vs ${demandBenchmark.toLocaleString()} MT demand benchmark` : 'No demand benchmark available'}
-          accent="gold"
+          badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
+          supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} MT demand benchmark` : 'No demand benchmark available'}
         />
+        <KpiCard icon={Ruler} title="Production Area" value={stats.total_area_sqm} unit="m²" supporting="Combined area of all beds" />
       </KpiGrid>
 
-      <KpiGrid columns={3}>
-        <KpiCard icon={LayoutGrid} title="Total Salt Beds" value={stats.total_salt_beds} supporting="Active production beds" accent="ocean" />
-        <KpiCard icon={Hourglass} title="Pending Validation" value={stats.pending_validation_count} supporting="Awaiting admin review" accent="gold" tone="warning" />
-        <KpiCard
-          icon={CalendarCheck}
-          title="Forecast Availability"
-          value={`${readyMunis} / ${totalMunis}`}
-          supporting="Municipalities with forecast data"
-          accent="green"
-        />
-      </KpiGrid>
-      {/* WHAT: Ang malaking interactive map ay nasa <MunicipalityMap> na sa taas.
-         WHY: Dati may duplicate na inline copy dito na nag-reference ng mapRef/min/max
-              na wala sa scope — ReferenceError → white screen. Ang design ay mag-isa
-              na nito (hero + KPI cards), kaya hindi na kailangan ang extra Row. */}
+      {/* WHAT: Full-width map — wala nang side panel sa tabi nito.
+         WHY: inalis ang lahat ng charts/tables sa gilid; mas malaki ang mapa. */}
+      <MunicipalityMap muniData={muniData} selectedName={selectedMuni} />
     </div>
   );
 }
@@ -453,7 +332,7 @@ function MunicipalityMap({ muniData, selectedName }) {
     }).setView(provinceBounds.getCenter(), 8);
     mapInstanceRef.current = map;
 
-    addBasemap(map);
+    addLightBasemap(map);
     /* WHAT: Lighter province mask so the big map reads light without a new provider.
        WHY: reduced dark tint keeps boundaries visible while lifting the overall tone. */
     addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds));
@@ -486,6 +365,8 @@ function MunicipalityMap({ muniData, selectedName }) {
       (f) => !producingNames.has(normName(f.properties.shapeName || f.properties.name || ''))
     );
 
+    /* WHAT: Non-producing na bayan = context outline lang (may hover note, walang label).
+       WHY: label lamang ang producing municipalities para hindi magsiksikan sa mapa. */
     L.geoJSON(contextFeatures, {
       style: {
         fillColor: '#E2E8F0',
@@ -500,10 +381,6 @@ function MunicipalityMap({ muniData, selectedName }) {
           `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
           { sticky: true, direction: 'auto', offset: [0, -8] }
         );
-        L.marker(layer.getBounds().getCenter(), {
-          icon: L.divIcon({ className: 'muni-name-label', html: label, iconSize: null }),
-          interactive: false,
-        }).addTo(map);
       },
     }).addTo(map);
 
@@ -525,8 +402,8 @@ function MunicipalityMap({ muniData, selectedName }) {
           `
             <div style="min-width:170px">
               <strong>${m.name}</strong><br/>
-              <span style="font-size:0.85rem">Total: ${m.volumeMT.toLocaleString()} MT</span><br/>
-              <span style="font-size:0.85rem;color:#495057">Area: ${(m.area || 0).toLocaleString()} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
+              <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} MT</span><br/>
+              <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(m.area)} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
               <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} producers</span><br/>
               <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
             </div>
@@ -582,12 +459,21 @@ if (geoJsonLayerRef.current) {
       const container = mapRef.current;
       let resizeObserver = null;
       let fitted = false;
+      /* WHAT: Focus border ay SA mga producing municipality lamang.
+         WHY: hindi na zoomin ang buong lalawigan na may malalaking walang-data
+              na bayan; mas malapit ang itinatampok ng mapa. */
+      const producingFeatures = geojson.features.filter((f) =>
+        producingNames.has(normName(f.properties.name))
+      );
+      const focusBounds = producingFeatures.length
+        ? L.geoJSON(producingFeatures).getBounds()
+        : provinceBounds;
       const fitToProvince = () => {
         if (fitted) return;
         fitted = true;
         map.invalidateSize();
-        map.setMaxBounds(provinceBounds.pad(0.06));
-        map.fitBounds(provinceBounds, { padding: [10, 10] });
+        map.setMaxBounds(provinceBounds.pad(0.1));
+        map.fitBounds(focusBounds.pad(0.15), { padding: [12, 12] });
         if (resizeObserver) resizeObserver.disconnect();
       };
       if (typeof ResizeObserver !== 'undefined') {
@@ -617,43 +503,42 @@ if (geoJsonLayerRef.current) {
   }, [selectedName]);
 
   return (
-    <Row className="g-3 mb-4">
-      <Col lg={12}>
-        <Card className="encoder-card h-100 admin-map-section">
-          <Card.Header>
-            <div className="admin-card-head">
-              <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><MapPin size={16} strokeWidth={2} /></span>
-              <div>
-                <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
-                <span className="fw-normal text-muted small ms-1">Hover for summary · click for full details</span>
-              </div>
-            </div>
-          </Card.Header>
-          <Card.Body>
-            <div className="map-wrapper">
-              <div className="map-container" ref={mapRef}></div>
-            </div>
-            <div className="map-legend" aria-label="Map legend">
-              <div className="map-gradient-caption">
-                <span className="map-legend-label">Lower production</span>
-                <span className="map-legend-label">Higher production</span>
-              </div>
-              <div
-                className="map-gradient-legend"
-                style={{ backgroundImage: `linear-gradient(90deg, ${OCEAN_LIGHT} 0%, ${BRAND.ocean} 100%)` }}
-              ></div>
-              <p className="map-range-note">
-                {min.toLocaleString()} MT → {max.toLocaleString()} MT across the {muniData.length} municipalities
-              </p>
-            </div>
-            <p className="text-muted small mb-0 mt-2">
-              Based on total recorded volume from approved production records. Shaded gray municipalities have no
-              recorded production yet. Municipal boundaries referenced from NAMRIA / PSA administrative data.
-              &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
-            </p>
-          </Card.Body>
-        </Card>
-      </Col>
-    </Row>
+    <Card className="encoder-card h-100 admin-map-section">
+      <Card.Header>
+        <div className="admin-card-head">
+          <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><MapPin size={16} strokeWidth={2} /></span>
+          <div>
+            <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
+            <span className="fw-normal text-muted small ms-1">Hover for summary · click for full details</span>
+          </div>
+        </div>
+      </Card.Header>
+      <Card.Body>
+        <div className="map-wrapper">
+          <div className="map-container" ref={mapRef}></div>
+        </div>
+        <div className="map-legend" aria-label="Map legend">
+          <div className="map-gradient-caption">
+            <span className="map-legend-label">Lower production</span>
+            <span className="map-legend-label">Higher production</span>
+          </div>
+          <div
+            className="map-gradient-legend"
+            style={{ backgroundImage: `linear-gradient(90deg, ${OCEAN_LIGHT} 0%, ${BRAND.ocean} 100%)` }}
+          ></div>
+          <p className="map-range-note">
+            {fmtMT(min)} MT → {fmtMT(max)} MT across the {muniData.length} municipalities
+          </p>
+        </div>
+        <p className="text-muted small mb-0 mt-2">
+          Based on total recorded volume from approved production records. Shaded gray municipalities have no
+          recorded production yet. Municipal boundaries referenced from NAMRIA / PSA administrative data.
+          &copy; <a href="https://www.esri.com">Esri</a> &mdash; Esri World Light Gray basemap.
+        </p>
+      </Card.Body>
+    </Card>
   );
 }
+
+/* WHAT: Demand snapshot tinanggal na — kailangan na lang ng full-width map.
+   (Ang supply-demand context ay makikita sa Supply & Demand Analytics page.) */

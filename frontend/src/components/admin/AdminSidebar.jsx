@@ -16,7 +16,7 @@ const MAIN_ITEMS = [
 
 const FORECAST_GROUP = {
   id: 'forecast',
-  label: 'Forecasting',
+  label: 'Analytics',
   icon: Zap,
   items: [
     { id: 'forecast', label: 'Forecast', path: '/admin/forecast' },

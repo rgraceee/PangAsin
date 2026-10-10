@@ -1,0 +1,225 @@
+/* ============================================================
+   WHAT: Admin dashboard layout specifics (KPI hover + side panels).
+   WHY: scoped sa .admin-dashboard-page lang para hindi magalaw
+        ang ibang admin/guest pages; tokens-only colors.
+   ============================================================ */
+
+/* WHAT: KPI cards subtle lift on hover (matches public dashboard).
+   WHY: binibigyang-buhay ang row nang walang bagong dependency. */
+.admin-dashboard-page .ui-kpi {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-dashboard-page .ui-kpi:hover {
+  transform: translateY(-3px);
+  border-color: var(--ui-accent, #1565c8);
+  box-shadow: 0 14px 26px -14px rgba(15, 23, 42, 0.28);
+}
+
+/* ============================================================
+   Section header (PageHeader variant="section")
+   ============================================================ */
+/* WHAT: Malinis na section title — malaking agwat mula sa naunang box at sa
+   sumusunod na content; maikling accent bar imbis na ganap na divider line.
+   WHY: hindi na nakadikit ang header sa kahon sa itaas (dating 8px lang ang agwat)
+        at hindi rin pinagdudugtong sa kahon sa ibaba — hiwalay at organized. */
+.ui-section {
+  margin: 44px 0 24px;
+}
+
+.ui-section-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--ui-text, #17233b);
+}
+
+.ui-section-sub {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: var(--ui-text-muted, #6c757d);
+}
+
+.ui-section-rule {
+  margin-top: 16px;
+  width: 56px;
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ui-accent, #1565c8) 0%, rgba(21, 101, 200, 0.15) 100%);
+}
+
+/* ============================================================
+   Consistency sa buong /admin dashboard shell
+   ============================================================ */
+/* WHAT: Uniform 16px (8px-grid) padding sa lahat ng card header/body.
+   WHY: pantay ang yaman sa mga card kahit saan sa dashboard. */
+.admin-dashboard-shell .card-header,
+.admin-dashboard-shell .encoder-card .card-header {
+  padding: 16px;
+}
+
+.admin-dashboard-shell .card-body {
+  padding: 16px;
+}
+
+/* WHAT: Catsak ng title size sa lahat ng card header.
+   WHY: h5 ay 15.5px saan man (tugma sa .admin-card-head-title) — hindi 20px. */
+.admin-dashboard-shell .card-header h5 {
+  font-size: 15.5px;
+  line-height: 1.3;
+}
+
+/* ============================================================
+   Municipality selector — segmented chips, scrollable
+   ============================================================ */
+/* WHAT: Isang row na horizontally scrollable chip group.
+   WHY: hindi na grid (na nag-oorphan wrap); clear active state via fill. */
+.admin-dashboard-shell .muni-toggle {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 8px;
+  margin-bottom: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300, #ced4da) transparent;
+}
+
+.admin-dashboard-shell .muni-toggle::-webkit-scrollbar {
+  height: 6px;
+}
+
+.admin-dashboard-shell .muni-toggle::-webkit-scrollbar-thumb {
+  background: var(--gray-300, #ced4da);
+  border-radius: 999px;
+}
+
+.admin-dashboard-shell .muni-toggle::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-dashboard-shell .muni-chip {
+  flex: 0 0 auto;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid rgba(12, 35, 64, 0.14);
+  border-radius: 999px;
+  background: var(--white, #fff);
+  color: var(--p-navy, #0c2340);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-dashboard-shell .muni-chip:hover:not(:disabled) {
+  border-color: var(--p-ocean, #0d4f9e);
+  box-shadow: 0 4px 12px -8px rgba(21, 101, 200, 0.5);
+}
+
+.admin-dashboard-shell .muni-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(21, 101, 200, 0.22);
+}
+
+.admin-dashboard-shell .muni-chip--on {
+  font-weight: 700;
+  box-shadow: 0 4px 14px -6px rgba(21, 101, 200, 0.35);
+}
+
+.admin-dashboard-shell .muni-chip--off {
+  background: transparent;
+  color: var(--gray-600, #6c757d);
+}
+
+.admin-dashboard-shell .muni-chip--no-data {
+  background: var(--p-sand, #f4f1ea);
+  border-color: rgba(12, 35, 64, 0.1);
+  color: rgba(12, 35, 64, 0.4);
+  cursor: not-allowed;
+}
+
+.admin-dashboard-shell .muni-chip-none {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   Donut legend — aligned grid (method + gender)
+   ============================================================ */
+/* WHAT: 4-column grid na naka-align anglahat ng swatch/label/value/pct.
+   WHY: display:contents sa bawat item = isang coherent na aligned table. */
+.donut-legend {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  column-gap: 10px;
+  row-gap: 8px;
+  align-items: center;
+  min-width: 230px;
+}
+
+.donut-legend-item {
+  display: contents;
+}
+
+.donut-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.donut-legend-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-800, #343a40);
+}
+
+.donut-legend-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-700, #495057);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.donut-legend-pct {
+  font-size: 11.5px;
+  color: var(--gray-500, #adb5bd);
+  text-align: right;
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Full-width map (wala nang side panels sa dashboard)
+   ============================================================ */
+/* WHAT: Mas matangkad na mapa ngayong puno na ito sa lapad ng row.
+   WHY: dati 620px ang taas kapag 8-col; ngayong full-width ay mas babagay
+        ang bahagyang mas malaking height para hindi masyadong "flat" ang view. */
+.admin-dashboard-shell .admin-map-section .map-container {
+  height: 560px;
+  min-height: 520px;
+}
+
+@media (min-width: 992px) {
+  .admin-dashboard-shell .admin-map-section .map-container {
+    height: 660px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .admin-dashboard-shell .admin-map-section .map-container {
+    height: 720px;
+  }
+}
