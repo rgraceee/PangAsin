@@ -43,15 +43,17 @@ body {
 }
 
 .public-dashboard {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2.5rem 1rem 0;
+  max-width: none;
+  margin: 0;
+  padding: 2.5rem clamp(16px, 2vw, 32px) 0;
   background: var(--p-sand);
   min-height: 100vh;
 }
 
 .public-dashboard.admin-content {
-  max-width: 1200px;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: clamp(16px, 2vw, 32px);
 }
 
 /* WHAT: Naalis ang dating .public-about-card block.
@@ -300,7 +302,7 @@ body {
   justify-content: center;
   width: 100%;
   max-width: 620px;
-  padding: 3rem clamp(1.5rem, 6vw, 6rem);
+  padding: 8rem clamp(1.5rem, 6vw, 6rem);
   color: var(--white);
 }
 
@@ -309,7 +311,8 @@ body {
   width: 96px;
   height: 96px;
   object-fit: contain;
-  margin-bottom: 1.25rem;
+  margin-top: 6rem;
+  margin-bottom: 4px;
   filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45));
 }
 
@@ -421,8 +424,8 @@ body {
 }
 
 .login-form-card {
-  --login-card-bg: rgba(255, 255, 255, 0.28);
-  --login-card-blur: 18px;
+  --login-card-bg: rgba(255, 255, 255, 0.35);
+  --login-card-blur: 28px;
   position: relative;
   width: 100%;
   max-width: 420px;
@@ -431,8 +434,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: 24px;
   background: var(--login-card-bg);
-  backdrop-filter: blur(var(--login-card-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--login-card-blur)) saturate(140%);
+  backdrop-filter: blur(var(--login-card-blur)) saturate(200%);
+  -webkit-backdrop-filter: blur(var(--login-card-blur)) saturate(200%);
   box-shadow:
     0 20px 50px rgba(10, 35, 66, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -774,6 +777,94 @@ body {
   font-size: 26px;
 }
 
+.login-muni-kpi {
+  text-align: center;
+}
+
+.login-muni-grid-wrap {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.login-muni-top {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.login-muni-top .login-muni-kpi {
+  width: calc((100% - 60px) / 3);
+  min-width: 240px;
+}
+
+.login-muni-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px;
+  width: 100%;
+}
+
+.login-muni-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  text-align: center;
+  border-radius: 16px;
+  border: 1px solid rgba(12, 35, 58, 0.08);
+  background: var(--white);
+  box-shadow: 0 14px 32px -22px rgba(12, 35, 64, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.login-muni-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 22px 40px -24px rgba(12, 35, 64, 0.55);
+}
+
+.login-muni-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-bottom: 0;
+  border-radius: 10px;
+  padding: 4px;
+  background: rgba(21, 101, 200, 0.08);
+}
+
+.login-muni-kpi .admin-kpi-value {
+  font-size: 20px;
+}
+
+.login-muni-kpi,
+.login-muni-kpi * {
+  writing-mode: horizontal-tb;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+@media (max-width: 900px) {
+  .login-muni-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .login-muni-top .login-muni-kpi {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-muni-grid {
+    grid-template-columns: 1fr;
+  }
+  .login-muni-top .login-muni-kpi {
+    width: 100%;
+  }
+}
+
 /* ============================================================
    WHAT: Wave divider — "tubig" na nagdidi-divide hero at About.
    WHY: Ang kulay ay nagbabago mula sa overlay ng hero papuntang puti
@@ -975,7 +1066,7 @@ body {
   .login-hero-content {
     order: 1;
     position: relative;
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .login-hero-logo {

@@ -74,8 +74,44 @@ export function addProvinceMask(map, rings, style = {}) {
   L.polygon(rings, {
     interactive: false,
     stroke: false,
-    fillColor: '#94A3B8',
-    fillOpacity: 0.35,
+    fillColor: '#0f172a',
+    fillOpacity: 0.85,
     ...style,
   }).addTo(map);
+}
+
+
+// WHAT: Kategorikal 3-tier (Low/Medium/High) choropleth scale.
+// WHY: Discrete teal tiers para sa production map (admin at public).
+export const TIER_COLORS = {
+  low: '#5eead4',
+  medium: '#14b8a6',
+  high: '#0f766e',
+};
+
+export const NON_PRODUCING_FILL = '#e5e7eb';
+export const NON_PRODUCING_BORDER = '#cbd5e1';
+
+// WHAT: Kinakalkula ang thresholds (quantile) para sa producing municipalities
+//       na nahahati ~2/3/2 (Low/Medium/High).
+// WHY: Dynamic thresholds, hindi hardcoded, para sumunod sa data.
+export function computeTierThresholds(values) {
+  const sorted = [...values].filter((v) => v != null).sort((a, b) => a - b);
+  if (sorted.length === 0) return [0, 0];
+  const n = sorted.length;
+  const lowCount = Math.floor(n / 3) || 1;
+  const highCount = Math.floor(n / 3) || 1;
+  const lowIdx = Math.max(0, lowCount - 1);
+  const highIdx = Math.max(lowIdx, n - highCount - 1);
+  return [sorted[lowIdx], sorted[highIdx]];
+}
+
+// WHAT: Ibinabalik ang tier name ('low'|'medium'|'high') base sa thresholds.
+// WHY: Shared helper para magamit ng admin at public maps.
+export function getProductionTier(value, thresholds) {
+  if (value == null) return null;
+  const [low, high] = thresholds || [0, 0];
+  if (value <= low) return 'low';
+  if (value > high) return 'high';
+  return 'medium';
 }

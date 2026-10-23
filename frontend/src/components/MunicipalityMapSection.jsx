@@ -5,9 +5,9 @@ import L from 'leaflet';
 import geojson from '../data/pangasinan_municipalities.json';
 import geojsonAll from '../data/pangasinan_municipalities_all.json';
 import { getMunicipalityProduction, getDemographicsByMunicipality } from '../services/dataService';
+import { greenScale, GREEN_LIGHT, GREEN_DARK, BRAND } from '../theme/colors';
 import { buildMapDetailCard, clampMapDetailTooltip, protectMapDetailCard } from '../utils/mapDetailCard';
-import { oceanScale, OCEAN_LIGHT, BRAND } from '../theme/colors';
-import { addBasemap, buildProvinceMaskRings, addProvinceMask } from '../utils/mapLayers';
+import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
 
 // WHAT: Leaflet map na kumukulay sa bawat bayan base sa produksyon.
 // WHY: Ang normName() ay nagba-normalize ng pangalan para kahit magkaiba ang
@@ -31,13 +31,19 @@ export default function MunicipalityMapSection() {
   // WHAT: Midpoint para sa legend ticks (min / mid / max).
   // WHY: mas madaling basahin ang sequential color scale kung may gitnang tick.
   const mid = Math.round((min + max) / 2);
+const tierThresholds = computeTierThresholds(values);
+const sortedVals = [...values].filter((v) => v != null).sort((a, b) => a - b);
+const lowMax = sortedVals[Math.max(0, Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[0];
+const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
+const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
+const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     const mapSorted = getMunicipalityProduction();
     const byName = Object.fromEntries(mapSorted.map((m) => [normName(m.name), m]));
-    const scaledFor = (value) => oceanScale(value, min, max);
+    const tierFor = (value) => getProductionTier(value, tierThresholds);
     const producingNames = new Set(mapSorted.map((m) => normName(m.name)));
 
     const allFeatures = [...geojsonAll.features, ...geojson.features];
@@ -61,7 +67,7 @@ export default function MunicipalityMapSection() {
 
     // WHAT: Parehas sa admin map — OSM basemap + default province mask.
     // WHY: para mag-identikal ang public at admin na hitsura (walang API key/watermark).
-    addBasemap(map);
+    addLightBasemap(map);
     addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds));
 
     const demographics = getDemographicsByMunicipality();
@@ -102,11 +108,11 @@ export default function MunicipalityMapSection() {
 
     L.geoJSON(contextFeatures, {
       style: {
-        fillColor: '#E2E8F0',
-        fillOpacity: 0.65,
+        fillColor: NON_PRODUCING_FILL,
+        fillOpacity: 0.6,
         weight: 1.2,
         opacity: 0.85,
-        color: '#94A3B8',
+        color: NON_PRODUCING_BORDER,
       },
       onEachFeature: (feature, layer) => {
         const label = prettyName(feature.properties.shapeName || feature.properties.name || '');
@@ -114,10 +120,6 @@ export default function MunicipalityMapSection() {
           `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
           { sticky: true, direction: 'right', offset: [12, 0] }
         );
-        L.marker(layer.getBounds().getCenter(), {
-          icon: L.divIcon({ className: 'muni-name-label', html: label, iconSize: null }),
-          interactive: false,
-        }).addTo(map);
       },
     }).addTo(map);
 
@@ -125,11 +127,11 @@ export default function MunicipalityMapSection() {
       style: (feature) => {
         const m = byName[normName(feature.properties.name)];
         return {
-          fillColor: m ? scaledFor(m.productionMT) : '#cbd5e1',
+          fillColor: m ? greenScale(m.productionMT, min, max) : NON_PRODUCING_FILL,
           weight: 1.5,
           opacity: 0.9,
           color: '#ffffff',
-          fillOpacity: 0.72,
+          fillOpacity: m ? 0.9 : 0.6,
         };
       },
       onEachFeature: (feature, layer) => {
@@ -148,6 +150,7 @@ export default function MunicipalityMapSection() {
             <div style="min-width:160px">
               <strong>${m.name}</strong><br/>
               <span style="font-size:0.85rem">Production: ${m.productionMT.toLocaleString()} MT</span><br/>
+              <span style="font-size:0.85rem">Tier: ${m ? (tierFor(m.productionMT).charAt(0).toUpperCase() + tierFor(m.productionMT).slice(1)) : ''}</span><br/>
               <span class="${trendClass}" style="font-size:0.85rem">${changeText}</span><br/>
               <span style="font-size:0.85rem;color:#495057">Method: ${m.dominantMethod.charAt(0).toUpperCase() + m.dominantMethod.slice(1)}</span>
             </div>
@@ -206,10 +209,12 @@ export default function MunicipalityMapSection() {
           },
         });
 
-        L.marker(layer.getBounds().getCenter(), {
-          icon: L.divIcon({ className: 'muni-name-label', html: m ? prettyName(m.name) : prettyName(feature.properties.name), iconSize: null }),
-          interactive: false,
-        }).addTo(map);
+        if (m) {
+          L.marker(layer.getBounds().getCenter(), {
+            icon: L.divIcon({ className: 'muni-name-label', html: prettyName(m.name), iconSize: null }),
+            interactive: false,
+          }).addTo(map);
+        }
       },
     }).addTo(map);
 
@@ -267,25 +272,24 @@ export default function MunicipalityMapSection() {
             Map summary: the producing municipalities shown are {sorted.map((m) => m.name).join(', ')}, with recorded
             production ranging from {min.toLocaleString()} to {max.toLocaleString()} MT.
           </p>
-          <div className="map-legend" aria-label="Map legend">
-            <div className="map-gradient-caption">
-              <span className="map-legend-label">Lower production</span>
-              <span className="map-legend-label">Higher production</span>
-            </div>
-            <div
-              className="map-gradient-legend"
-              style={{ backgroundImage: `linear-gradient(90deg, ${OCEAN_LIGHT} 0%, ${BRAND.ocean} 100%)` }}
-            ></div>
-            {/* WHAT: Ticks sa ilalim ng gradient (min / mid / max). WHY: mabasa ang scale agad. */}
-            <div className="map-gradient-ticks" aria-hidden="true">
-              <span>{min.toLocaleString()}</span>
-              <span>{mid.toLocaleString()}</span>
-              <span>{max.toLocaleString()}</span>
-            </div>
-            <p className="map-range-note">
-              {min.toLocaleString()} MT → {max.toLocaleString()} MT across the {sorted.length} producing municipalities
-            </p>
-          </div>
+<div className="map-legend" aria-label="Map legend">
+  <div className="map-gradient-caption">
+    <span className="map-legend-label">Lower production</span>
+    <span className="map-legend-label">Higher production</span>
+  </div>
+  <div
+    className="map-gradient-legend"
+    style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
+  ></div>
+  <div className="map-gradient-ticks" aria-hidden="true">
+    <span>{min.toLocaleString()}</span>
+    <span>{mid.toLocaleString()}</span>
+    <span>{max.toLocaleString()}</span>
+  </div>
+  <p className="map-range-note">
+    {min.toLocaleString()} MT → {max.toLocaleString()} MT across the {sorted.length} producing municipalities
+  </p>
+</div>
           <p className="text-muted small mb-0 mt-2">
             Select a municipality on the map to view its detailed summary. Shaded gray municipalities have no
             recorded production yet. Municipal boundaries referenced from NAMRIA / PSA administrative data.

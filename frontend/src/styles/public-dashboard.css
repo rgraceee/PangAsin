@@ -102,7 +102,7 @@
         sa espasyo ang mga chip. */
 .public-intro {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
   gap: 28px 32px;
   align-items: start;
   margin-bottom: 1.5rem;
@@ -210,7 +210,7 @@
 /* ---------- About the ASIN Center + Mandate ---------- */
 .public-about {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
   gap: 28px 32px;
   margin-bottom: 1.75rem;
   padding: 26px 28px;
@@ -247,7 +247,7 @@
   font-size: 14px;
   line-height: 1.65;
   color: var(--p-ink);
-  max-width: 60ch;
+  max-width: none;
 }
 
 .public-about-body:last-child {
@@ -258,8 +258,18 @@
    WHY: visual na paghahati ng "ano ang ASIN" at "ano ang kanilang gawain". */
 .public-about-mandate {
   min-width: 0;
-  padding-left: 28px;
-  border-left: 1px solid var(--ui-border);
+  position: relative;
+  padding-left: 24px;
+}
+
+.public-about-mandate::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  width: 1px;
+  background: var(--ui-border);
 }
 
 .public-mandate-list {
@@ -492,6 +502,10 @@
     padding-top: 20px;
     border-left: 0;
     border-top: 1px solid var(--ui-border);
+  }
+
+  .public-about-mandate::before {
+    display: none;
   }
 }
 

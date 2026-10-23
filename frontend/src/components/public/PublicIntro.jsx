@@ -3,12 +3,12 @@
 // WHY: Ang bisitante ay nangangailangan ng konteksto bago ang mga numero:
 //      sino ang ASIN Center, ano ang sinusukat, at saan galing ang datos.
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Factory, MapPin, Layers } from 'lucide-react';
+import { CalendarClock, Factory, MapPin, Scale } from 'lucide-react';
 
 /* WHAT: Format ng petsa para sa "Data as of" (halimbawa: "October 21, 2026").
    WHY: parehong hugis ng dating na "June 30, 2026" na ginagamit dati. */
 const formatAsOf = (date) =>
-  `${date.toLocaleDateString('en-US', { month: 'long' })} ${date.getDate()}, ${date.getFullYear()}`;
+  `${date.toLocaleDateString('en-US', { month: 'short' })} ${date.getDate()}, ${date.getFullYear()}`;
 
 export default function PublicIntro({ municipalities = [] }) {
   // WHAT: Buod ng katotohanan mula sa live payload.
@@ -16,13 +16,18 @@ export default function PublicIntro({ municipalities = [] }) {
   //      na ng GuestDashboard, kaya laging tugma sa mga chart sa ibaba.
   const facts = useMemo(() => {
     const beds = municipalities.reduce((sum, m) => sum + (Number(m.saltBeds) || 0), 0);
-    const methods = new Set();
-    municipalities.forEach((m) => {
-      if (Number(m.solarProductionMT) > 0) methods.add('solar');
-      if (Number(m.cookedProductionMT) > 0) methods.add('cooked');
-      if (Number(m.hybridProductionMT) > 0) methods.add('hybrid');
-    });
-    return { producing: municipalities.length, beds, methods: methods.size };
+    // WHAT: Province's Total Production — sum of approved production across all
+    //      municipalities. Each municipality already carries productionMT (metric
+    //      tons), so no unit conversion is needed; we just sum the values.
+    const totalProduction = municipalities.reduce(
+      (sum, m) => sum + (Number(m.productionMT) || 0),
+      0,
+    );
+    return {
+      producing: municipalities.length,
+      beds,
+      totalProduction,
+    };
   }, [municipalities]);
 
   /* WHAT: "Data as of" ay ang KASALUKUYANG petsa, at live na nag-u-update.
@@ -57,30 +62,41 @@ export default function PublicIntro({ municipalities = [] }) {
           University records, validates and publishes that production so planners, producers and the
           public work from the same numbers.
         </p>
-        <p className="public-intro-body public-intro-body--muted">
-          Every figure on this page comes from approved production records only, and is updated as
-          records are validated.
-        </p>
       </div>
 
       <ul className="public-intro-facts">
+        {/* Row 1, left: Province's Total Production */}
         <li className="public-fact">
-          <span className="public-fact-icon public-fact-icon--ocean"><MapPin size={16} strokeWidth={1.75} /></span>
-          <span className="public-fact-label">Salt-producing municipalities</span>
-          <span className="public-fact-value">{facts.producing}</span>
+          <span className="public-fact-icon public-fact-icon--green">
+            <Scale size={16} strokeWidth={1.75} />
+          </span>
+          <span className="public-fact-label">Province's Total Production</span>
+          <span className="public-fact-value">
+            {facts.totalProduction.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            <span className="public-fact-value__unit">{' MT'}</span>
+          </span>
         </li>
+        {/* Row 1, right: Salt Beds in Operation */}
         <li className="public-fact">
-          <span className="public-fact-icon public-fact-icon--green"><Factory size={16} strokeWidth={1.75} /></span>
+          <span className="public-fact-icon public-fact-icon--green">
+            <Factory size={16} strokeWidth={1.75} />
+          </span>
           <span className="public-fact-label">Salt beds in operation</span>
           <span className="public-fact-value">{facts.beds.toLocaleString()}</span>
         </li>
+        {/* Row 2, left: Salt-Producing Municipalities */}
         <li className="public-fact">
-          <span className="public-fact-icon public-fact-icon--gold"><Layers size={16} strokeWidth={1.75} /></span>
-          <span className="public-fact-label">Production methods tracked</span>
-          <span className="public-fact-value">{facts.methods}</span>
+          <span className="public-fact-icon public-fact-icon--ocean">
+            <MapPin size={16} strokeWidth={1.75} />
+          </span>
+          <span className="public-fact-label">Salt-producing municipalities</span>
+          <span className="public-fact-value">{facts.producing}</span>
         </li>
+        {/* Row 2, right: Data as of */}
         <li className="public-fact">
-          <span className="public-fact-icon public-fact-icon--navy"><CalendarClock size={16} strokeWidth={1.75} /></span>
+          <span className="public-fact-icon public-fact-icon--navy">
+            <CalendarClock size={16} strokeWidth={1.75} />
+          </span>
           <span className="public-fact-label">Data as of</span>
           <span className="public-fact-value public-fact-value--text">{asOf}</span>
         </li>

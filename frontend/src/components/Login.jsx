@@ -5,12 +5,12 @@
 //      epekto sa ibang pages (encoder, admin, at guest dashboard).
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Col, Container, Form, Row } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Container, Form, Row } from 'react-bootstrap';
 import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Phone, Scale, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Reveal from './Reveal';
 import { SkeletonBlock } from './Skeleton';
-import { loadPublicDashboardData, loginAPI } from '../services/dataService';
+import { loadPublicDashboardData, loginAPI, getMunicipalityProduction } from '../services/dataService';
 import { formatMTWithUnit } from '../utils/volumeFormat';
 import { useToast } from './Toast';
 import AdminKpiCard from './admin/AdminKpiCard';
@@ -149,6 +149,8 @@ export default function Login({ onLogin }) {
     };
   }, [municipalityCount, displayedYearRange, animatedTotal, dashboardNumbers.dataAvailable]);
 
+  const municipalityCards = kpiData ? getMunicipalityProduction() : [];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -212,9 +214,8 @@ export default function Login({ onLogin }) {
         </div>
 
         <div className="login-form-region">
-          <div className="login-form-card">
-            <div className="encoder-login-eyebrow">Secure sign in</div>
-            <h2 className="encoder-login-title">Welcome back</h2>
+<div className="login-form-card">
+  <h2 className="encoder-login-title">Welcome back</h2>
             <p className="encoder-login-sub">
               Sign in with your encoder or admin account to continue.
             </p>
@@ -327,57 +328,41 @@ export default function Login({ onLogin }) {
             </p>
           </div>
 
-          <Row ref={statsRef} className="g-3 g-lg-4 login-about-grid">
-            <Col xs={12} sm={6} lg={3}>
-              <Reveal className="login-about-reveal">
-                <AdminKpiCard
-                  className="login-about-kpi"
-                  icon={MapPin}
-                  title="Municipalities covered"
-                  value={kpis.municipalities.value}
-                  supporting={kpis.municipalities.supporting}
-                  accent="ocean"
-                />
-              </Reveal>
-            </Col>
-            <Col xs={12} sm={6} lg={3}>
-              <Reveal className="login-about-reveal">
-                <AdminKpiCard
-                  className="login-about-kpi"
-                  icon={CalendarDays}
-                  title="Years of data tracked"
-                  value={kpis.years.value}
-                  supporting={kpis.years.supporting}
-                  accent="gold"
-                />
-              </Reveal>
-            </Col>
-            <Col xs={12} sm={6} lg={3}>
-              <Reveal className="login-about-reveal">
-                <AdminKpiCard
-                  className="login-about-kpi"
-                  icon={Scale}
-                  title="Recorded production"
-                  value={kpis.production.value}
-                  unit={kpis.production.unit}
-                  supporting={kpis.production.supporting}
-                  accent="green"
-                />
-              </Reveal>
-            </Col>
-            <Col xs={12} sm={6} lg={3}>
-              <Reveal className="login-about-reveal">
-                <AdminKpiCard
-                  className="login-about-kpi"
-                  icon={ShieldCheck}
-                  title="Policy mandate"
-                  value={POLICY_MANDATE}
-                  supporting="ASIN Center mandate for salt research and innovation"
-                  accent="brown"
-                />
-              </Reveal>
-            </Col>
-          </Row>
+<div ref={statsRef} className="login-muni-grid-wrap">
+  {municipalityCards.length === 0 ? (
+    <div className="text-center text-muted">Municipality production data unavailable.</div>
+  ) : (
+    <>
+      <div className="login-muni-top">
+        <Reveal className="login-about-reveal">
+          <Card className="login-about-kpi login-muni-kpi">
+            <Card.Body className="admin-kpi-body text-center">
+              <img src="/static/brand/PangAsin_Logo.png" alt="" className="login-muni-logo" />
+              <div className="login-muni-top-label">Top producer</div>
+              <div className="admin-kpi-title">{municipalityCards[0].name}</div>
+              <div className="admin-kpi-value">{formatMTWithUnit(municipalityCards[0].productionMT)}</div>
+              <div className="admin-kpi-supporting">Total production</div>
+            </Card.Body>
+          </Card>
+        </Reveal>
+      </div>
+      <div className="login-muni-grid">
+        {municipalityCards.slice(1).map((m) => (
+          <Reveal className="login-about-reveal" key={m.id}>
+            <Card className="login-about-kpi login-muni-kpi">
+              <Card.Body className="admin-kpi-body text-center">
+                <img src="/static/brand/PangAsin_Logo.png" alt="" className="login-muni-logo" />
+                <div className="admin-kpi-title">{m.name}</div>
+                <div className="admin-kpi-value">{formatMTWithUnit(m.productionMT)}</div>
+                <div className="admin-kpi-supporting">Total production</div>
+              </Card.Body>
+            </Card>
+          </Reveal>
+        ))}
+      </div>
+    </>
+  )}
+</div>
         </Container>
       </section>
 

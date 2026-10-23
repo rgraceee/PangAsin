@@ -7,8 +7,8 @@ import {
   getAdminStats, getAdminMonths,
   getAdminSupplyDemand,
 } from '../../services/dataService';
-import { BRAND, oceanScale, OCEAN_LIGHT } from '../../theme/colors';
-import { buildProvinceMaskRings, addProvinceMask, addBasemap } from '../../utils/mapLayers';
+import { BRAND, greenScale, GREEN_LIGHT, GREEN_DARK } from '../../theme/colors';
+import { buildProvinceMaskRings, addProvinceMask, addLightBasemap, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../../utils/mapLayers';
 import { buildMapDetailCard, clampMapDetailTooltip, protectMapDetailCard } from '../../utils/mapDetailCard';
 import geojson from '../../data/pangasinan_municipalities.json';
 import geojsonAll from '../../data/pangasinan_municipalities_all.json';
@@ -290,6 +290,12 @@ function MunicipalityMap({ muniData, selectedName }) {
     const mx = values.length ? Math.max(...values) : 0;
     return { min: mn, max: mx };
   }, [muniData]);
+  const tierThresholds = useMemo(() => computeTierThresholds(muniData.map((m) => m.volumeMT)), [muniData]);
+  const sortedVals = useMemo(() => [...muniData.map((m) => m.volumeMT)].filter((v) => v != null).sort((a, b) => a - b), [muniData]);
+  const lowMax = sortedVals[Math.max(0, Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[0];
+  const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
+  const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
+  const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
 
   const renderPopup = useCallback((m) => {
     const genderText = m.registered > 0
@@ -316,7 +322,7 @@ function MunicipalityMap({ muniData, selectedName }) {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     const byName = Object.fromEntries(muniData.map((m) => [normName(m.name), m]));
-    const scaledFor = (value) => oceanScale(value, min, max);
+    const tierFor = (value) => getProductionTier(value, tierThresholds);
     const producingNames = new Set(muniData.map((m) => normName(m.name)));
 
     const allFeatures = [...geojsonAll.features, ...geojson.features];
@@ -341,7 +347,7 @@ function MunicipalityMap({ muniData, selectedName }) {
     /* WHAT: OSM basemap (dating admin look) + madilim na province mask.
        WHY: walang API key at walang watermark ang OSM; ang dark mask ay ang
             mismong dating itsura ng admin map. */
-    addBasemap(map);
+    addLightBasemap(map);
     addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds), {
       fillColor: '#334155',
       fillOpacity: 0.75,
@@ -389,34 +395,30 @@ function MunicipalityMap({ muniData, selectedName }) {
               ng dating (Sep 18) admin map. */
     L.geoJSON(contextFeatures, {
       style: {
-        fillColor: '#E2E8F0',
-        fillOpacity: 0.65,
+        fillColor: NON_PRODUCING_FILL,
+        fillOpacity: 0.6,
         weight: 1.2,
         opacity: 0.85,
-        color: '#94A3B8',
+        color: NON_PRODUCING_BORDER,
       },
       onEachFeature: (feature, layer) => {
         const label = prettyName(feature.properties.shapeName || feature.properties.name || '');
-        layer.bindTooltip(
-          `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
-          { sticky: true, direction: 'auto', offset: [0, -8] }
-        );
-        L.marker(layer.getBounds().getCenter(), {
-          icon: L.divIcon({ className: 'muni-name-label', html: label, iconSize: null }),
-          interactive: false,
-        }).addTo(map);
-      },
+         layer.bindTooltip(
+           `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
+           { sticky: true, direction: 'auto', offset: [0, -8] }
+         );
+       },
     }).addTo(map);
 
-    geoJsonLayerRef.current = L.geoJSON(geojson, {
+geoJsonLayerRef.current = L.geoJSON(geojson, {
       style: (feature) => {
         const m = byName[normName(feature.properties.name)];
         return {
-          fillColor: m ? scaledFor(m.volumeMT) : '#cbd5e1',
+          fillColor: m ? greenScale(m.volumeMT, min, max) : NON_PRODUCING_FILL,
           weight: 1.5,
           opacity: 0.9,
           color: '#ffffff',
-          fillOpacity: 0.72,
+          fillOpacity: m ? 0.9 : 0.6,
         };
       },
       onEachFeature: (feature, layer) => {
@@ -426,7 +428,8 @@ function MunicipalityMap({ muniData, selectedName }) {
           `
             <div style="min-width:170px">
               <strong>${m.name}</strong><br/>
-              <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} MT</span><br/>
+               <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} MT</span><br/>
+               <span style="font-size:0.85rem">Tier: ${getProductionTier(m.volumeMT, tierThresholds).charAt(0).toUpperCase() + getProductionTier(m.volumeMT, tierThresholds).slice(1)}</span><br/>
               <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(m.area)} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
               <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} producers</span><br/>
               <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
@@ -472,10 +475,12 @@ function MunicipalityMap({ muniData, selectedName }) {
           },
         });
 
-        L.marker(layer.getBounds().getCenter(), {
-          icon: L.divIcon({ className: 'muni-name-label', html: prettyName(m.name), iconSize: null }),
-          interactive: false,
-        }).addTo(map);
+        if (m) {
+          L.marker(layer.getBounds().getCenter(), {
+            icon: L.divIcon({ className: 'muni-name-label', html: prettyName(m.name), iconSize: null }),
+            interactive: false,
+          }).addTo(map);
+        }
       },
     }).addTo(map);
 
@@ -503,7 +508,7 @@ if (geoJsonLayerRef.current) {
         window.requestAnimationFrame(fitToProvince);
       }
     }
-  }, [muniData, min, max, renderPopup]);
+  }, [muniData, min, max, tierThresholds, renderPopup]);
 
   /* WHAT: I-highlight ang napiling munisipalidad sa malaking mapa (reset muna lahat).
      WHY: solid accent + puting border para malinaw kung alin ang naka-filter;
@@ -535,19 +540,19 @@ if (geoJsonLayerRef.current) {
         <div className="map-wrapper">
           <div className="map-container" ref={mapRef}></div>
         </div>
-        <div className="map-legend" aria-label="Map legend">
-          <div className="map-gradient-caption">
-            <span className="map-legend-label">Lower production</span>
-            <span className="map-legend-label">Higher production</span>
-          </div>
-          <div
-            className="map-gradient-legend"
-            style={{ backgroundImage: `linear-gradient(90deg, ${OCEAN_LIGHT} 0%, ${BRAND.ocean} 100%)` }}
-          ></div>
-          <p className="map-range-note">
-            {fmtMT(min)} MT → {fmtMT(max)} MT across the {muniData.length} municipalities
-          </p>
-        </div>
+<div className="map-legend" aria-label="Map legend">
+  <div className="map-gradient-caption">
+    <span className="map-legend-label">Lower production</span>
+    <span className="map-legend-label">Higher production</span>
+  </div>
+  <div
+    className="map-gradient-legend"
+    style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
+  ></div>
+  <p className="map-range-note">
+    {fmtMT(min)} MT → {fmtMT(max)} MT across the {muniData.length} municipalities
+  </p>
+</div>
         <p className="text-muted small mb-0 mt-2">
           Based on total recorded volume from approved production records. Shaded gray municipalities have no
           recorded production yet. Municipal boundaries referenced from NAMRIA / PSA administrative data.

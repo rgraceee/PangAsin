@@ -51,7 +51,10 @@ export const STATUS = {
   neutral: '#6c757d',
 };
 
-export const GENDER = {
-  male: '#6366F1',
-  female: '#EC4899',
-};
+export const GREEN_LIGHT = '#E8F5E9';
+export const GREEN_DARK = '#1B5E20';
+
+export function greenScale(value, min, max) {
+  const t = max === min ? 0.5 : Math.min(1, Math.max(0, (value - min) / (max - min)));
+  return lerpHex(GREEN_LIGHT, GREEN_DARK, t);
+}
