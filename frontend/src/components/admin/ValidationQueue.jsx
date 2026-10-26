@@ -8,10 +8,11 @@ import {
 import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
 import RecordStatusBadge from '../encoder/RecordStatusBadge';
-import { Eye } from 'lucide-react';
+import { Eye, Check, X } from 'lucide-react';
 import IconButton from '../IconButton';
 import { formatMT } from '../../utils/volumeFormat';
 import PageHeader from './PageHeader';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import { STATUS_OPTIONS } from '../../constants/labels';
 
 const REPORT_TYPE_LABELS = {
@@ -138,27 +139,31 @@ export default function ValidationQueue() {
     <>
       <PageHeader
         id="admin-validation"
-        variant="sub"
-        title={`${reportTypeLabel} Report Validation`}
-        subtitle={`Review and approve submitted ${reportTypeLabel.toLowerCase()} reports.`}
+        variant="clean"
+        className="ui-pageheader--admin"
+        title={`${reportTypeLabel} Validation`}
+        subtitle={`Review submitted ${reportTypeLabel.toLowerCase()} reports.`}
+        status={(
+          <div className="admin-report-types d-flex align-items-center gap-2 flex-wrap" role="group" aria-label="Report type">
+            {['production', 'producer', 'environment'].map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`ui-btn-${reportType === type ? 'primary' : 'outline'}`}
+                aria-pressed={reportType === type}
+                onClick={() => setReportType(type)}
+              >
+                {REPORT_TYPE_LABELS[type] || type}
+              </button>
+            ))}
+          </div>
+        )}
+        art={<MunicipalityMapArt mode="province" />}
       >
-        <div className="admin-page-hero-control" role="group" aria-label="Report type">
-          {['production', 'producer', 'environment'].map((type) => (
-            <Button
-              key={type}
-              type="button"
-              size="sm"
-              variant={reportType === type ? 'primary' : 'outline-secondary'}
-              onClick={() => setReportType(type)}
-            >
-              {REPORT_TYPE_LABELS[type] || type}
-            </Button>
-          ))}
-        </div>
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-status">Status</label>
           <select id="vq-status" className="form-select admin-page-hero-select" name="status" value={filters.status} onChange={handleFilter}>
-            <option value="">All statuses</option>
+            <option value="">All</option>
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
             ))}
@@ -167,7 +172,7 @@ export default function ValidationQueue() {
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-muni">Municipality</label>
           <select id="vq-muni" className="form-select admin-page-hero-select" name="municipality_id" value={filters.municipality_id} onChange={handleFilter}>
-            <option value="">All municipalities</option>
+            <option value="">All</option>
             {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
@@ -316,8 +321,8 @@ export default function ValidationQueue() {
 
               {detail.status === 'pending' && !reviewAction && (
                 <div className="d-flex gap-2 mt-3">
-                  <Button variant="success" onClick={() => openReview('approved')}>Approve</Button>
-                  <Button variant="danger" onClick={() => openReview('rejected')}>Reject</Button>
+                  <Button variant="success" onClick={() => openReview('approved')}><Check size={16} /> Approve</Button>
+                  <Button variant="danger" onClick={() => openReview('rejected')}><X size={16} /> Reject</Button>
                 </div>
               )}
 

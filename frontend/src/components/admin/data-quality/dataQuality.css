@@ -23,27 +23,7 @@
   transition: opacity 120ms ease;
 }
 
-/* ===== Header controls (Dashboard language: ui-btn-outline / ui-btn-primary) ===== */
-
-.dq-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.dq-range-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.dq-range-btn {
-  flex: 1 1 auto;
-  justify-content: center;
-  white-space: nowrap;
-}
+/* ===== Header control (Dashboard language: ui-btn-outline) ===== */
 
 .dq-refresh-btn {
   justify-content: center;

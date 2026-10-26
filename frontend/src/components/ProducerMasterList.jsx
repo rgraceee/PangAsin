@@ -212,16 +212,26 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
 
   return (
     <>
-      {/* WHAT: Parehos na clean header sa encoder, sub hero pa rin sa admin.
-         WHY: bawal magbago ang admin markup; encoder gets the token-based look. */}
+      {/* WHAT: Isang clean header na lang sa admin at encoder.
+         WHY: parehong itsura (puting card + province/municipality map). */}
       <PageHeader
         id="producer-master-list"
-        variant={adminView ? 'sub' : 'clean'}
+        variant="clean"
+        className={adminView ? 'ui-pageheader--admin' : ''}
         title="Salt Farmer Master List"
         subtitle={adminView ? 'Registered salt farmers across Pangasinan, organized by municipality and barangay.' : `Registered salt farmers in ${activeUser?.municipality_name || 'your municipality'}.`}
-        art={adminView ? undefined : <MunicipalityMapArt highlightName={activeUser?.municipality_name} />}
+        art={adminView ? <MunicipalityMapArt mode="province" /> : <MunicipalityMapArt highlightName={activeUser?.municipality_name} />}
         compact={!adminView}
       >
+        {adminView && (
+          <div className="admin-page-hero-control">
+            <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
+            <div className="ui-search">
+              <Search size={16} className="ui-search-icon" aria-hidden="true" />
+              <input id="master-search" type="search" className="form-control admin-page-hero-input" name="q" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} placeholder="Search by name" />
+            </div>
+          </div>
+        )}
         {adminView && (
           <div className="admin-page-hero-control">
             <label className="admin-page-hero-field" htmlFor="master-municipality">Municipality</label>
@@ -255,15 +265,6 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
               </select>
             </div>
           </>
-        )}
-        {adminView && (
-          <div className="admin-page-hero-control">
-            <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
-            <div className="ui-search">
-              <Search size={16} className="ui-search-icon" aria-hidden="true" />
-              <input id="master-search" className="form-control admin-page-hero-input" name="q" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} placeholder="Search salt farmers" />
-            </div>
-          </div>
         )}
       </PageHeader>
 

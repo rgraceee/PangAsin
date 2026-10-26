@@ -3141,6 +3141,55 @@ body {
   }
 }
 
+/* Create-report form: same label/control language as the header filters */
+.report-form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-text-muted);
+}
+
+.report-form .form-select,
+.report-form .form-control {
+  height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+}
+
+.report-form .form-select:focus,
+.report-form .form-control:focus {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+.report-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.report-form-hint {
+  font-size: 12.5px;
+  color: var(--ui-text-2);
+}
+
+@media (max-width: 575.98px) {
+  .report-form-actions .ui-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Report preview tables */
 .report-preview-table {
   font-size: 12.5px;

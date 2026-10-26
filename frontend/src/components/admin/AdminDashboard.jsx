@@ -56,10 +56,10 @@ class HeroMapErrorBoundary extends Component {
    WHY: parehas na ayos sa SALT_LIST ng MunicipalityMapArt para tugma ang highlight. */
 const MUNI_OPTIONS = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta', 'San Fabian'];
 
-/* WHAT: Maikling pangalan ng buwan para sa Month dropdown (Jan..Dec).
-   WHY: compact na opsyon lang; ang buong period ay binubuo mula Month + Year. */
-const MONTH_SHORTS = Array.from({ length: 12 }, (_, i) =>
-  new Date(2000, i, 1).toLocaleString(undefined, { month: 'short' }));
+/* WHAT: Buong pangalan ng buwan para sa Month dropdown (January..December).
+   WHY: mas malinaw kaysa Jan/Feb at kasya pa rin sa 190px na filter. */
+const MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
+  new Date(2000, i, 1).toLocaleString('en-US', { month: 'long' }));
 const MONTH_NUMBERS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 export default function AdminDashboard({ user }) {
@@ -198,24 +198,24 @@ export default function AdminDashboard({ user }) {
   const periodHasData = selectedAdminMonth === '' || adminMonths.includes(selectedAdminMonth);
 
   const headerActions = (
-    <div className="dashboard-filters">
-      <label className="dashboard-filter">
-        <span className="dashboard-filter__label">Municipality</span>
-        <select value={selectedMuni} onChange={(e) => updateParam('muni', e.target.value)}>
+    <>
+      <label className="admin-page-hero-control" htmlFor="admin-muni">
+        <span className="admin-page-hero-field">Municipality</span>
+        <select id="admin-muni" className="form-select admin-page-hero-select" value={selectedMuni} onChange={(e) => updateParam('muni', e.target.value)}>
           <option value="">Pangasinan</option>
           {MUNI_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
       </label>
-      <label className="dashboard-filter">
-        <span className="dashboard-filter__label">Month</span>
-        <select value={selMonth} onChange={(e) => updateParam('month', e.target.value === '' ? 'all' : e.target.value)}>
+      <label className="admin-page-hero-control" htmlFor="admin-month">
+        <span className="admin-page-hero-field">Month</span>
+        <select id="admin-month" className="form-select admin-page-hero-select" value={selMonth} onChange={(e) => updateParam('month', e.target.value === '' ? 'all' : e.target.value)}>
           <option value="">All months</option>
-          {MONTH_NUMBERS.map((num, i) => <option key={num} value={num}>{MONTH_SHORTS[i]}</option>)}
+          {MONTH_NUMBERS.map((num, i) => <option key={num} value={num}>{MONTH_LABELS[i]}</option>)}
         </select>
       </label>
-      <label className="dashboard-filter">
-        <span className="dashboard-filter__label">Year</span>
-        <select value={selYear} onChange={(e) => updateParam('year', e.target.value)}>
+      <label className="admin-page-hero-control" htmlFor="admin-year">
+        <span className="admin-page-hero-field">Year</span>
+        <select id="admin-year" className="form-select admin-page-hero-select" value={selYear} onChange={(e) => updateParam('year', e.target.value)}>
           {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
       </label>
@@ -225,7 +225,7 @@ export default function AdminDashboard({ user }) {
       {!periodHasData && (
         <p className="dashboard-filter-note" role="status">No data for this period.</p>
       )}
-    </div>
+    </>
   );
 
 return (
@@ -237,18 +237,19 @@ return (
       <PageHeader
         id="admin-dashboard"
         variant="clean"
-        className="ui-pageheader--dashboard"
+        className="ui-pageheader--admin"
         title="Dashboard"
         subtitle={selectedMuni
           ? `Production monitoring for ${selectedMuni}, Pangasinan.`
           : 'Province-wide salt production monitoring for Pangasinan.'}
-        actions={headerActions}
         art={(
           <HeroMapErrorBoundary>
             <MunicipalityMapArt mode="province" selectedName={selectedMuni} />
           </HeroMapErrorBoundary>
         )}
-      />
+      >
+        {headerActions}
+      </PageHeader>
 
       <KpiGrid columns={3}>
         {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
@@ -263,7 +264,7 @@ return (
           badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
           supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
         />
-        <KpiCard icon={Ruler} title="Production Area" value={stats.total_area_sqm} unit="m²" supporting="Combined area of all beds" />
+        <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
       </KpiGrid>
 
       {/* WHAT: Full-width map — wala nang side panel sa tabi nito.

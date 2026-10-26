@@ -8,6 +8,7 @@ import { CalendarDays, TrendingUp, ChartLine, Building2, CalendarRange, Info } f
 import ErrorBoundary from '../ErrorBoundary';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import PageHeader from './PageHeader';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import useForecastData from './forecast/useForecastData';
 import useAutoRefresh from './forecast/useAutoRefresh';
 import ForecastFilters from './forecast/ForecastFilters';
@@ -106,37 +107,53 @@ function InnerForecastDashboard() {
     ? `Forecast production for the next ${horizon} month${horizon === 1 ? '' : 's'} is ${fmtMT(forecastTotal)} Metric Tons (MT).`
     : 'No forecast run is available for this selection yet.';
 
+  /* WHAT: Ang header ay laging naka-render, kahit naglo-load pa o may error.
+     WHY: hindi na "kumakalog" ang pahina (skeleton lang ang nagpapalit) at
+          hindi nawawala ang navigation context kapag mabagal ang API. */
+  const header = (
+    <PageHeader
+      id="admin-forecast-header"
+      variant="clean"
+      className="ui-pageheader--admin"
+      title="Forecasting"
+      subtitle="Future production estimates and decision support for the salt industry."
+      actions={(
+        <span className="ui-pageheader-chip">
+          <CalendarDays size={14} strokeWidth={1.5} aria-hidden="true" />
+          Data as of {latestRecordMonth ? monthLong(latestRecordMonth) : 'No data yet'}
+        </span>
+      )}
+      art={<MunicipalityMapArt mode="province" />}
+    />
+  );
+
   if (booting) {
     return (
-      <div className="skeleton-dashboard">
-        <SkeletonBlock width="45%" height={24} />
-        <SkeletonBlock width="70%" height={13} />
-        <div className="mt-4"><SkeletonCards count={5} /></div>
-        <div className="skeleton-card"><SkeletonChart height={320} /></div>
-        <div className="skeleton-card"><SkeletonChart height={280} /></div>
+      <div className="admin-single-page forecast-page">
+        {header}
+        <div className="skeleton-dashboard">
+          <SkeletonBlock width="45%" height={24} />
+          <SkeletonBlock width="70%" height={13} />
+          <div className="mt-4"><SkeletonCards count={5} /></div>
+          <div className="skeleton-card"><SkeletonChart height={320} /></div>
+          <div className="skeleton-card"><SkeletonChart height={280} /></div>
+        </div>
       </div>
     );
   }
 
   if (error) {
-    return <Alert variant="danger">{error}</Alert>;
+    return (
+      <div className="admin-single-page forecast-page">
+        {header}
+        <Alert variant="danger">{error}</Alert>
+      </div>
+    );
   }
 
   return (
     <div className="admin-single-page forecast-page">
-      <PageHeader
-        id="admin-forecast-header"
-        variant="clean"
-        className="ui-pageheader--dashboard"
-        title="Forecasting"
-        subtitle="Future production estimates and insights to support better decision-making for the salt industry."
-        actions={(
-          <span className="ui-pageheader-chip">
-            <CalendarDays size={14} strokeWidth={1.5} aria-hidden="true" />
-            Data as of {latestRecordMonth ? monthLong(latestRecordMonth) : 'No data yet'}
-          </span>
-        )}
-      />
+      {header}
 
       <ForecastFilters
         recordedWindow={filters.recordedWindow}
