@@ -7,10 +7,11 @@ import { SkeletonList, SkeletonChart } from '../Skeleton';
 import { Eye, Download, Trash2, FileText, SearchX, ChevronDown, ChevronUp } from 'lucide-react';
 import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
+import { displayHeader } from '../../constants/labels';
 
 const CONTENT_TYPES = [
   { id: 'production', label: 'Production' },
-  { id: 'producers', label: 'Producers' },
+  { id: 'producers', label: 'Salt Farmers' },
   { id: 'environment', label: 'Environment' },
 ];
 
@@ -38,16 +39,16 @@ const DATA_SECTIONS = [
   ['by_barangay', 'By Barangay'],
   ['monthly_trend', 'Monthly Trend'],
   ['runs', 'Forecast Runs'],
-  ['producers', 'Producer Entries'],
+  ['producers', 'Salt Farmer Entries'],
   ['environment_reports', 'Environment Reports'],
 ];
 
 const SUMMARY_LINES = [
-  ['Total Production', 'total_production_mt', (v) => `${v} MT`],
-  ['Total Registered Producers', 'total_registered_producers', (v) => `${v.toLocaleString()}`],
-  ['Male Producers', 'total_male_producers', (v) => `${v.toLocaleString()}`],
-  ['Female Producers', 'total_female_producers', (v) => `${v.toLocaleString()}`],
-  ['Other Producers', 'total_other_producers', (v) => `${v.toLocaleString()}`],
+  ['Total Production', 'total_production_mt', (v) => `${v} Metric Tons (MT)`],
+  ['Total Registered Salt Farmers', 'total_registered_producers', (v) => `${v.toLocaleString()}`],
+  ['Male Salt Farmers', 'total_male_producers', (v) => `${v.toLocaleString()}`],
+  ['Female Salt Farmers', 'total_female_producers', (v) => `${v.toLocaleString()}`],
+  ['Other Salt Farmers', 'total_other_producers', (v) => `${v.toLocaleString()}`],
   ['Environment Reports', 'total_reports', (v) => `${v.toLocaleString()}`],
   ['Environment Salt Beds', 'total_salt_beds', (v) => `${v.toLocaleString()}`],
   ['Environment Production Area', 'total_production_area_sqm', (v) => `${v.toLocaleString()} m²`],
@@ -89,7 +90,7 @@ function DataTable({ title, rows }) {
         <thead>
           <tr>
             {headers.map((h) => (
-              <th key={h}>{h.replace(/_/g, ' ')}</th>
+              <th key={h}>{displayHeader(h)}</th>
             ))}
           </tr>
         </thead>

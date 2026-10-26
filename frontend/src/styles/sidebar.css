@@ -79,9 +79,9 @@
 .p-logo {
   display: flex;
   align-items: center;
-  height: 40px;
-  padding: 0 8px;
-  margin-bottom: 12px;
+  height: auto;
+  padding: 2px 4px;
+  margin-bottom: 16px;
   flex: 0 0 auto;
   text-decoration: none;
   border-radius: var(--ui-radius-row);
@@ -92,11 +92,17 @@
   outline-offset: 2px;
 }
 
-/* WHAT: Totoong logo image (full expanded, mark collapsed). WHY: walang green square. */
+/* WHAT: Totoong logo image (full expanded, mark collapsed). WHY: walang green square.
+   WHY: 100% width para sagad sa available sidebar space ang expanded wordmark. */
 .p-logo-img {
   display: block;
-  height: 32px;
-  width: auto;
+  width: 100%;
+  height: auto;
+}
+
+/* WHAT: Kalahati lang ng sidebar width ang expanded wordmark. */
+.p-logo-full {
+  width: 50%;
 }
 
 .p-logo-markonly {
@@ -401,6 +407,7 @@
 
 .p-shell[data-collapsed="true"] .p-row-label,
 .p-shell[data-collapsed="true"] .p-row-badge,
+.p-shell[data-collapsed="true"] .p-badge,
 .p-shell[data-collapsed="true"] .p-row-chevron,
 .p-shell[data-collapsed="true"] .p-section-label {
   display: none;

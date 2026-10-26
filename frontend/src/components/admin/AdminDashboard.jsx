@@ -23,7 +23,7 @@ const normName = (name) =>
 
 const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
 
-/* WHAT: Consistent MT formatting — max 2 decimals + thousands separators.
+/* WHAT: Consistent Metric Tons (MT) formatting — max 2 decimals + thousands separators.
    WHY: pareho ang pagtitingnan ng lahat ng volume sa buong dashboard. */
 const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
@@ -254,14 +254,14 @@ return (
         {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
            WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
                 (Pang-general ang values — province-wide, hindi sumasabay sa muni filter.) */}
-        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="MT" supporting={`${fmtMT(totalVolumeMT)} MT recorded`} />
+        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="Metric Tons (MT)" supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`} />
         <KpiCard
           icon={Scale}
           title="Supply-Demand Balance"
           value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
-          unit={supplyDemandGap == null ? undefined : 'MT'}
+          unit={supplyDemandGap == null ? undefined : 'Metric Tons (MT)'}
           badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
-          supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} MT demand benchmark` : 'No demand benchmark available'}
+          supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
         />
         <KpiCard icon={Ruler} title="Production Area" value={stats.total_area_sqm} unit="m²" supporting="Combined area of all beds" />
       </KpiGrid>
@@ -307,11 +307,11 @@ function MunicipalityMap({ muniData, selectedName }) {
     return buildMapDetailCard({
       name: m.name,
       rows: [
-        ['Total Volume', `${m.volumeMT.toLocaleString()} MT`],
+        ['Total Volume', `${m.volumeMT.toLocaleString()} Metric Tons (MT)`],
         ['Record Count', (m.records ?? 0).toLocaleString()],
         ['Production Area', `${(m.area || 0).toLocaleString()} m²`],
         ['Salt Beds', (m.beds || 0).toLocaleString()],
-        ['Registered Producers', (m.registered || 0).toLocaleString()],
+        ['Registered Salt Farmers', (m.registered || 0).toLocaleString()],
         ['Male / Female', genderText],
         ['Kg per Bed', kgPerBed],
       ],
@@ -428,10 +428,10 @@ geoJsonLayerRef.current = L.geoJSON(geojson, {
           `
             <div style="min-width:170px">
               <strong>${m.name}</strong><br/>
-               <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} MT</span><br/>
+               <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} Metric Tons (MT)</span><br/>
                <span style="font-size:0.85rem">Tier: ${getProductionTier(m.volumeMT, tierThresholds).charAt(0).toUpperCase() + getProductionTier(m.volumeMT, tierThresholds).slice(1)}</span><br/>
               <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(m.area)} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
-              <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} producers</span><br/>
+              <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} salt farmers</span><br/>
               <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
             </div>
           `,
@@ -550,7 +550,7 @@ if (geoJsonLayerRef.current) {
     style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
   ></div>
   <p className="map-range-note">
-    {fmtMT(min)} MT → {fmtMT(max)} MT across the {muniData.length} municipalities
+    {fmtMT(min)} Metric Tons (MT) → {fmtMT(max)} Metric Tons (MT) across the {muniData.length} municipalities
   </p>
 </div>
         <p className="text-muted small mb-0 mt-2">

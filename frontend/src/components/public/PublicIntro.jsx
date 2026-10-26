@@ -59,7 +59,7 @@ export default function PublicIntro({ municipalities = [] }) {
           The coastal municipalities of Pangasinan produce salt through solar evaporation and cooked
           salt works, feeding household, food-processing, industrial and agricultural demand across the
           country. The Accelerating Salt Research and Innovation (ASIN) Center at Pangasinan State
-          University records, validates and publishes that production so planners, producers and the
+          University records, validates and publishes that production so planners, salt farmers and the
           public work from the same numbers.
         </p>
       </div>
@@ -73,7 +73,7 @@ export default function PublicIntro({ municipalities = [] }) {
           <span className="public-fact-label">Province's Total Production</span>
           <span className="public-fact-value">
             {facts.totalProduction.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            <span className="public-fact-value__unit">{' MT'}</span>
+            <span className="public-fact-value__unit">{' Metric Tons (MT)'}</span>
           </span>
         </li>
         {/* Row 1, right: Salt Beds in Operation */}

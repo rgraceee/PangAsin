@@ -12,12 +12,12 @@ import { findBarangay, numberValue, rowError } from './reportImportUtils';
 
 const SEX_OPTIONS = ['Male', 'Female', 'Other'];
 const STEPS = [
-  { key: 'producer', label: 'Producer' },
+  { key: 'producer', label: 'Salt Farmer' },
   { key: 'review', label: 'Review' },
 ];
 
 function emptyProducer() {
-  return { barangay_id: '', name: '', age: '', sex: '', address: '' };
+  return { barangay_id: '', name: '', age: '', sex: '' };
 }
 
 export default function ProducerReports({ user, open, onClose, onImported }) {
@@ -33,7 +33,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
   const loadReports = () => {
     getEncoderProducerReports()
       .then((result) => setReports(result.reports || []))
-      .catch((err) => setError(err.message || 'Could not load producer reports.'))
+      .catch((err) => setError(err.message || 'Could not load salt farmer reports.'))
       .finally(() => setLoading(false));
   };
 
@@ -58,12 +58,12 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
   };
 
   const canReview = entries.length > 0 && entries.every((entry) => (
-    entry.barangay_id && entry.name.trim() && entry.age !== '' && Number(entry.age) >= 0 && Number(entry.age) <= 120 && entry.sex && entry.address.trim()
+    entry.barangay_id && entry.name.trim() && entry.age !== '' && Number(entry.age) >= 0 && Number(entry.age) <= 120 && entry.sex
   ));
 
   // WHAT: May unsaved input ba? WHY: para may confirm bago isara ang modal.
   const hasData = entries.length > 1
-    || entries.some((entry) => entry.barangay_id || entry.name || entry.age || entry.sex || entry.address);
+    || entries.some((entry) => entry.barangay_id || entry.name || entry.age || entry.sex);
 
   const submitReport = async () => {
     setError('');
@@ -73,10 +73,10 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
         entries: entries.map((entry) => ({ ...entry, barangay_id: Number(entry.barangay_id) })),
       });
       setReports((current) => [report, ...current]);
-      toastSuccess('Producer report submitted and is pending review.', 'Producer report pending');
+      toastSuccess('Salt farmer report submitted and is pending review.', 'Salt farmer report pending');
       onClose();
     } catch (err) {
-      const message = err.data?.errors?.join(' ') || err.message || 'Could not submit the producer report.';
+      const message = err.data?.errors?.join(' ') || err.message || 'Could not submit the salt farmer report.';
       setError(message);
       toastError(message, 'Could not submit report');
     } finally {
@@ -91,25 +91,22 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
       const name = String(row.name || '').trim();
       const age = numberValue(row.age);
       const sex = String(row.sex || '').trim().toLowerCase();
-      const address = String(row.address || '').trim();
       if (!barangay) errors.push(rowError(row, 'barangay must match a barangay in your municipality.'));
       if (!name || name.length > 150) errors.push(rowError(row, 'name is required and must be 150 characters or fewer.'));
       if (!Number.isInteger(age) || age < 0 || age > 120) errors.push(rowError(row, 'age must be a whole number from 0 to 120.'));
       if (!['male', 'female', 'other'].includes(sex)) errors.push(rowError(row, 'sex must be Male, Female, or Other.'));
-      if (!address || address.length > 255) errors.push(rowError(row, 'address is required and must be 255 characters or fewer.'));
       return {
         barangay_id: barangay?.id,
         name,
         age,
         sex: sex ? sex[0].toUpperCase() + sex.slice(1) : sex,
-        address,
       };
     });
     if (errors.length) throw new Error(errors.join(' '));
     await createEncoderProducerReport({ entries });
     loadReports();
     onImported?.();
-    return `Submitted ${entries.length} producer${entries.length === 1 ? '' : 's'} for review.`;
+    return `Submitted ${entries.length} salt farmer${entries.length === 1 ? '' : 's'} for review.`;
   };
 
   return (
@@ -118,8 +115,8 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
         <Card.Header>
           <div className="admin-card-head d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div>
-              <h5 className="admin-card-head-title"><Users size={17} className="me-2" />Producer Reports</h5>
-              <div className="small text-muted">Report Type: Producer</div>
+              <h5 className="admin-card-head-title"><Users size={17} className="me-2" />Salt Farmer Reports</h5>
+              <div className="small text-muted">Report Type: Salt Farmer</div>
             </div>
             <ReportImportActions
               templateUrl="/static/templates/producer-report-template.csv"
@@ -133,16 +130,16 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
           {loading ? (
             <div className="d-flex justify-content-center py-4"><Spinner animation="border" size="sm" /></div>
           ) : reports.length === 0 ? (
-            <div className="chart-empty"><span className="chart-empty-chip">No reports</span>No producer reports submitted yet.</div>
+            <div className="chart-empty"><span className="chart-empty-chip">No reports</span>No salt farmer reports submitted yet.</div>
           ) : (
             <Table responsive hover className="mb-0">
               <thead>
-                <tr><th>Report Type</th><th>Producers</th><th>Status</th><th>Submitted</th></tr>
+                <tr><th>Report Type</th><th>Salt Farmers</th><th>Status</th><th>Submitted</th></tr>
               </thead>
               <tbody>
                 {reports.map((report) => (
                   <tr key={report.id}>
-                    <td><Badge bg="primary">Producer</Badge></td>
+                    <td><Badge bg="primary">Salt Farmer</Badge></td>
                     <td>{report.entries?.length || 0}</td>
                     <td><Badge bg={report.status === 'pending' ? 'warning' : 'secondary'} text={report.status === 'pending' ? 'dark' : undefined}>{report.status}</Badge></td>
                     <td>{report.submitted_at ? new Date(report.submitted_at).toLocaleDateString() : '—'}</td>
@@ -156,7 +153,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
 
       <ReportModal
         show={open}
-        title="New Producer Report"
+        title="New Salt Farmer Report"
         municipality={user?.municipality_name}
         steps={STEPS}
         currentStep={step}
@@ -172,7 +169,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
               className="ui-btn-primary"
               onClick={() => { setError(''); setStep(1); }}
               disabled={!canReview}
-              title={!canReview ? 'Complete every producer row to continue.' : undefined}
+              title={!canReview ? 'Complete every salt farmer row to continue.' : undefined}
             >
               Review
             </button>
@@ -185,7 +182,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
               <Pencil size={14} aria-hidden="true" />Edit
             </button>
             <button type="button" className="ui-btn-primary" onClick={submitReport} disabled={saving}>
-              {saving ? 'Submitting…' : 'Submit Producer Report'}
+              {saving ? 'Submitting…' : 'Submit Salt Farmer Report'}
             </button>
           </>
         )}
@@ -197,7 +194,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
           disabled={!barangays.length}
         />
         {step === 0 ? (
-          <ReportSection title="Producer Details">
+          <ReportSection title="Salt Farmer Details">
             <div className="ui-form-grid">
               <ReportField label="Municipality" readOnly>
                 <Form.Control value={user?.municipality_name || ''} readOnly aria-label="Assigned municipality" />
@@ -211,7 +208,6 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
                     <th>Name</th>
                     <th>Age</th>
                     <th>Sex</th>
-                    <th>Address</th>
                     <th aria-label="Row actions" />
                   </tr>
                 </thead>
@@ -220,7 +216,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
                     <tr key={index}>
                       <td>
                         <Form.Select
-                          aria-label={`Barangay for producer ${index + 1}`}
+                          aria-label={`Barangay for salt farmer ${index + 1}`}
                           value={entry.barangay_id}
                           onChange={(event) => updateEntry(index, { barangay_id: event.target.value })}
                         >
@@ -230,7 +226,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
                       </td>
                       <td>
                         <Form.Control
-                          aria-label={`Name for producer ${index + 1}`}
+                          aria-label={`Name for salt farmer ${index + 1}`}
                           maxLength={150}
                           value={entry.name}
                           onChange={(event) => updateEntry(index, { name: event.target.value })}
@@ -239,7 +235,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
                       </td>
                       <td style={{ width: 92 }}>
                         <Form.Control
-                          aria-label={`Age for producer ${index + 1}`}
+                          aria-label={`Age for salt farmer ${index + 1}`}
                           type="number"
                           min="0"
                           max="120"
@@ -251,7 +247,7 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
                       </td>
                       <td style={{ width: 132 }}>
                         <Form.Select
-                          aria-label={`Sex for producer ${index + 1}`}
+                          aria-label={`Sex for salt farmer ${index + 1}`}
                           value={entry.sex}
                           onChange={(event) => updateEntry(index, { sex: event.target.value })}
                         >
@@ -259,21 +255,12 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
                           {SEX_OPTIONS.map((sex) => <option key={sex} value={sex}>{sex}</option>)}
                         </Form.Select>
                       </td>
-                      <td>
-                        <Form.Control
-                          aria-label={`Address for producer ${index + 1}`}
-                          maxLength={255}
-                          value={entry.address}
-                          onChange={(event) => updateEntry(index, { address: event.target.value })}
-                          placeholder="Home address"
-                        />
-                      </td>
                       <td style={{ width: 44 }}>
                         {entries.length > 1 && (
                           <button
                             type="button"
                             className="ui-report-row-remove"
-                            aria-label={`Remove producer ${index + 1}`}
+                            aria-label={`Remove salt farmer ${index + 1}`}
                             onClick={() => setEntries((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                           >
                             <Trash2 size={15} aria-hidden="true" />
@@ -295,18 +282,18 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
           <>
             <ReportSummary
               sections={[{
-                title: 'Review Producer Report',
+                title: 'Review Salt Farmer Report',
                 onEdit: () => setStep(0),
                 rows: [
-                  ['Report Type', 'Producer'],
+                  ['Report Type', 'Salt Farmer'],
                   ['Municipality', user?.municipality_name || '—'],
-                  ['Producers', entries.length],
+                  ['Salt Farmers', entries.length],
                 ],
               }]}
             />
             <div className="ui-report-table-wrap">
               <table className="ui-report-table">
-                <thead><tr><th>Producer</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Address</th></tr></thead>
+                <thead><tr><th>Salt Farmer</th><th>Barangay</th><th>Age</th><th>Sex</th></tr></thead>
                 <tbody>
                   {entries.map((entry, index) => (
                     <tr key={index}>
@@ -314,7 +301,6 @@ export default function ProducerReports({ user, open, onClose, onImported }) {
                       <td>{barangays.find((barangay) => String(barangay.id) === String(entry.barangay_id))?.name || '—'}</td>
                       <td>{entry.age === '' ? '—' : entry.age}</td>
                       <td>{entry.sex || '—'}</td>
-                      <td>{entry.address || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

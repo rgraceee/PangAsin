@@ -149,7 +149,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
           const tooltipContent = `
             <div style="min-width:160px">
               <strong>${m.name}</strong><br/>
-              <span style="font-size:0.85rem">Production: ${m.productionMT.toLocaleString()} MT</span><br/>
+              <span style="font-size:0.85rem">Production: ${m.productionMT.toLocaleString()} Metric Tons (MT)</span><br/>
               <span style="font-size:0.85rem">Tier: ${m ? (tierFor(m.productionMT).charAt(0).toUpperCase() + tierFor(m.productionMT).slice(1)) : ''}</span><br/>
               <span class="${trendClass}" style="font-size:0.85rem">${changeText}</span><br/>
               <span style="font-size:0.85rem;color:#495057">Method: ${m.dominantMethod.charAt(0).toUpperCase() + m.dominantMethod.slice(1)}</span>
@@ -188,7 +188,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
             const html = buildMapDetailCard({
               name: m.name,
               rows: [
-                ['Current Production', `${m.productionMT.toLocaleString()} MT`],
+                ['Current Production', `${m.productionMT.toLocaleString()} Metric Tons (MT)`],
                 ['Change', changeText],
                 ['Production Area', `${(m.productionAreaSqm || 0).toLocaleString()} m²`],
                 ['Salt Beds', (m.saltBeds || 0).toLocaleString()],
@@ -270,7 +270,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
           </div>
           <p className="public-sr-only">
             Map summary: the producing municipalities shown are {sorted.map((m) => m.name).join(', ')}, with recorded
-            production ranging from {min.toLocaleString()} to {max.toLocaleString()} MT.
+            production ranging from {min.toLocaleString()} to {max.toLocaleString()} Metric Tons (MT).
           </p>
 <div className="map-legend" aria-label="Map legend">
   <div className="map-gradient-caption">
@@ -287,7 +287,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
     <span>{max.toLocaleString()}</span>
   </div>
   <p className="map-range-note">
-    {min.toLocaleString()} MT → {max.toLocaleString()} MT across the {sorted.length} producing municipalities
+    {min.toLocaleString()} Metric Tons (MT) → {max.toLocaleString()} Metric Tons (MT) across the {sorted.length} producing municipalities
   </p>
 </div>
           <p className="text-muted small mb-0 mt-2">

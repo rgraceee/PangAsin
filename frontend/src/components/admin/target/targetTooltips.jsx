@@ -17,13 +17,13 @@ export function PaceTooltip({ active, payload }) {
       {hasValue ? (
         <>
           <div className="te-tooltip-row">
-            <span>Production to date</span><b>{fmtMT(d.cumTotal)} MT</b>
+            <span>Production to date</span><b>{fmtMT(d.cumTotal)} Metric Tons (MT)</b>
           </div>
           <div className="te-tooltip-row">
-            <span>Target to date</span><b>{fmtMT(d.cumTarget)} MT</b>
+            <span>Target to date</span><b>{fmtMT(d.cumTarget)} Metric Tons (MT)</b>
           </div>
           <div className="te-tooltip-row">
-            <span>Gap</span><b>{fmtSignedMT(d.cumTotal - d.cumTarget)} MT</b>
+            <span>Gap</span><b>{fmtSignedMT(d.cumTotal - d.cumTarget)} Metric Tons (MT)</b>
           </div>
         </>
       ) : (
@@ -42,18 +42,18 @@ export function MonthTooltip({ active, payload }) {
       <div className="te-tooltip-label">{d.label}</div>
       <div className="te-tooltip-row">
         <span>{d.isRecorded ? 'Recorded' : 'Forecast'}</span>
-        <b>{actual === null || actual === undefined ? '\u2014' : `${fmtMT(actual)} MT`}</b>
+        <b>{actual === null || actual === undefined ? '\u2014' : `${fmtMT(actual)} Metric Tons (MT)`}</b>
       </div>
       <div className="te-tooltip-row">
-        <span>Monthly target</span><b>{fmtMT(d.target)} MT</b>
+        <span>Monthly target</span><b>{fmtMT(d.target)} Metric Tons (MT)</b>
       </div>
       <div className="te-tooltip-row">
         <span>Difference</span>
-        <b>{actual === null || actual === undefined ? '\u2014' : fmtSignedMT(d.gap)} MT</b>
+        <b>{actual === null || actual === undefined ? '\u2014' : fmtSignedMT(d.gap)} Metric Tons (MT)</b>
       </div>
       {d.requiredPace !== null && d.requiredPace !== undefined && (
         <div className="te-tooltip-row">
-          <span>Required pace</span><b>{fmtMT(d.requiredPace)} MT</b>
+          <span>Required pace</span><b>{fmtMT(d.requiredPace)} Metric Tons (MT)</b>
         </div>
       )}
     </div>
@@ -69,10 +69,10 @@ export function ContributionTooltip({ active, payload }) {
       {d.hasForecast ? (
         <>
           <div className="te-tooltip-row">
-            <span>Forecast</span><b>{fmtMT(d.forecast)} MT</b>
+            <span>Forecast</span><b>{fmtMT(d.forecast)} Metric Tons (MT)</b>
           </div>
           <div className="te-tooltip-row">
-            <span>Target share</span><b>{fmtMT(d.targetShare)} MT</b>
+            <span>Target share</span><b>{fmtMT(d.targetShare)} Metric Tons (MT)</b>
           </div>
           <div className="te-tooltip-row">
             <span>Delivery</span><b>{fmtPct(d.ratio * 100)}</b>

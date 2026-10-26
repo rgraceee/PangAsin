@@ -34,33 +34,33 @@ export default function TargetSummary({ summary, evaluationYear, partial, sanity
       <Stat
         label={`Annual target ${evaluationYear}`}
         value={fmtMT(annualTarget)}
-        unit="MT"
+        unit="Metric Tons (MT)"
         sub={`One annual number, split across the months by season`}
       />
       <Stat
         label="Projected year-end"
         value={fmtMT(projected)}
-        unit="MT"
-        sub={`${fmtMT(recordedTotal)} MT recorded + ${fmtMT(forecastTotal)} MT forecast`}
+        unit="Metric Tons (MT)"
+        sub={`${fmtMT(recordedTotal)} Metric Tons (MT) recorded + ${fmtMT(forecastTotal)} Metric Tons (MT) forecast`}
       />
       <Stat
         label="Achievement"
         value={pct === null ? '\u2014' : fmtPct(pct)}
         badge={{ label: status.label, tone: status.key }}
         info="On track: 90% or more of the target. At risk: 70% to 90%. Off track: below 70%."
-        sub={`of the ${fmtMT(annualTarget)} MT target`}
+        sub={`of the ${fmtMT(annualTarget)} Metric Tons (MT) target`}
       />
       <Stat
         label={gap >= 0 ? 'Surplus vs target' : 'Shortfall vs target'}
         value={fmtSignedMT(gap)}
-        unit="MT"
+        unit="Metric Tons (MT)"
         tone={gap >= 0 ? 'good' : 'bad'}
         sub={`Projected year-end against the ${evaluationYear} target`}
       />
       <Stat
         label="Likely range"
         value={rangeLow === null ? '\u2014' : `${fmtMT(rangeLow, 0)} \u2013 ${fmtMT(rangeHigh, 0)}`}
-        unit="MT"
+        unit="Metric Tons (MT)"
         compact
         sub="From the forecast's expected range"
       />

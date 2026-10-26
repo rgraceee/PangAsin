@@ -103,7 +103,7 @@ function InnerForecastDashboard() {
   }, [selectedRun, scopeName, windowLabel, horizon, filters.productionMethod]);
 
   const headline = selectedRun && forecastTotal !== null
-    ? `Forecast production for the next ${horizon} month${horizon === 1 ? '' : 's'} is ${fmtMT(forecastTotal)} MT.`
+    ? `Forecast production for the next ${horizon} month${horizon === 1 ? '' : 's'} is ${fmtMT(forecastTotal)} Metric Tons (MT).`
     : 'No forecast run is available for this selection yet.';
 
   if (booting) {

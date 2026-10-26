@@ -14,6 +14,7 @@ import ReportField from './ReportField';
 import ReportSummary from './ReportSummary';
 import ReportImportActions from './ReportImportActions';
 import { findBarangay, numberValue, rowError } from './reportImportUtils';
+import { STATUS_LABELS } from '../../constants/labels';
 
 const METHODS = [
   { id: 'cooked', label: 'Cooked' },
@@ -27,11 +28,9 @@ const STEPS = [
 ];
 
 const STATUS_VARIANTS = {
-  draft: 'secondary',
   pending: 'warning',
   approved: 'success',
   rejected: 'danger',
-  returned: 'info',
 };
 
 function EnvironmentReportForm({ user, onClose, onSaved, onImport, barangays: availableBarangays }) {
@@ -402,7 +401,7 @@ export default function EnvironmentReports({ user, open, onClose, onImported }) 
                     <td>{Number(report.num_salt_beds).toLocaleString()}</td>
                     <td>{(report.production_methods || []).map((method) => method[0].toUpperCase() + method.slice(1)).join(', ')}</td>
                     <td>{Number(report.production_area_size).toLocaleString()} m²</td>
-                    <td><Badge bg={STATUS_VARIANTS[report.status] || 'secondary'}>{report.status}</Badge></td>
+                    <td><Badge bg={STATUS_VARIANTS[report.status] || 'secondary'}>{STATUS_LABELS[report.status]?.label || report.status}</Badge></td>
                     <td>{report.created_at ? new Date(report.created_at).toLocaleDateString() : '—'}</td>
                   </tr>
                 ))}

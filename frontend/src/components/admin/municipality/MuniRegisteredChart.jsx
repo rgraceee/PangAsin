@@ -17,20 +17,20 @@ export default function MuniRegisteredChart({ rows, total }) {
   return (
     <MuniCard
       icon={Users}
-      title="Registered Producers by Municipality"
-      sub="Distinct producers in the master list, ranked"
+      title="Registered Salt Farmers by Municipality"
+      sub="Distinct salt farmers in the master list, ranked"
       chips={(
         <>
           <MuniChip label="Master list" meta />
-          <MuniChip label={`${fmtInt(total)} producers`} meta />
+          <MuniChip label={`${fmtInt(total)} salt farmers`} meta />
         </>
       )}
-      caption="The master list holds the registered producers. Production reports log the same people again each month, so they are not counted here."
+      caption="The master list holds the registered salt farmers. Production reports log the same people again each month, so they are not counted here."
     >
       {data.length === 0 ? (
         <div className="muni-empty">
           <span className="muni-empty-chip">No data</span>
-          No producer records for the selected municipalities.
+          No salt farmer records for the selected municipalities.
         </div>
       ) : (
         <div className="muni-chart" style={{ height: 300 }}>
@@ -63,7 +63,7 @@ export default function MuniRegisteredChart({ rows, total }) {
               <Tooltip content={<BarTooltip />} cursor={{ fill: 'var(--muni-hover)' }} />
               <Bar
                 dataKey="count"
-                name="Producers"
+                name="Salt Farmers"
                 maxBarSize={18}
                 isAnimationActive={false}
                 label={({ x, y, width, height, index }) => {

@@ -215,7 +215,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
 
 
 def build_producers_data(municipality_id, barangay_id, start, end):
-    """Build a producer-only report from the current worker master list."""
+    """Build a salt-farmer-only report from the current master list."""
     query = (
         db.session.query(
             Producer,
@@ -266,7 +266,7 @@ def build_producers_data(municipality_id, barangay_id, start, end):
         barangay = db.session.get(Barangay, barangay_id)
         prefix = barangay.name if barangay else f"Barangay #{barangay_id}"
     return {
-        "report_title": f"{prefix} Producer Report",
+        "report_title": f"{prefix} Salt Farmer Report",
         "producers": producers,
         "by_municipality" if municipality_id is None and barangay_id is None else "by_barangay": list(by_scope.values()),
         "total_registered_producers": len(producers),
@@ -499,6 +499,89 @@ def build_report_data(report_type, municipality_id=None, barangay_id=None, start
     return fn()
 
 
+# WHAT: Human-readable column headings for exported reports.
+# WHY: Raw field keys (e.g. production_mt) are code names, not labels. Keep this
+#      map in sync with DISPLAY_HEADERS in frontend/src/constants/labels.js.
+DISPLAY_HEADERS = {
+    "municipality": "Municipality",
+    "barangay": "Barangay",
+    "barangay_id": "Barangay",
+    "record_date": "Record Date",
+    "production_volume_mt": "Production Volume (Metric Tons (MT))",
+    "production_mt": "Production (Metric Tons (MT))",
+    "total_production_mt": "Total Production (Metric Tons (MT))",
+    "record_count": "Records",
+    "total_salt_beds": "Total Salt Beds",
+    "num_salt_beds": "Salt Beds",
+    "area_per_salt_bed": "Area per Salt Bed (m²)",
+    "area_per_salt_bed_sqm": "Area per Salt Bed (m²)",
+    "total_area_sqm": "Total Area (m²)",
+    "production_area_sqm": "Production Area (m²)",
+    "total_production_area_sqm": "Total Production Area (m²)",
+    "production_method": "Production Method",
+    "production_methods": "Production Methods",
+    "registered_producers": "Registered Salt Farmers",
+    "total_registered_producers": "Total Registered Salt Farmers",
+    "male_producers": "Male Salt Farmers",
+    "total_male_producers": "Total Male Salt Farmers",
+    "female_producers": "Female Salt Farmers",
+    "total_female_producers": "Total Female Salt Farmers",
+    "other_producers": "Other Salt Farmers",
+    "total_other_producers": "Total Other Salt Farmers",
+    "month": "Month",
+    "name": "Name",
+    "age": "Age",
+    "age_bracket": "Age Bracket",
+    "sex": "Sex",
+    "address": "Address",
+    "submitted_at": "Submitted At",
+    "algorithm": "Algorithm",
+    "readiness": "Readiness",
+    "reliability": "Reliability",
+    "trend_direction": "Trend",
+    "expected_change_pct": "Expected Change (%)",
+    "projected_total_mt": "Projected Total (Metric Tons (MT))",
+    "mae": "MAE (Metric Tons (MT))",
+    "rmse": "RMSE (Metric Tons (MT))",
+    "mape": "MAPE (%)",
+    "r2": "R²",
+    "period": "Period",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "quality_score": "Quality Score (%)",
+    "overall_quality_score": "Overall Quality Score (%)",
+    "total_records": "Total Records",
+    "total_reports": "Total Environment Reports",
+    "year": "Year",
+    "demand_volume_mt": "Demand Volume (Metric Tons (MT))",
+    "local_production_mt": "Local Production (Metric Tons (MT))",
+    "import_volume_mt": "Import Volume (Metric Tons (MT))",
+    "source": "Source",
+}
+
+
+def _humanize(key):
+    return str(key).replace("_", " ").title()
+
+
+def _display_header(key):
+    if key in DISPLAY_HEADERS:
+        return DISPLAY_HEADERS[key]
+    if str(key).startswith("completeness_"):
+        inner = str(key)[len("completeness_"):]
+        base = DISPLAY_HEADERS.get(inner, _humanize(inner)).split(" (")[0]
+        return f"{base} Completeness (%)"
+    return _humanize(key)
+
+
+def _cell_value(value):
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(str(v) for v in value)
+    if isinstance(value, dict):
+        return str(value)
+    return "" if value is None else value
+
+
 def _flatten_rows(rows):
     flat = []
     if not rows:
@@ -525,9 +608,9 @@ def write_excel(data, filepath):
             ws.append(["No data"])
             return
         headers = list(rows[0].keys())
-        ws.append(headers)
+        ws.append([_display_header(h) for h in headers])
         for row in rows:
-            ws.append([row.get(h, "") for h in headers])
+            ws.append([_cell_value(row.get(h, "")) for h in headers])
 
     ws = wb.active
     ws.title = "Summary"
@@ -550,6 +633,12 @@ def write_excel(data, filepath):
     if "monthly_trend" in data and isinstance(data["monthly_trend"], list):
         sheet = wb.create_sheet("Monthly Trend")
         sheet_from_rows(sheet, data["monthly_trend"])
+    if "producers" in data and isinstance(data["producers"], list):
+        sheet = wb.create_sheet("Salt Farmer Entries")
+        sheet_from_rows(sheet, data["producers"])
+    if "environment_reports" in data and isinstance(data["environment_reports"], list):
+        sheet = wb.create_sheet("Environment Reports")
+        sheet_from_rows(sheet, data["environment_reports"])
 
     for extra in (
         "total_production_mt",
@@ -558,20 +647,23 @@ def write_excel(data, filepath):
         "total_registered_producers",
         "total_male_producers",
         "total_female_producers",
+        "total_other_producers",
+        "total_reports",
+        "total_production_area_sqm",
     ):
         if extra in data and data[extra] not in (None, ""):
-            ws.append([extra.replace("_", " ").title(), data[extra]])
+            ws.append([_display_header(extra), data[extra]])
 
     if "pangasinan" in data and isinstance(data["pangasinan"], dict):
         ws.append([])
         ws.append(["Pangasinan"])
         for k, v in data["pangasinan"].items():
-            ws.append([k.replace("_", " ").title(), v])
+            ws.append([_display_header(k), v])
     if "philippines" in data and isinstance(data["philippines"], dict):
         ws.append([])
         ws.append(["Philippines"])
         for k, v in data["philippines"].items():
-            ws.append([k.replace("_", " ").title(), v])
+            ws.append([_display_header(k), v])
 
     wb.save(filepath)
 
@@ -598,6 +690,8 @@ def write_pdf(data, filepath):
         ("By Barangay", "by_barangay"),
         ("Monthly Trend", "monthly_trend"),
         ("Forecast Runs", "runs"),
+        ("Salt Farmer Entries", "producers"),
+        ("Environment Reports", "environment_reports"),
     ]
     for title, key in table_sections:
         rows = data.get(key)
@@ -608,8 +702,8 @@ def write_pdf(data, filepath):
         if not flat:
             continue
         headers = list(flat[0].keys())
-        body = [[Paragraph(str(v), small_style) for v in row.values()] for row in flat]
-        tbl = Table([[Paragraph(h, small_style) for h in headers]] + body, repeatRows=1)
+        body = [[Paragraph(str(_cell_value(row.get(h, ""))), small_style) for h in headers] for row in flat]
+        tbl = Table([[Paragraph(_display_header(h), small_style) for h in headers]] + body, repeatRows=1)
         tbl.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1565C8")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -623,9 +717,9 @@ def write_pdf(data, filepath):
     if "overall_quality_score" in data:
         story.append(Paragraph(f"Overall Quality Score: {data['overall_quality_score']}%", styles["Normal"]))
     if "total_production_mt" in data:
-        story.append(Paragraph(f"Total Production: {data['total_production_mt']} MT", styles["Normal"]))
+        story.append(Paragraph(f"Total Production: {data['total_production_mt']} Metric Tons (MT)", styles["Normal"]))
     if "total_registered_producers" in data:
-        story.append(Paragraph(f"Total Registered Producers: {data['total_registered_producers']}", styles["Normal"]))
+        story.append(Paragraph(f"Total Registered Salt Farmers: {data['total_registered_producers']}", styles["Normal"]))
         story.append(Paragraph(
             f"Male: {data['total_male_producers']} · Female: {data['total_female_producers']}",
             styles["Normal"],
@@ -673,7 +767,7 @@ def write_docx(data, filepath):
 
         for j, h in enumerate(headers):
             cell = table.cell(0, j)
-            cell.text = str(h)
+            cell.text = _display_header(h)
             set_cell_shading(cell, "1565C8")
             for p in cell.paragraphs:
                 for r in p.runs:
@@ -684,7 +778,7 @@ def write_docx(data, filepath):
         for i, row in enumerate(rows, start=1):
             for j, h in enumerate(headers):
                 cell = table.cell(i, j)
-                cell.text = "" if row.get(h) is None else str(row.get(h, ""))
+                cell.text = str(_cell_value(row.get(h, "")))
                 for p in cell.paragraphs:
                     for r in p.runs:
                         r.font.size = Pt(9)
@@ -697,6 +791,8 @@ def write_docx(data, filepath):
         ("By Barangay", "by_barangay"),
         ("Monthly Trend", "monthly_trend"),
         ("Forecast Runs", "runs"),
+        ("Salt Farmer Entries", "producers"),
+        ("Environment Reports", "environment_reports"),
     ]
     for title, key in table_sections:
         rows = data.get(key)
@@ -707,9 +803,9 @@ def write_docx(data, filepath):
     if "overall_quality_score" in data:
         doc.add_paragraph(f"Overall Quality Score: {data['overall_quality_score']}%")
     if "total_production_mt" in data:
-        doc.add_paragraph(f"Total Production: {data['total_production_mt']} MT")
+        doc.add_paragraph(f"Total Production: {data['total_production_mt']} Metric Tons (MT)")
     if "total_registered_producers" in data:
-        doc.add_paragraph(f"Total Registered Producers: {data['total_registered_producers']}")
+        doc.add_paragraph(f"Total Registered Salt Farmers: {data['total_registered_producers']}")
         doc.add_paragraph(
             f"Male: {data['total_male_producers']} · Female: {data['total_female_producers']}"
         )

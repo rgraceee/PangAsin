@@ -1,6 +1,6 @@
 // WHAT: "Production Method" as a donut with a readable legend.
-// WHY: the old legend was tiny and carried a "0 MT / 0.0%" slice from a
-//      fraction of a ton. Slices under 0.5 MT are dropped and every row shows
+// WHY: the old legend was tiny and carried a "0 Metric Tons (MT) / 0.0%" slice from a
+//      fraction of a ton. Slices under 0.5 Metric Tons (MT) are dropped and every row shows
 //      the method, the volume and the share.
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Blend } from 'lucide-react';
@@ -16,7 +16,7 @@ export default function MuniMethodChart({ rows, total }) {
       icon={Blend}
       title="Production Method"
       sub="Approved production records, all time"
-      chips={<MuniChip label={`${fmtInt(total)} MT`} meta />}
+      chips={<MuniChip label={`${fmtInt(total)} Metric Tons (MT)`} meta />}
       caption={leader
         ? `${leader.name} leads production with ${fmtPct(leader.pct)}.`
         : 'No production recorded for the selected municipalities.'}
@@ -53,7 +53,7 @@ export default function MuniMethodChart({ rows, total }) {
               <li key={row.key} className="muni-legend-item">
                 <span className="muni-legend-swatch" style={{ background: row.color }} />
                 <span className="muni-legend-name">{row.name}</span>
-                <span className="muni-legend-value">{fmtInt(row.value)} MT</span>
+                <span className="muni-legend-value">{fmtInt(row.value)} Metric Tons (MT)</span>
                 <span className="muni-legend-pct">{fmtPct(row.pct)}</span>
               </li>
             ))}

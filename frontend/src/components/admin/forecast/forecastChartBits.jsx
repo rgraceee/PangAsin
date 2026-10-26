@@ -77,17 +77,17 @@ export function TrendTooltip({ active, payload }) {
       <div className="fc-tooltip-label">{d.labelShort}</div>
       {hasHistory && (
         <div className="fc-tooltip-row">
-          <span>Recorded</span><b>{fmtMT(d.historical)} MT</b>
+          <span>Recorded</span><b>{fmtMT(d.historical)} Metric Tons (MT)</b>
         </div>
       )}
       {hasForecast && (
         <div className="fc-tooltip-row">
-          <span>Forecast</span><b>{fmtMT(d.forecast)} MT</b>
+          <span>Forecast</span><b>{fmtMT(d.forecast)} Metric Tons (MT)</b>
         </div>
       )}
       {hasForecast && d.lower !== null && d.upper !== null && (
         <div className="fc-tooltip-row">
-          <span>Expected range</span><b>{fmtMT(d.lower)} – {fmtMT(d.upper)} MT</b>
+          <span>Expected range</span><b>{fmtMT(d.lower)} – {fmtMT(d.upper)} Metric Tons (MT)</b>
         </div>
       )}
     </div>
@@ -109,7 +109,7 @@ export function SeasonTooltip({ active, payload }) {
     <div className="fc-tooltip">
       <div className="fc-tooltip-label">{d.label}</div>
       <div className="fc-tooltip-row">
-        <span>Average production</span><b>{fmtMT(d.value)} MT</b>
+        <span>Average production</span><b>{fmtMT(d.value)} Metric Tons (MT)</b>
       </div>
       <div className="fc-tooltip-source">Averaged over complete years of approved records.</div>
     </div>

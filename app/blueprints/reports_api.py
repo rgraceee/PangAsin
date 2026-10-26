@@ -29,7 +29,7 @@ REPORT_TYPE_NAMES = {
     "supply_demand": "Supply-Demand",
     "gis": "Geographic-Reference",
     "production": "Production",
-    "producers": "Producers",
+    "producers": "Salt-Farmers",
     "environment": "Environment",
 }
 
@@ -38,7 +38,7 @@ def _report_download_name(report, ext):
     """Human-friendly, report-specific filename for downloads.
 
     Example: ``Production_Province-wide_2025.pdf`` or
-    ``Producers_Barangay-Germinal_2025-01-01_to_2025-12-31.docx``
+    ``Salt-Farmers_Barangay-Germinal_2025-01-01_to_2025-12-31.docx``
     """
     label = REPORT_TYPE_NAMES.get(report.report_type, report.report_type)
     barangay = report.barangay.name if report.barangay else None

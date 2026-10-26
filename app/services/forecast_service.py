@@ -1410,7 +1410,7 @@ def evaluate_target(
     recommendations = []
     if not achievable:
         recommendations.append(
-            f"Target is out of reach by {abs(variance):,.0f} MT ({abs(variance_pct):.1f}%). "
+            f"Target is out of reach by {abs(variance):,.0f} Metric Tons (MT) ({abs(variance_pct):.1f}%). "
             f"Increase capacity, improve yields, or extend the horizon beyond {forecast_horizon} months."
         )
     if trend_direction == "declining":
@@ -1438,7 +1438,7 @@ def evaluate_target(
         recommendations.append("Target looks achievable based on current trajectory. Keep monitoring monthly against these weighted targets.")
 
     monthly_avg_note = (
-        f"This breaks down to roughly {annual_target / 12:,.1f} MT per month on average, "
+        f"This breaks down to roughly {annual_target / 12:,.1f} Metric Tons (MT) per month on average, "
         f"but actual monthly targets vary because historical production is not evenly distributed throughout the year."
     )
     if municipality_id is not None:
@@ -1485,7 +1485,7 @@ def evaluate_target(
     sign = "+" if variance >= 0 else ""
     narrative = (
         f"{scope_intro} {monthly_avg_note} "
-        f"The projected total is {total_projected:,.2f} MT, which is {sign}{variance:,.2f} MT ({sign}{variance_pct:.1f}%) "
+        f"The projected total is {total_projected:,.2f} Metric Tons (MT), which is {sign}{variance:,.2f} Metric Tons (MT) ({sign}{variance_pct:.1f}%) "
         f"{'above' if variance >= 0 else 'below'} the annual target. "
         f"{trend_note} {seasonal_note} "
         f"Overall, this target looks {'achievable' if achievable else 'challenging'}. "

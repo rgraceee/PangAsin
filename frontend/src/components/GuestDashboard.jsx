@@ -115,7 +115,7 @@ export default function GuestDashboard() {
               icon={Scale}
               title="National Salt Demand"
               value={kpis.nationalDemand}
-              unit="MT"
+              unit="Metric Tons (MT)"
               supporting="Philippines demand benchmark"
               info="Latest national salt demand benchmark compiled by the ASIN Center."
             />
@@ -139,7 +139,7 @@ export default function GuestDashboard() {
               icon={Boxes}
               title="Recorded Production"
               value={kpis.totalMT == null ? null : Math.round(kpis.totalMT * 100) / 100}
-              unit="MT"
+              unit="Metric Tons (MT)"
               supporting="Total approved production · Pangasinan"
               info="Total approved salt production recorded by Pangasinan municipalities to date."
             />

@@ -12,8 +12,13 @@ import { Eye } from 'lucide-react';
 import IconButton from '../IconButton';
 import { formatMT } from '../../utils/volumeFormat';
 import PageHeader from './PageHeader';
+import { STATUS_OPTIONS } from '../../constants/labels';
 
-const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
+const REPORT_TYPE_LABELS = {
+  production: 'Production',
+  producer: 'Salt Farmer',
+  environment: 'Environment',
+};
 
 function DetailRow({ label, value }) {
   return (
@@ -127,7 +132,7 @@ export default function ValidationQueue() {
   const hasFilter = Boolean(
     filters.municipality_id || filters.q || filters.start || filters.end || (filters.status && filters.status !== 'pending')
   );
-  const reportTypeLabel = reportType[0].toUpperCase() + reportType.slice(1);
+  const reportTypeLabel = REPORT_TYPE_LABELS[reportType] || reportType;
 
   return (
     <>
@@ -146,7 +151,7 @@ export default function ValidationQueue() {
               variant={reportType === type ? 'primary' : 'outline-secondary'}
               onClick={() => setReportType(type)}
             >
-              {type[0].toUpperCase() + type.slice(1)}
+              {REPORT_TYPE_LABELS[type] || type}
             </Button>
           ))}
         </div>
@@ -200,13 +205,13 @@ export default function ValidationQueue() {
                 <th>Barangay</th>
                 <th>Date</th>
                 <th>Submitter</th>
-                <th>Volume (MT)</th>
+                <th>Volume (Metric Tons (MT))</th>
                 <th>Status</th>
                 <th></th>
               </tr> : reportType === 'environment' ? <tr>
                 <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th></th>
               </tr> : <tr>
-                <th>Municipality</th><th>Producer Entries</th><th>Submitter</th><th>Status</th><th></th>
+                <th>Municipality</th><th>Salt Farmer Entries</th><th>Submitter</th><th>Status</th><th></th>
               </tr>}
             </thead>
             <tbody>
@@ -266,13 +271,13 @@ export default function ValidationQueue() {
                   <DetailRow label="Barangay" value={detail.barangay} />
                   <DetailRow label="Date Covered" value={detail.record_date} />
                   <DetailRow label="Production Method" value={detail.production_method ? detail.production_method.charAt(0).toUpperCase() + detail.production_method.slice(1) : null} />
-                  <DetailRow label="Registered Producers" value={detail.registered_producers} />
-                  <DetailRow label="Male Producers" value={detail.male_producers} />
-                  <DetailRow label="Female Producers" value={detail.female_producers} />
-                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} MT` : null} />
+                  <DetailRow label="Registered Salt Farmers" value={detail.registered_producers} />
+                  <DetailRow label="Male Salt Farmers" value={detail.male_producers} />
+                  <DetailRow label="Female Salt Farmers" value={detail.female_producers} />
+                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} Metric Tons (MT)` : null} />
                   <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
-                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} MT` : null} />
+                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} Metric Tons (MT)` : null} />
                   <DetailRow label="Submitted by" value={detail.submitter ? `${detail.submitter.name} (${detail.submitter.email})` : null} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                   <DetailRow label="Reviewed by" value={detail.reviewer ? `${detail.reviewer.name} (${detail.reviewer.email})` : null} />
@@ -290,9 +295,9 @@ export default function ValidationQueue() {
                   <DetailRow label="Submitted by" value={detail.submitter?.name} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                 </tbody> : <tbody>
-                  <DetailRow label="Report Type" value="Producer" />
+                  <DetailRow label="Report Type" value="Salt Farmer" />
                   <DetailRow label="Municipality" value={detail.municipality_name} />
-                  <DetailRow label="Producer Entries" value={detail.entries?.length || 0} />
+                  <DetailRow label="Salt Farmer Entries" value={detail.entries?.length || 0} />
                   <DetailRow label="Submitted by" value={detail.submitter?.name} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                 </tbody>}
@@ -300,10 +305,10 @@ export default function ValidationQueue() {
 
               {reportType === 'producer' && (
                 <Table responsive bordered size="sm" className="mt-3 mb-0">
-                  <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Address</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th></tr></thead>
                   <tbody>{(detail.entries || []).map((entry) => (
                     <tr key={entry.id}>
-                      <td>{entry.name}</td><td>{entry.barangay}</td><td>{entry.age ?? entry.age_bracket ?? '—'}</td><td>{entry.sex}</td><td>{entry.address}</td>
+                      <td>{entry.name}</td><td>{entry.barangay}</td><td>{entry.age ?? entry.age_bracket ?? '—'}</td><td>{entry.sex}</td>
                     </tr>
                   ))}</tbody>
                 </Table>

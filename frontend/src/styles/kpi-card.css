@@ -91,7 +91,7 @@
 }
 
 /* WHAT: Maliit na state badge sa tabi ng value (hal. "Surplus" / "Shortage").
-   WHY: hiwalay sa numero ang label — hindi magkahalo ("85,519 MT" + badge). */
+   WHY: hiwalay sa numero ang label — hindi magkahalo ("85,519 Metric Tons (MT)" + badge). */
 .ui-kpi__badge {
   display: inline-flex;
   align-items: center;

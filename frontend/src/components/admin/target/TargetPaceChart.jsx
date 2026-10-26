@@ -40,7 +40,7 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, year
           <span className="te-chip"><span className="te-chip-swatch te-chip-swatch--soft" style={{ background: 'var(--te-gold-soft)' }} />Expected range</span>
         </>
       )}
-      caption={`The target path spreads the ${fmtMT(annualTarget)} MT annual target across the months by season, so wet months are not judged against a flat share. Forecast months beyond the evaluation year are not part of this target.`}
+      caption={`The target path spreads the ${fmtMT(annualTarget)} Metric Tons (MT) annual target across the months by season, so wet months are not judged against a flat share. Forecast months beyond the evaluation year are not part of this target.`}
     >
       <div className="te-chart" style={{ height: 320 }}>
           <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>

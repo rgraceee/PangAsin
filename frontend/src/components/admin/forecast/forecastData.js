@@ -39,7 +39,7 @@ export function monthNumber(ym) {
   return Number.isFinite(m) && m >= 1 && m <= 12 ? m : null;
 }
 
-/* Number formatting: thousands separators, max 2 decimals for MT, 1 for %. */
+/* Number formatting: thousands separators, max 2 decimals for Metric Tons (MT), 1 for %. */
 export function fmtMT(value) {
   const n = Number(value);
   if (value === null || value === undefined || !Number.isFinite(n)) return '\u2014';

@@ -172,7 +172,7 @@ export default function UsersManagement() {
                 <tr key={u.id}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
-                  <td><span className={`record-status-badge ${u.role === 'admin' ? 'status-approved' : 'status-draft'}`}>{u.role}</span></td>
+                  <td><span className={`record-status-badge ${u.role === 'admin' ? 'status-approved' : 'status-pending'}`}>{u.role}</span></td>
                   <td>{u.municipality_name || '—'}</td>
                   <td><span className={`record-status-badge ${u.status === 'active' ? 'status-approved' : 'status-rejected'}`}>{u.status}</span></td>
                   <td>{u.last_login ? new Date(u.last_login).toLocaleString() : '—'}</td>

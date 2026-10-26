@@ -13,7 +13,7 @@ import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 const GRADIENT = [BRAND.ocean, BRAND.gold, BRAND.green, STATUS.not_ready];
 
 // WHAT: I-round para sa consistent decimals + thousands separators.
-// WHY: max 2 decimals ang MT sa buong dashboard, hindi 3+.
+// WHY: max 2 decimals ang Metric Tons (MT) sa buong dashboard, hindi 3+.
 const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 // WHAT: Nice ceiling sa multiples (1/2/5 x 10^n) para even ang axis ticks.
@@ -31,7 +31,7 @@ function bulletTooltip({ active, payload }) {
   const entry = payload.find((p) => p.name === 'Local Supply') || payload[0];
   return (
     <div className="admin-chart-tooltip">
-      <div className="ct-value">{Number(entry.value).toLocaleString()} MT</div>
+      <div className="ct-value">{Number(entry.value).toLocaleString()} Metric Tons (MT)</div>
       <div className="ct-sub">{entry.name}</div>
     </div>
   );
@@ -44,8 +44,8 @@ function bulletCaption(localSupply, demandBenchmark) {
   const verb = gap >= 0 ? 'surplus' : 'shortage';
   return (
     <div className="chart-caption">
-      Local supply covers <b>{pct}%</b> of the {demandBenchmark.toLocaleString()} MT benchmark
-      {' '}&mdash; a <span className={gap >= 0 ? 'chart-caption-good' : 'chart-caption-bad'}>{Math.abs(gap).toLocaleString()} MT {verb}</span>.
+      Local supply covers <b>{pct}%</b> of the {demandBenchmark.toLocaleString()} Metric Tons (MT) benchmark
+      {' '}&mdash; a <span className={gap >= 0 ? 'chart-caption-good' : 'chart-caption-bad'}>{Math.abs(gap).toLocaleString()} Metric Tons (MT) {verb}</span>.
     </div>
   );
 }
@@ -137,14 +137,14 @@ export default function SupplyDemandAnalytics() {
           icon={Boxes}
           title="Local Supply"
           value={Math.round(localSupply * 100) / 100}
-          unit="MT"
+          unit="Metric Tons (MT)"
           supporting={`Pangasinan production (${pangasinan.year})`}
         />
         <KpiCard
           icon={Target}
           title="Demand Benchmark"
           value={Math.round(demandBenchmark * 100) / 100}
-          unit="MT"
+          unit="Metric Tons (MT)"
           supporting={`Target demand (${pangasinan.year})`}
         />
         <KpiCard
@@ -152,7 +152,7 @@ export default function SupplyDemandAnalytics() {
           title="Sufficiency"
           value={sufficiency}
           unit="%"
-          supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} MT`}
+          supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} Metric Tons (MT)`}
         />
       </KpiGrid>
 
@@ -165,7 +165,7 @@ export default function SupplyDemandAnalytics() {
       <Row className="g-3">
         <Col lg={6}>
           <Card className="encoder-card h-100">
-            <Card.Header as="h5">Supply vs Demand (MT)</Card.Header>
+            <Card.Header as="h5">Supply vs Demand (Metric Tons (MT))</Card.Header>
             <Card.Body>
               <div>
                 {/* WHAT: Compact bullet — maliit na height, may benchmark line.
@@ -188,7 +188,7 @@ export default function SupplyDemandAnalytics() {
                           stroke={BRAND.gold}
                           strokeDasharray="5 3"
                           strokeWidth={2}
-                          label={{ value: `Benchmark ${fmtMT(demandBenchmark)} MT`, position: 'insideTopLeft', fill: BRAND.gold, fontSize: 11, fontWeight: 800 }}
+                          label={{ value: `Benchmark ${fmtMT(demandBenchmark)} Metric Tons (MT)`, position: 'insideTopLeft', fill: BRAND.gold, fontSize: 11, fontWeight: 800 }}
                         />
                       </BarChart>
                   </ResponsiveContainer>
@@ -223,14 +223,14 @@ export default function SupplyDemandAnalytics() {
                         <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, sectorMax]} tickFormatter={fmtMT} />
                         <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={110} />
                         <Tooltip
-                          formatter={(value) => [`${Number(value).toLocaleString()} MT`, 'Sector demand']}
+                          formatter={(value) => [`${Number(value).toLocaleString()} Metric Tons (MT)`, 'Sector demand']}
                           cursor={{ fill: 'rgba(21, 101, 200, 0.06)' }}
                           // WHAT: Pin-up ang tooltip sa may margin area sa itaas ng plot.
                           // WHY: hindi nito tinatakpan ang mga bar at value labels kapag naka-hover.
                           position={{ x: 14, y: -36 }}
                           wrapperStyle={{ pointerEvents: 'none' }}
                         />
-                        <Bar dataKey="value" name="Sector demand (MT)" radius={[0, 6, 6, 0]} maxBarSize={28} isAnimationActive>
+                        <Bar dataKey="value" name="Sector demand (Metric Tons (MT))" radius={[0, 6, 6, 0]} maxBarSize={28} isAnimationActive>
                           {sectorData.map((s, i) => (
                             <Cell key={i} fill={s.fill} />
                           ))}
@@ -248,7 +248,7 @@ export default function SupplyDemandAnalytics() {
                   </div>
                   <div className="chart-caption">
                     {topSector
-                      ? <><b>{topSector.name}</b> is the largest tracked demand sector at <b>{topSector.value.toLocaleString()} MT</b>. Figures are reference benchmarks, not live production data.</>
+                      ? <><b>{topSector.name}</b> is the largest tracked demand sector at <b>{topSector.value.toLocaleString()} Metric Tons (MT)</b>. Figures are reference benchmarks, not live production data.</>
                       : <><b>No sector demand data</b> available yet.</>}
                   </div>
                 </div>

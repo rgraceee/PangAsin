@@ -9,8 +9,8 @@ import RecordStatusBadge from './RecordStatusBadge';
 import { formatMT } from '../../utils/volumeFormat';
 import ReportImportActions from './ReportImportActions';
 import { prepareProductionRows, rowError } from './reportImportUtils';
+import { STATUS_OPTIONS } from '../../constants/labels';
 
-const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
 const PRODUCTION_METHOD_LABELS = {
   solar: 'Solar',
   cooked: 'Cooked',
@@ -41,7 +41,7 @@ const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) 
   </Button>
 );
 
-export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user }) {
+export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user, start, end }) {
   const { toastSuccess, toastError } = useToast();
   const volumeCapMt = Number(user?.max_monthly_volume_mt) || 2000;
   const [records, setRecords] = useState([]);
@@ -59,10 +59,12 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
     const params = {};
     if (f.barangay_id) params.barangay_id = f.barangay_id;
     if (f.status) params.status = f.status;
+    if (start) params.start = start;
+    if (end) params.end = end;
     getRecords(params)
       .then((r) => { setRecords(r.records || []); setLoading(false); })
       .catch((err) => { setError(err.message); setLoading(false); });
-  }, []);
+  }, [start, end]);
 
   useEffect(() => {
     getEncoderBarangays()
@@ -205,14 +207,14 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
           <Alert variant="info">No records found. Use “+ Add Record” above to submit one.</Alert>
         )}
         {!loading && records.length > 0 && (
-          <Table responsive striped hover size="sm" className="mb-0 encoder-table">
+          <Table responsive hover size="sm" className="mb-0 encoder-table">
             <thead>
               <tr>
                 <th>Report Type</th>
                 <th>Barangay</th>
                 <th>Date</th>
                 <th>Method</th>
-                <th>Volume (MT)</th>
+                <th>Volume (Metric Tons (MT))</th>
                 <th>Beds Used</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
@@ -287,10 +289,10 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
                   <DetailRow label="Barangay" value={detail.barangay} />
                   <DetailRow label="Date Covered" value={detail.record_date} />
                   <DetailRow label="Production Method" value={PRODUCTION_METHOD_LABELS[detail.production_method] ?? detail.production_method} />
-                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} MT` : null} />
+                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} Metric Tons (MT)` : null} />
                   <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
-                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} MT` : null} />
+                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} Metric Tons (MT)` : null} />
                   <DetailRow label="Submitted" value={detail.created_at ? new Date(detail.created_at).toLocaleString() : null} />
                   <DetailRow label="Last Updated" value={detail.updated_at ? new Date(detail.updated_at).toLocaleString() : null} />
                 </tbody>

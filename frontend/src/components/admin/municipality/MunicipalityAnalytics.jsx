@@ -83,14 +83,14 @@ export default function MunicipalityAnalytics() {
         id="admin-municipality"
         variant="section"
         title="Municipality Analytics"
-        subtitle={`Production and producer breakdown for ${view.scopeLabel}.`}
+        subtitle={`Production and salt farmer breakdown for ${view.scopeLabel}.`}
       />
 
       <div className="muni-scope-bar">
         <span className="muni-scope-chip">Scope: {view.scopeLabel}</span>
         <span className="muni-scope-note">
           <Info size={12} strokeWidth={2} aria-hidden="true" />
-          Production, beds and area come from approved production records (all time). Producers come from the
+          Production, beds and area come from approved production records (all time). Salt farmers come from the
           master list.
         </span>
       </div>
@@ -98,12 +98,12 @@ export default function MunicipalityAnalytics() {
       <KpiGrid columns={4} className="muni-kpi-strip">
         <KpiCard
           icon={Users}
-          title="Registered Producers"
+          title="Registered Salt Farmers"
           value={view.registeredTotal}
           supporting={topProducer
             ? `${topProducer.name} has the most (${fmtInt(topProducer.count)})`
             : 'From the master list'}
-          info="Distinct producers registered in the master list. Production reports also log producer-months, which count the same people again each month."
+          info="Distinct salt farmers registered in the master list. Production reports also log salt farmer-months, which count the same people again each month."
         />
         <KpiCard
           icon={Building2}

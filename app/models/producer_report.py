@@ -1,9 +1,7 @@
 from datetime import datetime
 
 from app.extensions import db
-
-
-PRODUCER_REPORT_STATUSES = ("draft", "pending", "approved", "rejected", "returned")
+from app.status_constants import ALLOWED_STATUSES
 
 
 class ProducerReport(db.Model):
@@ -22,7 +20,7 @@ class ProducerReport(db.Model):
         nullable=False,
     )
     status = db.Column(
-        db.Enum(*PRODUCER_REPORT_STATUSES, name="producer_report_status_enum"),
+        db.Enum(*ALLOWED_STATUSES, name="producer_report_status_enum"),
         nullable=False,
         default="pending",
     )
@@ -70,5 +68,5 @@ class ProducerReportEntry(db.Model):
     age = db.Column(db.Integer, nullable=True)
     age_bracket = db.Column(db.String(16), nullable=True)
     sex = db.Column(db.String(20), nullable=False)
-    address = db.Column(db.String(255), nullable=False)
+    address = db.Column(db.String(255), nullable=True)
     barangay = db.relationship("Barangay", lazy=True)

@@ -17,11 +17,11 @@ const SECTION_ITEMS = [
    WHY: dati nasa dashboard ang 3 buttons, inilipat dito sa sidebar. */
 const ACTION_ITEMS = [
   { id: 'add-production', label: 'Add Production Report', icon: Boxes, report: 'production' },
-  { id: 'add-producer', label: 'Add Producer Report', icon: Users, report: 'producer' },
+  { id: 'add-producer', label: 'Add Salt Farmer Report', icon: Users, report: 'producer' },
   { id: 'add-environment', label: 'Add Environment Report', icon: Leaf, report: 'environment' },
 ];
 
-const MASTER_ITEM = { id: 'master-list', label: 'Master List', icon: ContactRound, path: '/encoder/master-list' };
+const MASTER_ITEM = { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/encoder/master-list' };
 
 function prefersReducedMotion() {
   return typeof window !== 'undefined'

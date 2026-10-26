@@ -52,12 +52,12 @@ export const SUPPLY_COLORS = {
 };
 
 /* WHAT: Format ng volume (MT) na walang extra decimals.
-   WHY: max 2 decimals ang MT sa buong dashboard, at may thousands separator. */
+   WHY: max 2 decimals ang Metric Tons (MT) sa buong dashboard, at may thousands separator. */
 export function fmtMT(value, { unit = true } = {}) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return unit ? '— MT' : '—';
+  if (!Number.isFinite(n)) return unit ? '— Metric Tons (MT)' : '—';
   const text = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  return unit ? `${text} MT` : text;
+  return unit ? `${text} Metric Tons (MT)` : text;
 }
 
 /* WHAT: Format ng plain number (walang unit) para sa axis tick at bar label.
@@ -93,7 +93,7 @@ export function niceCeil(value) {
   return nice * pow;
 }
 
-/* WHAT: Bahagdan na nakalkula mula sa dalawang MT value.
+/* WHAT: Bahagdan na nakalkula mula sa dalawang Metric Tons (MT) value.
    WHY: parehong formula (numerator / base) para hindi magkasalungat ang
         "coverage" sa KPI card at sa chart caption. */
 export function pctOf(numerator, base) {

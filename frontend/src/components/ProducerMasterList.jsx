@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Alert, Badge, Card, OverlayTrigger, Spinner, Table, Tooltip } from 'react-bootstrap';
-import { Pencil, Plus, Search, Trash2, Users, ContactRound, CalendarDays } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Plus, Search, Trash2, Users, ContactRound, CalendarDays } from 'lucide-react';
 import { createProducer, deleteProducer, getProducers, updateProducer } from '../services/dataService';
 import { confirmDelete } from '../services/feedback';
 import { useToast } from './Toast';
@@ -13,6 +13,53 @@ import ReportModal from './encoder/ReportModal';
 import ReportField from './encoder/ReportField';
 
 const EMPTY_FORM = { name: '', age: '', sex: '', address: '', barangay_id: '' };
+
+const SEX_OPTIONS = ['Male', 'Female', 'Other'];
+
+const AGE_GROUPS = [
+  { value: 'under30', label: 'Under 30' },
+  { value: '30to44', label: '30 to 44' },
+  { value: '45to59', label: '45 to 59' },
+  { value: '60plus', label: '60 and above' },
+];
+
+/* WHAT: Sortable table heading para sa encoder master list.
+   WHY: one click asc, second desc, third clears; both arrows stay visible
+        so the current direction is obvious. */
+function SortHeader({ label, column, sort, onToggle }) {
+  const active = sort.key === column;
+  const upActive = active && sort.dir === 'asc';
+  const downActive = active && sort.dir === 'desc';
+  const nextAction = !active ? 'ascending' : (sort.dir === 'asc' ? 'descending' : 'default order');
+
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(column)}
+      aria-label={`${label}: sort ${nextAction}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 2,
+        padding: 0,
+        border: 0,
+        background: 'transparent',
+        color: 'inherit',
+        font: 'inherit',
+        fontWeight: 'inherit',
+        letterSpacing: 'inherit',
+        textAlign: 'left',
+        cursor: 'pointer',
+      }}
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 0.55 }}>
+        <ChevronUp size={12} strokeWidth={2.2} style={{ color: upActive ? 'var(--ui-accent)' : 'var(--ui-text-muted)' }} />
+        <ChevronDown size={12} strokeWidth={2.2} style={{ color: downActive ? 'var(--ui-accent)' : 'var(--ui-text-muted)' }} />
+      </span>
+    </button>
+  );
+}
 
 /* WHAT: 32px ghost row action na may tooltip at aria-label.
    WHY: neutral gray ang edit, muted red ang delete; tokens-only para pantay sa bagong look. */
@@ -36,7 +83,9 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   const activeUser = user || outlet?.user;
   const adminView = isAdmin || activeUser?.role === 'admin';
   const { toastSuccess, toastError } = useToast();
-  const [filters, setFilters] = useState({ municipality_id: '', barangay_id: '', q: '' });
+  const [filters, setFilters] = useState({ municipality_id: '', barangay_id: '', sex: '', age_group: '' });
+  const [adminSearch, setAdminSearch] = useState('');
+  const [sort, setSort] = useState({ key: null, dir: null });
   const [rows, setRows] = useState([]);
   const [statistics, setStatistics] = useState({ total: 0, male: 0, female: 0, other: 0, average_age: null, by_barangay: [] });
   const [municipalities, setMunicipalities] = useState([]);
@@ -77,7 +126,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
     const params = {};
     if (adminView && filters.municipality_id) params.municipality_id = filters.municipality_id;
     if (filters.barangay_id) params.barangay_id = filters.barangay_id;
-    if (filters.q.trim()) params.q = filters.q.trim();
+    if (adminView && adminSearch.trim()) params.q = adminSearch.trim();
     getProducers(params)
       .then((result) => {
         setRows(result.producers || []);
@@ -85,11 +134,11 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         setMunicipalities(result.municipalities || []);
         setBarangays(result.barangays || []);
       })
-      .catch((err) => setError(err.message || 'Could not load the worker master list.'))
+      .catch((err) => setError(err.message || 'Could not load the salt farmer master list.'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [filters.municipality_id, filters.barangay_id, filters.q, adminView]);
+  useEffect(() => { load(); }, [filters.municipality_id, filters.barangay_id, adminSearch, adminView]);
 
   const handleAdd = async (event) => {
     event.preventDefault();
@@ -106,12 +155,12 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       setShowAdd(false);
       setForm(EMPTY_FORM);
       setEditing(null);
-      toastSuccess(editing ? 'Worker details updated.' : 'Worker added to the master list.', editing ? 'Worker updated' : 'Worker added');
+      toastSuccess(editing ? 'Salt farmer details updated.' : 'Salt farmer added to the master list.', editing ? 'Salt farmer updated' : 'Salt farmer added');
       load();
     } catch (err) {
-      const message = err.data?.errors?.join(' ') || err.message || 'Could not add this worker.';
+      const message = err.data?.errors?.join(' ') || err.message || 'Could not add this salt farmer.';
       setError(message);
-      toastError(message, 'Could not add worker');
+      toastError(message, 'Could not add salt farmer');
     } finally {
       setSaving(false);
     }
@@ -132,25 +181,72 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
 
   const removeWorker = async (worker) => {
     const confirmed = await confirmDelete({
-      title: 'Delete this worker?',
-      text: `Remove <strong>${worker.name}</strong> from the master list? Producer report history will remain unchanged.`,
-      confirmText: 'Delete worker',
+      title: 'Delete this salt farmer?',
+      text: `Remove <strong>${worker.name}</strong> from the master list? Salt farmer report history will remain unchanged.`,
+      confirmText: 'Delete salt farmer',
     });
     if (!confirmed) return;
     try {
       await deleteProducer(worker.id);
-      toastSuccess(`${worker.name} was removed from the master list.`, 'Worker deleted');
+      toastSuccess(`${worker.name} was removed from the master list.`, 'Salt farmer deleted');
       load();
     } catch (err) {
-      const message = err.message || 'Could not delete this worker.';
+      const message = err.message || 'Could not delete this salt farmer.';
       setError(message);
-      toastError(message, 'Could not delete worker');
+      toastError(message, 'Could not delete salt farmer');
     }
   };
 
   const updateFilter = (event) => {
     const { name, value } = event.target;
     setFilters((current) => ({ ...current, [name]: value, ...(name === 'municipality_id' ? { barangay_id: '' } : {}) }));
+  };
+
+  const toggleSort = (key) => {
+    setSort((current) => {
+      if (current.key !== key) return { key, dir: 'asc' };
+      if (current.dir === 'asc') return { key, dir: 'desc' };
+      return { key: null, dir: null };
+    });
+  };
+
+  const visibleRows = useMemo(() => {
+    const filtered = rows.filter((worker) => {
+      if (filters.sex && worker.sex !== filters.sex) return false;
+      if (filters.age_group) {
+        if (worker.age == null) return false;
+        const age = Number(worker.age);
+        if (!Number.isFinite(age)) return false;
+        if (filters.age_group === 'under30' && age >= 30) return false;
+        if (filters.age_group === '30to44' && (age < 30 || age > 44)) return false;
+        if (filters.age_group === '45to59' && (age < 45 || age > 59)) return false;
+        if (filters.age_group === '60plus' && age < 60) return false;
+      }
+      return true;
+    });
+
+    if (!sort.key) return filtered;
+
+    const sorted = [...filtered];
+    if (sort.key === 'name') {
+      const factor = sort.dir === 'asc' ? 1 : -1;
+      sorted.sort((a, b) => factor * String(a.name || '').toLowerCase().localeCompare(String(b.name || '').toLowerCase()));
+    } else if (sort.key === 'age') {
+      sorted.sort((a, b) => {
+        const aAge = a.age == null ? null : Number(a.age);
+        const bAge = b.age == null ? null : Number(b.age);
+        if (aAge == null && bAge == null) return 0;
+        if (aAge == null) return 1;
+        if (bAge == null) return -1;
+        return sort.dir === 'asc' ? aAge - bAge : bAge - aAge;
+      });
+    }
+    return sorted;
+  }, [rows, filters.sex, filters.age_group, sort]);
+
+  const ariaSort = (key) => {
+    if (sort.key !== key) return 'none';
+    return sort.dir === 'asc' ? 'ascending' : 'descending';
   };
 
   return (
@@ -160,8 +256,8 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       <PageHeader
         id="producer-master-list"
         variant={adminView ? 'sub' : 'clean'}
-        title="Master List"
-        subtitle={adminView ? 'Registered workers across Pangasinan, organized by municipality and barangay.' : `Registered workers in ${activeUser?.municipality_name || 'your municipality'}.`}
+        title="Salt Farmer Master List"
+        subtitle={adminView ? 'Registered salt farmers across Pangasinan, organized by municipality and barangay.' : `Registered salt farmers in ${activeUser?.municipality_name || 'your municipality'}.`}
         art={adminView ? undefined : <MunicipalityMapArt highlightName={activeUser?.municipality_name} />}
         compact={!adminView}
       >
@@ -181,48 +277,89 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             {barangays.map((item) => <option key={item.id} value={item.id}>{item.name}{adminView ? ` · ${item.municipality}` : ''}</option>)}
           </select>
         </div>
-        <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
-          <div className="ui-search">
-            <Search size={16} className="ui-search-icon" aria-hidden="true" />
-            <input id="master-search" className="form-control admin-page-hero-input" name="q" value={filters.q} onChange={updateFilter} placeholder="Search workers" />
+        {!adminView && (
+          <>
+            <div className="admin-page-hero-control">
+              <label className="admin-page-hero-field" htmlFor="master-sex">Sex</label>
+              <select id="master-sex" className="form-select admin-page-hero-select" name="sex" value={filters.sex} onChange={updateFilter}>
+                <option value="">All</option>
+                {SEX_OPTIONS.map((sex) => <option key={sex} value={sex}>{sex}</option>)}
+              </select>
+            </div>
+            <div className="admin-page-hero-control">
+              <label className="admin-page-hero-field" htmlFor="master-age-group">Age group</label>
+              <select id="master-age-group" className="form-select admin-page-hero-select" name="age_group" value={filters.age_group} onChange={updateFilter}>
+                <option value="">All ages</option>
+                {AGE_GROUPS.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
+              </select>
+            </div>
+          </>
+        )}
+        {adminView && (
+          <div className="admin-page-hero-control">
+            <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
+            <div className="ui-search">
+              <Search size={16} className="ui-search-icon" aria-hidden="true" />
+              <input id="master-search" className="form-control admin-page-hero-input" name="q" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} placeholder="Search salt farmers" />
+            </div>
           </div>
-        </div>
+        )}
       </PageHeader>
 
       {error && !showAdd && <Alert variant="danger">{error}</Alert>}
-      <KpiGrid columns={4}>
-        <KpiCard icon={Users} title="Registered workers" value={statistics.total} accent="ocean" />
-        <KpiCard icon={ContactRound} title="Women" value={statistics.female} accent="green" />
-        <KpiCard icon={ContactRound} title="Men" value={statistics.male} accent="gold" />
+      <KpiGrid columns={3}>
+        <KpiCard
+          icon={Users}
+          title="Registered Salt Farmers"
+          value={statistics.total}
+          info="Total registered salt farmers in your municipality."
+        />
+        <KpiCard
+          icon={ContactRound}
+          title="Gender Distribution"
+          value={`${statistics.male.toLocaleString()} / ${statistics.female.toLocaleString()}`}
+          unit="Male / Female"
+          supporting={statistics.other > 0 ? `Other: ${statistics.other.toLocaleString()}` : undefined}
+          info="Registered salt farmers by sex — male / female."
+        />
         <KpiCard
           icon={CalendarDays}
-          title="Average age"
+          title="Average Age"
           value={statistics.average_age == null ? '—' : statistics.average_age}
-          supporting={`Other sex: ${statistics.other.toLocaleString()} worker${statistics.other === 1 ? '' : 's'}`}
-          accent="brown"
+          supporting="Years"
+          info="Average age of registered salt farmers in your municipality."
         />
       </KpiGrid>
 
       <Card className="encoder-card admin-card">
         <Card.Header className="master-toolbar">
-          <h2 className="h6 mb-0"><Users size={16} className="me-2" />Workers</h2>
+          <h2 className="h6 mb-0"><Users size={16} className="me-2" />Salt Farmers</h2>
           {/* WHAT: Count + Add Worker sa kanang bahagi ng toolbar; full-width ang button sa mobile.
              WHY: inilipat dito mula sa page header para malapit sa data ang action. */}
           <div className="master-toolbar__actions">
-            <Badge bg="light" text="dark">{rows.length.toLocaleString()} shown</Badge>
+            <Badge bg="light" text="dark">{visibleRows.length.toLocaleString()} shown</Badge>
             <button type="button" className="ui-btn-primary ui-btn-primary--sm" onClick={openAdd}>
-              <Plus size={16} aria-hidden="true" />Add Worker
+              <Plus size={16} aria-hidden="true" />Add Salt Farmer
             </button>
           </div>
         </Card.Header>
         <Card.Body className="p-0">
-          {loading ? <div className="text-center py-5"><Spinner animation="border" size="sm" /></div> : rows.length === 0 ? (
-            <div className="chart-empty py-5">No workers match the current filters.</div>
+          {loading ? <div className="text-center py-5"><Spinner animation="border" size="sm" /></div> : visibleRows.length === 0 ? (
+            <div className="chart-empty py-5">
+              {adminView ? 'No salt farmers match the current filters.' : 'No salt farmers match the selected filters.'}
+            </div>
           ) : (
             <Table responsive hover className="mb-0 encoder-table admin-table">
-              <thead><tr><th>Name</th><th>Age</th><th>Sex</th><th>Municipality</th><th>Barangay</th><th>Address</th><th aria-label="Actions" /></tr></thead>
-              <tbody>{rows.map((worker) => (
+              <thead><tr>
+                <th aria-sort={adminView ? undefined : ariaSort('name')}>
+                  {adminView ? 'Name' : <SortHeader label="Name" column="name" sort={sort} onToggle={toggleSort} />}
+                </th>
+                <th aria-sort={adminView ? undefined : ariaSort('age')}>
+                  {adminView ? 'Age' : <SortHeader label="Age" column="age" sort={sort} onToggle={toggleSort} />}
+                </th>
+                <th>Sex</th><th>Municipality</th><th>Barangay</th><th>Address</th><th aria-label="Actions" />
+              </tr></thead>
+              <tbody>{visibleRows.map((worker) => (
                 <tr key={worker.id}>
                   <td className="fw-semibold">{worker.name}</td>
                   <td>{worker.age == null ? worker.age_bracket || '—' : worker.age}</td>
@@ -242,13 +379,13 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       </Card>
 
       <Card className="encoder-card admin-card mt-4">
-        <Card.Header><h2 className="h6 mb-0">Workers by barangay</h2></Card.Header>
+        <Card.Header><h2 className="h6 mb-0">Salt Farmers by Barangay</h2></Card.Header>
         <Card.Body className="p-0">
           {statistics.by_barangay.length === 0 ? (
-            <div className="chart-empty py-4">No worker counts to show.</div>
+            <div className="chart-empty py-4">No salt farmer counts to show.</div>
           ) : (
             <Table responsive hover size="sm" className="mb-0 encoder-table admin-table">
-              <thead><tr>{adminView && <th>Municipality</th>}<th>Barangay</th><th className="text-end">Workers</th></tr></thead>
+              <thead><tr>{adminView && <th>Municipality</th>}<th>Barangay</th><th className="text-end">Salt Farmers</th></tr></thead>
               <tbody>{statistics.by_barangay.map((item) => (
                 <tr key={`${item.municipality}-${item.barangay}`}>
                   {adminView && <td>{item.municipality}</td>}
@@ -266,7 +403,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       <ReportModal
         show={showAdd}
         narrow
-        title={editing ? 'Edit worker' : 'Add worker'}
+        title={editing ? 'Edit salt farmer' : 'Add salt farmer'}
         municipality={adminView ? 'All municipalities' : (activeUser?.municipality_name || 'Your municipality')}
         onClose={closeModal}
         busy={saving}
@@ -277,7 +414,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             <button type="submit" form="worker-form" className="ui-btn-primary" disabled={saving || !canSubmit}>
               {saving
                 ? <><Spinner animation="border" size="sm" aria-hidden="true" />Saving…</>
-                : <><Plus size={16} aria-hidden="true" />{editing ? 'Save worker' : 'Add worker'}</>}
+                : <><Plus size={16} aria-hidden="true" />{editing ? 'Save salt farmer' : 'Add salt farmer'}</>}
             </button>
           </>
         )}

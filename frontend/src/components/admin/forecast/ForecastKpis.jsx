@@ -30,7 +30,7 @@ export default function ForecastKpis({
         icon={ChartLine}
         title="Recorded Production"
         value={recordedMT === null ? null : fmtMT(recordedMT)}
-        unit="MT"
+        unit="Metric Tons (MT)"
         supporting={`Approved records, ${recordedPeriodLabel}${recordedThrough ? ` through ${recordedThrough}` : ''}.`}
         info={definition('recordedMt') + ' Source: approved production records only.'}
         loading={loading}
@@ -40,7 +40,7 @@ export default function ForecastKpis({
         icon={Target}
         title="Forecasted Total Production"
         value={forecastMT === null ? null : fmtMT(forecastMT)}
-        unit="MT"
+        unit="Metric Tons (MT)"
         badge={hasForecast
           ? { text: `${horizon} month${horizon === 1 ? '' : 's'}`, tone: 'neutral' }
           : { text: 'No forecast', tone: 'neutral' }}

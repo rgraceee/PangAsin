@@ -36,12 +36,12 @@ THRESHOLDS = {
 # WHY: The admin is not a data engineer — "Area per salt bed" is clearer than
 #      "area_per_salt_bed", and the browser must not invent its own labels.
 REQUIRED_FIELDS = (
-    ("production_volume_mt", "Salt production (MT)"),
+    ("production_volume_mt", "Salt production (Metric Tons (MT))"),
     ("num_salt_beds", "Number of salt beds"),
     ("area_per_salt_bed", "Area per salt bed"),
-    ("registered_producers", "Total producers"),
-    ("male_producers", "Male producers"),
-    ("female_producers", "Female producers"),
+    ("registered_producers", "Total salt farmers"),
+    ("male_producers", "Male salt farmers"),
+    ("female_producers", "Female salt farmers"),
     ("record_date", "Date of record"),
     ("production_method", "Production method"),
     ("barangay_id", "Barangay"),

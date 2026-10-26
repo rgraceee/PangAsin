@@ -157,7 +157,7 @@ export default function SupplyDemandSection() {
           ? (label === 'National Demand'
             ? 'Total salt demand benchmark for the Philippines'
             : (label === 'Domestic Supply'
-              ? 'Salt produced by local producers'
+              ? 'Salt produced by local salt farmers'
               : 'Salt sourced from imports'))
           : (label === 'Demand Benchmark'
             ? 'Annual salt demand benchmark for Pangasinan'
@@ -229,7 +229,7 @@ export default function SupplyDemandSection() {
   }, [data, isPhilippines]);
 
   /* WHAT: Sector rows na may percentage na nakalagay sa legend chip.
-     WHY: Isang lugar lang ang eksaktong numero (bar label = MT, chip = %),
+     WHY: Isang lugar lang ang eksaktong numero (bar label = Metric Tons (MT), chip = %),
           at hindi nauubos ang espasyo ng bar. */
   const sectorRows = useMemo(() => {
     const total = sectorData.reduce((sum, s) => sum + (Number(s.value) || 0), 0);
@@ -273,7 +273,7 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Supply and Demand</h5>
-                  <p className="fc-card-sub">Compare salt demand with production and imports (MT)</p>
+                  <p className="fc-card-sub">Compare salt demand with production and imports (Metric Tons (MT))</p>
                 </div>
               </div>
               {/* WHAT: Segmented scope switcher (Philippines / Pangasinan).
@@ -379,7 +379,7 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Demand by Sector</h5>
-                  <p className="fc-card-sub">National breakdown by end use (MT)</p>
+                  <p className="fc-card-sub">National breakdown by end use (Metric Tons (MT))</p>
                 </div>
               </div>
               <div className="fc-card-head-right">

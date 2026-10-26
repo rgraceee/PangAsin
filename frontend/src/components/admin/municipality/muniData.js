@@ -26,7 +26,7 @@ export const SEX_COLORS = {
 };
 
 /* A slice below this is noise from a handful of records - showing it as
-   "0 MT / 0.0%" reads like a broken chart. */
+   "0 Metric Tons (MT) / 0.0%" reads like a broken chart. */
 export const MIN_SLICE_MT = 0.5;
 
 export function fmtInt(value) {

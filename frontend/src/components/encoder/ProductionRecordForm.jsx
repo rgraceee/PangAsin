@@ -276,9 +276,9 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
             <ReportField
               label="Production Volume"
               required
-              unit="MT"
+              unit="Metric Tons (MT)"
               htmlFor="production-volume"
-              hint={`Maximum ${volumeCapMt} MT per month.`}
+              hint={`Maximum ${volumeCapMt} Metric Tons (MT) per month.`}
             >
               <Form.Control
                 id="production-volume"
@@ -357,7 +357,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
                 ['Municipality', user?.municipality_name || '—'],
                 ['Barangay', barangayName || '—'],
                 ['Date Covered', form.record_date || '—'],
-                ['Volume', form.production_volume_mt !== '' ? `${formatMT(form.production_volume_mt)} MT` : '—'],
+                ['Volume', form.production_volume_mt !== '' ? `${formatMT(form.production_volume_mt)} Metric Tons (MT)` : '—'],
                 ['Beds Used', form.num_salt_beds !== '' ? form.num_salt_beds : '—'],
                 ['Area per Bed', form.area_per_salt_bed !== '' ? `${form.area_per_salt_bed} m²` : '—'],
                 ['Method', methodLabel || '—'],

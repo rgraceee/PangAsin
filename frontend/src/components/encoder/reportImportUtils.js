@@ -48,7 +48,7 @@ export function prepareProductionRows(rows, barangays, volumeCapMt) {
     else if (productionVolumeMt > volumeCapMt) errors.push(rowError(row, `production_volume_mt cannot exceed ${volumeCapMt} metric tons per month.`));
     const histMaxMt = Number(barangay?.historical_max_volume_mt) || 0;
     if (histMaxMt > 0 && Number.isFinite(productionVolumeMt) && productionVolumeMt > histMaxMt * 3) {
-      warnings.push(rowError(row, `volume is more than 3x the highest recorded month (${histMaxMt} MT) for ${barangay?.name}.`));
+      warnings.push(rowError(row, `volume is more than 3x the highest recorded month (${histMaxMt} Metric Tons (MT)) for ${barangay?.name}.`));
     }
     if (!Number.isInteger(numSaltBeds) || numSaltBeds <= 0) errors.push(rowError(row, 'num_salt_beds must be a positive whole number.'));
     if (areaPerSaltBed !== null && (!Number.isFinite(areaPerSaltBed) || areaPerSaltBed < 0)) errors.push(rowError(row, 'area_per_salt_bed must be zero or greater.'));

@@ -6,15 +6,15 @@
 //
 // Naming: code names are camelCase (React). Each entry is an object:
 //   label   - human-readable UI label
-//   unit    - display unit (MT, %, m², MT per bed, MT per hectare, month) or null
+//   unit    - display unit (Metric Tons (MT), %, m², Metric Tons (MT) per bed, Metric Tons (MT) per hectare, month) or null
 //   defn    - one-sentence plain-language definition (for info tooltips)
 //   scope   - where it applies: "kpi", "chart", "table", "tooltip", "endpoint"
 
-export const UNIT_MT = "MT";
+export const UNIT_MT = "Metric Tons (MT)";
 export const UNIT_PCT = "%";
 export const UNIT_M2 = "m²";
-export const UNIT_MT_PER_BED = "MT per bed";
-export const UNIT_MT_PER_HA = "MT per hectare";
+export const UNIT_MT_PER_BED = "Metric Tons (MT) per bed";
+export const UNIT_MT_PER_HA = "Metric Tons (MT) per hectare";
 export const UNIT_MONTH = "month";
 
 export const SCOPE_ALL = "all_municipalities";
@@ -239,15 +239,92 @@ export const STATUS_LABELS = {
   approved: { label: "Approved", tone: "good" },
   pending: { label: "Pending", tone: "warning" },
   rejected: { label: "Rejected", tone: "danger" },
-  draft: { label: "Draft", tone: "info" },
-  returned: { label: "Returned", tone: "warning" },
 };
+
+// Only these three statuses are exposed in every filter dropdown and badge.
+export const STATUS_OPTIONS = ["pending", "approved", "rejected"];
 
 export const PAGE_DESCRIPTIVE = "Descriptive: What our data shows";
 export const PAGE_PREDICTIVE = "Predictive: What to expect";
 export const TAB_DESCRIPTIVE = "descriptive";
 export const TAB_PREDICTIVE = "predictive";
 export const PAGE_TARGET_CHECK = "Target check";
+
+// WHAT: Human-readable column headings for report previews and exports.
+// WHY: Raw field keys (e.g. production_mt) are code names, not labels. Keep this
+//      map in sync with DISPLAY_HEADERS in app/services/report_service.py.
+export const DISPLAY_HEADERS = {
+  municipality: "Municipality",
+  barangay: "Barangay",
+  barangay_id: "Barangay",
+  record_date: "Record Date",
+  production_volume_mt: "Production Volume (Metric Tons (MT))",
+  production_mt: "Production (Metric Tons (MT))",
+  total_production_mt: "Total Production (Metric Tons (MT))",
+  record_count: "Records",
+  total_salt_beds: "Total Salt Beds",
+  num_salt_beds: "Salt Beds",
+  area_per_salt_bed: "Area per Salt Bed (m²)",
+  area_per_salt_bed_sqm: "Area per Salt Bed (m²)",
+  total_area_sqm: "Total Area (m²)",
+  production_area_sqm: "Production Area (m²)",
+  total_production_area_sqm: "Total Production Area (m²)",
+  production_method: "Production Method",
+  production_methods: "Production Methods",
+  registered_producers: "Registered Salt Farmers",
+  total_registered_producers: "Total Registered Salt Farmers",
+  male_producers: "Male Salt Farmers",
+  total_male_producers: "Total Male Salt Farmers",
+  female_producers: "Female Salt Farmers",
+  total_female_producers: "Total Female Salt Farmers",
+  other_producers: "Other Salt Farmers",
+  total_other_producers: "Total Other Salt Farmers",
+  month: "Month",
+  name: "Name",
+  age: "Age",
+  age_bracket: "Age Bracket",
+  sex: "Sex",
+  address: "Address",
+  submitted_at: "Submitted At",
+  algorithm: "Algorithm",
+  readiness: "Readiness",
+  reliability: "Reliability",
+  trend_direction: "Trend",
+  expected_change_pct: "Expected Change (%)",
+  projected_total_mt: "Projected Total (Metric Tons (MT))",
+  mae: "MAE (Metric Tons (MT))",
+  rmse: "RMSE (Metric Tons (MT))",
+  mape: "MAPE (%)",
+  r2: "R²",
+  period: "Period",
+  latitude: "Latitude",
+  longitude: "Longitude",
+  quality_score: "Quality Score (%)",
+  overall_quality_score: "Overall Quality Score (%)",
+  total_records: "Total Records",
+  total_reports: "Total Environment Reports",
+  year: "Year",
+  demand_volume_mt: "Demand Volume (Metric Tons (MT))",
+  local_production_mt: "Local Production (Metric Tons (MT))",
+  import_volume_mt: "Import Volume (Metric Tons (MT))",
+  source: "Source",
+};
+
+function humanize(key) {
+  return String(key)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function displayHeader(key) {
+  if (key in DISPLAY_HEADERS) return DISPLAY_HEADERS[key];
+  if (String(key).startsWith("completeness_")) {
+    const inner = String(key).slice("completeness_".length);
+    const base = (DISPLAY_HEADERS[inner] ?? humanize(inner)).split(" (")[0];
+    return `${base} Completeness (%)`;
+  }
+  return humanize(key);
+}
 
 export function get(code, defaultValue = {}) {
   return LABELS[code] || defaultValue;

@@ -73,7 +73,7 @@ export default function TargetEvaluation() {
             <div>
               <h2 className="te-section-title">Pace and monthly picture</h2>
               <p className="te-section-sub">
-                {t.summary.status.label} - {fmtPct(t.summary.pct)} of the {fmtMT(t.results.annual_target)} MT target
+                {t.summary.status.label} - {fmtPct(t.summary.pct)} of the {fmtMT(t.results.annual_target)} Metric Tons (MT) target
                 {t.summary.reachedMonth ? `, target reached in ${t.summary.reachedMonth}` : ''}.
               </p>
             </div>

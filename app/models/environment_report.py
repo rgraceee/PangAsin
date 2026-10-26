@@ -1,10 +1,10 @@
 from datetime import datetime
 
 from app.extensions import db
+from app.status_constants import ALLOWED_STATUSES
 
 
 ENVIRONMENT_METHODS = ("cooked", "solar", "hybrid")
-ENVIRONMENT_REPORT_STATUSES = ("draft", "pending", "approved", "rejected", "returned")
 
 
 class EnvironmentReport(db.Model):
@@ -33,7 +33,7 @@ class EnvironmentReport(db.Model):
         nullable=False,
     )
     status = db.Column(
-        db.Enum(*ENVIRONMENT_REPORT_STATUSES, name="environment_report_status_enum"),
+        db.Enum(*ALLOWED_STATUSES, name="environment_report_status_enum"),
         nullable=False,
         default="pending",
     )
