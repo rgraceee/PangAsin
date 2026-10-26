@@ -3740,3 +3740,74 @@ body {
   .swal2-noanimation.swal2-show,
   .swal2-icon.swal2-icon-show { animation: none !important; }
 }
+
+/* ============================================================
+   WHAT: Enhanced na record tables para sa 3 encoder manage pages
+         (Production Records, Environment Records, Salt Farmer Master List).
+   WHY: mas madaling i-scan ang data — mas malinaw na header, zebra rows,
+        mas mahaba ang row spacing, at tabular numbers.
+   NOTE: scoped sa .ui-records-table kaya hindi nagbabago ang admin pages.
+   ============================================================ */
+.admin-content .ui-records-table thead th {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+  background: #f4f7fb;
+  border-bottom: 1px solid var(--ui-border);
+  white-space: nowrap;
+}
+
+.admin-content .ui-records-table tbody td {
+  padding: 13px 16px;
+  font-size: 13.5px;
+  color: var(--ui-text-2);
+  background: var(--ui-surface);
+  border-bottom: 1px solid #eef1f6;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--ui-t-fast);
+}
+
+/* WHAT: Halili-haliling subtle tint. WHY: sinusundan ng mata ang mahabang row. */
+.admin-content .ui-records-table tbody tr:nth-child(even) td {
+  background: #fafbfd;
+}
+
+.admin-content .ui-records-table tbody tr:hover td {
+  background: var(--ui-accent-tint);
+}
+
+.admin-content .ui-records-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-content .ui-records-table tbody td:first-child {
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+/* WHAT: Mas malinaw na status badge sa loob ng record tables. */
+.ui-records-table .badge {
+  padding: 0.38em 0.62em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* WHAT: Maliit na pill para sa Report Type column.
+   WHY: pareho ang hitsura ng Production at Environment rows. */
+.ui-type-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+

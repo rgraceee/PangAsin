@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Alert, Badge, Card, OverlayTrigger, Spinner, Table, Tooltip } from 'react-bootstrap';
-import { ChevronDown, ChevronUp, Pencil, Plus, Search, Trash2, Users, ContactRound, CalendarDays } from 'lucide-react';
-import { createProducer, deleteProducer, getProducers, updateProducer } from '../services/dataService';
+import { CalendarDays, Clock, Pencil, Plus, Search, Trash2, Users, ContactRound } from 'lucide-react';
+import { createProducer, deleteProducer, getEncoderProducerReports, getProducers, updateProducer } from '../services/dataService';
 import { confirmDelete } from '../services/feedback';
 import { useToast } from './Toast';
 import KpiCard from './ui/KpiCard';
@@ -11,6 +11,7 @@ import PageHeader from './admin/PageHeader';
 import MunicipalityMapArt from './encoder/MunicipalityMapArt';
 import ReportModal from './encoder/ReportModal';
 import ReportField from './encoder/ReportField';
+import ProducerReportForm from './encoder/ProducerReportForm';
 
 const EMPTY_FORM = { name: '', age: '', sex: '', address: '', barangay_id: '' };
 
@@ -22,44 +23,6 @@ const AGE_GROUPS = [
   { value: '45to59', label: '45 to 59' },
   { value: '60plus', label: '60 and above' },
 ];
-
-/* WHAT: Sortable table heading para sa encoder master list.
-   WHY: one click asc, second desc, third clears; both arrows stay visible
-        so the current direction is obvious. */
-function SortHeader({ label, column, sort, onToggle }) {
-  const active = sort.key === column;
-  const upActive = active && sort.dir === 'asc';
-  const downActive = active && sort.dir === 'desc';
-  const nextAction = !active ? 'ascending' : (sort.dir === 'asc' ? 'descending' : 'default order');
-
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(column)}
-      aria-label={`${label}: sort ${nextAction}`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 2,
-        padding: 0,
-        border: 0,
-        background: 'transparent',
-        color: 'inherit',
-        font: 'inherit',
-        fontWeight: 'inherit',
-        letterSpacing: 'inherit',
-        textAlign: 'left',
-        cursor: 'pointer',
-      }}
-    >
-      <span>{label}</span>
-      <span aria-hidden="true" style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 0.55 }}>
-        <ChevronUp size={12} strokeWidth={2.2} style={{ color: upActive ? 'var(--ui-accent)' : 'var(--ui-text-muted)' }} />
-        <ChevronDown size={12} strokeWidth={2.2} style={{ color: downActive ? 'var(--ui-accent)' : 'var(--ui-text-muted)' }} />
-      </span>
-    </button>
-  );
-}
 
 /* WHAT: 32px ghost row action na may tooltip at aria-label.
    WHY: neutral gray ang edit, muted red ang delete; tokens-only para pantay sa bagong look. */
@@ -85,7 +48,6 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   const { toastSuccess, toastError } = useToast();
   const [filters, setFilters] = useState({ municipality_id: '', barangay_id: '', sex: '', age_group: '' });
   const [adminSearch, setAdminSearch] = useState('');
-  const [sort, setSort] = useState({ key: null, dir: null });
   const [rows, setRows] = useState([]);
   const [statistics, setStatistics] = useState({ total: 0, male: 0, female: 0, other: 0, average_age: null, by_barangay: [] });
   const [municipalities, setMunicipalities] = useState([]);
@@ -96,6 +58,23 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editing, setEditing] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [pendingReports, setPendingReports] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(!adminView);
+
+  /* WHAT: Mga salt farmer reports na pending pa lang sa admin.
+     WHY: hindi pa sila kasama sa registered table, kaya may sariling list sa
+          itaas ng master list para makita agad ang bagong submit. */
+  const loadPending = () => {
+    if (adminView) return;
+    setPendingLoading(true);
+    getEncoderProducerReports()
+      .then((result) => setPendingReports((result.reports || []).filter((report) => report.status === 'pending')))
+      .catch(() => setPendingReports([]))
+      .finally(() => setPendingLoading(false));
+  };
+
+  useEffect(() => { loadPending(); }, [adminView]);
 
   /* WHAT: Buksan ang Add Worker modal sa fresh form. WHY: inuulit dati sa button markup. */
   const openAdd = () => {
@@ -116,7 +95,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   /* WHAT: Disabled ang submit kapag kulang ang required fields.
      WHY: visual affordance lang; server validation pa rin ang source of truth. */
   const canSubmit = Boolean(
-    form.barangay_id && form.name.trim() && form.sex && form.address.trim()
+    form.barangay_id && form.name.trim() && form.sex && (editing || form.address.trim())
     && (!ageRequired || form.age !== ''),
   );
 
@@ -150,6 +129,9 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         age: form.age === '' ? null : Number(form.age),
         barangay_id: Number(form.barangay_id),
       };
+      // WHAT: Iwan blanko ang address kapag walang nilagay habang nag-edit.
+      // WHY: optional na ang address sa DB; hindi dapat i-reject ng API ang blank.
+      if (!payload.address || !payload.address.trim()) delete payload.address;
       if (editing) await updateProducer(editing.id, payload);
       else await createProducer(payload);
       setShowAdd(false);
@@ -172,7 +154,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       name: worker.name,
       age: worker.age == null ? '' : String(worker.age),
       sex: worker.sex,
-      address: worker.address,
+      address: worker.address || '',
       barangay_id: String(worker.barangay_id),
     });
     setError('');
@@ -202,16 +184,8 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
     setFilters((current) => ({ ...current, [name]: value, ...(name === 'municipality_id' ? { barangay_id: '' } : {}) }));
   };
 
-  const toggleSort = (key) => {
-    setSort((current) => {
-      if (current.key !== key) return { key, dir: 'asc' };
-      if (current.dir === 'asc') return { key, dir: 'desc' };
-      return { key: null, dir: null };
-    });
-  };
-
   const visibleRows = useMemo(() => {
-    const filtered = rows.filter((worker) => {
+    return rows.filter((worker) => {
       if (filters.sex && worker.sex !== filters.sex) return false;
       if (filters.age_group) {
         if (worker.age == null) return false;
@@ -224,30 +198,17 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       }
       return true;
     });
+  }, [rows, filters.sex, filters.age_group]);
 
-    if (!sort.key) return filtered;
-
-    const sorted = [...filtered];
-    if (sort.key === 'name') {
-      const factor = sort.dir === 'asc' ? 1 : -1;
-      sorted.sort((a, b) => factor * String(a.name || '').toLowerCase().localeCompare(String(b.name || '').toLowerCase()));
-    } else if (sort.key === 'age') {
-      sorted.sort((a, b) => {
-        const aAge = a.age == null ? null : Number(a.age);
-        const bAge = b.age == null ? null : Number(b.age);
-        if (aAge == null && bAge == null) return 0;
-        if (aAge == null) return 1;
-        if (bAge == null) return -1;
-        return sort.dir === 'asc' ? aAge - bAge : bAge - aAge;
-      });
-    }
-    return sorted;
-  }, [rows, filters.sex, filters.age_group, sort]);
-
-  const ariaSort = (key) => {
-    if (sort.key !== key) return 'none';
-    return sort.dir === 'asc' ? 'ascending' : 'descending';
-  };
+  const pendingEntries = useMemo(
+    () => pendingReports.flatMap((report) => (report.entries || []).map((entry) => ({
+      ...entry,
+      status: report.status,
+      reviewerComment: report.reviewer_comment,
+      submittedAt: report.submitted_at || report.created_at,
+    }))),
+    [pendingReports],
+  );
 
   return (
     <>
@@ -307,7 +268,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       </PageHeader>
 
       {error && !showAdd && <Alert variant="danger">{error}</Alert>}
-      <KpiGrid columns={3}>
+      <KpiGrid columns={adminView ? 3 : 4}>
         <KpiCard
           icon={Users}
           title="Registered Salt Farmers"
@@ -329,7 +290,49 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           supporting="Years"
           info="Average age of registered salt farmers in your municipality."
         />
+        {!adminView && (
+          <KpiCard
+            icon={Clock}
+            title="Pending Review"
+            value={pendingEntries.length}
+            supporting="Salt farmers awaiting approval"
+            info="Salt farmers you submitted that are still waiting for admin approval."
+          />
+        )}
       </KpiGrid>
+
+      {!adminView && pendingEntries.length > 0 && (
+        <Card className="encoder-card admin-card mb-4">
+          <Card.Header className="master-toolbar">
+            <h2 className="h6 mb-0"><Clock size={16} className="me-2" />Pending Review</h2>
+            <div className="master-toolbar__actions">
+              <Badge bg="light" text="dark">{pendingEntries.length.toLocaleString()} awaiting approval</Badge>
+              <span className="small text-muted">Newest submission first</span>
+            </div>
+          </Card.Header>
+          <Card.Body className="p-0">
+            {pendingLoading ? (
+              <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+            ) : (
+              <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
+                <thead><tr><th>Salt Farmer</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Status</th><th>Submitted</th></tr></thead>
+                <tbody>{pendingEntries.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="fw-semibold">{entry.name}</td>
+                    <td>{entry.barangay}</td>
+                    <td>{entry.age == null ? entry.age_bracket || '—' : entry.age}</td>
+                    <td>{entry.sex}</td>
+                    <td>
+                      <Badge bg="warning" text="dark">Pending</Badge>
+                    </td>
+                    <td>{entry.submittedAt ? new Date(entry.submittedAt).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}</tbody>
+              </Table>
+            )}
+          </Card.Body>
+        </Card>
+      )}
 
       <Card className="encoder-card admin-card">
         <Card.Header className="master-toolbar">
@@ -338,8 +341,12 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
              WHY: inilipat dito mula sa page header para malapit sa data ang action. */}
           <div className="master-toolbar__actions">
             <Badge bg="light" text="dark">{visibleRows.length.toLocaleString()} shown</Badge>
-            <button type="button" className="ui-btn-primary ui-btn-primary--sm" onClick={openAdd}>
-              <Plus size={16} aria-hidden="true" />Add Salt Farmer
+            <button
+              type="button"
+              className="ui-btn-primary ui-btn-primary--sm"
+              onClick={adminView ? openAdd : () => setReportOpen(true)}
+            >
+              <Plus size={16} aria-hidden="true" />{adminView ? 'Add Salt Farmer' : 'Add Salt Farmer Report'}
             </button>
           </div>
         </Card.Header>
@@ -349,14 +356,10 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
               {adminView ? 'No salt farmers match the current filters.' : 'No salt farmers match the selected filters.'}
             </div>
           ) : (
-            <Table responsive hover className="mb-0 encoder-table admin-table">
+            <Table responsive hover className={`mb-0 encoder-table admin-table${adminView ? '' : ' ui-records-table'}`}>
               <thead><tr>
-                <th aria-sort={adminView ? undefined : ariaSort('name')}>
-                  {adminView ? 'Name' : <SortHeader label="Name" column="name" sort={sort} onToggle={toggleSort} />}
-                </th>
-                <th aria-sort={adminView ? undefined : ariaSort('age')}>
-                  {adminView ? 'Age' : <SortHeader label="Age" column="age" sort={sort} onToggle={toggleSort} />}
-                </th>
+                <th>Name</th>
+                <th>Age</th>
                 <th>Sex</th><th>Municipality</th><th>Barangay</th><th>Address</th><th aria-label="Actions" />
               </tr></thead>
               <tbody>{visibleRows.map((worker) => (
@@ -489,6 +492,15 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           </ReportField>
         </form>
       </ReportModal>
+
+      {!adminView && reportOpen && (
+        <ProducerReportForm
+          user={activeUser}
+          barangays={barangays}
+          onClose={() => setReportOpen(false)}
+          onSubmitted={loadPending}
+        />
+      )}
     </>
   );
 }

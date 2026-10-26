@@ -1,22 +1,19 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Row, Col, Alert, Card } from 'react-bootstrap';
-import { useOutletContext, useLocation, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { Boxes, LayoutGrid, Users } from 'lucide-react';
-import { getStats, getEncoderMonths } from '../../services/dataService';
+import { getStats, getEncoderMonths, getEncoderBarangays } from '../../services/dataService';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from '../admin/PageHeader';
 import MunicipalityMapArt from './MunicipalityMapArt';
-import RecordsTable from './RecordsTable';
-import ProductionRecordForm from './ProductionRecordForm';
 import { formatMT } from '../../utils/volumeFormat';
-import EnvironmentReports from './EnvironmentReports';
-import ProducerReports from './ProducerReports';
+import PeriodFilters, { usePeriodFilters } from './PeriodFilters';
 
 const BRAND_PALETTE = [
   '#0D2B4B',
@@ -35,34 +32,6 @@ function colorFor(name, names) {
   const idx = names.indexOf(name);
   if (idx < 0) return BRAND_PALETTE[0];
   return BRAND_PALETTE[idx % BRAND_PALETTE.length];
-}
-
-function pad2(value) {
-  return String(value).padStart(2, '0');
-}
-
-function isoDate(year, month, day) {
-  return `${year}-${pad2(month)}-${pad2(day)}`;
-}
-
-function daysInMonth(year, month) {
-  return new Date(year, month, 0).getDate();
-}
-
-function monthRange(year, month) {
-  return {
-    start: isoDate(year, month, 1),
-    end: isoDate(year, month, daysInMonth(year, month)),
-  };
-}
-
-function presetRange(months) {
-  const end = new Date();
-  const start = new Date(end.getFullYear(), end.getMonth() - (months - 1), 1);
-  return {
-    start: isoDate(start.getFullYear(), start.getMonth() + 1, 1),
-    end: isoDate(end.getFullYear(), end.getMonth() + 1, end.getDate()),
-  };
 }
 
 function formatPct(value) {
@@ -99,78 +68,25 @@ function PieTooltip({ active, payload, total }) {
 
 export default function EncoderDashboard() {
   const { user } = useOutletContext();
-  const location = useLocation();
-  const navigate = useNavigate();
 
-  const now = new Date();
-  const initialYear = now.getFullYear();
-  const [filterMode, setFilterMode] = useState('range');
-  const [selectedYear, setSelectedYear] = useState(initialYear);
-  const [selectedMonth, setSelectedMonth] = useState(pad2(now.getMonth() + 1));
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [activePreset, setActivePreset] = useState('all');
-  const [range, setRange] = useState({ start: null, end: null });
   const [months, setMonths] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [barangayId, setBarangayId] = useState('');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [recordsRefreshKey, setRecordsRefreshKey] = useState(0);
-  const [activeReport, setActiveReport] = useState(null);
-  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     getEncoderMonths()
       .then((res) => setMonths(res.months || []))
       .catch(() => {});
+    getEncoderBarangays()
+      .then((res) => setBarangays(res.barangays || []))
+      .catch(() => {});
   }, []);
 
-  /* WHAT: Buksan ang add-modal kapag galing sa sidebar action item.
-     WHY: pinapasa ng EncoderSidebar ang openReport sa location state. */
-  useEffect(() => {
-    const wanted = location.state?.openReport;
-    if (!wanted) return;
-    if (wanted === 'production') setEditingId(null);
-    setActiveReport(wanted);
-    navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate]);
-
-  const availableYears = useMemo(() => {
-    const years = new Set([initialYear]);
-    (months || []).forEach((m) => {
-      const y = m.split('-')[0];
-      if (y) years.add(Number(y));
-    });
-    return Array.from(years).sort((a, b) => b - a);
-  }, [months, initialYear]);
-
-  useEffect(() => {
-    if (!availableYears.includes(selectedYear)) {
-      const next = availableYears[0];
-      setSelectedYear(next || initialYear);
-    }
-  }, [availableYears, selectedYear, initialYear]);
-
-  const rangeError = filterMode === 'range' && startDate && endDate && startDate > endDate
-    ? 'Start date must be on or before end date.'
-    : null;
-
-  useEffect(() => {
-    if (activePreset === 'all') {
-      setRange({ start: null, end: null });
-      return;
-    }
-    if (filterMode === 'range') {
-      if (startDate && endDate && startDate > endDate) return;
-      setRange({ start: startDate || null, end: endDate || null });
-      return;
-    }
-    if (selectedMonth === 'all') {
-      setRange({ start: `${selectedYear}-01-01`, end: `${selectedYear}-12-31` });
-      return;
-    }
-    setRange(monthRange(selectedYear, Number(selectedMonth)));
-  }, [activePreset, filterMode, startDate, endDate, selectedMonth, selectedYear]);
+  const period = usePeriodFilters(months);
+  const { range, rangeError } = period;
 
   const loadStats = useCallback(() => {
     setLoading(true);
@@ -178,71 +94,43 @@ export default function EncoderDashboard() {
     const params = {};
     if (range.start) params.start = range.start;
     if (range.end) params.end = range.end;
+    if (barangayId) params.barangay_id = barangayId;
     getStats(params)
       .then((s) => { setStats(s); setLoading(false); })
       .catch((err) => { setError(err.message || 'Failed to load dashboard.'); setLoading(false); });
-  }, [range.start, range.end]);
+  }, [range.start, range.end, barangayId]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
-  const handleYearChange = (value) => {
-    const year = Number(value);
-    setActivePreset('');
-    setSelectedYear(year);
-    const monthsForYear = (months || [])
-      .filter((month) => month.startsWith(`${year}-`))
-      .sort();
-    if (
-      selectedMonth !== 'all'
-      && monthsForYear.length
-      && !monthsForYear.includes(`${year}-${selectedMonth}`)
-    ) {
-      setSelectedMonth(monthsForYear[monthsForYear.length - 1].slice(5, 7));
-    }
-  };
+  /* WHAT: Ang napiling barangay para sa labels ng charts at pie breakdown. */
+  const selectedBarangay = useMemo(
+    () => barangays.find((b) => String(b.id) === String(barangayId)) || null,
+    [barangays, barangayId],
+  );
+  const selectedName = selectedBarangay?.name
+    || (barangayId ? stats?.by_barangay?.[0]?.barangay : null)
+    || null;
 
-  const applyPreset = (key) => {
-    setActivePreset(key);
-    setFilterMode('range');
-    if (key === 'all') {
-      setStartDate('');
-      setEndDate('');
-      return;
-    }
-    const next = presetRange(key === '6m' ? 6 : 12);
-    setStartDate(next.start);
-    setEndDate(next.end);
-  };
-
-  const handleEdit = (id) => {
-    setEditingId(id);
-    setActiveReport('production');
-  };
-
-  const handleClose = () => {
-    setActiveReport(null);
-    setEditingId(null);
-  };
-
-  const handleSaved = () => {
-    setActiveReport(null);
-    setEditingId(null);
-    setRecordsRefreshKey((k) => k + 1);
-    loadStats();
-  };
-
-  const handleImported = () => {
-    setRecordsRefreshKey((key) => key + 1);
-    loadStats();
-  };
-
+  /* WHAT: Kapag may napiling barangay, "share of municipality" ang pie.
+     WHY: isang slice lang (100%) ang Barangay Total Summary kapag isa lang
+          ang barangay; mas kapaki-pakinabang kung makita ang bahagi nito sa
+          buong munisipyo para sa parehong period. */
   const pieData = useMemo(() => {
     if (!stats) return [];
+    if (barangayId) {
+      const selected = Math.round((stats.total_volume_mt || 0) * 1000) / 1000;
+      const municipality = Math.round((stats.municipality_total_volume_mt ?? selected) * 1000) / 1000;
+      const others = Math.round((municipality - selected) * 1000) / 1000;
+      const data = [];
+      if (selected > 0) data.push({ name: selectedName || 'Selected barangay', value: selected });
+      if (others > 0) data.push({ name: 'Other barangays', value: others });
+      return data;
+    }
     return [...(stats.by_barangay || [])]
       .filter((b) => (b.total_volume_mt || 0) > 0)
       .sort((a, b) => a.barangay.localeCompare(b.barangay))
       .map((b) => ({ name: b.barangay, value: Math.round((b.total_volume_mt || 0) * 1000) / 1000 }));
-  }, [stats]);
+  }, [stats, barangayId, selectedName]);
 
   const pieTotal = useMemo(
     () => pieData.reduce((sum, d) => sum + d.value, 0),
@@ -290,114 +178,26 @@ export default function EncoderDashboard() {
       <PageHeader
         id="encoder-overview"
         variant="clean"
+        className="ui-pageheader--encoder"
         title="Dashboard"
         subtitle={`Record, review, and manage salt production data for ${municipalityName}.`}
         art={<MunicipalityMapArt highlightName={municipalityName} />}
       >
-        {/* WHAT: Period filters. WHY: Year mode or an exact date range, plus
-            quick presets that keep both modes in sync. */}
-        <label className="admin-page-hero-control" htmlFor="encoder-filter-mode">
-          <span className="admin-page-hero-field">Filter by</span>
+        <PeriodFilters filters={period} />
+        <label className="admin-page-hero-control" htmlFor="encoder-dashboard-barangay">
+          <span className="admin-page-hero-field">Barangay</span>
           <select
-            id="encoder-filter-mode"
+            id="encoder-dashboard-barangay"
             className="admin-page-hero-select"
-            value={filterMode}
-            onChange={(e) => {
-              setActivePreset('');
-              setFilterMode(e.target.value);
-            }}
+            value={barangayId}
+            onChange={(e) => setBarangayId(e.target.value)}
           >
-            <option value="year">Year</option>
-            <option value="range">Date Range</option>
+            <option value="">All barangays</option>
+            {barangays.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
           </select>
         </label>
-
-        {filterMode === 'year' ? (
-          <>
-            <label className="admin-page-hero-control" htmlFor="encoder-year">
-              <span className="admin-page-hero-field">Year</span>
-              <select
-                id="encoder-year"
-                className="admin-page-hero-select"
-                value={selectedYear}
-                onChange={(e) => handleYearChange(e.target.value)}
-              >
-                {availableYears.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </label>
-            <label className="admin-page-hero-control" htmlFor="encoder-month">
-              <span className="admin-page-hero-field">Month</span>
-              <select
-                id="encoder-month"
-                className="admin-page-hero-select"
-                value={selectedMonth}
-                onChange={(e) => {
-                  setActivePreset('');
-                  setSelectedMonth(e.target.value);
-                }}
-              >
-                <option value="all">All Months</option>
-                {Array.from({ length: 12 }, (_, index) => (
-                  <option key={index + 1} value={pad2(index + 1)}>
-                    {new Date(2000, index, 1).toLocaleDateString(undefined, { month: 'long' })}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </>
-        ) : (
-          <>
-            <label className="admin-page-hero-control" htmlFor="encoder-start-date">
-              <span className="admin-page-hero-field">Start Date</span>
-              <input
-                id="encoder-start-date"
-                type="date"
-                className="admin-page-hero-input"
-                value={startDate}
-                onChange={(e) => {
-                  setActivePreset('');
-                  setStartDate(e.target.value);
-                }}
-              />
-            </label>
-            <label className="admin-page-hero-control" htmlFor="encoder-end-date">
-              <span className="admin-page-hero-field">End Date</span>
-              <input
-                id="encoder-end-date"
-                type="date"
-                className="admin-page-hero-input"
-                value={endDate}
-                onChange={(e) => {
-                  setActivePreset('');
-                  setEndDate(e.target.value);
-                }}
-              />
-            </label>
-          </>
-        )}
-
-        <div className="admin-page-hero-control">
-          <span className="admin-page-hero-field">Quick range</span>
-          <div className="d-flex gap-2">
-            {[
-              { key: 'all', label: 'All' },
-              { key: '6m', label: '6 Months' },
-              { key: '12m', label: '12 Months' },
-            ].map((preset) => (
-              <button
-                key={preset.key}
-                type="button"
-                className={activePreset === preset.key ? 'ui-btn-primary' : 'ui-btn-outline'}
-                aria-pressed={activePreset === preset.key}
-                onClick={() => applyPreset(preset.key)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </PageHeader>
 
       {rangeError && <Alert variant="warning">{rangeError}</Alert>}
@@ -430,7 +230,9 @@ export default function EncoderDashboard() {
           <Card className="encoder-card h-100">
             <Card.Header>
               <div className="admin-card-head">
-                <h5 className="admin-card-head-title">Production by Barangay</h5>
+                <h5 className="admin-card-head-title">
+                  {selectedName ? `Production Trend · ${selectedName}` : 'Production by Barangay'}
+                </h5>
               </div>
             </Card.Header>
             <Card.Body>
@@ -471,7 +273,9 @@ export default function EncoderDashboard() {
           <Card className="encoder-card h-100">
             <Card.Header>
               <div className="admin-card-head">
-                <h5 className="admin-card-head-title">Barangay Total Summary</h5>
+                <h5 className="admin-card-head-title">
+                  {selectedName ? `Share of Municipality · ${selectedName}` : 'Barangay Total Summary'}
+                </h5>
               </div>
             </Card.Header>
             <Card.Body>
@@ -493,7 +297,12 @@ export default function EncoderDashboard() {
                         outerRadius={90}
                       >
                         {pieData.map((entry) => (
-                          <Cell key={entry.name} fill={colorFor(entry.name, barangayOrder)} />
+                          <Cell
+                            key={entry.name}
+                            fill={entry.name === 'Other barangays'
+                              ? '#C3CEDD'
+                              : colorFor(entry.name, barangayOrder)}
+                          />
                         ))}
                       </Pie>
                       <Tooltip content={<PieTooltip total={pieTotal} />} />
@@ -514,30 +323,6 @@ export default function EncoderDashboard() {
           </Card>
         </Col>
       </Row>
-
-      <div id="encoder-submissions">
-        <RecordsTable
-          onEdit={handleEdit}
-          onImported={handleImported}
-          refreshKey={recordsRefreshKey}
-          user={user}
-          start={range.start || undefined}
-          end={range.end || undefined}
-        />
-      </div>
-
-      <EnvironmentReports user={user} open={activeReport === 'environment'} onClose={handleClose} onImported={handleImported} />
-      <ProducerReports user={user} open={activeReport === 'producer'} onClose={handleClose} onImported={handleImported} />
-
-      {activeReport === 'production' && (
-        <ProductionRecordForm
-          editingId={editingId}
-          user={user}
-          onClose={handleClose}
-          onSaved={handleSaved}
-          onImported={handleImported}
-        />
-      )}
     </div>
   );
 }

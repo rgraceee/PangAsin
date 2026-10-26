@@ -4,6 +4,8 @@ import GuestDashboard from './components/GuestDashboard';
 import Login from './components/Login';
 import EncoderLayout from './components/encoder/EncoderLayout';
 import EncoderDashboard from './components/encoder/EncoderDashboard';
+import ProductionRecordsPage from './components/encoder/ProductionRecordsPage';
+import EnvironmentRecordsPage from './components/encoder/EnvironmentRecordsPage';
 import RequireAdmin from './components/admin/RequireAdmin';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminPage from './components/admin/AdminPage';
@@ -28,6 +30,8 @@ const ROUTE_TITLES = {
   '/admin/users': 'User Management',
   '/admin/master-list': 'Salt Farmer Master List',
   '/encoder/master-list': 'Salt Farmer Master List',
+  '/encoder/production-records': 'Production Records',
+  '/encoder/environment-records': 'Environment Records',
   '/admin/validation': 'Validation Queue',
   '/admin/data-quality': 'Data Quality',
   '/admin/forecast': 'Forecasting',
@@ -99,6 +103,8 @@ export default function App() {
           }
         >
           <Route index element={<EncoderDashboard />} />
+          <Route path="production-records" element={<ProductionRecordsPage />} />
+          <Route path="environment-records" element={<EnvironmentRecordsPage />} />
           <Route path="master-list" element={<ProducerMasterList />} />
         </Route>
         <Route

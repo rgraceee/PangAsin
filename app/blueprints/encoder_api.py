@@ -504,7 +504,9 @@ def list_records():
     if start_d and end_d and start_d > end_d:
         return jsonify({"error": "start must be on or before end."}), 400
 
-    records = query.order_by(ProductionRecord.record_date.desc(), ProductionRecord.id.desc()).all()
+    # WHAT: Bagong submit ang nasa taas, kahit backdated ang record_date.
+    # WHY: kapag nag-add/edit ang encoder, agad dapat makita sa unang row.
+    records = query.order_by(ProductionRecord.created_at.desc(), ProductionRecord.id.desc()).all()
     return jsonify({"records": [_serialize(r) for r in records]})
 
 
@@ -711,6 +713,15 @@ def stats():
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
 
+    # WHAT: Optional barangay drill-down para sa dashboard charts at KPIs.
+    # WHY: kapag may napiling barangay, dapat pareho ang saklaw ng lahat ng
+    #      numero sa page (hindi lang ang chart).
+    barangay_id = request.args.get("barangay_id", type=int)
+    if barangay_id:
+        barangay = db.session.get(Barangay, barangay_id)
+        if not barangay or barangay.municipality_id != current_user.municipality_id:
+            return jsonify({"error": "barangay_id is invalid for this municipality."}), 400
+
     month = request.args.get("month")
     if month:
         try:
@@ -725,6 +736,15 @@ def stats():
             ProductionRecord.record_date >= month_start,
             ProductionRecord.record_date < month_end,
         )
+        municipality_total = None
+        if barangay_id:
+            # WHAT: Buong-munisipyo na total bago i-filter, para sa "share" pie.
+            municipality_total = float(
+                base.with_entities(
+                    func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)
+                ).scalar() or 0
+            )
+            base = base.filter(ProductionRecord.barangay_id == barangay_id)
         by_barangay_q = (
             db.session.query(
                 ProductionRecord.barangay_id,
@@ -741,9 +761,10 @@ def stats():
             .filter(ProductionRecord.municipality_id == current_user.municipality_id)
             .filter(ProductionRecord.record_date >= month_start)
             .filter(ProductionRecord.record_date < month_end)
-            .group_by(ProductionRecord.barangay_id, Barangay.name)
-            .all()
         )
+        if barangay_id:
+            by_barangay_q = by_barangay_q.filter(ProductionRecord.barangay_id == barangay_id)
+        by_barangay_q = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
         month_rows = (
             base.with_entities(
                 func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
@@ -801,6 +822,7 @@ def stats():
             "record_count": record_count,
             "total_salt_beds": int(total_beds or 0),
             "total_registered_producers": int(total_registered or 0),
+            "municipality_total_volume_mt": municipality_total,
             "by_barangay": [
                 {
                     "barangay_id": b.barangay_id,
@@ -828,6 +850,15 @@ def stats():
 
     by_barangay_q = _by_barangay_query()
     by_barangay_q, _, _ = _apply_period(by_barangay_q, start_raw, end_raw)
+    municipality_total = None
+    if barangay_id:
+        municipality_total = float(
+            base.with_entities(
+                func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)
+            ).scalar() or 0
+        )
+        base = base.filter(ProductionRecord.barangay_id == barangay_id)
+        by_barangay_q = by_barangay_q.filter(ProductionRecord.barangay_id == barangay_id)
     by_barangay = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
 
     total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
@@ -891,6 +922,7 @@ def stats():
         "record_count": record_count,
         "total_salt_beds": int(total_beds or 0),
         "total_registered_producers": int(total_registered or 0),
+        "municipality_total_volume_mt": municipality_total,
         "by_barangay": [
             {
                 "barangay_id": b.barangay_id,

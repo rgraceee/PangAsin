@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Badge, Card, Form, Spinner, Table } from 'react-bootstrap';
-import { Leaf, Plus } from 'lucide-react';
+import { Form, Spinner } from 'react-bootstrap';
+import { Plus } from 'lucide-react';
 import {
   createEncoderBarangay,
   createEncoderEnvironmentReport,
   getEncoderBarangays,
-  getEncoderEnvironmentReports,
 } from '../../services/dataService';
 import { useToast } from '../Toast';
 import ReportModal from './ReportModal';
@@ -13,8 +12,6 @@ import ReportSection from './ReportSection';
 import ReportField from './ReportField';
 import ReportSummary from './ReportSummary';
 import ReportImportActions from './ReportImportActions';
-import { findBarangay, numberValue, rowError } from './reportImportUtils';
-import { STATUS_LABELS } from '../../constants/labels';
 
 const METHODS = [
   { id: 'cooked', label: 'Cooked' },
@@ -27,13 +24,7 @@ const STEPS = [
   { key: 'review', label: 'Review' },
 ];
 
-const STATUS_VARIANTS = {
-  pending: 'warning',
-  approved: 'success',
-  rejected: 'danger',
-};
-
-function EnvironmentReportForm({ user, onClose, onSaved, onImport, barangays: availableBarangays }) {
+export default function EnvironmentReportForm({ user, onClose, onSaved, onImport, barangays: availableBarangays }) {
   const { toastSuccess, toastError } = useToast();
   const [barangays, setBarangays] = useState(availableBarangays || []);
   const [form, setForm] = useState({
@@ -286,139 +277,5 @@ function EnvironmentReportForm({ user, onClose, onSaved, onImport, barangays: av
         />
       )}
     </ReportModal>
-  );
-}
-
-export default function EnvironmentReports({ user, open, onClose, onImported }) {
-  const { toastError } = useToast();
-  const [reports, setReports] = useState([]);
-  const [barangays, setBarangays] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const loadReports = () => {
-    getEncoderEnvironmentReports()
-      .then((result) => setReports(result.reports || []))
-      .catch((err) => setError(err.message || 'Could not load environment reports.'))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    getEncoderBarangays()
-      .then((result) => setBarangays(result.barangays || []))
-      .catch((err) => setError(err.message || 'Could not load barangays.'));
-    loadReports();
-  }, []);
-
-  const handleSaved = () => {
-    loadReports();
-    onClose();
-  };
-
-  const importEnvironmentRows = async (rows) => {
-    const errors = [];
-    const prepared = rows.map((row) => {
-      const barangay = findBarangay(row, barangays);
-      const numSaltBeds = numberValue(row.num_salt_beds);
-      const areaPerSaltBed = numberValue(row.area_per_salt_bed);
-      const productionAreaSize = numberValue(row.production_area_size);
-      const productionMethods = String(row.production_methods || '')
-        .split(/[|;,]/)
-        .map((method) => method.trim().toLowerCase())
-        .filter(Boolean);
-      if (!barangay) errors.push(rowError(row, 'barangay must match a barangay in your municipality.'));
-      if (!Number.isInteger(numSaltBeds) || numSaltBeds <= 0) errors.push(rowError(row, 'num_salt_beds must be a positive whole number.'));
-      if (!Number.isFinite(areaPerSaltBed) || areaPerSaltBed < 0) errors.push(rowError(row, 'area_per_salt_bed must be zero or greater.'));
-      if (!Number.isFinite(productionAreaSize) || productionAreaSize < 0) errors.push(rowError(row, 'production_area_size must be zero or greater.'));
-      if (!productionMethods.length || productionMethods.some((method) => !METHODS.some((option) => option.id === method))) {
-        errors.push(rowError(row, 'production_methods must contain cooked, solar, and/or hybrid, separated by |.'));
-      }
-      return {
-        barangay_id: barangay?.id,
-        num_salt_beds: numSaltBeds,
-        area_per_salt_bed: areaPerSaltBed,
-        production_area_size: productionAreaSize,
-        production_methods: [...new Set(productionMethods)],
-        rowNumber: row._row_number,
-      };
-    });
-    if (errors.length) throw new Error(errors.join(' '));
-
-    const failures = [];
-    let imported = 0;
-    for (const row of prepared) {
-      try {
-        const { rowNumber, ...payload } = row;
-        await createEncoderEnvironmentReport(payload);
-        imported += 1;
-      } catch (error) {
-        failures.push(rowError({ _row_number: row.rowNumber }, error.message || 'Could not create report.'));
-      }
-    }
-    if (imported) {
-      loadReports();
-      onImported?.();
-    }
-    if (!imported) throw new Error(failures.join(' ') || 'No environment rows were imported.');
-    return {
-      message: `Imported ${imported} of ${rows.length} environment row${rows.length === 1 ? '' : 's'}.${failures.length ? ` ${failures.join(' ')}` : ''}`,
-      isError: failures.length > 0,
-    };
-  };
-
-  return (
-    <>
-      <Card className="encoder-card mb-4" id="encoder-environment-reports">
-        <Card.Header>
-          <div className="admin-card-head d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div>
-              <h5 className="admin-card-head-title"><Leaf size={17} className="me-2" />Environment Reports</h5>
-              <div className="small text-muted">Report Type: Environment</div>
-            </div>
-            <ReportImportActions
-              templateUrl="/static/templates/environment-report-template.csv"
-              onImport={importEnvironmentRows}
-              disabled={!barangays.length}
-            />
-          </div>
-        </Card.Header>
-        <Card.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
-          {loading ? (
-            <div className="d-flex justify-content-center py-4"><Spinner animation="border" size="sm" /></div>
-          ) : reports.length === 0 ? (
-            <div className="chart-empty"><span className="chart-empty-chip">No reports</span>No environment reports submitted yet.</div>
-          ) : (
-            <Table responsive hover className="mb-0">
-              <thead>
-                <tr><th>Report Type</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Area</th><th>Status</th><th>Submitted</th></tr>
-              </thead>
-              <tbody>
-                {reports.map((report) => (
-                  <tr key={report.id}>
-                    <td><Badge bg="info" text="dark">Environment</Badge></td>
-                    <td>{report.barangay}</td>
-                    <td>{Number(report.num_salt_beds).toLocaleString()}</td>
-                    <td>{(report.production_methods || []).map((method) => method[0].toUpperCase() + method.slice(1)).join(', ')}</td>
-                    <td>{Number(report.production_area_size).toLocaleString()} m²</td>
-                    <td><Badge bg={STATUS_VARIANTS[report.status] || 'secondary'}>{STATUS_LABELS[report.status]?.label || report.status}</Badge></td>
-                    <td>{report.created_at ? new Date(report.created_at).toLocaleDateString() : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card.Body>
-      </Card>
-      {open && (
-        <EnvironmentReportForm
-          user={user}
-          onClose={onClose}
-          onSaved={handleSaved}
-          onImport={importEnvironmentRows}
-          barangays={barangays}
-        />
-      )}
-    </>
   );
 }
