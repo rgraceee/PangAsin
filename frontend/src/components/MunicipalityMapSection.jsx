@@ -68,7 +68,10 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
     // WHAT: Parehas sa admin map — OSM basemap + default province mask.
     // WHY: para mag-identikal ang public at admin na hitsura (walang API key/watermark).
     addLightBasemap(map);
-    addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds));
+    addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds), {
+      fillColor: '#ffffff',
+      fillOpacity: 1,
+    });
 
     const demographics = getDemographicsByMunicipality();
 

@@ -95,6 +95,23 @@ export default function ValidationQueue() {
       });
   };
 
+  const handleQuickReview = (id, action) => {
+    setReviewAction(action);
+    setReviewComment('');
+    if (reportType !== 'production') {
+      setDetail(records.find((row) => row.id === id) || null);
+      setShowDetail(true);
+      return;
+    }
+    getAdminRecord(id)
+      .then((r) => { setDetail(r); setShowDetail(true); })
+      .catch((err) => {
+        const message = err.message || 'Could not load this record.';
+        setError(message);
+        toastError(message);
+      });
+  };
+
   const openReview = (action) => {
     setReviewAction(action);
     setReviewComment('');
@@ -212,11 +229,11 @@ export default function ValidationQueue() {
                 <th>Submitter</th>
                 <th>Volume (Metric Tons (MT))</th>
                 <th>Status</th>
-                <th></th>
+                <th>Actions</th>
               </tr> : reportType === 'environment' ? <tr>
-                <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th></th>
+                <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th>Actions</th>
               </tr> : <tr>
-                <th>Municipality</th><th>Salt Farmer Entries</th><th>Submitter</th><th>Status</th><th></th>
+                <th>Municipality</th><th>Salt Farmer Entries</th><th>Submitter</th><th>Status</th><th>Actions</th>
               </tr>}
             </thead>
             <tbody>
@@ -248,6 +265,20 @@ export default function ValidationQueue() {
                       label={`Review record ${r.id}`}
                       variant="outline-primary"
                       onClick={() => handleView(r.id)}
+                    />
+                    <IconButton
+                      icon={Check}
+                      label={`Approve record ${r.id}`}
+                      variant="success"
+                      onClick={() => handleQuickReview(r.id, 'approved')}
+                      disabled={r.status !== 'pending'}
+                    />
+                    <IconButton
+                      icon={X}
+                      label={`Reject record ${r.id}`}
+                      variant="danger"
+                      onClick={() => handleQuickReview(r.id, 'rejected')}
+                      disabled={r.status !== 'pending'}
                     />
                   </td>
                 </tr>

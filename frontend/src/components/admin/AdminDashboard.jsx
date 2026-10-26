@@ -350,8 +350,8 @@ function MunicipalityMap({ muniData, selectedName }) {
             mismong dating itsura ng admin map. */
     addLightBasemap(map);
     addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds), {
-      fillColor: '#334155',
-      fillOpacity: 0.75,
+      fillColor: '#ffffff',
+      fillOpacity: 1,
     });
 
     const detailAnchor = L.marker([0, 0], {
