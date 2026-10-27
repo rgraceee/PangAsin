@@ -77,11 +77,7 @@ export function TrendTooltip({ active, payload }) {
       <div className="fc-tooltip-label">{d.labelShort}</div>
       {hasHistory && (
         <div className="fc-tooltip-row">
-<<<<<<< HEAD
-          <span>Production data</span><b>{fmtMT(d.historical)} MT</b>
-=======
-          <span>Recorded</span><b>{fmtMT(d.historical)} Metric Tons (MT)</b>
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
+          <span>Production data</span><b>{fmtMT(d.historical)} Metric Tons (MT)</b>
         </div>
       )}
       {hasForecast && (

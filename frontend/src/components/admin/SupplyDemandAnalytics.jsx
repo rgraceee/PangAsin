@@ -141,16 +141,8 @@ export default function SupplyDemandAnalytics() {
           icon={Boxes}
           title="Local Supply"
           value={Math.round(localSupply * 100) / 100}
-<<<<<<< HEAD
-          unit="MT"
-          supporting={supplyPeriod
-            ? `Pangasinan production (${supplyPeriod.start} to ${supplyPeriod.end})`
-            : 'No production data available'}
-          info={supplySourceNote}
-=======
           unit="Metric Tons (MT)"
           supporting={`Pangasinan production (${pangasinan.year})`}
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         />
         <KpiCard
           icon={Target}

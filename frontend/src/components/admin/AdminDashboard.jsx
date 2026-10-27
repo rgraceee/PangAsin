@@ -2,7 +2,7 @@ import React, { Component, useEffect, useState, useMemo, useRef, useCallback } f
 import { useSearchParams } from 'react-router-dom';
 import { Alert, Card } from 'react-bootstrap';
 import L from 'leaflet';
-import { Boxes, Ruler, Scale, MapPin } from 'lucide-react';
+import { Boxes, Scale, MapPin } from 'lucide-react';
 import {
   getAdminStats, getAdminMonths,
   getAdminSupplyDemand,
@@ -33,10 +33,10 @@ function buildMunicipalityTooltip(municipality, tierThresholds) {
   return `
     <div style="min-width:170px">
       <strong>${municipality.name}</strong><br/>
-      <span style="font-size:0.85rem">Total: ${fmtMT(municipality.volumeMT)} MT</span><br/>
+      <span style="font-size:0.85rem">Total: ${fmtMT(municipality.volumeMT)} Metric Tons (MT)</span><br/>
       <span style="font-size:0.85rem">Tier: ${tierLabel}</span><br/>
       <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(municipality.area)} m² · ${(municipality.beds || 0).toLocaleString()} beds</span><br/>
-      <span style="font-size:0.85rem;color:#495057">${(municipality.registered || 0).toLocaleString()} producers</span><br/>
+      <span style="font-size:0.85rem;color:#495057">${(municipality.registered || 0).toLocaleString()} salt farmers</span><br/>
       <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
     </div>
   `;
@@ -211,22 +211,12 @@ export default function AdminDashboard({ user }) {
   const selectedMunicipalityStats = selectedMuni
     ? (stats.by_municipality || []).find((row) => row.municipality_name === selectedMuni)
     : null;
-  const productionPeriod = stats.production_period;
-  const scopedProductionMonthCount = selectedMuni
-    ? selectedMunicipalityStats?.production_month_count || 0
-    : stats.production_month_count || 0;
   const scopedProductionMT = selectedMuni
     ? selectedMunicipalityStats?.total_volume_mt
     : stats.total_volume_mt;
   const totalVolumeMT = scopedProductionMT == null
     ? null
     : Math.round(scopedProductionMT * 100) / 100;
-  const productionSupporting = productionPeriod && scopedProductionMonthCount > 0
-    ? `${selectedMuni || 'Pangasinan'} · ${productionPeriod.start} to ${productionPeriod.end} · Adjusted_Estimates.xlsx`
-    : 'No municipality production data for this period';
-  const scopedAreaSqm = selectedMuni
-    ? selectedMunicipalityStats?.total_area_sqm
-    : stats.total_area_sqm;
   const demandBenchmark = supplyDemand?.pangasinan?.demand_volume ?? 0;
   const localSupplyMT = supplyDemand?.pangasinan?.local_production;
   const supplyPeriod = supplyDemand?.pangasinan?.local_supply_period;
@@ -312,45 +302,24 @@ return (
         {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
            WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
                 (Pang-general ang values — province-wide, hindi sumasabay sa muni filter.) */}
-<<<<<<< HEAD
         <KpiCard
           icon={Boxes}
-          title={selectedMuni ? 'Municipality Production' : 'Total Production'}
-          value={scopedProductionMonthCount > 0 ? totalVolumeMT : null}
-          unit={scopedProductionMonthCount > 0 ? 'MT' : undefined}
-          supporting={productionSupporting}
+          title="Total Production"
+          value={totalVolumeMT}
+          unit="Metric Tons (MT)"
+          supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
           info="Source: Adjusted_Estimates.xlsx."
         />
-=======
-        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="Metric Tons (MT)" supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`} />
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         <KpiCard
           icon={Scale}
           title="Province-wide Balance"
           value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
           unit={supplyDemandGap == null ? undefined : 'Metric Tons (MT)'}
           badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
-<<<<<<< HEAD
-          supporting={demandBenchmark
-            ? `Rolling 12-month supply vs ${demandYear} annual demand benchmark`
-            : 'No demand benchmark available'}
+          supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
           info={supplySourceNote}
         />
-        <KpiCard
-          icon={Ruler}
-          title="Production Area"
-          value={scopedAreaSqm}
-          unit={scopedAreaSqm == null ? undefined : 'm²'}
-          supporting={selectedMuni
-            ? `Approved operational records · ${selectedMuni}`
-            : 'Approved operational records · all municipalities'}
-          info="Area is sourced from approved submissions; the municipality production dataset does not contain area measurements."
-        />
-=======
-          supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
-        />
         <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
       </KpiGrid>
 
       {/* WHAT: Full-width map — wala nang side panel sa tabi nito.
@@ -397,19 +366,11 @@ function MunicipalityMap({ muniData, selectedName }) {
     return buildMapDetailCard({
       name: m.name,
       rows: [
-<<<<<<< HEAD
-        ['Total Volume', `${m.volumeMT.toLocaleString()} MT`],
-        ['Dataset Months', (m.records ?? 0).toLocaleString()],
-        ['Production Area (approved records)', `${(m.area || 0).toLocaleString()} m²`],
-        ['Salt Beds (approved records)', (m.beds || 0).toLocaleString()],
-        ['Registered Producers (approved records)', (m.registered || 0).toLocaleString()],
-=======
         ['Total Volume', `${m.volumeMT.toLocaleString()} Metric Tons (MT)`],
         ['Record Count', (m.records ?? 0).toLocaleString()],
         ['Production Area', `${(m.area || 0).toLocaleString()} m²`],
         ['Salt Beds', (m.beds || 0).toLocaleString()],
         ['Registered Salt Farmers', (m.registered || 0).toLocaleString()],
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         ['Male / Female', genderText],
       ],
     });
@@ -521,27 +482,11 @@ function MunicipalityMap({ muniData, selectedName }) {
         const municipalityKey = normName(feature.properties.name);
         const m = municipalityDataRef.current[municipalityKey];
         if (!m) return;
-<<<<<<< HEAD
         layer.bindTooltip(buildMunicipalityTooltip(m, tierThresholds), {
           sticky: true,
           direction: 'auto',
           offset: [0, -10],
         });
-=======
-        layer.bindTooltip(
-          `
-            <div style="min-width:170px">
-              <strong>${m.name}</strong><br/>
-               <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} Metric Tons (MT)</span><br/>
-               <span style="font-size:0.85rem">Tier: ${getProductionTier(m.volumeMT, tierThresholds).charAt(0).toUpperCase() + getProductionTier(m.volumeMT, tierThresholds).slice(1)}</span><br/>
-              <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(m.area)} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
-              <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} salt farmers</span><br/>
-              <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
-            </div>
-          `,
-          { sticky: true, direction: 'auto', offset: [0, -10] }
-        );
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         layer.on({
           mouseover: (e) => {
             const target = e.target;

@@ -1,13 +1,13 @@
 """rename municipality estimate tables to neutral production names
 
-Revision ID: 20261026e001
+Revision ID: 20261027e001
 Revises: 20261015e001
 """
 
 from alembic import op
 
 
-revision = "20261026e001"
+revision = "20261027e001"
 down_revision = "20261015e001"
 branch_labels = None
 depends_on = None

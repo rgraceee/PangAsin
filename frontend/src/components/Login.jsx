@@ -380,43 +380,6 @@ export default function Login({ onLogin }) {
             </p>
           </div>
 
-<<<<<<< HEAD
-<div ref={statsRef} className="login-muni-grid-wrap">
-  {municipalityCards.length === 0 ? (
-    <div className="text-center text-muted">Municipality production data unavailable.</div>
-  ) : (
-    <>
-      <div className="login-muni-top">
-        <Reveal className="login-about-reveal">
-          <Card className="login-about-kpi login-muni-kpi">
-            <Card.Body className="admin-kpi-body text-center">
-              <img src="/static/brand/PangAsin_Logo.png" alt="" className="login-muni-logo" />
-              <div className="login-muni-top-label">Top producer</div>
-              <div className="admin-kpi-title">{municipalityCards[0].name}</div>
-              <div className="admin-kpi-value">{formatMTWithUnit(municipalityCards[0].productionMT)}</div>
-              <div className="admin-kpi-supporting">Production data, last 12 months</div>
-            </Card.Body>
-          </Card>
-        </Reveal>
-      </div>
-      <div className="login-muni-grid">
-        {municipalityCards.slice(1).map((m) => (
-          <Reveal className="login-about-reveal" key={m.id}>
-            <Card className="login-about-kpi login-muni-kpi">
-              <Card.Body className="admin-kpi-body text-center">
-                <img src="/static/brand/PangAsin_Logo.png" alt="" className="login-muni-logo" />
-                <div className="admin-kpi-title">{m.name}</div>
-                <div className="admin-kpi-value">{formatMTWithUnit(m.productionMT)}</div>
-                <div className="admin-kpi-supporting">Production data, last 12 months</div>
-              </Card.Body>
-            </Card>
-          </Reveal>
-        ))}
-      </div>
-    </>
-  )}
-</div>
-=======
           <div ref={statsRef} className="login-muni-grid-wrap">
             {municipalityCards.length === 0 ? (
               <div className="text-center text-muted">Municipality production data unavailable.</div>
@@ -475,7 +438,6 @@ export default function Login({ onLogin }) {
               </>
             )}
           </div>
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         </Container>
       </section>
 

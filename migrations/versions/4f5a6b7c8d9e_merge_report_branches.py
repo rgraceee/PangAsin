@@ -1,6 +1,6 @@
 """merge report branches
 
-Revision ID: 6f5a6b7c8d9f
+Revision ID: 4f5a6b7c8d9e
 Revises: e3d4c5b6a7d8, d1e2f3a4b5c6
 Create Date: 2026-09-18
 
@@ -20,7 +20,7 @@ plain ``flask db upgrade`` resolves to a single head.
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "6f5a6b7c8d9f"
+revision = "4f5a6b7c8d9e"
 down_revision = ("e3d4c5b6a7d8", "d1e2f3a4b5c6")
 branch_labels = None
 depends_on = None

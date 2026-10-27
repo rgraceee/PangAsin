@@ -50,16 +50,11 @@ export function getSupplyDemand(scope) {
   return {
     labels: ['Pangasinan Supply', 'Demand Benchmark'],
     values: [pa.localSupply || 0, pa.demandBenchmark || 0],
-<<<<<<< HEAD
-    unit: 'MT',
+    unit: 'Metric Tons (MT)',
     period: pa.localSupplyPeriod || null,
     note: pa.localSupplyPeriod
       ? `Workbook-derived production data for ${pa.localSupplyPeriod.start} through ${pa.localSupplyPeriod.end}; compared with an annual demand benchmark.`
       : 'No municipality production period is available.',
-=======
-    unit: 'Metric Tons (MT)',
-    note: 'Compiled from database demand benchmarks',
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
   };
 }
 

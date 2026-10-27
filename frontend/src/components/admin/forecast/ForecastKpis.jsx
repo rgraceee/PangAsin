@@ -30,15 +30,9 @@ export default function ForecastKpis({
         icon={ChartLine}
         title="Municipality Production"
         value={recordedMT === null ? null : fmtMT(recordedMT)}
-<<<<<<< HEAD
-        unit="MT"
+        unit="Metric Tons (MT)"
         supporting={`Municipality production data, ${recordedPeriodLabel}${recordedThrough ? ` through ${recordedThrough}` : ''}.`}
         info={definition('recordedMt') + ' Source: Adjusted_Estimates.xlsx; approved submissions are separate.'}
-=======
-        unit="Metric Tons (MT)"
-        supporting={`Approved records, ${recordedPeriodLabel}${recordedThrough ? ` through ${recordedThrough}` : ''}.`}
-        info={definition('recordedMt') + ' Source: approved production records only.'}
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         loading={loading}
       />
 

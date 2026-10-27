@@ -274,15 +274,7 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Supply and Demand</h5>
-<<<<<<< HEAD
-                  <p className="fc-card-sub">
-                    {isPhilippines
-                      ? 'Compare national demand with domestic supply and imports (MT)'
-                      : `Compare trailing 12-month production data${data.period ? ` through ${data.period.end}` : ''} with the annual demand benchmark (MT)`}
-                  </p>
-=======
                   <p className="fc-card-sub">Compare salt demand with production and imports (Metric Tons (MT))</p>
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
                 </div>
               </div>
               {/* WHAT: Segmented scope switcher (Philippines / Pangasinan).

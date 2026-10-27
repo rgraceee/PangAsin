@@ -84,24 +84,15 @@ export default function MunicipalityAnalytics() {
         id="admin-municipality"
         variant="section"
         title="Municipality Analytics"
-<<<<<<< HEAD
-        subtitle={`Municipality production data and operational producer details for ${view.scopeLabel}.`}
-=======
-        subtitle={`Production and salt farmer breakdown for ${view.scopeLabel}.`}
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
+        subtitle={`Municipality production data and salt farmer details for ${view.scopeLabel}.`}
       />
 
       <div className="muni-scope-bar">
         <span className="muni-scope-chip">Scope: {view.scopeLabel}</span>
         <span className="muni-scope-note">
           <Info size={12} strokeWidth={2} aria-hidden="true" />
-<<<<<<< HEAD
-          Production volume uses estimates from Adjusted_Estimates.xlsx. Producers come from the master list; beds, area,
-          methods, and environment details remain from approved operational reports.
-=======
-          Production, beds and area come from approved production records (all time). Salt farmers come from the
-          master list.
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
+          Production volume uses estimates from Adjusted_Estimates.xlsx. Salt farmers come from the master list;
+          beds, area, methods, and environment details remain from approved operational reports.
         </span>
       </div>
 

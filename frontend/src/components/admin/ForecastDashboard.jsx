@@ -149,23 +149,7 @@ function InnerForecastDashboard() {
 
   return (
     <div className="admin-single-page forecast-page">
-<<<<<<< HEAD
-      <PageHeader
-        id="admin-forecast-header"
-        variant="clean"
-        className="ui-pageheader--dashboard"
-        title="Forecasting"
-        subtitle="Production forecasts and insights to support better decision-making for the salt industry."
-        actions={(
-          <span className="ui-pageheader-chip">
-            <CalendarDays size={14} strokeWidth={1.5} aria-hidden="true" />
-            Data as of {latestRecordMonth ? monthLong(latestRecordMonth) : 'No data yet'}
-          </span>
-        )}
-      />
-=======
       {header}
->>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
 
       <ForecastFilters
         recordedWindow={filters.recordedWindow}
