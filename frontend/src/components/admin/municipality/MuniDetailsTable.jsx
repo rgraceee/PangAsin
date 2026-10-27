@@ -14,7 +14,7 @@ const COLUMNS = [
   { key: 'producers', label: 'Producers', align: 'right' },
   { key: 'beds', label: 'Salt beds', align: 'right' },
   { key: 'area', label: 'Area (m²)', align: 'right' },
-  { key: 'records', label: 'Records', align: 'right' },
+  { key: 'records', label: 'Approved Records', align: 'right' },
 ];
 
 export default function MuniDetailsTable({ rows, scopeLabel }) {
@@ -42,7 +42,7 @@ export default function MuniDetailsTable({ rows, scopeLabel }) {
     <MuniCard
       icon={ArrowUpDown}
       title="Municipality Details"
-      sub="Approved production records - click a column to sort"
+      sub="Production volume from municipality data; other fields retain their operational sources"
       chips={<MuniChip label={scopeLabel} meta />}
     >
       <div className="muni-table-wrap">

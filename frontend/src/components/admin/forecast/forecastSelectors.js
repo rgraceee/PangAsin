@@ -105,7 +105,7 @@ export function buildNeedsAttention(rows) {
     });
 }
 
-/* 12 calendar months; months without approved records stay empty. */
+/* 12 calendar months; months without source rows stay empty. */
 export function buildSeasonalSeries(seasonalPattern) {
   const byMonth = new Map((seasonalPattern || []).map((s) => [s.month, s.avg_mt]));
   const out = [];
@@ -122,6 +122,7 @@ export function buildSeasonalSeries(seasonalPattern) {
 /* Data-quality notice: shown only when the recorded totals really did drop.
    Never hides or changes a number - it only explains the gap. */
 export function buildDataNotice(trends, selectedMuni, outlook) {
+  if (trends?.data_source === 'municipality_production') return null;
   const trendRows = trends?.municipalities || [];
   let current = null;
   let previous = null;

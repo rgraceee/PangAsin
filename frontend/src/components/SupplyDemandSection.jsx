@@ -161,7 +161,7 @@ export default function SupplyDemandSection() {
               : 'Salt sourced from imports'))
           : (label === 'Demand Benchmark'
             ? 'Annual salt demand benchmark for Pangasinan'
-            : 'Approved production recorded to date'),
+            : data.note),
       };
     });
 
@@ -194,7 +194,7 @@ export default function SupplyDemandSection() {
       const coverage = pctOf(supply, demand);
       const gap = supply - demand;
       chips = [
-        { label: 'Recorded supply', value: fmtMT(supply) },
+        { label: 'Production data (12 months)', value: fmtMT(supply) },
         { label: 'Demand benchmark', value: fmtMT(demand) },
         {
           label: gap >= 0 ? 'Surplus' : 'Shortage',
@@ -202,8 +202,9 @@ export default function SupplyDemandSection() {
         },
       ];
       captionText =
-        `Pangasinan's recorded supply of ${fmtMT(supply)} covers ${coverage == null ? '—' : fmtPct(coverage)} `
-        + `of the local demand benchmark of ${fmtMT(demand)}`
+        `Pangasinan's production data${data.period ? ` (${data.period.start} to ${data.period.end})` : ''} `
+        + `of ${fmtMT(supply)} is ${coverage == null ? '—' : fmtPct(coverage)} of the annual local demand benchmark `
+        + `of ${fmtMT(demand)}`
         + (gap >= 0 ? ' — a surplus against the benchmark.' : ' — a shortfall against the benchmark.');
       if (demand > 0) {
         benchmarkLine = { value: demand };
@@ -273,7 +274,11 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Supply and Demand</h5>
-                  <p className="fc-card-sub">Compare salt demand with production and imports (MT)</p>
+                  <p className="fc-card-sub">
+                    {isPhilippines
+                      ? 'Compare national demand with domestic supply and imports (MT)'
+                      : `Compare trailing 12-month production data${data.period ? ` through ${data.period.end}` : ''} with the annual demand benchmark (MT)`}
+                  </p>
                 </div>
               </div>
               {/* WHAT: Segmented scope switcher (Philippines / Pangasinan).

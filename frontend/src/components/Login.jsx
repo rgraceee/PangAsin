@@ -136,15 +136,15 @@ export default function Login({ onLogin }) {
     return {
       municipalities: {
         value: notAvailable ? 'Data unavailable' : String(municipalityCount),
-        supporting: 'Municipalities with approved production records',
+        supporting: 'Municipalities represented in the production dataset',
       },
       years: {
         value: notAvailable ? 'Data unavailable' : displayedYearRange,
-        supporting: 'Distinct years with approved monthly production records',
+        supporting: 'Distinct years represented in the monthly production dataset',
       },
       production: {
         value: notAvailable ? 'Data unavailable' : formatMTWithUnit(animatedTotal),
-        supporting: 'Approved production recorded in the public dashboard',
+        supporting: 'Workbook-derived municipality production data',
       },
     };
   }, [municipalityCount, displayedYearRange, animatedTotal, dashboardNumbers.dataAvailable]);
@@ -323,8 +323,8 @@ export default function Login({ onLogin }) {
               The Accelerating Salt Research and Innovation (ASIN) Center at Pangasinan State
               University supports the Philippine salt industry through research,
               innovation, and data-driven planning under RA 11985. This dashboard presents
-              approved and aggregated salt production information from the salt-producing
-              municipalities of Pangasinan.
+              source-labeled municipality production data and demand benchmarks for the
+              salt-producing municipalities of Pangasinan.
             </p>
           </div>
 
@@ -341,7 +341,7 @@ export default function Login({ onLogin }) {
               <div className="login-muni-top-label">Top producer</div>
               <div className="admin-kpi-title">{municipalityCards[0].name}</div>
               <div className="admin-kpi-value">{formatMTWithUnit(municipalityCards[0].productionMT)}</div>
-              <div className="admin-kpi-supporting">Total production</div>
+              <div className="admin-kpi-supporting">Production data, last 12 months</div>
             </Card.Body>
           </Card>
         </Reveal>
@@ -354,7 +354,7 @@ export default function Login({ onLogin }) {
                 <img src="/static/brand/PangAsin_Logo.png" alt="" className="login-muni-logo" />
                 <div className="admin-kpi-title">{m.name}</div>
                 <div className="admin-kpi-value">{formatMTWithUnit(m.productionMT)}</div>
-                <div className="admin-kpi-supporting">Total production</div>
+                <div className="admin-kpi-supporting">Production data, last 12 months</div>
               </Card.Body>
             </Card>
           </Reveal>

@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 
 from app.extensions import db
 from app.models.production_record import ProductionRecord
+from app.models.municipality_production import MunicipalityMonthlyProduction
 
 # Reference epoch for computing real (non-compressed) month positions.
 _EPOCH_YEAR = 2000
@@ -111,14 +112,57 @@ def _offset_for(y: int, m: int) -> int:
     return (y - _EPOCH_YEAR) * 12 + (m - _EPOCH_MONTH)
 
 
-def _monthly_aggregates(municipality_id: Optional[int], start: date, end: date):
-    """Return (labels, values, offsets) of approved production aggregated by month.
+def _monthly_aggregates(
+    municipality_id: Optional[int],
+    start: date,
+    end: date,
+    source: str = "approved",
+):
+    """Return (labels, values, offsets) for the requested monthly data source.
 
     `offsets` are measured in whole months from a fixed epoch, so gaps in the
     record history are represented by larger offsets instead of a compressed
     0..n-1 index. This keeps slopes and spacing honest when months are missing.
-    Only months that have at least one approved record are returned.
+    Only months with data are returned. Forecasting uses municipality production data;
+    operational reporting can continue to request approved submissions.
     """
+    if source in ("production", "estimate"):
+        query = MunicipalityMonthlyProduction.query.filter(
+            db.or_(
+                MunicipalityMonthlyProduction.production_year > start.year,
+                db.and_(
+                    MunicipalityMonthlyProduction.production_year == start.year,
+                    MunicipalityMonthlyProduction.production_month >= start.month,
+                ),
+            ),
+            db.or_(
+                MunicipalityMonthlyProduction.production_year < end.year,
+                db.and_(
+                    MunicipalityMonthlyProduction.production_year == end.year,
+                    MunicipalityMonthlyProduction.production_month <= end.month,
+                ),
+            ),
+        )
+        if municipality_id is not None:
+            query = query.filter(
+                MunicipalityMonthlyProduction.municipality_id == municipality_id
+            )
+        rows = query.order_by(
+            MunicipalityMonthlyProduction.production_year,
+            MunicipalityMonthlyProduction.production_month,
+        ).all()
+        labels = []
+        values = []
+        offsets = []
+        for row in rows:
+            labels.append(f"{row.production_year:04d}-{row.production_month:02d}")
+            values.append(float(row.production_kg) / 1000.0)
+            offsets.append(_offset_for(row.production_year, row.production_month))
+        return labels, values, offsets
+
+    if source != "approved":
+        raise ValueError(f"Unsupported monthly aggregate source: {source}")
+
     q = (
         ProductionRecord.query
         .filter(ProductionRecord.status == "approved")
@@ -186,8 +230,28 @@ def _reindex_complete(
     return complete_labels, complete_values, complete_offsets
 
 
-def _last_month_with_data(municipality_id: Optional[int]) -> Optional[str]:
-    """Return the latest 'YYYY-MM' with at least one approved record, or None."""
+def _last_month_with_data(
+    municipality_id: Optional[int],
+    source: str = "approved",
+) -> Optional[str]:
+    """Return the latest month label for a source, or None when it has no data."""
+    if source in ("production", "estimate"):
+        query = MunicipalityMonthlyProduction.query
+        if municipality_id is not None:
+            query = query.filter(
+                MunicipalityMonthlyProduction.municipality_id == municipality_id
+            )
+        row = query.order_by(
+            MunicipalityMonthlyProduction.production_year.desc(),
+            MunicipalityMonthlyProduction.production_month.desc(),
+        ).first()
+        if row is None:
+            return None
+        return f"{row.production_year:04d}-{row.production_month:02d}"
+
+    if source != "approved":
+        raise ValueError(f"Unsupported latest-month source: {source}")
+
     q = (
         ProductionRecord.query
         .filter(ProductionRecord.status == "approved")

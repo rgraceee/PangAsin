@@ -29,7 +29,6 @@ const DEFAULT_FILTERS = {
   recordedWindow: '24',
   forecastHorizon: '6',
   selectedMuni: 'all',
-  productionMethod: 'all',
   province: 'pangasinan',
 };
 
@@ -73,7 +72,7 @@ function InnerForecastDashboard() {
   );
   const readinessSupporting = filters.selectedMuni === 'all'
     ? `${readiness.withData} of ${readiness.total} municipalities with data`
-    : `${readiness.months} months with approved records`;
+    : `${readiness.months} months of municipality production data`;
 
   const muniRows = useMemo(() => buildMunicipalityRows(outlook, trends), [outlook, trends]);
   const attentionItems = useMemo(() => buildNeedsAttention(muniRows), [muniRows]);
@@ -93,14 +92,11 @@ function InnerForecastDashboard() {
     : `the last ${filters.recordedWindow} months`;
 
   const filterSummary = useMemo(() => {
-    const methodPart = filters.productionMethod === 'all'
-      ? ''
-      : ` using the ${filters.productionMethod} method only`;
     if (!selectedRun) {
-      return `No forecast run is available for ${scopeName} yet. Recorded data shown is ${windowLabel}${methodPart}.`;
+      return `No forecast run is available for ${scopeName} yet. Production history shown is ${windowLabel}.`;
     }
-    return `Showing ${windowLabel} of approved records and the next ${horizon} month${horizon === 1 ? '' : 's'} of forecast for ${scopeName}${methodPart}.`;
-  }, [selectedRun, scopeName, windowLabel, horizon, filters.productionMethod]);
+    return `Showing ${windowLabel} of municipality production data and the next ${horizon} month${horizon === 1 ? '' : 's'} of forecast for ${scopeName}.`;
+  }, [selectedRun, scopeName, windowLabel, horizon]);
 
   const headline = selectedRun && forecastTotal !== null
     ? `Forecast production for the next ${horizon} month${horizon === 1 ? '' : 's'} is ${fmtMT(forecastTotal)} MT.`
@@ -129,7 +125,7 @@ function InnerForecastDashboard() {
         variant="clean"
         className="ui-pageheader--dashboard"
         title="Forecasting"
-        subtitle="Future production estimates and insights to support better decision-making for the salt industry."
+        subtitle="Production forecasts and insights to support better decision-making for the salt industry."
         actions={(
           <span className="ui-pageheader-chip">
             <CalendarDays size={14} strokeWidth={1.5} aria-hidden="true" />
@@ -146,8 +142,6 @@ function InnerForecastDashboard() {
         selectedMuni={filters.selectedMuni}
         municipalities={municipalities}
         onSelectedMuni={set('selectedMuni')}
-        productionMethod={filters.productionMethod}
-        onProductionMethod={set('productionMethod')}
         province={filters.province}
         onProvince={set('province')}
         onReset={() => setFilters(DEFAULT_FILTERS)}
@@ -157,7 +151,12 @@ function InnerForecastDashboard() {
         summary={filterSummary}
       />
 
-      <ForecastDataNotice notice={notice} scopeKey={`${filters.selectedMuni}-${filters.productionMethod}`} />
+      <ForecastDataNotice notice={notice} scopeKey={filters.selectedMuni} />
+
+      <Alert variant="info" className="mt-3">
+        Forecasts use municipality production estimates from Adjusted_Estimates.xlsx,
+        not approved barangay submissions. Model outputs are future projections.
+      </Alert>
 
       <section className="fc-section" id="fc-overview">
         <SectionHead
@@ -185,8 +184,8 @@ function InnerForecastDashboard() {
           icon={ChartLine}
           title="Production Trajectory"
           subtitle={hasForecast
-            ? `Approved records and the model projection for ${scopeName}.`
-            : `Approved records for ${scopeName}. No forecast run is available for this scope yet.`}
+            ? `Municipality production data and the model projection for ${scopeName}.`
+            : `Municipality production data for ${scopeName}. No forecast run is available for this scope yet.`}
         />
         <ForecastTrendChart
           data={timeline}

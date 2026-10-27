@@ -18,13 +18,6 @@ const HORIZONS = [
   { value: '12', label: '12 months' },
 ];
 
-const METHODS = [
-  { value: 'all', label: 'All methods' },
-  { value: 'solar', label: 'Solar' },
-  { value: 'cooked', label: 'Cooked' },
-  { value: 'hybrid', label: 'Hybrid' },
-];
-
 /* The admin shell scrolls an inner container, not the window. */
 function findScrollParent(el) {
   let node = el;
@@ -56,7 +49,6 @@ export default function ForecastFilters({
   recordedWindow, onRecordedWindow,
   forecastHorizon, onForecastHorizon,
   selectedMuni, municipalities, onSelectedMuni,
-  productionMethod, onProductionMethod,
   province, onProvince,
   onReset, onRefresh, refreshing, lastUpdated,
   summary, disabled = false,
@@ -120,13 +112,6 @@ export default function ForecastFilters({
             <Form.Select id="fc-municipality" value={selectedMuni} disabled={disabled} onChange={(e) => onSelectedMuni(e.target.value)}>
               <option value="all">All 7 municipalities</option>
               {municipalities.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </Form.Select>
-          </div>
-
-          <div className="fc-filterbar-field">
-            <label className="fc-filterbar-label" htmlFor="fc-method">Production method</label>
-            <Form.Select id="fc-method" value={productionMethod} disabled={disabled} onChange={(e) => onProductionMethod(e.target.value)}>
-              {METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </Form.Select>
           </div>
 

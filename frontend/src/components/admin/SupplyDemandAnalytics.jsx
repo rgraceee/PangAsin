@@ -72,6 +72,10 @@ export default function SupplyDemandAnalytics() {
 
   const localSupply = pangasinan?.local_production != null ? pangasinan.local_production : 0;
   const demandBenchmark = pangasinan?.demand_volume != null ? pangasinan.demand_volume : 0;
+  const supplyPeriod = pangasinan?.local_supply_period;
+  const supplySourceNote = supplyPeriod
+    ? `Trailing 12-month workbook municipality production data (${supplyPeriod.start} to ${supplyPeriod.end}).`
+    : 'No municipality production period is available.';
   const bulletMax = niceCeil(Math.max(localSupply, demandBenchmark, 1) * 1.15);
 
   const bulletData = useMemo(() => [
@@ -138,7 +142,10 @@ export default function SupplyDemandAnalytics() {
           title="Local Supply"
           value={Math.round(localSupply * 100) / 100}
           unit="MT"
-          supporting={`Pangasinan production (${pangasinan.year})`}
+          supporting={supplyPeriod
+            ? `Pangasinan production (${supplyPeriod.start} to ${supplyPeriod.end})`
+            : 'No production data available'}
+          info={supplySourceNote}
         />
         <KpiCard
           icon={Target}

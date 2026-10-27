@@ -11,7 +11,7 @@ import { buildHistoryRows, buildTimeline } from './forecastSelectors';
 
 const WINDOW_MONTHS = { 6: 6, 12: 12, 24: 24, all: 120 };
 
-export default function useForecastData({ recordedWindow, forecastHorizon, selectedMuni, productionMethod }) {
+export default function useForecastData({ recordedWindow, forecastHorizon, selectedMuni }) {
   const [municipalities, setMunicipalities] = useState([]);
   const [outlook, setOutlook] = useState([]);
   const [trends, setTrends] = useState({ municipalities: [], totals: null });
@@ -41,25 +41,26 @@ export default function useForecastData({ recordedWindow, forecastHorizon, selec
     return () => { alive = false; };
   }, [reloadKey]);
 
-  // Year-over-year blocks - recomputed when the production-method filter moves.
+  // Year-over-year blocks use the same municipality production source as forecasts.
   useEffect(() => {
     const my = ++token.current.trends;
-    const params = productionMethod === 'all' ? {} : { production_method: productionMethod };
-    getAdminTrends(params)
+    getAdminTrends({ source: 'municipality_production' })
       .then((res) => { if (my === token.current.trends) setTrends(res || { municipalities: [], totals: null }); })
       .catch(() => { if (my === token.current.trends) setTrends({ municipalities: [], totals: null }); });
-  }, [productionMethod, reloadKey]);
+  }, [reloadKey]);
 
-  // Recorded history for the current scope, window and production method.
+  // Production history for the current municipality and time window.
   useEffect(() => {
     const my = ++token.current.descriptive;
-    const params = { months: WINDOW_MONTHS[recordedWindow] || 24 };
+    const params = {
+      months: WINDOW_MONTHS[recordedWindow] || 24,
+      source: 'municipality_production',
+    };
     if (selectedMuni !== 'all') params.municipality_id = Number(selectedMuni);
-    if (productionMethod !== 'all') params.production_method = productionMethod;
     getAdminDescriptive(params)
       .then((res) => { if (my === token.current.descriptive) setDescriptive(res); })
       .catch(() => { if (my === token.current.descriptive) setDescriptive(null); });
-  }, [recordedWindow, selectedMuni, productionMethod, reloadKey]);
+  }, [recordedWindow, selectedMuni, reloadKey]);
 
   // Forecast runs for the current scope - only the newest run is needed.
   useEffect(() => {

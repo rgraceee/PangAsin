@@ -67,7 +67,7 @@ export function TrendTooltip({ active, payload }) {
       <div className="fc-tooltip">
         <div className="fc-tooltip-label">{d.labelShort}</div>
         <div className="fc-tooltip-row">
-          <span>Recorded</span><b>No approved records</b>
+          <span>Production data</span><b>No source row available</b>
         </div>
       </div>
     );
@@ -77,7 +77,7 @@ export function TrendTooltip({ active, payload }) {
       <div className="fc-tooltip-label">{d.labelShort}</div>
       {hasHistory && (
         <div className="fc-tooltip-row">
-          <span>Recorded</span><b>{fmtMT(d.historical)} MT</b>
+          <span>Production data</span><b>{fmtMT(d.historical)} MT</b>
         </div>
       )}
       {hasForecast && (
@@ -111,7 +111,7 @@ export function SeasonTooltip({ active, payload }) {
       <div className="fc-tooltip-row">
         <span>Average production</span><b>{fmtMT(d.value)} MT</b>
       </div>
-      <div className="fc-tooltip-source">Averaged over complete years of approved records.</div>
+      <div className="fc-tooltip-source">Averaged over available municipality production data.</div>
     </div>
   );
 }

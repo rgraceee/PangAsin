@@ -1,6 +1,6 @@
-// WHAT: "Recorded Production and Forecast" chart - full width.
-// WHY: shows the recorded history and the model projection on one continuous
-//      monthly axis. Months with no approved records break the solid line and
+// WHAT: "Municipality Production and Forecast" chart - full width.
+// WHY: shows the production history and model projection on one continuous
+//      monthly axis. Months with no source row break the solid line and
 //      are bridged by a faint dotted connector, so a gap never reads as a
 //      drop to zero and never reads as a real value either.
 import { useMemo } from 'react';
@@ -30,17 +30,17 @@ export default function ForecastTrendChart({
   return (
     <ForecastChartCard
       icon={ChartLine}
-      title="Recorded Production and Forecast"
+      title="Municipality Production and Forecast"
       subtitle={`${scopeLabel} · metric tons (MT) per month`}
       height={height}
       chips={(
         <>
-          {hasHistory && <ChartChip label="Recorded" color={NAVY} />}
+          {hasHistory && <ChartChip label="Production data" color={NAVY} />}
           {hasForecast && <ChartChip label="Forecast" color={GOLD} dashed />}
           {hasForecast && <ChartChip label="Expected range" color="var(--fc-gold-soft)" />}
         </>
       )}
-      caption="Solid line = approved records, dashed line = model forecast with its expected range. A dotted bridge marks a month with no approved record."
+      caption="Solid line = municipality production data, dashed line = model forecast with its expected range. A dotted bridge marks a month with no source row."
       className="fc-trend-card"
     >
       {rows.length === 0 ? (

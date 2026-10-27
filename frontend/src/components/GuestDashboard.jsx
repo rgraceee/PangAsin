@@ -69,12 +69,12 @@ export default function GuestDashboard() {
         variant="clean"
         className="ui-pageheader--dashboard"
         title="Pangasinan Salt Industry Dashboard"
-        subtitle="Approved salt production and demand information from the salt-producing municipalities of Pangasinan."
+        subtitle="Source-labeled municipality production data and salt-industry demand benchmarks for Pangasinan."
         art={<MunicipalityMapArt mode="province" />}
       >
         <span className="ui-pageheader-chip">
           <ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />
-          Public data &middot; approved and aggregated records only
+          Public data &middot; municipality production dataset
         </span>
       </PageHeader>
 
@@ -99,6 +99,7 @@ export default function GuestDashboard() {
           <Reveal>
             <PublicIntro
               municipalities={data.municipalities || []}
+              production={data.production || {}}
             />
           </Reveal>
 
@@ -137,11 +138,11 @@ export default function GuestDashboard() {
             />
             <KpiCard
               icon={Boxes}
-              title="Recorded Production"
+              title="Municipality Production"
               value={kpis.totalMT == null ? null : Math.round(kpis.totalMT * 100) / 100}
               unit="MT"
-              supporting="Total approved production · Pangasinan"
-              info="Total approved salt production recorded by Pangasinan municipalities to date."
+              supporting="Workbook-derived production data · Pangasinan"
+              info="Source-labeled municipality data used for public analytics. Approved barangay submissions are retained separately."
             />
           </KpiGrid>
         </Reveal>

@@ -11,7 +11,10 @@ class ForecastRun(db.Model):
     municipality_id = db.Column(db.Integer, db.ForeignKey("municipalities.id"), nullable=True)
     period_start = db.Column(db.Date, nullable=False)
     period_end = db.Column(db.Date, nullable=False)
-    algorithm = db.Column(db.String(50), nullable=False, default="linear_regression")
+    algorithm = db.Column(db.String(50), nullable=False, default="arima")
+    data_source = db.Column(
+        db.String(40), nullable=False, default="approved_records"
+    )
     readiness = db.Column(db.String(20), nullable=False, default="not_ready")
     reliability = db.Column(db.String(20), nullable=False, default="low")
     trend_direction = db.Column(db.String(20), nullable=False, default="stable")
