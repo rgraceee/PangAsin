@@ -14,13 +14,15 @@ import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../../Skeleton';
 import MuniRegisteredChart from './MuniRegisteredChart';
 import MuniMethodChart from './MuniMethodChart';
 import MuniProfileChart from './MuniProfileChart';
-import MuniEnvironmentPanel from './MuniEnvironmentPanel';
+import MuniProductionChart from './MuniProductionChart';
+import MuniMonthlyTrendChart from './MuniMonthlyTrendChart';
+
 import MuniDetailsTable from './MuniDetailsTable';
 import {
   scopeRows, normaliseProduction, normaliseMasterList, normaliseMethods, fmtInt,
 } from './muniData';
 import {
-  buildRegisteredRows, buildMethodRows, buildProfile, buildEnvironment, buildTableRows,
+  buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows,
 } from './muniSelectors';
 
 export default function MunicipalityAnalytics() {
@@ -52,13 +54,18 @@ export default function MunicipalityAnalytics() {
       registeredTotal: masterTotal,
       method: buildMethodRows(methodScope),
       profile: buildProfile(masterScope),
-      environment: buildEnvironment(data.environment_by_municipality || [], scope),
       tableRows: buildTableRows(scope, masterList),
       productionMunicipalityCount: scope.filter((m) => m.productionMonths > 0).length,
       totalBeds: scope.reduce((sum, m) => sum + (m.beds || 0), 0),
       totalArea: scope.reduce((sum, m) => sum + (m.area || 0), 0),
     };
   }, [data, selectedMuni]);
+
+  const selectedMuniId = useMemo(() => {
+    if (!selectedMuni || !data) return null;
+    const row = (data.by_municipality || []).find((m) => m.municipality_name === selectedMuni);
+    return row ? row.municipality_id : null;
+  }, [selectedMuni, data]);
 
   if (loading) {
     return (
@@ -92,7 +99,7 @@ export default function MunicipalityAnalytics() {
         <span className="muni-scope-note">
           <Info size={12} strokeWidth={2} aria-hidden="true" />
           Production volume uses estimates from Adjusted_Estimates.xlsx. Salt farmers come from the master list;
-          beds, area, methods, and environment details remain from approved operational reports.
+          beds, area, and methods remain from approved operational reports.
         </span>
       </div>
 
@@ -131,24 +138,27 @@ export default function MunicipalityAnalytics() {
       </KpiGrid>
 
       <Row className="g-3 mb-3">
+        <Col lg={12} md={12}>
+          <MuniMonthlyTrendChart selectedMuni={selectedMuni} municipalityId={selectedMuniId} />
+        </Col>
+      </Row>
+
+      <Row className="g-3 mb-3">
         <Col lg={7} md={12}>
-          <MuniRegisteredChart rows={view.registeredRows} total={view.registeredTotal} />
+          <MuniProductionChart rows={view.scope} selectedMuni={selectedMuni} />
         </Col>
         <Col lg={5} md={12}>
           <MuniMethodChart rows={view.method.rows} total={view.method.total} />
         </Col>
       </Row>
 
+      <MuniDetailsTable rows={view.tableRows} scopeLabel={view.scopeLabel} />
+
       <Row className="g-3 mb-3">
-        <Col lg={7} md={12}>
-          <MuniProfileChart profile={view.profile} />
-        </Col>
-        <Col lg={5} md={12}>
-          <MuniEnvironmentPanel environment={view.environment} />
+        <Col lg={12} md={12}>
+          <MuniProfileChart profile={view.profile} registeredRows={view.registeredRows} registeredTotal={view.registeredTotal} selectedMuni={selectedMuni} />
         </Col>
       </Row>
-
-      <MuniDetailsTable rows={view.tableRows} scopeLabel={view.scopeLabel} />
 
       <p className="muni-footnote">
         {view.tableRows.length > 0

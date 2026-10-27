@@ -878,26 +878,31 @@ body {
 
 .login-muni-value-row {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 3px;
   margin-top: 2px;
 }
 
 .login-muni-value {
   color: var(--p-navy);
-  font-size: 26px;
+  font-size: clamp(20px, 5vw, 26px);
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.4px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  display: block;
 }
 
 .login-muni-unit {
   color: var(--p-ink-muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  display: block;
 }
 
 .login-muni-bar {
@@ -992,17 +997,20 @@ body {
 }
 
 .login-muni-kpi--top .login-muni-value-row {
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .login-muni-kpi--top .login-muni-value {
   color: var(--white);
-  font-size: 38px;
+  font-size: clamp(30px, 6vw, 38px);
+  white-space: nowrap;
 }
 
 .login-muni-kpi--top .login-muni-unit {
   color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .login-muni-kpi--top .login-muni-bar {

@@ -8,7 +8,6 @@ import { MUNI_COLORS, MUNI_EDGES, ATTENTION_COLOR_KEY } from './forecastColors';
 
 const REASON_LABEL = {
   declining: 'Declining forecast',
-  low: 'Low confidence',
   nodata: 'Not enough data',
 };
 
@@ -20,7 +19,7 @@ export default function ForecastNeedsAttention({ items }) {
           <span className="fc-card-head-icon"><Flag size={16} strokeWidth={1.75} /></span>
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">Needs attention</h5>
-            <p className="fc-card-sub">Municipalities with a declining forecast, low confidence or no data.</p>
+            <p className="fc-card-sub">Municipalities with a declining forecast or no data.</p>
           </div>
         </div>
         <div className="fc-card-head-right">

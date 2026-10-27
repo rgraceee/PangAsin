@@ -19,7 +19,7 @@ const SALT_LIST = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta
    WHY: default ay 'single' pa rin — ang AdminDashboard lang ang nagpasa ng explicit
         mode="province"; kung 'province' ang default ay nagbago ang /encoder at
         ProducerMasterList na walang mode mula sa pag-focus sa sariling bayan. */
-export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, selectedName = '' }) {
+export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, selectedName = '', productionByName = null, activeNames = null }) {
   const rawId = useId();
   const uid = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
   /* WHAT: buildMunicipalityArt is module-level cached and never null, but guard anyway
@@ -99,22 +99,33 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
           </pattern>
         </defs>
 
-        {isProvince ? (
-          /* WHAT: Buong lalawigan; ang 7 salt ay accent (mas maliwanag) para mag-mukhang set.
-             WHY: title child para sa hover tooltip na pangalan ng munisipyo.
-             Ang napiling bayan (selectedKey) ay solid accent + glow; ang iba ay light green. */
+{isProvince ? (
+          /* WHAT: Buong lalawigan; shade from productionByName if provided. */
           shapes.map((s) => {
             const norm = normalizeMunicipalityName(s.name);
             const salt = SALT_MUNICIPALITY_NAMES.has(norm);
             const selected = salt && selectedKey === norm;
+const volume = productionByName ? (productionByName[s.name] ?? productionByName[norm]) : null;
+            const hasData = volume !== null && volume !== undefined;
+            const vals = productionByName ? Object.values(productionByName).filter((v) => v !== null && v !== undefined) : [];
+            const maxV = vals.length ? Math.max(...vals) : 1;
+            const minV = vals.length ? Math.min(...vals) : 0;
+            const range = maxV - minV || 1;
+            const t = hasData ? (volume - minV) / range : 0;
+            const bucket = hasData ? Math.min(4, Math.floor(t * 5)) : -1;
+            const fills = ['#E5E7EB', '#DBEAFE', '#93C5FD', '#3B82F6', '#1D4ED8'];
+            const fill = hasData ? fills[bucket + (bucket >= 0 ? 1 : 0)] : undefined;
             return (
               <path
                 key={s.key}
                 d={s.d}
                 className={`munimap-shape${salt ? (selected ? ' munimap-shape--active' : ' munimap-shape--province') : ''}`}
+                style={hasData ? { fill } : undefined}
+                stroke="#374151"
+                strokeWidth="0.6"
                 filter={selected ? `url(#${uid}-glow)` : undefined}
               >
-                <title>{s.name}</title>
+                <title>{hasData ? `${s.name}: ${Number(volume).toLocaleString()} MT` : s.name}</title>
               </path>
             );
           })
@@ -209,14 +220,20 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
       {isProvince ? (
         /* WHAT: Compact na legend. WHY: ipinapaliwanag ang kulay ng mga munisipyo. */
         <div className="munimap-legend">
-          <span className="munimap-legend__item">
-            <span className="munimap-legend__dot munimap-legend__dot--salt" aria-hidden="true" />
-            Salt-producing municipality
-          </span>
-          <span className="munimap-legend__item">
-            <span className="munimap-legend__dot munimap-legend__dot--other" aria-hidden="true" />
-            Other municipalities
-          </span>
+          {productionByName && Object.keys(productionByName).length > 0 ? (
+            <span className="munimap-legend__item">Lower production → Higher production</span>
+          ) : (
+            <>
+              <span className="munimap-legend__item">
+                <span className="munimap-legend__dot munimap-legend__dot--salt" aria-hidden="true" />
+                Salt-producing municipality
+              </span>
+              <span className="munimap-legend__item">
+                <span className="munimap-legend__dot munimap-legend__dot--other" aria-hidden="true" />
+                Other municipalities
+              </span>
+            </>
+          )}
         </div>
       ) : null}
     </div>

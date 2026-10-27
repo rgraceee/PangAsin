@@ -16,7 +16,7 @@ import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
-import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
+import MunicipalityMapSection from '../../components/MunicipalityMapSection';
 
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -93,9 +93,11 @@ export default function AdminDashboard({ user }) {
 
   /* WHAT: Sanitize ang URL month/year — huwag ipadala ang invalid na value sa trends.
      WHY: ang '/trends?month=13' ay magbabalik ng 400; i-ignore na lang ang invalid. */
-  const isAllMonths = urlMonthRaw === 'all';
+  /* WHAT: Kapag walang ?month sa URL (o 'all'), "All months" ang default.
+     WHY: para tumugma ang mapa at KPIs sa total ng taon, hindi sa isang buwan lang. */
+  const isAllMonths = urlMonthRaw === '' || urlMonthRaw === 'all';
   const monthNumber = Number(urlMonthRaw);
-  const hasValidMonth = !isAllMonths && urlMonthRaw !== '' && Number.isInteger(monthNumber) && monthNumber >= 1 && monthNumber <= 12;
+  const hasValidMonth = !isAllMonths && Number.isInteger(monthNumber) && monthNumber >= 1 && monthNumber <= 12;
   const hasValidYear = /^\d{4}$/.test(urlYearRaw);
 
   const todayIso = useMemo(() => {
@@ -115,9 +117,11 @@ export default function AdminDashboard({ user }) {
 
   const selectedMuni = urlMuni; // '' = Pangasinan (province-wide)
   const selYear = hasValidYear ? urlYearRaw : resolvedDefaultMonth.slice(0, 4);
-  const selMonth = isAllMonths
-    ? ''
-    : String(hasValidMonth ? monthNumber : Number(resolvedDefaultMonth.slice(5, 7)));
+
+  /* WHAT: '' = All months. Specific month lang kapag may valid na ?month=1..12.
+     WHY: dati, kapag walang ?month, ginagamit ang resolvedDefaultMonth (isang buwan). */
+  const selMonth = hasValidMonth ? String(monthNumber) : '';
+
   /* WHAT: Pinagsamang period key (YYYY-MM) o '' kapag "All months".
      WHY: ito ang ipinapasa sa /trends para sa month-scoped reporting stats. */
   const selectedAdminMonth = (isAllMonths || !selMonth)
@@ -204,6 +208,7 @@ export default function AdminDashboard({ user }) {
       </div>
     );
   }
+
   if (error) {
     return <Alert variant="danger">{error}</Alert>;
   }
@@ -238,8 +243,13 @@ export default function AdminDashboard({ user }) {
     else next.delete(key);
     setSearchParams(next);
   };
+
   const resetFilters = () => setSearchParams({});
-  const isDefaultFilters = urlMuni === '' && urlMonthRaw === '' && urlYearRaw === '';
+
+  /* WHAT: Default pa rin ang ?month=all, kaya hindi lalabas ang Reset dahil lang doon.
+     WHY: pareho na ang kahulugan ng walang ?month at ?month=all. */
+  const isDefaultFilters = urlMuni === '' && (urlMonthRaw === '' || urlMonthRaw === 'all') && urlYearRaw === '';
+
   const periodHasData = selectedAdminMonth
     ? adminMonths.includes(selectedAdminMonth)
     : adminMonths.some((month) => month.startsWith(`${selYear}-`));
@@ -253,29 +263,38 @@ export default function AdminDashboard({ user }) {
           {MUNI_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
       </label>
+
       <label className="admin-page-hero-control" htmlFor="admin-month">
         <span className="admin-page-hero-field">Month</span>
-        <select id="admin-month" className="form-select admin-page-hero-select" value={selMonth} onChange={(e) => updateParam('month', e.target.value === '' ? 'all' : e.target.value)}>
+        <select
+          id="admin-month"
+          className="form-select admin-page-hero-select"
+          value={selMonth}
+          onChange={(e) => updateParam('month', e.target.value)}
+        >
           <option value="">All months</option>
           {MONTH_NUMBERS.map((num, i) => <option key={num} value={num}>{MONTH_LABELS[i]}</option>)}
         </select>
       </label>
+
       <label className="admin-page-hero-control" htmlFor="admin-year">
         <span className="admin-page-hero-field">Year</span>
         <select id="admin-year" className="form-select admin-page-hero-select" value={selYear} onChange={(e) => updateParam('year', e.target.value)}>
           {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
       </label>
+
       {!isDefaultFilters && (
         <button type="button" className="dashboard-filter-reset" onClick={resetFilters}>Reset</button>
       )}
+
       {!periodHasData && (
         <p className="dashboard-filter-note" role="status">No data for this period.</p>
       )}
     </>
   );
 
-return (
+  return (
     <div className="admin-dashboard-page">
       {/* WHAT: Polished hero card matching the encoder style: 20px radius, 1px border,
          overflow hidden, white-to-accent-tint horizontal wash, faint dot pattern fading
@@ -291,7 +310,7 @@ return (
           : 'Province-wide salt production monitoring for Pangasinan.'}
         art={(
           <HeroMapErrorBoundary>
-            <MunicipalityMapArt mode="province" selectedName={selectedMuni} />
+            <MunicipalityMapSection />
           </HeroMapErrorBoundary>
         )}
       >
@@ -334,6 +353,7 @@ function MunicipalityMap({ muniData, selectedName }) {
   const mapInstanceRef = useRef(null);
   const geoJsonLayerRef = useRef(null);
   const detailOpenRef = useRef(false);
+
   /* WHAT: Ref na nagdadala ng pinakabagong selectedName papasok sa Leaflet handlers.
      WHY: ang mouseout handler ay na-closure noong init, kaya kailangan ng ref
           para hindi ito makaluma kapag nagbago ang filter. */
@@ -346,16 +366,19 @@ function MunicipalityMap({ muniData, selectedName }) {
     const mx = values.length ? Math.max(...values) : 0;
     return { min: mn, max: mx };
   }, [muniData]);
+
   const tierThresholds = useMemo(() => computeTierThresholds(muniData.map((m) => m.volumeMT)), [muniData]);
   const sortedVals = useMemo(() => [...muniData.map((m) => m.volumeMT)].filter((v) => v != null).sort((a, b) => a - b), [muniData]);
   const lowMax = sortedVals[Math.max(0, Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[0];
   const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
   const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
   const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
+
   const municipalityDataRef = useRef({});
   municipalityDataRef.current = Object.fromEntries(
     muniData.map((municipality) => [normName(municipality.name), municipality]),
   );
+
   const mapScaleRef = useRef({ min, max, tierThresholds });
   mapScaleRef.current = { min, max, tierThresholds };
 
@@ -363,6 +386,7 @@ function MunicipalityMap({ muniData, selectedName }) {
     const genderText = m.registered > 0
       ? `${(m.male || 0).toLocaleString()} / ${(m.female || 0).toLocaleString()}`
       : '—';
+
     return buildMapDetailCard({
       name: m.name,
       rows: [
@@ -388,6 +412,7 @@ function MunicipalityMap({ muniData, selectedName }) {
       minZoom: 7,
       maxZoom: 15,
       maxBoundsViscosity: 1.0,
+
       /* WHAT: Zoom +/- (top-left) at draggable ang mapa.
          WHY: dating admin map (Sep 18) ay nangangailangan ng +/- up/down sa
               gilid at naka-drag para makita ang buong lalawigan. */
@@ -398,6 +423,7 @@ function MunicipalityMap({ muniData, selectedName }) {
       boxZoom: false,
       touchZoom: false,
     }).setView(provinceBounds.getCenter(), 8);
+
     mapInstanceRef.current = map;
 
     /* WHAT: OSM basemap (dating admin look) + madilim na province mask.
@@ -413,6 +439,7 @@ function MunicipalityMap({ muniData, selectedName }) {
       icon: L.divIcon({ className: 'detail-anchor', html: '', iconSize: [0, 0] }),
       interactive: false,
     }).addTo(map);
+
     detailAnchor.bindTooltip('', {
       direction: 'right',
       sticky: false,
@@ -421,12 +448,14 @@ function MunicipalityMap({ muniData, selectedName }) {
       opacity: 1,
       offset: [14, 30],
     });
+
     map.on('click', (e) => {
       const target = e.originalEvent && e.originalEvent.target;
       if (target && target.classList && target.classList.contains('leaflet-interactive')) return;
       detailOpenRef.current = false;
       if (detailAnchor.isTooltipOpen()) detailAnchor.closeTooltip();
     });
+
     map.on('moveend zoomend', () => {
       if (detailAnchor.isTooltipOpen()) {
         window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
@@ -443,12 +472,12 @@ function MunicipalityMap({ muniData, selectedName }) {
     protectMapDetailCard(detailAnchor, { onClose: () => { detailOpenRef.current = false; } });
 
     const contextFeatures = geojsonAll.features.filter(
-      (f) => !producingNames.has(normName(f.properties.shapeName || f.properties.name || ''))
+      (f) => !producingNames.has(normName(f.properties.shapeName || f.properties.name || '')),
     );
 
     /* WHAT: Non-producing na bayan = context outline + pangalan (walang datos).
        WHY: labeling lahat ng 48 bayan para makita ang buong lalawigan, gaya
-              ng dating (Sep 18) admin map. */
+            ng dating (Sep 18) admin map. */
     L.geoJSON(contextFeatures, {
       style: {
         fillColor: NON_PRODUCING_FILL,
@@ -459,11 +488,11 @@ function MunicipalityMap({ muniData, selectedName }) {
       },
       onEachFeature: (feature, layer) => {
         const label = prettyName(feature.properties.shapeName || feature.properties.name || '');
-         layer.bindTooltip(
-           `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
-           { sticky: true, direction: 'auto', offset: [0, -8] }
-         );
-       },
+        layer.bindTooltip(
+          `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
+          { sticky: true, direction: 'auto', offset: [0, -8] },
+        );
+      },
     }).addTo(map);
 
     geoJsonLayerRef.current = L.geoJSON(geojson, {
@@ -482,49 +511,63 @@ function MunicipalityMap({ muniData, selectedName }) {
         const municipalityKey = normName(feature.properties.name);
         const m = municipalityDataRef.current[municipalityKey];
         if (!m) return;
+
         layer.bindTooltip(buildMunicipalityTooltip(m, tierThresholds), {
           sticky: true,
           direction: 'auto',
           offset: [0, -10],
         });
+
         layer.on({
           mouseover: (e) => {
             const target = e.target;
             if (detailOpenRef.current) return;
+
             const currentMuni = municipalityDataRef.current[municipalityKey];
             if (!currentMuni) return;
+
             target.setTooltipContent(
               buildMunicipalityTooltip(currentMuni, mapScaleRef.current.tierThresholds),
             );
+
             target.setStyle({ fillOpacity: 0.9, weight: 2.5 });
+
             if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
               target.bringToFront();
             }
+
             target.openTooltip();
           },
+
           mouseout: (e) => {
             const target = e.target;
             geoJsonLayerRef.current.resetStyle(target);
+
             /* WHAT: Kung ang layer na ito ang napiling muni, ibalik ang highlight.
                WHY: ang resetStyle ay nagwawala sa highlight kapag na-hover ito. */
             const selKey = selectedNameRef.current ? normName(selectedNameRef.current) : '';
             if (selKey && normName(target.feature?.properties?.name) === selKey) {
               target.setStyle({ fillColor: BRAND.ocean, fillOpacity: 0.96, weight: 3, color: '#ffffff', opacity: 1 });
             }
+
             target.closeTooltip();
           },
+
           click: (e) => {
             L.DomEvent.stopPropagation(e.originalEvent);
             detailOpenRef.current = true;
             layer.closeTooltip();
+
             const currentMuni = municipalityDataRef.current[municipalityKey];
             if (!currentMuni) return;
+
             const html = renderPopup(currentMuni);
             const b = layer.getBounds();
             const anchor = L.latLng(
               b.getCenter().lat,
-              b.getCenter().lng + (b.getEast() - b.getCenter().lng) * 0.6
+              b.getCenter().lng + (b.getEast() - b.getCenter().lng) * 0.6,
             );
+
             detailAnchor.setLatLng(anchor);
             detailAnchor.setTooltipContent(html);
             detailAnchor.openTooltip();
@@ -545,6 +588,7 @@ function MunicipalityMap({ muniData, selectedName }) {
       const container = mapRef.current;
       let resizeObserver = null;
       let fitted = false;
+
       /* WHAT: Buong lalawigan ang inilalagay sa loob ng view (dating admin look).
          WHY: dating (Sep 18) admin map ay ipinapakita ang buong Pangasinan
               sa isang sulyap — hindi lang ang mga bayang may datos. */
@@ -556,6 +600,7 @@ function MunicipalityMap({ muniData, selectedName }) {
         map.fitBounds(provinceBounds, { padding: [10, 10] });
         if (resizeObserver) resizeObserver.disconnect();
       };
+
       if (typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver(() => {
           if (container && container.getBoundingClientRect().height > 0) fitToProvince();
@@ -570,14 +615,18 @@ function MunicipalityMap({ muniData, selectedName }) {
   useEffect(() => {
     const gl = geoJsonLayerRef.current;
     if (!gl) return;
+
     const selKey = selectedName ? normName(selectedName) : '';
+
     gl.eachLayer((layer) => {
       const municipalityKey = normName(layer.feature?.properties?.name || '');
       const municipality = municipalityDataRef.current[municipalityKey];
+
       if (!municipality) {
         gl.resetStyle(layer);
         return;
       }
+
       const style = municipalityKey === selKey
         ? { fillColor: BRAND.ocean, fillOpacity: 0.96, weight: 3, color: '#ffffff', opacity: 1 }
         : {
@@ -587,6 +636,7 @@ function MunicipalityMap({ muniData, selectedName }) {
           color: '#ffffff',
           opacity: 0.9,
         };
+
       layer.setStyle(style);
       layer.setTooltipContent(
         buildMunicipalityTooltip(municipality, tierThresholds),
@@ -605,23 +655,28 @@ function MunicipalityMap({ muniData, selectedName }) {
           </div>
         </div>
       </Card.Header>
+
       <Card.Body>
         <div className="map-wrapper">
           <div className="map-container" ref={mapRef}></div>
         </div>
-<div className="map-legend" aria-label="Map legend">
-  <div className="map-gradient-caption">
-    <span className="map-legend-label">Lower production</span>
-    <span className="map-legend-label">Higher production</span>
-  </div>
-  <div
-    className="map-gradient-legend"
-    style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
-  ></div>
-  <p className="map-range-note">
-    {fmtMT(min)} Metric Tons (MT) → {fmtMT(max)} Metric Tons (MT) across the {muniData.length} municipalities
-  </p>
-</div>
+
+        <div className="map-legend" aria-label="Map legend">
+          <div className="map-gradient-caption">
+            <span className="map-legend-label">Lower production</span>
+            <span className="map-legend-label">Higher production</span>
+          </div>
+
+          <div
+            className="map-gradient-legend"
+            style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
+          ></div>
+
+          <p className="map-range-note">
+            {fmtMT(min)} Metric Tons (MT) → {fmtMT(max)} Metric Tons (MT) across the {muniData.length} municipalities
+          </p>
+        </div>
+
         <p className="text-muted small mb-0 mt-2">
           Production shading uses municipality dataset volume for the selected year and month; area, beds, and
           producer details use approved operational records. 2026 workbook estimates are not independent observations.

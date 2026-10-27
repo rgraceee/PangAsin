@@ -1,0 +1,102 @@
+/* Shared chart design tokens - reuse across Forecast, Supply & Demand, Target Evaluation, Data Quality. */
+:root {
+  --ac-chart-bg: #FFFFFF;
+  --ac-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --ac-grid: #E8EEF6;
+  --ac-text: #0F172A;
+  --ac-muted: #64748B;
+  --ac-page-bg: #F6F9FC;
+  --ac-primary-light: #BFD7FB;
+  --ac-primary: #2563EB;
+  --ac-primary-dark: #0B3B8F;
+  --ac-primary-faint: #60A5FA;
+  --ac-teal: #14B8A6;
+  --ac-teal-light: #5EEAD4;
+  --ac-gold: #F59E0B;
+  --ac-red: #DC2626;
+  --ac-track: #EEF3FA;
+}
+
+/* Tooltip container: charts render tooltip via recharts content into this host. */
+.ac-tooltip {
+  position: fixed;
+  z-index: 2000;
+  pointer-events: none;
+  max-width: 240px;
+  padding: 10px 12px;
+  border: 1px solid #E6ECF4;
+  border-radius: 10px;
+  background: #FFFFFF;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 1px 2px rgba(15, 23, 42, 0.06);
+  font-family: inherit;
+}
+
+.ac-tooltip__title {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ac-text);
+}
+
+.ac-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ac-text);
+}
+
+.ac-tooltip__label {
+  color: var(--ac-muted);
+}
+
+.ac-tooltip__value {
+  font-weight: 700;
+  color: var(--ac-primary-dark);
+}
+
+.ac-tooltip__note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--ac-muted);
+  line-height: 1.4;
+}
+
+/* Skeleton shim */
+.ac-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #F3F5F9;
+}
+.ac-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0 -40% 0 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, #F3F5F9 0%, #FFFFFF 40%, #F3F5F9 100%);
+  animation: ac-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes ac-shimmer { 100% { transform: translateX(200%); } }
+
+.ac-nodata {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ac-muted);
+}
+.ac-nodata__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #EEF3FA;
+  color: #2563EB;
+  font-size: 11px;
+  font-weight: 600;
+}

@@ -340,16 +340,20 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           <h2 className="h6 mb-0"><Users size={16} className="me-2" />Salt Farmers</h2>
           {/* WHAT: Count + Add Worker sa kanang bahagi ng toolbar; full-width ang button sa mobile.
              WHY: inilipat dito mula sa page header para malapit sa data ang action. */}
-          <div className="master-toolbar__actions">
-            <Badge bg="light" text="dark">{visibleRows.length.toLocaleString()} shown</Badge>
-            <button
-              type="button"
-              className="ui-btn-primary ui-btn-primary--sm"
-              onClick={adminView ? openAdd : () => setReportOpen(true)}
-            >
-              <Plus size={16} aria-hidden="true" />{adminView ? 'Add Salt Farmer' : 'Add Salt Farmer Report'}
-            </button>
-          </div>
+           <div className="master-toolbar__actions">
+             <Badge bg="light" text="dark">{visibleRows.length.toLocaleString()} shown</Badge>
+             {adminView ? (
+               <span className="small text-muted">New farmers come from encoder submissions and are approved in Validation Queue.</span>
+             ) : (
+               <button
+                 type="button"
+                 className="ui-btn-primary ui-btn-primary--sm"
+                 onClick={() => setReportOpen(true)}
+               >
+                 <Plus size={16} aria-hidden="true" />Add Salt Farmer Report
+               </button>
+             )}
+           </div>
         </Card.Header>
         <Card.Body className="p-0">
           {loading ? <div className="text-center py-5"><Spinner animation="border" size="sm" /></div> : visibleRows.length === 0 ? (
@@ -361,7 +365,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
               <thead><tr>
                 <th>Name</th>
                 <th>Age</th>
-                <th>Sex</th><th>Municipality</th><th>Barangay</th><th>Address</th><th aria-label="Actions" />
+                <th>Sex</th><th>Municipality</th><th>Barangay</th><th>Address</th>{!adminView && <th aria-label="Actions" />}
               </tr></thead>
               <tbody>{visibleRows.map((worker) => (
                 <tr key={worker.id}>
@@ -370,11 +374,13 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
                   <td>{worker.sex}</td>
                   <td>{worker.municipality}</td>
                   <td>{worker.barangay}</td>
-                  <td>{worker.address}</td>
-                  <td className="text-nowrap">
-                    <RowAction icon={Pencil} label={`Edit ${worker.name}`} onClick={() => openEdit(worker)} />
-                    <RowAction icon={Trash2} label={`Delete ${worker.name}`} tone="danger" onClick={() => removeWorker(worker)} />
-                  </td>
+                   <td>{worker.address}</td>
+                   {!adminView && (
+                     <td className="text-nowrap">
+                       <RowAction icon={Pencil} label={`Edit ${worker.name}`} onClick={() => openEdit(worker)} />
+                       <RowAction icon={Trash2} label={`Delete ${worker.name}`} tone="danger" onClick={() => removeWorker(worker)} />
+                     </td>
+                   )}
                 </tr>
               ))}</tbody>
             </Table>
@@ -402,9 +408,10 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         </Card.Body>
       </Card>
 
-      {/* WHAT: Parehong shell ng report forms para sa Add/Edit Worker.
-         WHY: isang white modal, 520px, mobile full-screen, focus trap, at tokens-only. */}
-      <ReportModal
+       {/* WHAT: Parehong shell ng report forms para sa Add/Edit Worker.
+          WHY: isang white modal, 520px, mobile full-screen, focus trap, at tokens-only. */}
+       {!adminView && showAdd && (
+       <ReportModal
         show={showAdd}
         narrow
         title={editing ? 'Edit salt farmer' : 'Add salt farmer'}
@@ -492,7 +499,8 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             />
           </ReportField>
         </form>
-      </ReportModal>
+       </ReportModal>
+       )}
 
       {!adminView && reportOpen && (
         <ProducerReportForm

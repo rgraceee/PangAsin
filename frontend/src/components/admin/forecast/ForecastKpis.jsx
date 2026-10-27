@@ -1,31 +1,21 @@
-// WHAT: The five Overview KPI cards of the Forecasting page.
-// WHY: every headline number is rendered once, with its unit, its basis and a
-//      plain-language tooltip, so the admin can defend the number.
-import {
-  ChartLine, Target, TrendingUp, ShieldCheck, Activity,
-} from 'lucide-react';
+// WHAT: The three Overview KPI cards of the Forecasting page.
+import { ChartLine, Target, TrendingUp } from 'lucide-react';
 import KpiCard from '../../ui/KpiCard';
 import KpiGrid from '../../ui/KpiGrid';
-import {
-  definition, FORECAST_CONFIDENCE, TREND_LABELS, DATA_SUFFICIENCY,
-} from '../../../constants/labels';
-import { fmtMT, fmtPctSigned, directionFromPct, READINESS_LABEL } from './forecastData';
+import { definition, TREND_LABELS } from '../../../constants/labels';
+import { fmtMT, fmtPctSigned, directionFromPct } from './forecastData';
 
 export default function ForecastKpis({
   recordedMT, recordedPeriodLabel, recordedThrough,
   forecastMT, horizon,
   expectedChangePct,
-  confidence,
-  readiness, readinessSupporting,
   runMonth, loading = false,
 }) {
   const direction = directionFromPct(expectedChangePct);
-  const confidenceLabel = confidence ? (FORECAST_CONFIDENCE[confidence] || confidence) : null;
-  const readinessLabel = READINESS_LABEL[readiness?.level] || DATA_SUFFICIENCY[readiness?.level] || null;
   const hasForecast = horizon > 0;
 
   return (
-    <KpiGrid columns={5} className="fc-kpis">
+    <KpiGrid columns={3} className="fc-kpis">
       <KpiCard
         icon={ChartLine}
         title="Municipality Production"
@@ -66,26 +56,6 @@ export default function ForecastKpis({
         }}
         supporting={runMonth ? `Latest forecast run, generated ${runMonth}.` : 'Latest forecast run.'}
         info={definition('changeVsRecentAvgPct') + ' Source: expected_change_pct of the latest forecast run.'}
-        loading={loading}
-      />
-
-      <KpiCard
-        icon={ShieldCheck}
-        title="Model Reliability"
-        value={confidenceLabel}
-        supporting="Based on rolling backtests of this production series."
-        info={definition('forecastConfidence') + ' Based on rolling validation against the production series.'}
-        tone={confidence === 'high' ? 'good' : confidence === 'moderate' ? 'default' : 'bad'}
-        loading={loading}
-      />
-
-      <KpiCard
-        icon={Activity}
-        title="Data Readiness"
-        value={readinessLabel}
-        supporting={readinessSupporting}
-        info="Readiness is based on the amount of municipality production history available; it does not measure independent source validation."
-        tone={readiness?.level === 'ready' ? 'good' : readiness?.level === 'limited' ? 'default' : 'bad'}
         loading={loading}
       />
     </KpiGrid>

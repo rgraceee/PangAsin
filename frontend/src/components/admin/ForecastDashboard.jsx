@@ -22,12 +22,12 @@ import {
   buildMunicipalityRows, buildNeedsAttention, buildSeasonalSeries, buildDataNotice,
 } from './forecast/forecastSelectors';
 import {
-  fmtMT, monthLong, monthNumber, computeReadiness,
+  fmtMT, monthLong, monthNumber,
 } from './forecast/forecastData';
 import { SCOPE_ALL_LABEL } from '../../constants/labels';
 
 const DEFAULT_FILTERS = {
-  recordedWindow: '24',
+  recordedWindow: 'all',
   forecastHorizon: '6',
   selectedMuni: 'all',
   province: 'pangasinan',
@@ -67,13 +67,6 @@ function InnerForecastDashboard() {
 
   const horizon = forecastPoints.length;
   const hasForecast = horizon > 0;
-  const readiness = useMemo(
-    () => computeReadiness(descriptive?.history, filters.selectedMuni),
-    [descriptive, filters.selectedMuni],
-  );
-  const readinessSupporting = filters.selectedMuni === 'all'
-    ? `${readiness.withData} of ${readiness.total} municipalities with data`
-    : `${readiness.months} months of municipality production data`;
 
   const muniRows = useMemo(() => buildMunicipalityRows(outlook, trends), [outlook, trends]);
   const attentionItems = useMemo(() => buildNeedsAttention(muniRows), [muniRows]);
@@ -188,9 +181,6 @@ function InnerForecastDashboard() {
           forecastMT={forecastTotal}
           horizon={horizon}
           expectedChangePct={selectedRun ? selectedRun.expected_change_pct : null}
-          confidence={selectedRun ? selectedRun.reliability : null}
-          readiness={readiness}
-          readinessSupporting={readinessSupporting}
           runMonth={runMonth}
           loading={!selectedRun}
         />

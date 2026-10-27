@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card } from 'react-bootstrap';
 import { MapPin } from 'lucide-react';
 import L from 'leaflet';
@@ -9,10 +9,6 @@ import { greenScale, GREEN_LIGHT, GREEN_DARK, BRAND } from '../theme/colors';
 import { buildMapDetailCard, clampMapDetailTooltip, protectMapDetailCard } from '../utils/mapDetailCard';
 import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
 
-// WHAT: Leaflet map na kumukulay sa bawat bayan base sa produksyon.
-// WHY: Ang normName() ay nagba-normalize ng pangalan para kahit magkaiba ang
-//      lakbay ng pangalan (e.g. "City of Alaminos" vs "Alaminos City") ay
-//      mag-match pa rin sa municipalities data.
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -26,17 +22,16 @@ export default function MunicipalityMapSection() {
 
   const sorted = useMemo(() => getMunicipalityProduction(), []);
   const values = sorted.map((m) => m.productionMT);
+  const total = values.reduce((s, v) => s + (v || 0), 0);
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 0;
-  // WHAT: Midpoint para sa legend ticks (min / mid / max).
-  // WHY: mas madaling basahin ang sequential color scale kung may gitnang tick.
   const mid = Math.round((min + max) / 2);
-const tierThresholds = computeTierThresholds(values);
-const sortedVals = [...values].filter((v) => v != null).sort((a, b) => a - b);
-const lowMax = sortedVals[Math.max(0, Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[0];
-const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
-const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
-const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
+  const tierThresholds = computeTierThresholds(values);
+  const sortedVals = [...values].filter((v) => v != null).sort((a, b) => a - b);
+  const lowMax = sortedVals[Math.max(0, Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[0];
+  const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
+  const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
+  const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -53,9 +48,6 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
         minZoom: 7,
         maxZoom: 15,
         maxBoundsViscosity: 1.0,
-        /* WHAT: Zoom +/- (top-left) at draggable ang mapa — pareho sa admin map.
-           WHY: parehong itsura at parehong gamit ng dalawang mapa; scroll-wheel
-                ay naka-off para hindi mahuli ang page scroll sa ibabaw ng mapa. */
         zoomControl: true,
         dragging: true,
         scrollWheelZoom: false,
@@ -65,8 +57,6 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
       }).setView(provinceBounds.getCenter(), 8);
     mapInstanceRef.current = map;
 
-    // WHAT: Parehas sa admin map — OSM basemap + default province mask.
-    // WHY: para mag-identikal ang public at admin na hitsura (walang API key/watermark).
     addLightBasemap(map);
     addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds), {
       fillColor: '#ffffff',
@@ -87,11 +77,6 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
       opacity: 1,
       offset: [14, 30],
     });
-    /* WHAT: Parehong proteksyon ng card sa admin map (shared helper).
-       WHY: kapag interactive na ang mapa, kapag umalis ang mouse sa card
-            (halimbawa papunta sa +/- zoom button) nagsasa-fire ang DOM
-            'mouseout' -> Leaflet -> anchor marker -> closeTooltip -> nawawala
-            ang card. Itinatago natin ang event sa loob ng card sa mapa. */
     protectMapDetailCard(detailAnchor, { onClose: () => { detailOpenRef.current = false; } });
     map.on('click', (e) => {
       const target = e.originalEvent && e.originalEvent.target;
@@ -139,26 +124,15 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
       },
       onEachFeature: (feature, layer) => {
         const m = byName[normName(feature.properties.name)];
-        /* WHAT: Isang bind lang ng hover tooltip (pareho sa admin map).
-           WHY: kung paulit-ulit ang bind sa bawat hover, nagre-register ito ng
-                sariling Leaflet click handler (_openTooltip) NA UNG sa aming
-                click handler — kaya binubuksan nito ulit ang hover tooltip
-                pagkatapos nito, na nakasapat sa detail card. Isang bind lang:
-                una ang Leaflet, saka kami — kaya kami ang nagsasara nito. */
         if (m) {
-          const trendSymbol = m.productionChangePercent >= 0 ? '↑' : '↓';
-          const trendClass = m.productionChangePercent >= 0 ? 'text-success' : 'text-danger';
-          const changeText = m.productionChangePercent != null ? `${trendSymbol} ${Math.abs(m.productionChangePercent)}%` : '—';
-          const methodLabel = m.dominantMethod
-            ? `${m.dominantMethod.charAt(0).toUpperCase()}${m.dominantMethod.slice(1)}`
-            : 'Not included in source data';
+          const rank = mapSorted.findIndex((x) => normName(x.name) === normName(m.name)) + 1;
+          const share = total > 0 ? (m.productionMT / total) * 100 : 0;
           const tooltipContent = `
             <div style="min-width:160px">
               <strong>${m.name}</strong><br/>
               <span style="font-size:0.85rem">Production: ${m.productionMT.toLocaleString()} Metric Tons (MT)</span><br/>
-              <span style="font-size:0.85rem">Tier: ${m ? (tierFor(m.productionMT).charAt(0).toUpperCase() + tierFor(m.productionMT).slice(1)) : ''}</span><br/>
-              <span class="${trendClass}" style="font-size:0.85rem">${changeText}</span><br/>
-              <span style="font-size:0.85rem;color:#495057">Method: ${methodLabel}</span>
+              <span style="font-size:0.85rem">Rank: ${rank} of ${mapSorted.length}</span><br/>
+              <span style="font-size:0.85rem">Share: ${share.toFixed(1)}%</span>
             </div>
           `;
           layer.bindTooltip(tooltipContent, { sticky: true, direction: 'right', offset: [12, 0], className: 'muni-hover-tooltip' });
@@ -218,7 +192,6 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
             window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
           },
         });
-
         if (m) {
           L.marker(layer.getBounds().getCenter(), {
             icon: L.divIcon({ className: 'muni-name-label', html: prettyName(m.name), iconSize: null }),
@@ -251,11 +224,10 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
     }
   }, []);
 
+  const periodLabel = 'All time';
+
   return (
     <section className="public-section">
-      {/* WHAT: fc-card + fc-card-head para pareho ang card shell ng charts sa
-         itaas (14px radius, icon chip, title + subtitle).
-         WHY: isang visual language ang buong public page. */}
       <Card className="encoder-card fc-card">
         <Card.Header className="fc-card-head">
           <div className="fc-card-head-left">
@@ -269,12 +241,10 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
           </div>
         </Card.Header>
         <Card.Body className="fc-card-body">
-          {/* WHAT: Region na may descriptive label para sa screen readers.
-             WHY: ang Leaflet map ay biswal; ang label + sr-only summary ang nagbibigay ng teksto. */}
           <div
             className="map-wrapper"
             role="region"
-            aria-label="Choropleth map of Pangasinan showing source-labeled salt production per municipality. Hover or select a shaded municipality to view its data."
+            aria-label="Choropleth map of Pangasinan showing source-labeled salt production per municipality."
           >
             <div className="map-container" ref={mapRef}></div>
           </div>
@@ -282,27 +252,27 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
             Map summary: the producing municipalities shown are {sorted.map((m) => m.name).join(', ')}, with recorded
             production ranging from {min.toLocaleString()} to {max.toLocaleString()} Metric Tons (MT).
           </p>
-<div className="map-legend" aria-label="Map legend">
-  <div className="map-gradient-caption">
-    <span className="map-legend-label">Lower production</span>
-    <span className="map-legend-label">Higher production</span>
-  </div>
-  <div
-    className="map-gradient-legend"
-    style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
-  ></div>
-  <div className="map-gradient-ticks" aria-hidden="true">
-    <span>{min.toLocaleString()}</span>
-    <span>{mid.toLocaleString()}</span>
-    <span>{max.toLocaleString()}</span>
-  </div>
-  <p className="map-range-note">
-    {min.toLocaleString()} Metric Tons (MT) → {max.toLocaleString()} Metric Tons (MT) across the {sorted.length} producing municipalities
-  </p>
-</div>
+          <div className="map-legend" aria-label="Map legend">
+            <div className="map-gradient-caption">
+              <span className="map-legend-label">Lower production</span>
+              <span className="map-legend-label">Higher production</span>
+            </div>
+            <div
+              className="map-gradient-legend"
+              style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
+            ></div>
+            <div className="map-gradient-ticks" aria-hidden="true">
+              <span>{min.toLocaleString()}</span>
+              <span>{mid.toLocaleString()}</span>
+              <span>{max.toLocaleString()}</span>
+            </div>
+            <p className="map-range-note">
+              {min.toLocaleString()} Metric Tons (MT) → {max.toLocaleString()} Metric Tons (MT) across the {sorted.length} producing municipalities
+            </p>
+          </div>
           <p className="text-muted small mb-0 mt-2">
             Select a municipality on the map to view its detailed summary. Shaded gray municipalities have no
-            source data. For salt beds, Alaminos City's count is observed; other values are workbook-derived, and San Fabian's figure is a cooked-salt bed-equivalent, not a physical count. Producer demographics shown in details are from approved submissions. Municipal boundaries referenced from NAMRIA / PSA administrative data.
+            source data. Municipal boundaries referenced from NAMRIA / PSA administrative data.
             &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
           </p>
         </Card.Body>

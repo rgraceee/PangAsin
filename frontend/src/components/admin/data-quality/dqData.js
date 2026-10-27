@@ -26,8 +26,8 @@ export function formatMonth(key) {
   return `${name} ${year}`;
 }
 
-export function monthInitial(key) {
-  return MONTH_INITIALS[Number(String(key).slice(5, 7)) - 1] || '';
+export function monthShortLabel(key) {
+  return MONTH_NAMES[Number(String(key).slice(5, 7)) - 1] || '';
 }
 
 export function formatTimestamp(value) {

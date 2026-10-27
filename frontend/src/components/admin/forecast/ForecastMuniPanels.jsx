@@ -1,15 +1,21 @@
-// WHAT: One full-width card with two panels side by side: "Forecast vs recent
-//       average" and "Year-over-year production".
-// WHY: they are two DIFFERENT metrics, so each gets its own title, but they
-//      share one municipality order, one set of axis labels and one colour
-//      meaning, so the two charts can be read against each other.
+// WHAT: One full-width card with a single municipality outlook chart and a
+//       metric toggle: Forecast vs recent average / Year-over-year change.
+// WHY: one chart, one axis, one tooltip, same municipality order.
+import { useState } from 'react';
 import { Card } from 'react-bootstrap';
 import { Building2 } from 'lucide-react';
 import { ChartChip } from './ForecastChartCard';
 import ForecastMuniPanel from './ForecastMuniPanel';
 import { MUNI_COLORS, MUNI_EDGES, MUNI_LABELS } from './forecastColors';
 
+const METRICS = [
+  { key: 'change', label: 'Forecast vs recent average', title: 'Forecast vs recent average', sub: 'Model forecast compared with the recent historical average.', unit: 'Forecast vs recent average', source: 'Source: expected_change_pct of each municipality\'s latest forecast run.' },
+  { key: 'yoy', label: 'Year-over-year change', title: 'Year-over-year production', sub: 'Last 12 complete months compared with the previous 12 complete months.', unit: 'Year-over-year change', source: 'Source: municipality production data, two complete 12-month calendar blocks.' },
+];
+
 export default function ForecastMuniPanels({ rows, height = 320 }) {
+  const [metric, setMetric] = useState('change');
+  const m = METRICS.find((x) => x.key === metric);
   const chips = (
     <>
       <ChartChip label={MUNI_LABELS.increase} color={MUNI_COLORS.increase} />
@@ -19,6 +25,9 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
     </>
   );
 
+  const valueKey = metric === 'change' ? 'change' : 'yoy';
+  const statusKey = metric === 'change' ? 'changeStatus' : 'yoyStatus';
+
   return (
     <Card className="fc-card fc-muni-card">
       <Card.Header className="fc-card-head">
@@ -26,38 +35,39 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
           <span className="fc-card-head-icon"><Building2 size={16} strokeWidth={1.75} /></span>
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">Municipality Outlook</h5>
-            <p className="fc-card-sub">Two different comparisons, shown for the same seven municipalities in the same order.</p>
+            <p className="fc-card-sub">{m.sub}</p>
           </div>
         </div>
-        <div className="fc-card-head-right">{chips}</div>
+        <div className="fc-card-head-right">
+          <div className="btn-group btn-group-sm" role="group">
+            {METRICS.map((x) => (
+              <button
+                key={x.key}
+                type="button"
+                className={`btn btn-outline-secondary${metric === x.key ? ' active' : ''}`}
+                onClick={() => setMetric(x.key)}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+          {chips}
+        </div>
       </Card.Header>
       <Card.Body className="fc-card-body">
-        <div className="fc-muni-panels">
-          <ForecastMuniPanel
-            rows={rows}
-            valueKey="change"
-            statusKey="changeStatus"
-            title="Forecast vs recent average"
-            subTitle="Model forecast compared with the recent historical average."
-            unitLabel="Forecast vs recent average"
-            sourceNote="Source: expected_change_pct of each municipality's latest forecast run."
-            height={height}
-          />
-          <ForecastMuniPanel
-            rows={rows}
-            valueKey="yoy"
-            statusKey="yoyStatus"
-            title="Year-over-year production"
-            subTitle="Last 12 complete months compared with the previous 12 complete months."
-            unitLabel="Year-over-year change"
-            sourceNote="Source: municipality production data, two complete 12-month calendar blocks."
-            height={height}
-          />
-        </div>
+        <ForecastMuniPanel
+          rows={rows}
+          valueKey={valueKey}
+          statusKey={statusKey}
+          title={m.title}
+          subTitle={m.sub}
+          unitLabel={m.unit}
+          sourceNote={m.source}
+          height={height}
+        />
         <p className="fc-chart-caption">
-          The two panels measure different things: the left panel is a model projection, the right panel compares
-          municipality production data. A municipality is marked as incomplete when a month inside the 12-month
-          block has no source row, so no percentage is shown for it.
+          A municipality is marked as incomplete when a month inside the 12-month block has no source row, so no
+          percentage is shown for it.
         </p>
       </Card.Body>
     </Card>

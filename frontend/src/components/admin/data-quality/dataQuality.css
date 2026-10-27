@@ -68,7 +68,7 @@
   display: grid;
   grid-template-columns:
     minmax(128px, max-content)
-    repeat(var(--dq-cols, 36), minmax(14px, 1fr))
+    repeat(var(--dq-cols, 36), minmax(26px, 1fr))
     var(--dq-sum-w)
     var(--dq-score-w);
   gap: 3px;

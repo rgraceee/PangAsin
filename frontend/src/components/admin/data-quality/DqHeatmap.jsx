@@ -5,7 +5,7 @@
 //      size, and the four cell states (reported / waiting / missing / in
 //      progress) are told apart by fill AND by pattern, not by colour alone.
 import React, { useMemo } from 'react';
-import { monthInitial, formatMonth, cellTitle, statusWord } from './dqData';
+import { monthShortLabel, formatMonth, cellTitle, statusWord } from './dqData';
 
 function yearGroups(months) {
   const groups = [];
@@ -65,7 +65,7 @@ export default function DqHeatmap({ data, selectedId, onSelect }) {
             style={{ gridColumn: `${index + 2}`, gridRow: 2 }}
             title={formatMonth(month)}
           >
-            {monthInitial(month)}
+            {monthShortLabel(month)}
           </div>
         ))}
 

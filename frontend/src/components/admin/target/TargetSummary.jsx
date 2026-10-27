@@ -1,7 +1,5 @@
 // WHAT: The Target Evaluation summary strip: target, projected year-end,
-//       achievement, gap and likely range.
-// WHY: the admin must see the answer before reading a single chart, with the
-//       recorded / forecast split spelled out instead of hidden in a tooltip.
+//       achievement (gap + likely range in supporting text).
 import { Info } from 'lucide-react';
 import { fmtMT, fmtPct, fmtSignedMT } from './targetData';
 
@@ -41,28 +39,15 @@ export default function TargetSummary({ summary, evaluationYear, partial, sanity
         label="Projected year-end"
         value={fmtMT(projected)}
         unit="Metric Tons (MT)"
+        badge={{ label: status.label, tone: status.key }}
         sub={`${fmtMT(recordedTotal)} Metric Tons (MT) recorded + ${fmtMT(forecastTotal)} Metric Tons (MT) forecast`}
+        info="On track: 90% or more of the target. At risk: 70% to 90%. Off track: below 70%."
       />
       <Stat
         label="Achievement"
         value={pct === null ? '\u2014' : fmtPct(pct)}
-        badge={{ label: status.label, tone: status.key }}
-        info="On track: 90% or more of the target. At risk: 70% to 90%. Off track: below 70%."
-        sub={`of the ${fmtMT(annualTarget)} Metric Tons (MT) target`}
-      />
-      <Stat
-        label={gap >= 0 ? 'Surplus vs target' : 'Shortfall vs target'}
-        value={fmtSignedMT(gap)}
-        unit="Metric Tons (MT)"
+        sub={`${gap >= 0 ? 'Surplus' : 'Shortfall'} ${fmtSignedMT(gap)} Metric Tons (MT) vs target; likely range ${rangeLow === null ? '\u2014' : `${fmtMT(rangeLow, 0)} \u2013 ${fmtMT(rangeHigh, 0)}`} Metric Tons (MT)`}
         tone={gap >= 0 ? 'good' : 'bad'}
-        sub={`Projected year-end against the ${evaluationYear} target`}
-      />
-      <Stat
-        label="Likely range"
-        value={rangeLow === null ? '\u2014' : `${fmtMT(rangeLow, 0)} \u2013 ${fmtMT(rangeHigh, 0)}`}
-        unit="Metric Tons (MT)"
-        compact
-        sub="From the forecast's expected range"
       />
       {sanity && (
         <div className="te-summary-warn">
