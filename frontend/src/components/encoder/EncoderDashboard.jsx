@@ -1,22 +1,19 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Row, Col, Alert, Card } from 'react-bootstrap';
-import { useOutletContext, useLocation, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Boxes, LayoutGrid, ClipboardList, Users, MapPin } from 'lucide-react';
-import { getStats, getEncoderMonths } from '../../services/dataService';
+import { Boxes, LayoutGrid, Users } from 'lucide-react';
+import { getStats, getEncoderMonths, getEncoderBarangays } from '../../services/dataService';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from '../admin/PageHeader';
 import MunicipalityMapArt from './MunicipalityMapArt';
-import RecordsTable from './RecordsTable';
-import ProductionRecordForm from './ProductionRecordForm';
 import { formatMT } from '../../utils/volumeFormat';
-import EnvironmentReports from './EnvironmentReports';
-import ProducerReports from './ProducerReports';
+import PeriodFilters, { usePeriodFilters } from './PeriodFilters';
 
 const BRAND_PALETTE = [
   '#0D2B4B',
@@ -37,11 +34,6 @@ function colorFor(name, names) {
   return BRAND_PALETTE[idx % BRAND_PALETTE.length];
 }
 
-function toIsoDate(d) {
-  if (!d) return null;
-  return d.toISOString().slice(0, 10);
-}
-
 function formatPct(value) {
   if (!Number.isFinite(value)) return '';
   return ` (${value.toFixed(1)}%)`;
@@ -54,7 +46,7 @@ function ChartTooltip({ active, payload, label }) {
       {label != null && <div className="ct-label">{label}</div>}
       {payload.map((entry, i) => (
         <div key={entry.dataKey || i}>
-          <div className="ct-value">{Number(entry.value).toLocaleString()} MT</div>
+          <div className="ct-value">{Number(entry.value).toLocaleString()} Metric Tons (MT)</div>
           <div className="ct-sub">{entry.name}</div>
         </div>
       ))}
@@ -69,115 +61,76 @@ function PieTooltip({ active, payload, total }) {
   return (
     <div className="admin-chart-tooltip">
       <div className="ct-label">{p.name}</div>
-      <div className="ct-value">{p.value.toLocaleString()} MT{formatPct(share)}</div>
+      <div className="ct-value">{p.value.toLocaleString()} Metric Tons (MT){formatPct(share)}</div>
     </div>
   );
 }
 
 export default function EncoderDashboard() {
   const { user } = useOutletContext();
-  const location = useLocation();
-  const navigate = useNavigate();
 
-  const now = new Date();
-  const initialYear = now.getFullYear();
-  const initialMonth = now.toISOString().slice(0, 7);
-  const [selectedYear, setSelectedYear] = useState(initialYear);
-  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
   const [months, setMonths] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [barangayId, setBarangayId] = useState('');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [recordsRefreshKey, setRecordsRefreshKey] = useState(0);
-  const [activeReport, setActiveReport] = useState(null);
-  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     getEncoderMonths()
       .then((res) => setMonths(res.months || []))
       .catch(() => {});
+    getEncoderBarangays()
+      .then((res) => setBarangays(res.barangays || []))
+      .catch(() => {});
   }, []);
 
-  /* WHAT: Buksan ang add-modal kapag galing sa sidebar action item.
-     WHY: pinapasa ng EncoderSidebar ang openReport sa location state. */
-  useEffect(() => {
-    const wanted = location.state?.openReport;
-    if (!wanted) return;
-    if (wanted === 'production') setEditingId(null);
-    setActiveReport(wanted);
-    navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate]);
-
-  const availableYears = useMemo(() => {
-    const years = new Set();
-    (months || []).forEach((m) => {
-      const y = m.split('-')[0];
-      if (y) years.add(Number(y));
-    });
-    return Array.from(years).sort((a, b) => b - a);
-  }, [months]);
-
-  const monthsInYear = useMemo(() => {
-    return (months || [])
-      .filter((m) => m.startsWith(`${selectedYear}-`))
-      .sort();
-  }, [months, selectedYear]);
-
-  useEffect(() => {
-    if (!monthsInYear.includes(selectedMonth)) {
-      const next = monthsInYear[0];
-      setSelectedMonth(next || '');
-    }
-  }, [selectedYear, monthsInYear, selectedMonth]);
-
-  useEffect(() => {
-    if (!availableYears.includes(selectedYear)) {
-      const next = availableYears[0];
-      setSelectedYear(next || initialYear);
-    }
-  }, [availableYears, selectedYear, initialYear]);
+  const period = usePeriodFilters(months);
+  const { range, rangeError } = period;
 
   const loadStats = useCallback(() => {
     setLoading(true);
     setError(null);
-    const month = selectedMonth || undefined;
-    const params = month ? { month } : {};
+    const params = {};
+    if (range.start) params.start = range.start;
+    if (range.end) params.end = range.end;
+    if (barangayId) params.barangay_id = barangayId;
     getStats(params)
       .then((s) => { setStats(s); setLoading(false); })
       .catch((err) => { setError(err.message || 'Failed to load dashboard.'); setLoading(false); });
-  }, [selectedMonth]);
+  }, [range.start, range.end, barangayId]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
-  const handleEdit = (id) => {
-    setEditingId(id);
-    setActiveReport('production');
-  };
+  /* WHAT: Ang napiling barangay para sa labels ng charts at pie breakdown. */
+  const selectedBarangay = useMemo(
+    () => barangays.find((b) => String(b.id) === String(barangayId)) || null,
+    [barangays, barangayId],
+  );
+  const selectedName = selectedBarangay?.name
+    || (barangayId ? stats?.by_barangay?.[0]?.barangay : null)
+    || null;
 
-  const handleClose = () => {
-    setActiveReport(null);
-    setEditingId(null);
-  };
-
-  const handleSaved = () => {
-    setActiveReport(null);
-    setEditingId(null);
-    setRecordsRefreshKey((k) => k + 1);
-    loadStats();
-  };
-
-  const handleImported = () => {
-    setRecordsRefreshKey((key) => key + 1);
-    loadStats();
-  };
-
+  /* WHAT: Kapag may napiling barangay, "share of municipality" ang pie.
+     WHY: isang slice lang (100%) ang Barangay Total Summary kapag isa lang
+          ang barangay; mas kapaki-pakinabang kung makita ang bahagi nito sa
+          buong munisipyo para sa parehong period. */
   const pieData = useMemo(() => {
     if (!stats) return [];
+    if (barangayId) {
+      const selected = Math.round((stats.total_volume_mt || 0) * 1000) / 1000;
+      const municipality = Math.round((stats.municipality_total_volume_mt ?? selected) * 1000) / 1000;
+      const others = Math.round((municipality - selected) * 1000) / 1000;
+      const data = [];
+      if (selected > 0) data.push({ name: selectedName || 'Selected barangay', value: selected });
+      if (others > 0) data.push({ name: 'Other barangays', value: others });
+      return data;
+    }
     return [...(stats.by_barangay || [])]
       .filter((b) => (b.total_volume_mt || 0) > 0)
       .sort((a, b) => a.barangay.localeCompare(b.barangay))
       .map((b) => ({ name: b.barangay, value: Math.round((b.total_volume_mt || 0) * 1000) / 1000 }));
-  }, [stats]);
+  }, [stats, barangayId, selectedName]);
 
   const pieTotal = useMemo(
     () => pieData.reduce((sum, d) => sum + d.value, 0),
@@ -225,55 +178,37 @@ export default function EncoderDashboard() {
       <PageHeader
         id="encoder-overview"
         variant="clean"
+        className="ui-pageheader--encoder"
         title="Dashboard"
         subtitle={`Record, review, and manage salt production data for ${municipalityName}.`}
         art={<MunicipalityMapArt highlightName={municipalityName} />}
       >
-        {/* WHAT: Chip ng assigned municipality. WHY: dynamic sa login, hindi hardcoded. */}
-        <span className="ui-pageheader-chip" aria-label={`Assigned municipality: ${municipalityName}`}>
-          <MapPin size={14} strokeWidth={1.5} aria-hidden="true" />
-          {municipalityName}
-        </span>
-        {/* WHAT: Period selectors. WHY: dating nasa KPI label row, nasa header na ngayon. */}
-        <select
-          id="encoder-year"
-          className="ui-pageheader-select"
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          aria-label="Select year"
-        >
-          {availableYears.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-        <select
-          id="encoder-month"
-          className="ui-pageheader-select"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          aria-label="Select month"
-          disabled={!monthsInYear.length}
-        >
-          {monthsInYear.map((m) => {
-            const [y, mo] = m.split('-');
-            const d = new Date(Number(y), Number(mo) - 1);
-            return (
-              <option key={m} value={m}>
-                {d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-              </option>
-            );
-          })}
-        </select>
+        <PeriodFilters filters={period} />
+        <label className="admin-page-hero-control" htmlFor="encoder-dashboard-barangay">
+          <span className="admin-page-hero-field">Barangay</span>
+          <select
+            id="encoder-dashboard-barangay"
+            className="admin-page-hero-select"
+            value={barangayId}
+            onChange={(e) => setBarangayId(e.target.value)}
+          >
+            <option value="">All barangays</option>
+            {barangays.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </label>
       </PageHeader>
 
+      {rangeError && <Alert variant="warning">{rangeError}</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <KpiGrid columns={4}>
+      <KpiGrid columns={3}>
         <KpiCard
           icon={Boxes}
           title="Total Production"
           value={formatMT(stats.total_volume_mt)}
-          unit="MT"
+          unit="Metric Tons (MT)"
           info="Sum of production volume across all your records for the selected period."
         />
         <KpiCard
@@ -283,16 +218,10 @@ export default function EncoderDashboard() {
           info="Total salt beds counted across your records for the selected period."
         />
         <KpiCard
-          icon={ClipboardList}
-          title="Records"
-          value={stats.record_count}
-          info="Barangay-level entries you submitted for the selected period."
-        />
-        <KpiCard
           icon={Users}
-          title="Registered Producers"
+          title="Registered Salt Farmers"
           value={stats.total_registered_producers}
-          info="Total registered producers counted across your records for the selected period."
+          info="Total registered salt farmers counted across your records for the selected period."
         />
       </KpiGrid>
 
@@ -301,7 +230,9 @@ export default function EncoderDashboard() {
           <Card className="encoder-card h-100">
             <Card.Header>
               <div className="admin-card-head">
-                <h5 className="admin-card-head-title">Production by Barangay</h5>
+                <h5 className="admin-card-head-title">
+                  {selectedName ? `Production Trend · ${selectedName}` : 'Production by Barangay'}
+                </h5>
               </div>
             </Card.Header>
             <Card.Body>
@@ -342,7 +273,9 @@ export default function EncoderDashboard() {
           <Card className="encoder-card h-100">
             <Card.Header>
               <div className="admin-card-head">
-                <h5 className="admin-card-head-title">Barangay Total Summary</h5>
+                <h5 className="admin-card-head-title">
+                  {selectedName ? `Share of Municipality · ${selectedName}` : 'Barangay Total Summary'}
+                </h5>
               </div>
             </Card.Header>
             <Card.Body>
@@ -364,7 +297,12 @@ export default function EncoderDashboard() {
                         outerRadius={90}
                       >
                         {pieData.map((entry) => (
-                          <Cell key={entry.name} fill={colorFor(entry.name, barangayOrder)} />
+                          <Cell
+                            key={entry.name}
+                            fill={entry.name === 'Other barangays'
+                              ? '#C3CEDD'
+                              : colorFor(entry.name, barangayOrder)}
+                          />
                         ))}
                       </Pie>
                       <Tooltip content={<PieTooltip total={pieTotal} />} />
@@ -385,23 +323,6 @@ export default function EncoderDashboard() {
           </Card>
         </Col>
       </Row>
-
-      <div id="encoder-submissions">
-        <RecordsTable onEdit={handleEdit} onImported={handleImported} refreshKey={recordsRefreshKey} user={user} />
-      </div>
-
-      <EnvironmentReports user={user} open={activeReport === 'environment'} onClose={handleClose} onImported={handleImported} />
-      <ProducerReports user={user} open={activeReport === 'producer'} onClose={handleClose} onImported={handleImported} />
-
-      {activeReport === 'production' && (
-        <ProductionRecordForm
-          editingId={editingId}
-          user={user}
-          onClose={handleClose}
-          onSaved={handleSaved}
-          onImported={handleImported}
-        />
-      )}
     </div>
   );
 }

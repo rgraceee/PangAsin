@@ -64,8 +64,8 @@ export default function ForecastSeasonalityChart({ series, reportingMonth, scope
         <>
           <ChartChip label={`Dry season (${SEASONS.dry.label})`} color={DRY} />
           <ChartChip label={`Wet season (${SEASONS.wet.label})`} color={RAINY} />
-          {peak && <ChartChip label={`Peak: ${peak.label} at ${fmtMT(peak.value)} MT`} meta />}
-          {lowest && <ChartChip label={`Lowest: ${lowest.label} at ${fmtMT(lowest.value)} MT`} meta />}
+          {peak && <ChartChip label={`Peak: ${peak.label} at ${fmtMT(peak.value)} Metric Tons (MT)`} meta />}
+          {lowest && <ChartChip label={`Lowest: ${lowest.label} at ${fmtMT(lowest.value)} Metric Tons (MT)`} meta />}
         </>
       )}
       caption="Production concentrates in the dry season (amihan, Nov–May) and falls through the wet season (habagat, Jun–Oct). Averages use municipality production data."

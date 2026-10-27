@@ -20,7 +20,7 @@ export default function ForecastDataNotice({ notice, scopeKey }) {
       </span>
       <p className="fc-notice-text">
         Approved production in the last 12 complete months is {notice.ratioPct}% of the previous 12 months
-        ({fmtMT(notice.current)} MT vs {fmtMT(notice.previous)} MT). Forecasts may not reflect actual production
+        ({fmtMT(notice.current)} Metric Tons (MT) vs {fmtMT(notice.previous)} Metric Tons (MT)). Forecasts may not reflect actual production
         until records are reviewed.
       </p>
       <button

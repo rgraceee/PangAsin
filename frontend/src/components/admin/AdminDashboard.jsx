@@ -23,7 +23,7 @@ const normName = (name) =>
 
 const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
 
-/* WHAT: Consistent MT formatting — max 2 decimals + thousands separators.
+/* WHAT: Consistent Metric Tons (MT) formatting — max 2 decimals + thousands separators.
    WHY: pareho ang pagtitingnan ng lahat ng volume sa buong dashboard. */
 const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
@@ -71,10 +71,10 @@ class HeroMapErrorBoundary extends Component {
    WHY: parehas na ayos sa SALT_LIST ng MunicipalityMapArt para tugma ang highlight. */
 const MUNI_OPTIONS = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta', 'San Fabian'];
 
-/* WHAT: Maikling pangalan ng buwan para sa Month dropdown (Jan..Dec).
-   WHY: compact na opsyon lang; ang buong period ay binubuo mula Month + Year. */
-const MONTH_SHORTS = Array.from({ length: 12 }, (_, i) =>
-  new Date(2000, i, 1).toLocaleString(undefined, { month: 'short' }));
+/* WHAT: Buong pangalan ng buwan para sa Month dropdown (January..December).
+   WHY: mas malinaw kaysa Jan/Feb at kasya pa rin sa 190px na filter. */
+const MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
+  new Date(2000, i, 1).toLocaleString('en-US', { month: 'long' }));
 const MONTH_NUMBERS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 export default function AdminDashboard({ user }) {
@@ -255,24 +255,24 @@ export default function AdminDashboard({ user }) {
     : adminMonths.some((month) => month.startsWith(`${selYear}-`));
 
   const headerActions = (
-    <div className="dashboard-filters">
-      <label className="dashboard-filter">
-        <span className="dashboard-filter__label">Municipality</span>
-        <select value={selectedMuni} onChange={(e) => updateParam('muni', e.target.value)}>
+    <>
+      <label className="admin-page-hero-control" htmlFor="admin-muni">
+        <span className="admin-page-hero-field">Municipality</span>
+        <select id="admin-muni" className="form-select admin-page-hero-select" value={selectedMuni} onChange={(e) => updateParam('muni', e.target.value)}>
           <option value="">Pangasinan</option>
           {MUNI_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
       </label>
-      <label className="dashboard-filter">
-        <span className="dashboard-filter__label">Month</span>
-        <select value={selMonth} onChange={(e) => updateParam('month', e.target.value === '' ? 'all' : e.target.value)}>
+      <label className="admin-page-hero-control" htmlFor="admin-month">
+        <span className="admin-page-hero-field">Month</span>
+        <select id="admin-month" className="form-select admin-page-hero-select" value={selMonth} onChange={(e) => updateParam('month', e.target.value === '' ? 'all' : e.target.value)}>
           <option value="">All months</option>
-          {MONTH_NUMBERS.map((num, i) => <option key={num} value={num}>{MONTH_SHORTS[i]}</option>)}
+          {MONTH_NUMBERS.map((num, i) => <option key={num} value={num}>{MONTH_LABELS[i]}</option>)}
         </select>
       </label>
-      <label className="dashboard-filter">
-        <span className="dashboard-filter__label">Year</span>
-        <select value={selYear} onChange={(e) => updateParam('year', e.target.value)}>
+      <label className="admin-page-hero-control" htmlFor="admin-year">
+        <span className="admin-page-hero-field">Year</span>
+        <select id="admin-year" className="form-select admin-page-hero-select" value={selYear} onChange={(e) => updateParam('year', e.target.value)}>
           {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
       </label>
@@ -282,7 +282,7 @@ export default function AdminDashboard({ user }) {
       {!periodHasData && (
         <p className="dashboard-filter-note" role="status">No data for this period.</p>
       )}
-    </div>
+    </>
   );
 
 return (
@@ -294,23 +294,25 @@ return (
       <PageHeader
         id="admin-dashboard"
         variant="clean"
-        className="ui-pageheader--dashboard"
+        className="ui-pageheader--admin"
         title="Dashboard"
         subtitle={selectedMuni
           ? `Production monitoring for ${selectedMuni}, Pangasinan.`
           : 'Province-wide salt production monitoring for Pangasinan.'}
-        actions={headerActions}
         art={(
           <HeroMapErrorBoundary>
             <MunicipalityMapArt mode="province" selectedName={selectedMuni} />
           </HeroMapErrorBoundary>
         )}
-      />
+      >
+        {headerActions}
+      </PageHeader>
 
       <KpiGrid columns={3}>
         {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
            WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
                 (Pang-general ang values — province-wide, hindi sumasabay sa muni filter.) */}
+<<<<<<< HEAD
         <KpiCard
           icon={Boxes}
           title={selectedMuni ? 'Municipality Production' : 'Total Production'}
@@ -319,12 +321,16 @@ return (
           supporting={productionSupporting}
           info="Source: Adjusted_Estimates.xlsx."
         />
+=======
+        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="Metric Tons (MT)" supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`} />
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         <KpiCard
           icon={Scale}
           title="Province-wide Balance"
           value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
-          unit={supplyDemandGap == null ? undefined : 'MT'}
+          unit={supplyDemandGap == null ? undefined : 'Metric Tons (MT)'}
           badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
+<<<<<<< HEAD
           supporting={demandBenchmark
             ? `Rolling 12-month supply vs ${demandYear} annual demand benchmark`
             : 'No demand benchmark available'}
@@ -340,6 +346,11 @@ return (
             : 'Approved operational records · all municipalities'}
           info="Area is sourced from approved submissions; the municipality production dataset does not contain area measurements."
         />
+=======
+          supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
+        />
+        <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
       </KpiGrid>
 
       {/* WHAT: Full-width map — wala nang side panel sa tabi nito.
@@ -386,11 +397,19 @@ function MunicipalityMap({ muniData, selectedName }) {
     return buildMapDetailCard({
       name: m.name,
       rows: [
+<<<<<<< HEAD
         ['Total Volume', `${m.volumeMT.toLocaleString()} MT`],
         ['Dataset Months', (m.records ?? 0).toLocaleString()],
         ['Production Area (approved records)', `${(m.area || 0).toLocaleString()} m²`],
         ['Salt Beds (approved records)', (m.beds || 0).toLocaleString()],
         ['Registered Producers (approved records)', (m.registered || 0).toLocaleString()],
+=======
+        ['Total Volume', `${m.volumeMT.toLocaleString()} Metric Tons (MT)`],
+        ['Record Count', (m.records ?? 0).toLocaleString()],
+        ['Production Area', `${(m.area || 0).toLocaleString()} m²`],
+        ['Salt Beds', (m.beds || 0).toLocaleString()],
+        ['Registered Salt Farmers', (m.registered || 0).toLocaleString()],
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         ['Male / Female', genderText],
       ],
     });
@@ -425,8 +444,8 @@ function MunicipalityMap({ muniData, selectedName }) {
             mismong dating itsura ng admin map. */
     addLightBasemap(map);
     addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds), {
-      fillColor: '#334155',
-      fillOpacity: 0.75,
+      fillColor: '#ffffff',
+      fillOpacity: 1,
     });
 
     const detailAnchor = L.marker([0, 0], {
@@ -502,11 +521,27 @@ function MunicipalityMap({ muniData, selectedName }) {
         const municipalityKey = normName(feature.properties.name);
         const m = municipalityDataRef.current[municipalityKey];
         if (!m) return;
+<<<<<<< HEAD
         layer.bindTooltip(buildMunicipalityTooltip(m, tierThresholds), {
           sticky: true,
           direction: 'auto',
           offset: [0, -10],
         });
+=======
+        layer.bindTooltip(
+          `
+            <div style="min-width:170px">
+              <strong>${m.name}</strong><br/>
+               <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} Metric Tons (MT)</span><br/>
+               <span style="font-size:0.85rem">Tier: ${getProductionTier(m.volumeMT, tierThresholds).charAt(0).toUpperCase() + getProductionTier(m.volumeMT, tierThresholds).slice(1)}</span><br/>
+              <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(m.area)} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
+              <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} salt farmers</span><br/>
+              <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
+            </div>
+          `,
+          { sticky: true, direction: 'auto', offset: [0, -10] }
+        );
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         layer.on({
           mouseover: (e) => {
             const target = e.target;
@@ -639,7 +674,7 @@ function MunicipalityMap({ muniData, selectedName }) {
     style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
   ></div>
   <p className="map-range-note">
-    {fmtMT(min)} MT → {fmtMT(max)} MT across the {muniData.length} municipalities
+    {fmtMT(min)} Metric Tons (MT) → {fmtMT(max)} Metric Tons (MT) across the {muniData.length} municipalities
   </p>
 </div>
         <p className="text-muted small mb-0 mt-2">

@@ -1,18 +1,12 @@
 import React from 'react';
-
-const STATUS_STYLES = {
-  draft: { label: 'Draft', cls: 'status-draft' },
-  pending: { label: 'Pending', cls: 'status-pending' },
-  approved: { label: 'Approved', cls: 'status-approved' },
-  rejected: { label: 'Rejected', cls: 'status-rejected' },
-  returned: { label: 'Returned', cls: 'status-returned' },
-};
+import { STATUS_LABELS } from '../../constants/labels';
 
 export default function RecordStatusBadge({ status, reviewerComment }) {
-  const style = STATUS_STYLES[status] || { label: status, cls: 'status-draft' };
+  const label = STATUS_LABELS[status]?.label || status;
+  const cls = `status-${STATUS_LABELS[status] ? status : 'pending'}`;
   return (
-    <span className={`record-status-badge ${style.cls}`} title={reviewerComment || undefined}>
-      {style.label}
+    <span className={`record-status-badge ${cls}`} title={reviewerComment || undefined}>
+      {label}
     </span>
   );
 }

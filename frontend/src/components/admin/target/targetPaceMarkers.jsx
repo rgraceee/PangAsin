@@ -34,7 +34,7 @@ export default function PaceMarkers({ rows, reachedMonth, yearEndGap, narrow }) 
           stroke="var(--te-green)"
           strokeWidth={1.5}
           label={{
-            value: `Target reached ${fmtMT(reached.cumTarget)} MT`,
+            value: `Target reached ${fmtMT(reached.cumTarget)} Metric Tons (MT)`,
             position: 'insideTopRight',
             fontSize: 12,
             fill: 'var(--te-green)',
@@ -50,8 +50,8 @@ export default function PaceMarkers({ rows, reachedMonth, yearEndGap, narrow }) 
             strokeWidth={1.5}
             label={{
               value: narrow
-                ? `Shortfall ${fmtMT(Math.abs(yearEndGap))} MT`
-                : `Year-end shortfall ${fmtMT(Math.abs(yearEndGap))} MT`,
+                ? `Shortfall ${fmtMT(Math.abs(yearEndGap))} Metric Tons (MT)`
+                : `Year-end shortfall ${fmtMT(Math.abs(yearEndGap))} Metric Tons (MT)`,
               position: narrow ? 'insideTopLeft' : 'insideBottomRight',
               fontSize: 12,
               fontWeight: 700,

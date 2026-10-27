@@ -29,7 +29,7 @@ export default function TargetForm({
             </Form.Select>
           </div>
           <div className="te-field">
-            <label className="te-label" htmlFor="te-target">Annual target (MT)</label>
+            <label className="te-label" htmlFor="te-target">Annual target (Metric Tons (MT))</label>
             <Form.Control
               id="te-target"
               type="number"

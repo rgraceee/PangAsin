@@ -68,7 +68,10 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
     // WHAT: Parehas sa admin map — OSM basemap + default province mask.
     // WHY: para mag-identikal ang public at admin na hitsura (walang API key/watermark).
     addLightBasemap(map);
-    addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds));
+    addProvinceMask(map, buildProvinceMaskRings([geojsonAll, geojson], provinceBounds), {
+      fillColor: '#ffffff',
+      fillOpacity: 1,
+    });
 
     const demographics = getDemographicsByMunicipality();
 
@@ -152,7 +155,11 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
           const tooltipContent = `
             <div style="min-width:160px">
               <strong>${m.name}</strong><br/>
+<<<<<<< HEAD
               <span style="font-size:0.85rem">Production data: ${m.productionMT.toLocaleString()} MT</span><br/>
+=======
+              <span style="font-size:0.85rem">Production: ${m.productionMT.toLocaleString()} Metric Tons (MT)</span><br/>
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
               <span style="font-size:0.85rem">Tier: ${m ? (tierFor(m.productionMT).charAt(0).toUpperCase() + tierFor(m.productionMT).slice(1)) : ''}</span><br/>
               <span class="${trendClass}" style="font-size:0.85rem">${changeText}</span><br/>
               <span style="font-size:0.85rem;color:#495057">Method: ${methodLabel}</span>
@@ -196,7 +203,11 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
             const html = buildMapDetailCard({
               name: m.name,
               rows: [
+<<<<<<< HEAD
                 ['Production data', `${m.productionMT.toLocaleString()} MT`],
+=======
+                ['Current Production', `${m.productionMT.toLocaleString()} Metric Tons (MT)`],
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
                 ['Change', changeText],
                 ['Production Area', m.productionAreaSqm == null ? 'Not included in source data' : `${m.productionAreaSqm.toLocaleString()} m²`],
                 ['Salt Beds', bedEstimateLabel],
@@ -276,8 +287,13 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
             <div className="map-container" ref={mapRef}></div>
           </div>
           <p className="public-sr-only">
+<<<<<<< HEAD
             Map summary: the municipalities shown are {sorted.map((m) => m.name).join(', ')}, with production data
             production ranging from {min.toLocaleString()} to {max.toLocaleString()} MT.
+=======
+            Map summary: the producing municipalities shown are {sorted.map((m) => m.name).join(', ')}, with recorded
+            production ranging from {min.toLocaleString()} to {max.toLocaleString()} Metric Tons (MT).
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
           </p>
 <div className="map-legend" aria-label="Map legend">
   <div className="map-gradient-caption">
@@ -294,7 +310,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
     <span>{max.toLocaleString()}</span>
   </div>
   <p className="map-range-note">
-    {min.toLocaleString()} MT → {max.toLocaleString()} MT across the {sorted.length} producing municipalities
+    {min.toLocaleString()} Metric Tons (MT) → {max.toLocaleString()} Metric Tons (MT) across the {sorted.length} producing municipalities
   </p>
 </div>
           <p className="text-muted small mb-0 mt-2">

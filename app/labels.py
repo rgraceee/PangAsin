@@ -6,18 +6,18 @@
 #
 # Naming: CODE_NAME is snake_case (Python/API). Each entry is a dict:
 #   label   - human-readable UI label (Title Case / Sentence case as appropriate)
-#   unit    - display unit (MT, %, m², MT per bed, MT per hectare, month) or None
+#   unit    - display unit (Metric Tons (MT), %, m², Metric Tons (MT) per bed, Metric Tons (MT) per hectare, month) or None
 #   defn    - one-sentence plain-language definition
 #   scope   - where it applies: "kpi", "chart", "table", "tooltip", "endpoint"
 
 # ---------------------------------------------------------------------------
 # Units (display strings)
 # ---------------------------------------------------------------------------
-UNIT_MT = "MT"
+UNIT_MT = "Metric Tons (MT)"
 UNIT_PCT = "%"
 UNIT_M2 = "m²"
-UNIT_MT_PER_BED = "MT per bed"
-UNIT_MT_PER_HA = "MT per hectare"
+UNIT_MT_PER_BED = "Metric Tons (MT) per bed"
+UNIT_MT_PER_HA = "Metric Tons (MT) per hectare"
 UNIT_MONTH = "month"
 
 # ---------------------------------------------------------------------------
@@ -275,8 +275,6 @@ STATUS_LABELS = {
     "approved": {"label": "Approved", "tone": "good"},
     "pending": {"label": "Pending", "tone": "warning"},
     "rejected": {"label": "Rejected", "tone": "danger"},
-    "draft": {"label": "Draft", "tone": "info"},
-    "returned": {"label": "Returned", "tone": "warning"},
 }
 
 # ---------------------------------------------------------------------------

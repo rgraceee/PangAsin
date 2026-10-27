@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Alert, Button, Card, Row, Col, Modal } from 'react-bootstrap';
-import { getRecords, getRecord, deleteRecord, getEncoderBarangays, createRecord } from '../../services/dataService';
+import React, { useState } from 'react';
+import { Table, Alert, Badge, Button, Card, Modal } from 'react-bootstrap';
+import { getRecord, deleteRecord, createRecord } from '../../services/dataService';
 import { confirmDelete } from '../../services/feedback';
 import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
@@ -10,12 +10,20 @@ import { formatMT } from '../../utils/volumeFormat';
 import ReportImportActions from './ReportImportActions';
 import { prepareProductionRows, rowError } from './reportImportUtils';
 
-const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
 const PRODUCTION_METHOD_LABELS = {
   solar: 'Solar',
   cooked: 'Cooked',
   hybrid: 'Hybrid',
 };
+
+// WHAT: Maikli at basahin agad ang petsa (hal. "Oct 1, 2026").
+// WHY: ISO strings (2026-10-01) ay mahirap i-scan sa table.
+function formatDate(value) {
+  if (!value) return '—';
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
 
 function DetailRow({ label, value }) {
   return (
@@ -41,43 +49,26 @@ const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) 
   </Button>
 );
 
-export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user }) {
+/* WHAT: Presentational na production records table.
+   WHY: ang page ang may-ari ng filters/period/loading para pareho ang count
+        at KPI cards sa isang data source lang. */
+export default function RecordsTable({
+  user,
+  records = [],
+  barangays = [],
+  loading = false,
+  error = null,
+  hasFilter = false,
+  onClearFilters,
+  onAdd,
+  onEdit,
+  onRefresh,
+}) {
   const { toastSuccess, toastError } = useToast();
   const volumeCapMt = Number(user?.max_monthly_volume_mt) || 2000;
-  const [records, setRecords] = useState([]);
-  const [barangays, setBarangays] = useState([]);
-  const [filters, setFilters] = useState({ barangay_id: '', status: '' });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [detail, setDetail] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [actionError, setActionError] = useState(null);
-
-  const load = useCallback((f) => {
-    setLoading(true);
-    setError(null);
-    const params = {};
-    if (f.barangay_id) params.barangay_id = f.barangay_id;
-    if (f.status) params.status = f.status;
-    getRecords(params)
-      .then((r) => { setRecords(r.records || []); setLoading(false); })
-      .catch((err) => { setError(err.message); setLoading(false); });
-  }, []);
-
-  useEffect(() => {
-    getEncoderBarangays()
-      .then((res) => setBarangays(res.barangays || []))
-      .catch(() => {});
-    load(filters);
-  }, [filters, load, refreshKey]);
-
-  const handleFilter = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
-  };
-
-  const handleClearFilters = () => {
-    setFilters({ barangay_id: '', status: '' });
-  };
 
   const handleView = (id) => {
     setActionError(null);
@@ -101,7 +92,7 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
     setActionError(null);
     try {
       await deleteRecord(id);
-      load(filters);
+      onRefresh?.();
       toastSuccess('The production record has been deleted.', 'Record deleted');
     } catch (err) {
       const message = err.message || 'Could not delete this record.';
@@ -109,8 +100,6 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
       toastError(message);
     }
   };
-
-  const hasFilter = Boolean(filters.barangay_id || filters.status);
 
   // WHAT: Preview lang — validation + soft warning bago pa mag-import.
   // WHY: Nakikita agad ng encoder ang 3x-historical warning bago kanselahin.
@@ -135,8 +124,7 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
       }
     }
     if (imported) {
-      load(filters);
-      onImported?.();
+      onRefresh?.();
     }
     if (!imported) throw new Error(failures.join(' ') || 'No production rows were imported.');
     const warningNote = warnings.length ? ` Note: ${warnings.join(' ')}` : '';
@@ -147,73 +135,46 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
   };
 
   return (
-    <Card className="encoder-card">
-      <Card.Header>
-        <div className="admin-card-head d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div>
-              <h5 className="admin-card-head-title">Production Reports</h5>
-              <div className="small text-muted">Report Type: Production</div>
-            </div>
-            <ReportImportActions
-              templateUrl="/static/templates/production-report-template.csv"
-              onImport={importProductionRows}
-              onValidate={previewProductionRows}
-              disabled={!barangays.length}
-            />
+    <Card className="encoder-card admin-card">
+      <Card.Header className="master-toolbar">
+        <h2 className="h6 mb-0">Production Records</h2>
+        <div className="master-toolbar__actions">
+          <Badge bg="light" text="dark">{records.length.toLocaleString()} shown</Badge>
+          {hasFilter && (
+            <Button variant="link" size="sm" className="p-0" onClick={onClearFilters}>Clear filters</Button>
+          )}
+          <ReportImportActions
+            templateUrl="/static/templates/production-report-template.csv"
+            onImport={importProductionRows}
+            onValidate={previewProductionRows}
+            disabled={!barangays.length}
+          />
+          <button type="button" className="ui-btn-primary ui-btn-primary--sm" onClick={onAdd}>
+            <Plus size={16} aria-hidden="true" />Add Production Record
+          </button>
         </div>
       </Card.Header>
-      <Card.Body>
-        <Row className="g-2 mb-3">
-          <Col md={4}>
-            <select
-              className="form-select"
-              name="barangay_id"
-              value={filters.barangay_id}
-              onChange={handleFilter}
-              aria-label="Filter by barangay"
-            >
-              <option value="">All barangays</option>
-              {barangays.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </Col>
-          <Col md={4}>
-            <select
-              className="form-select"
-              name="status"
-              value={filters.status}
-              onChange={handleFilter}
-              aria-label="Filter by status"
-            >
-              <option value="">All statuses</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-              ))}
-            </select>
-          </Col>
-          <Col md={4} className="d-flex gap-2 align-items-center justify-content-end">
-            <span className="text-muted small">{records.length} record{records.length === 1 ? '' : 's'}</span>
-            {hasFilter && (
-              <Button variant="link" size="sm" onClick={handleClearFilters}>Clear filters</Button>
-            )}
-          </Col>
-        </Row>
-
-        {actionError && <Alert variant="danger" onClose={() => setActionError(null)} dismissible>{actionError}</Alert>}
-        {error && <Alert variant="danger">{error}</Alert>}
-        {loading && <div className="text-center py-2"><SkeletonList rows={6} cols={5} /></div>}
+      <Card.Body className="p-0">
+        {actionError && <Alert variant="danger" className="m-3" onClose={() => setActionError(null)} dismissible>{actionError}</Alert>}
+        {error && <Alert variant="danger" className="m-3">{error}</Alert>}
+        {loading && <div className="text-center py-4"><SkeletonList rows={6} cols={5} /></div>}
         {!loading && records.length === 0 && (
-          <Alert variant="info">No records found. Use “+ Add Record” above to submit one.</Alert>
+          <div className="chart-empty py-5">
+            {hasFilter
+              ? 'No production records match the selected filters.'
+              : 'No production records yet. Use “Add Production Record” to submit one.'}
+          </div>
         )}
         {!loading && records.length > 0 && (
-          <Table responsive striped hover size="sm" className="mb-0 encoder-table">
+          <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
             <thead>
               <tr>
                 <th>Report Type</th>
                 <th>Barangay</th>
                 <th>Date</th>
                 <th>Method</th>
-                <th>Volume (MT)</th>
-                <th>Beds Used</th>
+                <th className="text-end">Volume (Metric Tons (MT))</th>
+                <th className="text-end">Beds Used</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
@@ -223,12 +184,12 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
                 const isApproved = r.status === 'approved';
                 return (
                   <tr key={r.id}>
-                    <td>Production</td>
+                    <td><span className="ui-type-pill">Production</span></td>
                     <td>{r.barangay}</td>
-                    <td>{r.record_date}</td>
+                    <td>{formatDate(r.record_date)}</td>
                     <td>{PRODUCTION_METHOD_LABELS[r.production_method] ?? r.production_method ?? '—'}</td>
-                    <td>{formatMT(r.production_volume_mt)}</td>
-                    <td>{r.num_salt_beds?.toLocaleString()}</td>
+                    <td className="text-end">{formatMT(r.production_volume_mt)}</td>
+                    <td className="text-end">{r.num_salt_beds?.toLocaleString()}</td>
                     <td><RecordStatusBadge status={r.status} reviewerComment={r.reviewer_comment} /></td>
                     <td className="text-end text-nowrap">
                       <IconAction
@@ -285,12 +246,12 @@ export default function RecordsTable({ onEdit, onImported, refreshKey = 0, user 
                 <tbody>
                   <DetailRow label="Report Type" value="Production" />
                   <DetailRow label="Barangay" value={detail.barangay} />
-                  <DetailRow label="Date Covered" value={detail.record_date} />
+                  <DetailRow label="Date Covered" value={formatDate(detail.record_date)} />
                   <DetailRow label="Production Method" value={PRODUCTION_METHOD_LABELS[detail.production_method] ?? detail.production_method} />
-                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} MT` : null} />
+                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} Metric Tons (MT)` : null} />
                   <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
-                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} MT` : null} />
+                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} Metric Tons (MT)` : null} />
                   <DetailRow label="Submitted" value={detail.created_at ? new Date(detail.created_at).toLocaleString() : null} />
                   <DetailRow label="Last Updated" value={detail.updated_at ? new Date(detail.updated_at).toLocaleString() : null} />
                 </tbody>

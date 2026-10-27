@@ -14,15 +14,16 @@ import { getDataQuality } from '../../services/dataService';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import DqHeatmap from './data-quality/DqHeatmap';
 import DqFieldCompleteness from './data-quality/DqFieldCompleteness';
 import { STATE_LEGEND, formatMonth, formatTimestamp, toneForPercent } from './data-quality/dqData';
 import './data-quality/dataQuality.css';
 
 const RANGE_OPTIONS = [
-  { value: 12, label: '12 months' },
-  { value: 24, label: '24 months' },
-  { value: 'all', label: 'All' },
+  { value: 12, label: 'Last 12 months' },
+  { value: 24, label: 'Last 24 months' },
+  { value: 'all', label: 'All months' },
 ];
 
 /* WHAT: The status of a KPI card, shown as the small text badge the Dashboard
@@ -111,43 +112,32 @@ export default function DataQualityDashboard() {
     ? `Since ${formatMonth(data.months[0])}`
     : `Last ${range} months`;
 
-  const headerActions = (
-    <div className="dq-header-actions">
-      <div className="dq-range-toggle" role="group" aria-label="How many months to review">
-        {RANGE_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={`ui-btn-${range === option.value ? 'primary' : 'outline'} dq-range-btn`}
-            aria-pressed={range === option.value}
-            onClick={() => setRange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        className="ui-btn-outline dq-refresh-btn"
-        onClick={() => load(range)}
-        disabled={refreshing}
-      >
-        <RefreshCw size={15} strokeWidth={2} aria-hidden="true" />
-        Refresh
-      </button>
-    </div>
-  );
+  const headerActions = null;
 
   return (
     <div className={`admin-dashboard-page dq-page${refreshing ? ' is-refreshing' : ''}`} aria-busy={refreshing}>
       <PageHeader
         id="admin-data-quality"
         variant="clean"
-        className="ui-pageheader--dashboard"
+        className="ui-pageheader--admin"
         title="Data Quality"
         subtitle="How complete the records are, and which months still have no report."
         actions={headerActions}
-      />
+        art={<MunicipalityMapArt mode="province" />}
+      >
+        <div className="dq-range-pills d-flex flex-row gap-2 flex-nowrap align-items-center">
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`ui-btn-${String(range) === String(option.value) ? 'primary' : 'outline'} dq-range-pill`}
+              onClick={() => setRange(option.value === 'all' ? 'all' : Number(option.value))}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </PageHeader>
 
       <div className="dq-refreshable">
         <KpiGrid columns={4}>
@@ -217,24 +207,6 @@ export default function DataQualityDashboard() {
               A score of <b>{thresholds.ok}</b> or more is on track, below <b>{thresholds.watch}</b> needs urgent attention,
               and <b>{thresholds.stale_months}</b> months without a report is already a problem.
             </p>
-          </Card.Body>
-        </Card>
-
-        <Card className="encoder-card mb-3">
-          <Card.Header>
-            <div className="admin-card-head">
-              <span className="admin-card-head-icon admin-kpi-accent-greenbg">
-                <BadgeCheck size={16} strokeWidth={2} />
-              </span>
-              <h5 className="admin-card-head-title">Field completeness</h5>
-            </div>
-          </Card.Header>
-          <Card.Body>
-            <DqFieldCompleteness
-              data={data}
-              selectedId={selectedId}
-              onShowProvince={() => setSelectedId(null)}
-            />
           </Card.Body>
         </Card>
 

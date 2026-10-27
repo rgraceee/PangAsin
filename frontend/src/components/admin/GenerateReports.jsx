@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Row, Col, Card, Form, Button, Table, Alert, Badge, Spinner } from 'react-bootstrap';
+import { Row, Col, Card, Form, Table, Alert, Spinner } from 'react-bootstrap';
 import { getAdminMunicipalities, getAdminStats, getAdminMonths, createReport, getReports, getReport, getReportDownloadUrl, deleteReport } from '../../services/dataService';
 import { confirmDelete } from '../../services/feedback';
 import { useToast } from '../Toast';
 import { SkeletonList, SkeletonChart } from '../Skeleton';
-import { Eye, Download, Trash2, FileText, SearchX, ChevronDown, ChevronUp } from 'lucide-react';
+import { Eye, Download, Trash2, FileText, FilePlus2, ClipboardList, SearchX, ChevronDown, ChevronUp } from 'lucide-react';
 import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
+import { displayHeader } from '../../constants/labels';
 
 const CONTENT_TYPES = [
   { id: 'production', label: 'Production' },
-  { id: 'producers', label: 'Producers' },
+  { id: 'producers', label: 'Salt Farmers' },
   { id: 'environment', label: 'Environment' },
 ];
 
@@ -38,16 +40,16 @@ const DATA_SECTIONS = [
   ['by_barangay', 'By Barangay'],
   ['monthly_trend', 'Monthly Trend'],
   ['runs', 'Forecast Runs'],
-  ['producers', 'Producer Entries'],
+  ['producers', 'Salt Farmer Entries'],
   ['environment_reports', 'Environment Reports'],
 ];
 
 const SUMMARY_LINES = [
-  ['Total Production', 'total_production_mt', (v) => `${v} MT`],
-  ['Total Registered Producers', 'total_registered_producers', (v) => `${v.toLocaleString()}`],
-  ['Male Producers', 'total_male_producers', (v) => `${v.toLocaleString()}`],
-  ['Female Producers', 'total_female_producers', (v) => `${v.toLocaleString()}`],
-  ['Other Producers', 'total_other_producers', (v) => `${v.toLocaleString()}`],
+  ['Total Production', 'total_production_mt', (v) => `${v} Metric Tons (MT)`],
+  ['Total Registered Salt Farmers', 'total_registered_producers', (v) => `${v.toLocaleString()}`],
+  ['Male Salt Farmers', 'total_male_producers', (v) => `${v.toLocaleString()}`],
+  ['Female Salt Farmers', 'total_female_producers', (v) => `${v.toLocaleString()}`],
+  ['Other Salt Farmers', 'total_other_producers', (v) => `${v.toLocaleString()}`],
   ['Environment Reports', 'total_reports', (v) => `${v.toLocaleString()}`],
   ['Environment Salt Beds', 'total_salt_beds', (v) => `${v.toLocaleString()}`],
   ['Environment Production Area', 'total_production_area_sqm', (v) => `${v.toLocaleString()} m²`],
@@ -89,7 +91,7 @@ function DataTable({ title, rows }) {
         <thead>
           <tr>
             {headers.map((h) => (
-              <th key={h}>{h.replace(/_/g, ' ')}</th>
+              <th key={h}>{displayHeader(h)}</th>
             ))}
           </tr>
         </thead>
@@ -313,33 +315,45 @@ export default function GenerateReports() {
     <div>
       <PageHeader
         id="admin-reports"
-        variant="sub"
+        variant="clean"
+        className="ui-pageheader--admin"
         title="Generate Reports"
         subtitle="Create summary reports for export based on the production records."
+        art={<MunicipalityMapArt mode="province" />}
       />
 
       <Card className="encoder-card mb-3">
-        <Card.Header as="h5">Create a New Report</Card.Header>
+        <Card.Header>
+          <div className="admin-card-head">
+            <span className="admin-card-head-icon admin-kpi-accent-oceanbg">
+              <FilePlus2 size={16} strokeWidth={2} />
+            </span>
+            <div className="d-flex align-items-center gap-2">
+              <h5 className="admin-card-head-title">Create a New Report</h5>
+              <span className="badge text-bg-light">PDF + Word</span>
+            </div>
+          </div>
+        </Card.Header>
         <Card.Body>
-          <Row className="g-3 align-items-end">
+          <Row className="g-3 report-form">
             <Col md={3}>
-              <Form.Label className="small fw-bold text-uppercase text-muted">Content</Form.Label>
-              <Form.Select value={content} onChange={(e) => setContent(e.target.value)}>
+              <label className="report-form-label" htmlFor="report-content">Content</label>
+              <Form.Select id="report-content" value={content} onChange={(e) => setContent(e.target.value)}>
                 {CONTENT_TYPES.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </Form.Select>
             </Col>
             <Col md={3}>
-              <Form.Label className="small fw-bold text-uppercase text-muted">Scope</Form.Label>
-              <Form.Select value={scope} onChange={(e) => setScope(e.target.value)}>
+              <label className="report-form-label" htmlFor="report-scope">Scope</label>
+              <Form.Select id="report-scope" value={scope} onChange={(e) => setScope(e.target.value)}>
                 {SCOPE_LEVELS.map((s) => (
                   <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </Form.Select>
             </Col>
             <Col md={6}>
-              <Form.Label className="small fw-bold text-uppercase text-muted">Time</Form.Label>
+              <span className="report-form-label">Time</span>
               <Row className="g-2">
                 <Col xs={4}>
                   <Form.Select value={timeMode} onChange={(e) => setTimeMode(e.target.value)} aria-label="Time mode">
@@ -371,10 +385,10 @@ export default function GenerateReports() {
           </Row>
 
           {(scope === 'municipality' || scope === 'barangay') && (
-            <Row className="g-3 mt-1">
+            <Row className="g-3 report-form mt-1">
               <Col md={3}>
-                <Form.Label className="small fw-bold text-uppercase text-muted">Municipality</Form.Label>
-                <Form.Select value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value)}>
+                <label className="report-form-label" htmlFor="report-municipality">Municipality</label>
+                <Form.Select id="report-municipality" value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value)}>
                   <option value="">Select municipality&hellip;</option>
                   {municipalities.map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
@@ -383,9 +397,9 @@ export default function GenerateReports() {
               </Col>
               {scope === 'barangay' && (
                 <Col md={3}>
-                  <Form.Label className="small fw-bold text-uppercase text-muted">Barangay</Form.Label>
-                  <Form.Select value={barangayId} onChange={(e) => setBarangayId(e.target.value)} disabled={!municipalityId}>
-                    <option value="">{municipalityId ? 'Select barangay&hellip;' : 'Select a municipality first'}</option>
+                  <label className="report-form-label" htmlFor="report-barangay">Barangay</label>
+                  <Form.Select id="report-barangay" value={barangayId} onChange={(e) => setBarangayId(e.target.value)} disabled={!municipalityId}>
+                    <option value="">{municipalityId ? 'Select barangay\u2026' : 'Select a municipality first'}</option>
                     {visibleBarangays.map((b) => (
                       <option key={b.barangay_id} value={b.barangay_id}>{b.barangay}</option>
                     ))}
@@ -395,14 +409,17 @@ export default function GenerateReports() {
             </Row>
           )}
 
-          <div className="mt-3 text-end">
-            <Button className="admin-page-hero-btn" onClick={handleView} disabled={creating}>
+          <div className="report-form-actions">
+            <span className="report-form-hint">
+              Reports are built from approved records, then downloaded as PDF or Word.
+            </span>
+            <button type="button" className="ui-btn-primary" onClick={handleView} disabled={creating}>
               {creating ? (
-                <><Spinner as="span" animation="border" size="sm" className="me-2" />Loading&hellip;</>
+                <><Spinner as="span" animation="border" size="sm" aria-hidden="true" />Generating&hellip;</>
               ) : (
-                <><Eye size={16} strokeWidth={2.2} className="me-2" />View</>
+                <><Eye size={16} strokeWidth={2.2} aria-hidden="true" />Generate report</>
               )}
-            </Button>
+            </button>
           </div>
           {error && <Alert variant="danger" className="mt-3 mb-0">{error}</Alert>}
         </Card.Body>
@@ -416,13 +433,18 @@ export default function GenerateReports() {
 
       {(currentReport || previewLoading) && (
         <Card className="encoder-card mb-3" ref={previewRef}>
-          <Card.Header as="h5">
-            Report Preview
-            {currentReport && (
-              <small className="text-muted fw-normal ms-2">
-                Report #{currentReport.id}
-              </small>
-            )}
+          <Card.Header>
+            <div className="admin-card-head">
+              <span className="admin-card-head-icon admin-kpi-accent-goldbg">
+                <Eye size={16} strokeWidth={2} />
+              </span>
+              <div className="d-flex align-items-center gap-2">
+                <h5 className="admin-card-head-title">Report Preview</h5>
+                {currentReport && (
+                  <span className="badge text-bg-light">Report #{currentReport.id}</span>
+                )}
+              </div>
+            </div>
           </Card.Header>
           <Card.Body>
             {previewLoading ? (
@@ -484,8 +506,18 @@ export default function GenerateReports() {
       )}
 
       <Card className="encoder-card">
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">Generated Reports</h5>
+        <Card.Header className="d-flex justify-content-between align-items-center gap-3">
+          <div className="admin-card-head">
+            <span className="admin-card-head-icon admin-kpi-accent-greenbg">
+              <ClipboardList size={16} strokeWidth={2} />
+            </span>
+            <div className="d-flex align-items-center gap-2">
+              <h5 className="admin-card-head-title">Generated Reports</h5>
+              {!loading && reports.length > 0 && (
+                <span className="badge text-bg-light">{reports.length}</span>
+              )}
+            </div>
+          </div>
           <button
             type="button"
             className="view-reports-link"
@@ -527,7 +559,7 @@ export default function GenerateReports() {
                 {reports.map((r) => (
                   <React.Fragment key={r.id}>
                     <tr>
-                      <td><Badge bg="info" className="me-1">{TYPE_LABEL[r.report_type] || r.report_type}</Badge></td>
+                      <td><span className="badge text-bg-light me-1">{TYPE_LABEL[r.report_type] || r.report_type}</span></td>
                       <td>{r.barangay_name || r.municipality_name || 'Province-wide'}</td>
                       <td>{formatDateRange(r.date_range_start, r.date_range_end)}</td>
                       <td className="text-uppercase">{r.format}</td>

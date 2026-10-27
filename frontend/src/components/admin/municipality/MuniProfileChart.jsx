@@ -26,19 +26,19 @@ export default function MuniProfileChart({ profile }) {
   return (
     <MuniCard
       icon={UserRound}
-      title="Producer Profile"
-      sub="Age and gender of the registered producers"
+      title="Salt Farmer Profile"
+      sub="Age and gender of the registered salt farmers"
       chips={(
         <>
-          <MuniChip label={`${fmtInt(total)} producers`} meta />
+          <MuniChip label={`${fmtInt(total)} salt farmers`} meta />
           <MuniChip label="Master list" meta />
         </>
       )}
       caption={leader
-        ? `The ${tab === 'age' ? `${leader.name} age band` : leader.name.toLowerCase()} group is the largest, with ${fmtInt(leader.value)} producers (${fmtPct(leader.pct)}).`
-        : 'No producer records for the selected municipalities.'}
+        ? `The ${tab === 'age' ? `${leader.name} age band` : leader.name.toLowerCase()} group is the largest, with ${fmtInt(leader.value)} salt farmers (${fmtPct(leader.pct)}).`
+        : 'No salt farmer records for the selected municipalities.'}
     >
-      <div className="muni-tabs" role="tablist" aria-label="Producer profile view">
+      <div className="muni-tabs" role="tablist" aria-label="Salt farmer profile view">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -56,7 +56,7 @@ export default function MuniProfileChart({ profile }) {
       {total === 0 ? (
         <div className="muni-empty">
           <span className="muni-empty-chip">No data</span>
-          No producer records for the selected municipalities.
+          No salt farmer records for the selected municipalities.
         </div>
       ) : tab === 'age' ? (
         <MuniAgeChart age={age} />

@@ -10,8 +10,8 @@ import { fmtInt, fmtMT } from './muniData';
 
 const COLUMNS = [
   { key: 'name', label: 'Municipality', align: 'left' },
-  { key: 'volumeMT', label: 'Production (MT)', align: 'right' },
-  { key: 'producers', label: 'Producers', align: 'right' },
+  { key: 'volumeMT', label: 'Production (Metric Tons (MT))', align: 'right' },
+  { key: 'producers', label: 'Salt Farmers', align: 'right' },
   { key: 'beds', label: 'Salt beds', align: 'right' },
   { key: 'area', label: 'Area (m²)', align: 'right' },
   { key: 'records', label: 'Approved Records', align: 'right' },

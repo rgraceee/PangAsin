@@ -79,7 +79,7 @@
   --ui-chart-grid: #E9ECEF;
   --ui-chart-axis: #ADB5BD;
 
-  /* Status tones (green = approved/good, amber = pending/limited, red = rejected/declining/danger, blue = info/draft) */
+  /* Status tones (green = approved/good, amber = pending/limited, red = rejected/declining/danger, blue = info) */
   --ui-status-good: #29B039;
   --ui-status-warning: #F09A28;
   --ui-status-danger: #DC2626;

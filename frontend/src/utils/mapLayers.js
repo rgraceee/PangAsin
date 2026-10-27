@@ -66,16 +66,15 @@ export function buildProvinceMaskRings(geoJsons, bounds) {
   return rings;
 }
 
-// WHAT: Gray na mask sa labas ng lalawigan.
-// WHY: default = light gray (public map). Ang admin map ay nagpasa ng sarili
-//      nitong style ({ fillColor: '#334155', fillOpacity: 0.75 }) para sa
-//      mas madilim na "dark province mask" — hindi na binabago ang public map.
+// WHAT: Mask sa labas ng lalawigan.
+// WHY: default = white fill para sa labas ng lalawigan (magkatulad sa page
+//      background); ang admin at public map ay nagpapasa ng sariling style.
 export function addProvinceMask(map, rings, style = {}) {
   L.polygon(rings, {
     interactive: false,
     stroke: false,
-    fillColor: '#0f172a',
-    fillOpacity: 0.85,
+    fillColor: '#ffffff',
+    fillOpacity: 1,
     ...style,
   }).addTo(map);
 }

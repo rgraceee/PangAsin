@@ -36,7 +36,7 @@ export default function MuniAgeChart({ age }) {
           <Tooltip content={<AgeTooltip />} cursor={{ fill: 'var(--muni-hover)' }} />
           <Bar
             dataKey="value"
-            name="Producers"
+            name="Salt Farmers"
             maxBarSize={20}
             isAnimationActive={false}
             label={({ x, y, width, height, index }) => {

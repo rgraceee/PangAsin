@@ -11,6 +11,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from app.constants import AGE_BUCKET_FIELDS, MAX_MONTHLY_VOLUME_MT
+from app.status_constants import ALLOWED_STATUSES
 from app.utils import _parse_date
 
 encoder_api_bp = Blueprint("encoder_api", __name__, url_prefix="/api/encoder")
@@ -288,7 +289,6 @@ def _serialize_producer_report(report):
                 "age": entry.age,
                 "age_bracket": entry.age_bracket,
                 "sex": entry.sex,
-                "address": entry.address,
             }
             for entry in report.entries
         ],
@@ -411,14 +411,14 @@ def create_producer_report():
     data = request.get_json(silent=True) or {}
     entries = data.get("entries")
     if not isinstance(entries, list) or not entries:
-        return jsonify({"errors": ["Add at least one producer to the report."]}), 400
+        return jsonify({"errors": ["Add at least one salt farmer to the report."]}), 400
 
     errors = []
     normalized = []
     sexes = {"Male", "Female", "Other"}
     for index, entry in enumerate(entries, start=1):
         if not isinstance(entry, dict):
-            errors.append(f"Producer {index} is invalid.")
+            errors.append(f"Salt Farmer {index} is invalid.")
             continue
         try:
             barangay_id = int(entry.get("barangay_id"))
@@ -426,7 +426,7 @@ def create_producer_report():
             barangay_id = None
         barangay = db.session.get(Barangay, barangay_id) if barangay_id else None
         if not barangay or barangay.municipality_id != current_user.municipality_id:
-            errors.append(f"Producer {index} must have a barangay in your municipality.")
+            errors.append(f"Salt Farmer {index} must have a barangay in your municipality.")
 
         name = (entry.get("name") or "").strip()
         raw_age = entry.get("age")
@@ -435,24 +435,20 @@ def create_producer_report():
                 raise ValueError
             age = int(raw_age)
             if age < 0 or age > 120:
-                errors.append(f"Producer {index} age must be between 0 and 120.")
+                errors.append(f"Salt Farmer {index} age must be between 0 and 120.")
         except (TypeError, ValueError):
             age = None
-            errors.append(f"Producer {index} age must be a whole number.")
+            errors.append(f"Salt Farmer {index} age must be a whole number.")
         sex = entry.get("sex")
-        address = (entry.get("address") or "").strip()
         if not name or len(name) > 150:
-            errors.append(f"Producer {index} name is required and must be 150 characters or fewer.")
+            errors.append(f"Salt Farmer {index} name is required and must be 150 characters or fewer.")
         if sex not in sexes:
-            errors.append(f"Producer {index} sex is invalid.")
-        if not address or len(address) > 255:
-            errors.append(f"Producer {index} address is required and must be 255 characters or fewer.")
+            errors.append(f"Salt Farmer {index} sex is invalid.")
         normalized.append({
             "barangay": barangay,
             "name": name,
             "age": age,
             "sex": sex,
-            "address": address,
         })
 
     if errors:
@@ -470,7 +466,6 @@ def create_producer_report():
             name=entry["name"],
             age=entry["age"],
             sex=entry["sex"],
-            address=entry["address"],
         )
         for entry in normalized
     ]
@@ -480,7 +475,7 @@ def create_producer_report():
     except Exception:
         db.session.rollback()
         current_app.logger.exception("Failed to commit producer report for municipality %s", current_user.municipality_id)
-        return jsonify({"error": "Could not submit the producer report. Please try again."}), 500
+        return jsonify({"error": "Could not submit the salt farmer report. Please try again."}), 500
     return jsonify(_serialize_producer_report(report)), 201
 
 
@@ -496,9 +491,22 @@ def list_records():
     if barangay_id:
         query = query.filter_by(barangay_id=barangay_id)
     if status:
+        if status not in ALLOWED_STATUSES:
+            return jsonify({"error": f"status must be one of: {', '.join(ALLOWED_STATUSES)}."}), 400
         query = query.filter_by(status=status)
 
-    records = query.order_by(ProductionRecord.record_date.desc(), ProductionRecord.id.desc()).all()
+    try:
+        query, start_d, end_d = _apply_period(
+            query, request.args.get("start"), request.args.get("end")
+        )
+    except ValueError:
+        return jsonify({"error": "start and end must be dates in YYYY-MM-DD format."}), 400
+    if start_d and end_d and start_d > end_d:
+        return jsonify({"error": "start must be on or before end."}), 400
+
+    # WHAT: Bagong submit ang nasa taas, kahit backdated ang record_date.
+    # WHY: kapag nag-add/edit ang encoder, agad dapat makita sa unang row.
+    records = query.order_by(ProductionRecord.created_at.desc(), ProductionRecord.id.desc()).all()
     return jsonify({"records": [_serialize(r) for r in records]})
 
 
@@ -608,8 +616,10 @@ def submit_record(record_id):
     record = ProductionRecord.query.get(record_id)
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
-    if record.status != "draft":
-        return jsonify({"error": f"Only draft records can be submitted. Current status: {record.status}."}), 409
+    if record.status != "pending":
+        return jsonify({
+            "error": f"Only pending records can be submitted. Current status: {record.status}."
+        }), 409
     record.status = "pending"
     record.submitted_at = datetime.utcnow()
     try:
@@ -703,6 +713,15 @@ def stats():
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
 
+    # WHAT: Optional barangay drill-down para sa dashboard charts at KPIs.
+    # WHY: kapag may napiling barangay, dapat pareho ang saklaw ng lahat ng
+    #      numero sa page (hindi lang ang chart).
+    barangay_id = request.args.get("barangay_id", type=int)
+    if barangay_id:
+        barangay = db.session.get(Barangay, barangay_id)
+        if not barangay or barangay.municipality_id != current_user.municipality_id:
+            return jsonify({"error": "barangay_id is invalid for this municipality."}), 400
+
     month = request.args.get("month")
     if month:
         try:
@@ -717,6 +736,15 @@ def stats():
             ProductionRecord.record_date >= month_start,
             ProductionRecord.record_date < month_end,
         )
+        municipality_total = None
+        if barangay_id:
+            # WHAT: Buong-munisipyo na total bago i-filter, para sa "share" pie.
+            municipality_total = float(
+                base.with_entities(
+                    func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)
+                ).scalar() or 0
+            )
+            base = base.filter(ProductionRecord.barangay_id == barangay_id)
         by_barangay_q = (
             db.session.query(
                 ProductionRecord.barangay_id,
@@ -733,9 +761,10 @@ def stats():
             .filter(ProductionRecord.municipality_id == current_user.municipality_id)
             .filter(ProductionRecord.record_date >= month_start)
             .filter(ProductionRecord.record_date < month_end)
-            .group_by(ProductionRecord.barangay_id, Barangay.name)
-            .all()
         )
+        if barangay_id:
+            by_barangay_q = by_barangay_q.filter(ProductionRecord.barangay_id == barangay_id)
+        by_barangay_q = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
         month_rows = (
             base.with_entities(
                 func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
@@ -793,6 +822,7 @@ def stats():
             "record_count": record_count,
             "total_salt_beds": int(total_beds or 0),
             "total_registered_producers": int(total_registered or 0),
+            "municipality_total_volume_mt": municipality_total,
             "by_barangay": [
                 {
                     "barangay_id": b.barangay_id,
@@ -811,10 +841,24 @@ def stats():
     base = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id)
     start_raw = request.args.get("start")
     end_raw = request.args.get("end")
-    base, start_d, end_d = _apply_period(base, start_raw, end_raw)
+    try:
+        base, start_d, end_d = _apply_period(base, start_raw, end_raw)
+    except ValueError:
+        return jsonify({"error": "start and end must be dates in YYYY-MM-DD format."}), 400
+    if start_d and end_d and start_d > end_d:
+        return jsonify({"error": "start must be on or before end."}), 400
 
     by_barangay_q = _by_barangay_query()
     by_barangay_q, _, _ = _apply_period(by_barangay_q, start_raw, end_raw)
+    municipality_total = None
+    if barangay_id:
+        municipality_total = float(
+            base.with_entities(
+                func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)
+            ).scalar() or 0
+        )
+        base = base.filter(ProductionRecord.barangay_id == barangay_id)
+        by_barangay_q = by_barangay_q.filter(ProductionRecord.barangay_id == barangay_id)
     by_barangay = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
 
     total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
@@ -878,6 +922,7 @@ def stats():
         "record_count": record_count,
         "total_salt_beds": int(total_beds or 0),
         "total_registered_producers": int(total_registered or 0),
+        "municipality_total_volume_mt": municipality_total,
         "by_barangay": [
             {
                 "barangay_id": b.barangay_id,

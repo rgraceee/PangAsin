@@ -16,10 +16,10 @@ export const GRID_STROKE = 'var(--gray-200)';
 export const AXIS_TICK_FONT = 11;
 export const TOOLTIP_FONT = 12;
 
-/* WHAT: Build a consistent YAxis tick formatter that shows MT with thousands
+/* WHAT: Build a consistent YAxis tick formatter that shows Metric Tons (MT) with thousands
    separators and no decimals. WHY: pantay ang pagbabasa ng lahat ng volume axis. */
 export function mtTickFormatter(v) {
-  return `${Math.round(v).toLocaleString()} MT`;
+  return `${Math.round(v).toLocaleString()} Metric Tons (MT)`;
 }
 
 /* WHAT: Build a consistent plain number tick formatter (thousands, no unit).

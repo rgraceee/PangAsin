@@ -8,12 +8,18 @@ import {
 import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
 import RecordStatusBadge from '../encoder/RecordStatusBadge';
-import { Eye } from 'lucide-react';
+import { Eye, Check, X } from 'lucide-react';
 import IconButton from '../IconButton';
 import { formatMT } from '../../utils/volumeFormat';
 import PageHeader from './PageHeader';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
+import { STATUS_OPTIONS } from '../../constants/labels';
 
-const STATUS_OPTIONS = ['draft', 'pending', 'approved', 'rejected', 'returned'];
+const REPORT_TYPE_LABELS = {
+  production: 'Production',
+  producer: 'Salt Farmer',
+  environment: 'Environment',
+};
 
 function DetailRow({ label, value }) {
   return (
@@ -89,6 +95,23 @@ export default function ValidationQueue() {
       });
   };
 
+  const handleQuickReview = (id, action) => {
+    setReviewAction(action);
+    setReviewComment('');
+    if (reportType !== 'production') {
+      setDetail(records.find((row) => row.id === id) || null);
+      setShowDetail(true);
+      return;
+    }
+    getAdminRecord(id)
+      .then((r) => { setDetail(r); setShowDetail(true); })
+      .catch((err) => {
+        const message = err.message || 'Could not load this record.';
+        setError(message);
+        toastError(message);
+      });
+  };
+
   const openReview = (action) => {
     setReviewAction(action);
     setReviewComment('');
@@ -127,33 +150,37 @@ export default function ValidationQueue() {
   const hasFilter = Boolean(
     filters.municipality_id || filters.q || filters.start || filters.end || (filters.status && filters.status !== 'pending')
   );
-  const reportTypeLabel = reportType[0].toUpperCase() + reportType.slice(1);
+  const reportTypeLabel = REPORT_TYPE_LABELS[reportType] || reportType;
 
   return (
     <>
       <PageHeader
         id="admin-validation"
-        variant="sub"
-        title={`${reportTypeLabel} Report Validation`}
-        subtitle={`Review and approve submitted ${reportTypeLabel.toLowerCase()} reports.`}
+        variant="clean"
+        className="ui-pageheader--admin"
+        title={`${reportTypeLabel} Validation`}
+        subtitle={`Review submitted ${reportTypeLabel.toLowerCase()} reports.`}
+        status={(
+          <div className="admin-report-types d-flex align-items-center gap-2 flex-wrap" role="group" aria-label="Report type">
+            {['production', 'producer', 'environment'].map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`ui-btn-${reportType === type ? 'primary' : 'outline'}`}
+                aria-pressed={reportType === type}
+                onClick={() => setReportType(type)}
+              >
+                {REPORT_TYPE_LABELS[type] || type}
+              </button>
+            ))}
+          </div>
+        )}
+        art={<MunicipalityMapArt mode="province" />}
       >
-        <div className="admin-page-hero-control" role="group" aria-label="Report type">
-          {['production', 'producer', 'environment'].map((type) => (
-            <Button
-              key={type}
-              type="button"
-              size="sm"
-              variant={reportType === type ? 'primary' : 'outline-secondary'}
-              onClick={() => setReportType(type)}
-            >
-              {type[0].toUpperCase() + type.slice(1)}
-            </Button>
-          ))}
-        </div>
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-status">Status</label>
           <select id="vq-status" className="form-select admin-page-hero-select" name="status" value={filters.status} onChange={handleFilter}>
-            <option value="">All statuses</option>
+            <option value="">All</option>
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
             ))}
@@ -162,7 +189,7 @@ export default function ValidationQueue() {
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-muni">Municipality</label>
           <select id="vq-muni" className="form-select admin-page-hero-select" name="municipality_id" value={filters.municipality_id} onChange={handleFilter}>
-            <option value="">All municipalities</option>
+            <option value="">All</option>
             {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
@@ -200,13 +227,13 @@ export default function ValidationQueue() {
                 <th>Barangay</th>
                 <th>Date</th>
                 <th>Submitter</th>
-                <th>Volume (MT)</th>
+                <th>Volume (Metric Tons (MT))</th>
                 <th>Status</th>
-                <th></th>
+                <th>Actions</th>
               </tr> : reportType === 'environment' ? <tr>
-                <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th></th>
+                <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th>Actions</th>
               </tr> : <tr>
-                <th>Municipality</th><th>Producer Entries</th><th>Submitter</th><th>Status</th><th></th>
+                <th>Municipality</th><th>Salt Farmer Entries</th><th>Submitter</th><th>Status</th><th>Actions</th>
               </tr>}
             </thead>
             <tbody>
@@ -239,6 +266,20 @@ export default function ValidationQueue() {
                       variant="outline-primary"
                       onClick={() => handleView(r.id)}
                     />
+                    <IconButton
+                      icon={Check}
+                      label={`Approve record ${r.id}`}
+                      variant="success"
+                      onClick={() => handleQuickReview(r.id, 'approved')}
+                      disabled={r.status !== 'pending'}
+                    />
+                    <IconButton
+                      icon={X}
+                      label={`Reject record ${r.id}`}
+                      variant="danger"
+                      onClick={() => handleQuickReview(r.id, 'rejected')}
+                      disabled={r.status !== 'pending'}
+                    />
                   </td>
                 </tr>
               ))}
@@ -266,13 +307,13 @@ export default function ValidationQueue() {
                   <DetailRow label="Barangay" value={detail.barangay} />
                   <DetailRow label="Date Covered" value={detail.record_date} />
                   <DetailRow label="Production Method" value={detail.production_method ? detail.production_method.charAt(0).toUpperCase() + detail.production_method.slice(1) : null} />
-                  <DetailRow label="Registered Producers" value={detail.registered_producers} />
-                  <DetailRow label="Male Producers" value={detail.male_producers} />
-                  <DetailRow label="Female Producers" value={detail.female_producers} />
-                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} MT` : null} />
+                  <DetailRow label="Registered Salt Farmers" value={detail.registered_producers} />
+                  <DetailRow label="Male Salt Farmers" value={detail.male_producers} />
+                  <DetailRow label="Female Salt Farmers" value={detail.female_producers} />
+                  <DetailRow label="Total Production Volume" value={detail.production_volume_mt != null ? `${formatMT(detail.production_volume_mt)} Metric Tons (MT)` : null} />
                   <DetailRow label="Beds Used" value={detail.num_salt_beds} />
                   <DetailRow label="Area per Salt Bed" value={detail.area_per_salt_bed != null ? `${detail.area_per_salt_bed} m²` : null} />
-                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} MT` : null} />
+                  <DetailRow label="Output per Salt Bed" value={detail.output_per_bed != null ? `${detail.output_per_bed} Metric Tons (MT)` : null} />
                   <DetailRow label="Submitted by" value={detail.submitter ? `${detail.submitter.name} (${detail.submitter.email})` : null} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                   <DetailRow label="Reviewed by" value={detail.reviewer ? `${detail.reviewer.name} (${detail.reviewer.email})` : null} />
@@ -290,9 +331,9 @@ export default function ValidationQueue() {
                   <DetailRow label="Submitted by" value={detail.submitter?.name} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                 </tbody> : <tbody>
-                  <DetailRow label="Report Type" value="Producer" />
+                  <DetailRow label="Report Type" value="Salt Farmer" />
                   <DetailRow label="Municipality" value={detail.municipality_name} />
-                  <DetailRow label="Producer Entries" value={detail.entries?.length || 0} />
+                  <DetailRow label="Salt Farmer Entries" value={detail.entries?.length || 0} />
                   <DetailRow label="Submitted by" value={detail.submitter?.name} />
                   <DetailRow label="Submitted at" value={detail.submitted_at ? new Date(detail.submitted_at).toLocaleString() : null} />
                 </tbody>}
@@ -300,10 +341,10 @@ export default function ValidationQueue() {
 
               {reportType === 'producer' && (
                 <Table responsive bordered size="sm" className="mt-3 mb-0">
-                  <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Address</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th></tr></thead>
                   <tbody>{(detail.entries || []).map((entry) => (
                     <tr key={entry.id}>
-                      <td>{entry.name}</td><td>{entry.barangay}</td><td>{entry.age ?? entry.age_bracket ?? '—'}</td><td>{entry.sex}</td><td>{entry.address}</td>
+                      <td>{entry.name}</td><td>{entry.barangay}</td><td>{entry.age ?? entry.age_bracket ?? '—'}</td><td>{entry.sex}</td>
                     </tr>
                   ))}</tbody>
                 </Table>
@@ -311,8 +352,8 @@ export default function ValidationQueue() {
 
               {detail.status === 'pending' && !reviewAction && (
                 <div className="d-flex gap-2 mt-3">
-                  <Button variant="success" onClick={() => openReview('approved')}>Approve</Button>
-                  <Button variant="danger" onClick={() => openReview('rejected')}>Reject</Button>
+                  <Button variant="success" onClick={() => openReview('approved')}><Check size={16} /> Approve</Button>
+                  <Button variant="danger" onClick={() => openReview('rejected')}><X size={16} /> Reject</Button>
                 </div>
               )}
 

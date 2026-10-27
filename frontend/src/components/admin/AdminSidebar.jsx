@@ -26,7 +26,7 @@ const FORECAST_GROUP = {
 
 const MANAGE_ITEMS = [
   { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
-  { id: 'master-list', label: 'Producer Master List', icon: ContactRound, path: '/admin/master-list' },
+  { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/admin/master-list' },
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
 

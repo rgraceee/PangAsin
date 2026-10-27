@@ -1,6 +1,7 @@
 # WHAT: ProductionRecord table — buwanang record ng asin production ng isang barangay.
-# WHY: Core data ng buong system; may lifecycle: draft -> pending -> approved/rejected.
+# WHY: Core data ng buong system; may lifecycle: pending -> approved/rejected.
 from app.extensions import db
+from app.status_constants import ALLOWED_STATUSES
 from datetime import datetime
 
 PRODUCTION_METHODS = ("solar", "cooked", "hybrid")
@@ -29,7 +30,7 @@ class ProductionRecord(db.Model):
         nullable=False,
         default="solar",
     )
-    status = db.Column(db.Enum("draft", "pending", "approved", "rejected", "returned", name="record_status_enum"), default="draft", nullable=False)
+    status = db.Column(db.Enum(*ALLOWED_STATUSES, name="record_status_enum"), default="pending", nullable=False)
     reviewer_comment = db.Column(db.Text, nullable=True)
     submitted_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)

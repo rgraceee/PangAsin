@@ -5,6 +5,7 @@
 import { Alert, Card } from 'react-bootstrap';
 import { CalendarDays, TrendingUp, Lightbulb } from 'lucide-react';
 import PageHeader from '../PageHeader';
+import MunicipalityMapArt from '../../encoder/MunicipalityMapArt';
 import { SkeletonChart } from '../../Skeleton';
 import TargetForm from './TargetForm';
 import TargetSummary from './TargetSummary';
@@ -22,16 +23,16 @@ export default function TargetEvaluation() {
       <PageHeader
         id="admin-target-header"
         variant="clean"
-        compact
-        className="ui-pageheader--dashboard"
+        className="ui-pageheader--admin"
         title="Target Evaluation"
-        subtitle={`Will ${t.scopeName} reach its annual production target, and if not, where and when does it fall short?`}
+        subtitle={`Will ${t.scopeName} reach its annual target, and where does it fall short?`}
         actions={(
           <span className="ui-pageheader-chip">
             <CalendarDays size={14} strokeWidth={1.5} aria-hidden="true" />
             {t.results ? `Evaluation year ${t.results.evaluation_year}` : 'Runs on the fly - nothing is saved'}
           </span>
         )}
+        art={<MunicipalityMapArt mode="province" selectedName={t.selectedMuni} />}
       />
 
       <TargetForm
@@ -73,7 +74,7 @@ export default function TargetEvaluation() {
             <div>
               <h2 className="te-section-title">Pace and monthly picture</h2>
               <p className="te-section-sub">
-                {t.summary.status.label} - {fmtPct(t.summary.pct)} of the {fmtMT(t.results.annual_target)} MT target
+                {t.summary.status.label} - {fmtPct(t.summary.pct)} of the {fmtMT(t.results.annual_target)} Metric Tons (MT) target
                 {t.summary.reachedMonth ? `, target reached in ${t.summary.reachedMonth}` : ''}.
               </p>
             </div>

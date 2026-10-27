@@ -18,6 +18,7 @@ from sqlalchemy import func
 from app.services.data_quality import build_data_quality, DATA_QUALITY_RANGES
 from app.services.aggregates import _last_month_with_data
 from app.constants import AGE_BUCKET_FIELDS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
+from app.status_constants import ALLOWED_STATUSES
 from app.utils import _admin_only, _parse_date
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
@@ -251,6 +252,8 @@ def list_records():
     limit = request.args.get("limit", type=int)
 
     if status:
+        if status not in ALLOWED_STATUSES:
+            return jsonify({"error": f"status must be one of: {', '.join(ALLOWED_STATUSES)}."}), 400
         query = query.filter(ProductionRecord.status == status)
     if muni:
         query = query.filter(ProductionRecord.municipality_id == muni)
@@ -391,7 +394,6 @@ def _serialize_producer_submission(report):
                 "age": entry.age,
                 "age_bracket": entry.age_bracket,
                 "sex": entry.sex,
-                "address": entry.address,
             }
             for entry in report.entries
         ],
@@ -407,6 +409,8 @@ def list_environment_submissions():
     status = request.args.get("status")
     municipality_id = request.args.get("municipality_id", type=int)
     if status:
+        if status not in ALLOWED_STATUSES:
+            return jsonify({"error": f"status must be one of: {', '.join(ALLOWED_STATUSES)}."}), 400
         query = query.filter(EnvironmentReport.status == status)
     if municipality_id:
         query = query.filter(EnvironmentReport.municipality_id == municipality_id)
@@ -448,6 +452,8 @@ def list_producer_submissions():
     status = request.args.get("status")
     municipality_id = request.args.get("municipality_id", type=int)
     if status:
+        if status not in ALLOWED_STATUSES:
+            return jsonify({"error": f"status must be one of: {', '.join(ALLOWED_STATUSES)}."}), 400
         query = query.filter(ProducerReport.status == status)
     if municipality_id:
         query = query.filter(ProducerReport.municipality_id == municipality_id)
@@ -462,7 +468,7 @@ def review_producer_submission(report_id):
         return jsonify({"error": "Admin access only."}), 403
     report = db.session.get(ProducerReport, report_id)
     if not report:
-        return jsonify({"error": "Producer report not found."}), 404
+        return jsonify({"error": "Salt farmer report not found."}), 404
     if report.status != "pending":
         return jsonify({"error": f"Only pending reports can be reviewed. Current status: {report.status}."}), 409
     data = request.get_json(silent=True) or {}
@@ -478,7 +484,6 @@ def review_producer_submission(report_id):
             existing = Producer.query.filter(
                 Producer.barangay_id == entry.barangay_id,
                 func.lower(Producer.name) == entry.name.strip().lower(),
-                func.lower(Producer.address) == entry.address.strip().lower(),
             ).first()
             if existing:
                 existing.age = entry.age
@@ -491,13 +496,12 @@ def review_producer_submission(report_id):
                     age=entry.age,
                     age_bracket=entry.age_bracket,
                     sex=entry.sex,
-                    address=entry.address.strip(),
                 ))
     try:
         db.session.commit()
     except Exception:
         db.session.rollback()
-        return jsonify({"error": "Could not save the Producer report review."}), 500
+        return jsonify({"error": "Could not save the salt farmer report review."}), 500
     return jsonify(_serialize_producer_submission(report))
 
 
@@ -926,7 +930,7 @@ def insight():
     if top_muni:
         text = (
             f"Top producing municipality is {top_muni.name} "
-            f"({float(top_muni.v):,.3f} MT). "
+            f"({float(top_muni.v):,.3f} Metric Tons (MT)). "
             f"{pending} record(s) awaiting validation, {approved} approved, {rejected} rejected."
         )
     else:

@@ -157,7 +157,7 @@ def create_producer():
         db.session.commit()
     except Exception:
         db.session.rollback()
-        return jsonify({"error": "Could not add this worker. Please try again."}), 500
+        return jsonify({"error": "Could not add this salt farmer. Please try again."}), 500
     return jsonify(_serialize(producer)), 201
 
 
@@ -168,9 +168,9 @@ def update_producer(producer_id):
         return jsonify({"error": "Admin or encoder access only."}), 403
     producer = db.session.get(Producer, producer_id)
     if not producer:
-        return jsonify({"error": "Worker not found."}), 404
+        return jsonify({"error": "Salt farmer not found."}), 404
     if current_user.role == "encoder" and producer.barangay.municipality_id != current_user.municipality_id:
-        return jsonify({"error": "Worker is outside your municipality."}), 403
+        return jsonify({"error": "Salt farmer is outside your municipality."}), 403
 
     data = request.get_json(silent=True) or {}
     errors = []
@@ -226,7 +226,7 @@ def update_producer(producer_id):
         db.session.commit()
     except Exception:
         db.session.rollback()
-        return jsonify({"error": "Could not update this worker. Please try again."}), 500
+        return jsonify({"error": "Could not update this salt farmer. Please try again."}), 500
     return jsonify(_serialize(producer))
 
 
@@ -237,13 +237,13 @@ def delete_producer(producer_id):
         return jsonify({"error": "Admin or encoder access only."}), 403
     producer = db.session.get(Producer, producer_id)
     if not producer:
-        return jsonify({"error": "Worker not found."}), 404
+        return jsonify({"error": "Salt farmer not found."}), 404
     if current_user.role == "encoder" and producer.barangay.municipality_id != current_user.municipality_id:
-        return jsonify({"error": "Worker is outside your municipality."}), 403
+        return jsonify({"error": "Salt farmer is outside your municipality."}), 403
     db.session.delete(producer)
     try:
         db.session.commit()
     except Exception:
         db.session.rollback()
-        return jsonify({"error": "Could not delete this worker. Please try again."}), 500
+        return jsonify({"error": "Could not delete this salt farmer. Please try again."}), 500
     return jsonify({"deleted": producer_id})

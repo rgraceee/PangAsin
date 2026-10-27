@@ -28,7 +28,7 @@ const MANDATE = [
     tone: 'gold',
     title: 'Planning and decision support',
     body:
-      'Turn production history into forecasts, targets and supply-demand benchmarks that planners, producers and investors can act on.',
+      'Turn production history into forecasts, targets and supply-demand benchmarks that planners, salt farmers and investors can act on.',
   },
   {
     icon: Landmark,

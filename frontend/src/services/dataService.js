@@ -25,11 +25,13 @@ export async function loadPublicDashboardData() {
 }
 
 export function getMunicipalityProduction() {
-  const sorted = [...(dashboardCache.municipalities || [])].sort((a, b) => b.productionMT - a.productionMT);
-  const total = sorted.reduce((sum, m) => sum + (m.productionMT || 0), 0);
+  /* WHAT: Number() coercion dahil string ang productionMT mula sa API.
+     WHY: kung hindi, nagko-concatenate ang reduce at NaN ang percentageOfTotal. */
+  const sorted = [...(dashboardCache.municipalities || [])].sort((a, b) => Number(b.productionMT) - Number(a.productionMT));
+  const total = sorted.reduce((sum, m) => sum + Number(m.productionMT || 0), 0);
   return sorted.map((m) => ({
     ...m,
-    percentageOfTotal: total > 0 ? (m.productionMT / total) * 100 : 0,
+    percentageOfTotal: total > 0 ? (Number(m.productionMT) / total) * 100 : 0,
   }));
 }
 
@@ -40,7 +42,7 @@ export function getSupplyDemand(scope) {
     return {
       labels: ['National Demand', 'Domestic Supply', 'Imported Salt'],
       values: [ph.demand || 0, ph.domesticSupply || 0, ph.imports || 0],
-      unit: 'MT',
+      unit: 'Metric Tons (MT)',
       note: 'Compiled from database demand benchmarks',
     };
   }
@@ -48,11 +50,16 @@ export function getSupplyDemand(scope) {
   return {
     labels: ['Pangasinan Supply', 'Demand Benchmark'],
     values: [pa.localSupply || 0, pa.demandBenchmark || 0],
+<<<<<<< HEAD
     unit: 'MT',
     period: pa.localSupplyPeriod || null,
     note: pa.localSupplyPeriod
       ? `Workbook-derived production data for ${pa.localSupplyPeriod.start} through ${pa.localSupplyPeriod.end}; compared with an annual demand benchmark.`
       : 'No municipality production period is available.',
+=======
+    unit: 'Metric Tons (MT)',
+    note: 'Compiled from database demand benchmarks',
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
   };
 }
 

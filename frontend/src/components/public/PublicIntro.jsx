@@ -46,10 +46,16 @@ export default function PublicIntro({ municipalities = [], production = {} }) {
         <p className="public-intro-body">
           The coastal municipalities of Pangasinan produce salt through solar evaporation and cooked
           salt works, feeding household, food-processing, industrial and agricultural demand across the
+<<<<<<< HEAD
           country. Municipality production figures use estimates from Adjusted_Estimates.xlsx.
           Approved barangay submissions remain separate operational records.
           Salt-bed figures include derived values; San Fabian is a cooked-salt bed-equivalent, not a
           physical bed count.
+=======
+          country. The Accelerating Salt Research and Innovation (ASIN) Center at Pangasinan State
+          University records, validates and publishes that production so planners, salt farmers and the
+          public work from the same numbers.
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         </p>
       </div>
 
@@ -62,7 +68,7 @@ export default function PublicIntro({ municipalities = [], production = {} }) {
           <span className="public-fact-label">Production data (latest 12 months)</span>
           <span className="public-fact-value">
             {facts.totalProduction.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            <span className="public-fact-value__unit">{' MT'}</span>
+            <span className="public-fact-value__unit">{' Metric Tons (MT)'}</span>
           </span>
         </li>
         {/* Row 1, right: salt-bed data */}

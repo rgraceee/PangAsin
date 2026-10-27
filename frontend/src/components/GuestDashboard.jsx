@@ -116,7 +116,7 @@ export default function GuestDashboard() {
               icon={Scale}
               title="National Salt Demand"
               value={kpis.nationalDemand}
-              unit="MT"
+              unit="Metric Tons (MT)"
               supporting="Philippines demand benchmark"
               info="Latest national salt demand benchmark compiled by the ASIN Center."
             />
@@ -140,9 +140,15 @@ export default function GuestDashboard() {
               icon={Boxes}
               title="Municipality Production"
               value={kpis.totalMT == null ? null : Math.round(kpis.totalMT * 100) / 100}
+<<<<<<< HEAD
               unit="MT"
               supporting="Workbook-derived production data · Pangasinan"
               info="Source-labeled municipality data used for public analytics. Approved barangay submissions are retained separately."
+=======
+              unit="Metric Tons (MT)"
+              supporting="Total approved production · Pangasinan"
+              info="Total approved salt production recorded by Pangasinan municipalities to date."
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
             />
           </KpiGrid>
         </Reveal>

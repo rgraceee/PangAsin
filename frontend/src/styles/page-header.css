@@ -241,14 +241,267 @@
   animation: ui-art-in 400ms ease both;
 }
 
-/* WHAT: Compact na bersyon para sa Master List (mas maliit na mapa). */
+/* WHAT: Isang sukat lang para sa tatlong encoder pages (Salt Farmer Master
+   List, Production Records, Environment Records).
+   WHY: pareho ang taas at layout ng headers; bahagyang mas mataas sa dating
+        compact (150px) pero hindi kasing laki ng dating 200px art header. */
 .ui-pageheader--compact {
-  min-height: 150px;
-  padding: 22px 28px;
+  min-height: 200px;
+  padding: 24px 28px;
 }
 
 .ui-pageheader--compact .ui-pageheader-title {
   font-size: 24px;
+}
+
+/* WHAT: Isang row lang ang filter controls sa compact headers.
+   WHY: hindi mag-wrap sa 2nd row ang 5 controls, kaya pareho ang taas ng
+        tatlong header.
+   NOTE: flex + parehong gap ang ginagamit (hindi 1fr grid) para pantay at
+         proportional ang agwat ng bawat control sa lahat ng lapad — hindi
+         lumalaki ang pagitan kapag kakaunti lang ang filters. */
+.ui-pageheader--compact .ui-pageheader-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  max-width: 70%;
+  margin-top: 18px;
+}
+
+.ui-pageheader--compact .ui-pageheader-controls .admin-page-hero-control {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 260px;
+}
+
+/* WHAT: Bahagyang siksik na control para kasya ang 5 filters sa isang row.
+   WHY: 40px/14px pa rin ang dating sukat sa Dashboard at admin pages. */
+.ui-pageheader--compact .ui-pageheader-controls .admin-page-hero-select,
+.ui-pageheader--compact .ui-pageheader-controls .admin-page-hero-input {
+  width: auto;
+  min-width: 0;
+  height: 38px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+/* WHAT: Mas maliit na art panel para may espasyo ang one-row filters.
+   WHY: hindi dapat mag-overlap ang controls sa mapa. */
+.ui-pageheader--compact .ui-pageheader-art,
+.ui-pageheader--compact .ui-pageheader-art-glow {
+  width: 28%;
+  right: 24px;
+}
+
+/* WHAT: Sa mas maliit na desktop/tablet (<1360px), itago ang mapa at gawing
+   full-width ang one-row filters.
+   WHY: pareho pa rin ang taas ng tatlong header at hindi naiipit ang selects. */
+@media (max-width: 1359.98px) {
+  .ui-pageheader--compact .ui-pageheader-art,
+  .ui-pageheader--compact .ui-pageheader-art-glow,
+  .ui-pageheader--compact .ui-pageheader-art-grid {
+    display: none;
+  }
+
+  .ui-pageheader--compact .ui-pageheader-main,
+  .ui-pageheader--compact .ui-pageheader-controls {
+    max-width: 100%;
+  }
+
+  /* WHAT: Plain surface kapag walang mapa. WHY: walang saysay ang art wash. */
+  .ui-pageheader--compact {
+    background: var(--ui-surface);
+  }
+}
+
+/* WHAT: Sa makitid na desktop (<=1150px), bahagyang liitan ang text at gap ng
+   filters. WHY: hindi maputol ang "All barangays" sa 5-column na one-row
+   layout kapag maliit ang screen. */
+@media (max-width: 1150px) {
+  .ui-pageheader--compact .ui-pageheader-controls {
+    gap: 12px;
+  }
+
+  .ui-pageheader--compact .ui-pageheader-controls .admin-page-hero-select,
+  .ui-pageheader--compact .ui-pageheader-controls .admin-page-hero-input {
+    font-size: 12px;
+  }
+}
+
+/* WHAT: Sa mobile, dalawang filters bawat row.
+   WHY: masyadong makitid ang 5 columns; hindi rin dapat mag-overflow. */
+@media (max-width: 767.98px) {
+  .ui-pageheader--compact .ui-pageheader-controls {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .ui-pageheader--compact .ui-pageheader-controls .admin-page-hero-control {
+    flex: 1 1 calc(50% - 6px);
+    max-width: none;
+  }
+}
+
+/* ============================================================
+   WHAT: Admin page header — parehong itsura ng encoder manage pages.
+   WHY: isang header language lang sa buong admin side (puting card,
+        province map sa kanan, magaan na filter row sa ibaba).
+   NOTE: hindi ginagamit ang `compact` class para manatili ang admin map
+         hanggang 992px (5 filters ang encoder, 0-6 lang ang admin).
+   ============================================================ */
+.ui-pageheader--admin {
+  min-height: 200px;
+  padding: 24px 28px;
+}
+
+.ui-pageheader--admin .ui-pageheader-title {
+  font-size: 24px;
+}
+
+/* WHAT: Subtitle ay pumupuno sa text block (hindi na 46ch).
+   WHY: mas maiikli ang header kapag isang linya lang ang subtitle; ang 46ch
+        cap ng encoder ay masyadong makitid para sa admin copy. */
+.ui-pageheader--admin .ui-pageheader-sub {
+  max-width: 100%;
+}
+
+/* WHAT: Nililimitahan ang text/filters sa 68% para hindi tumagos sa mapa.
+   WHY: kapareho ng encoder (28% art + kaunting agwat). */
+.ui-pageheader--admin .ui-pageheader-main,
+.ui-pageheader--admin .ui-pageheader-controls {
+  max-width: 68%;
+}
+
+/* WHAT: Left-aligned ang filters at may sapat na lapad — hindi naka-stretch
+   para punuin ang buong row.
+   WHY: 190px ang komportableng lapad ng dropdown/date input; kapag hindi kasya
+        (hal. 5 filters sa Validation), natural silang magwa-wrap sa 2 rows.
+   NOTE: flex-start para manatili sa kaliwa ang buong filter group. */
+.ui-pageheader--admin .ui-pageheader-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+/* WHAT: Isang linya ang title + actions (chip/segmented buttons) sa admin.
+   WHY: kapag nag-full-width ang subtitle, nagwa-wrap ang maliit na chip sa
+        ilalim nito; sa nowrap, lumiliit ang text block at nananatili sa
+        top-right ang action. Sa mobile lang ito nagwa-wrap. */
+.ui-pageheader--admin .ui-pageheader-main {
+  flex-wrap: nowrap;
+}
+
+/* WHAT: Report-type choices sa Validation Queue, nasa ibaba ng subtitle at
+   itaas ng filter row.
+   WHY: mas malinaw ang hierarchy kaysa sa dating top-right actions, at pantay
+        ang 38px na taas nila sa mga filter sa ibaba. */
+.ui-pageheader--admin .ui-pageheader-status {
+  margin-top: 16px;
+}
+
+.ui-pageheader--admin .ui-pageheader-status .ui-btn-primary,
+.ui-pageheader--admin .ui-pageheader-status .ui-btn-outline {
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* WHAT: Natural na lapad ang bawat filter (hindi flex-grow, hindi fixed 190px).
+   WHY: ang select ay sumusukat sa pinakamahabang opsyon (hal. "All municipalities",
+        "September"), kaya hindi sobrang lapad ang Year/Status. May min/max para
+        hindi naman sobrang liit o sobrang laki. */
+.ui-pageheader--admin .ui-pageheader-controls .admin-page-hero-control {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 150px;
+  max-width: 230px;
+}
+
+.ui-pageheader--admin .ui-pageheader-controls .admin-page-hero-select,
+.ui-pageheader--admin .ui-pageheader-controls .admin-page-hero-input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
+/* WHAT: Katulad ng encoder, mas maliit ang art panel kaysa default 42%. */
+.ui-pageheader--admin .ui-pageheader-art,
+.ui-pageheader--admin .ui-pageheader-art-glow {
+  width: 28%;
+  right: 24px;
+}
+
+/* WHAT: Ang Reset button ay nakadikit sa ilalim ng filter row. */
+.ui-pageheader--admin .dashboard-filter-reset {
+  align-self: flex-end;
+  height: 38px;
+  font-size: 13px;
+}
+
+/* WHAT: Parehong taas ng 38px selects ang header action buttons.
+   WHY: kapag magkatabi ang chip/segmented buttons at filters, pantay ang
+        baseline at hindi lumalaki ang header. */
+.ui-pageheader--admin .ui-pageheader-actions .ui-btn-primary,
+.ui-pageheader--admin .ui-pageheader-actions .ui-btn-outline {
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* WHAT: Sa tablet/desktop na mas maliit sa 1200px, itago ang mapa at gawing
+   full-width ang content.
+   WHY: kapag 70% lang ang content at may 5 filters + actions, naiipit at
+        nagwa-wrap ang title/filters. Kapareho ng encoder pattern (art off sa
+        makitid na screen), mas maaga lang nang kaunti ang admin. */
+@media (max-width: 1199.98px) {
+  .ui-pageheader--admin {
+    background: var(--ui-surface);
+  }
+
+  .ui-pageheader--admin .ui-pageheader-art,
+  .ui-pageheader--admin .ui-pageheader-art-glow,
+  .ui-pageheader--admin .ui-pageheader-art-grid {
+    display: none;
+  }
+
+  .ui-pageheader--admin .ui-pageheader-main,
+  .ui-pageheader--admin .ui-pageheader-controls {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 1150px) {
+  .ui-pageheader--admin .ui-pageheader-controls .admin-page-hero-select,
+  .ui-pageheader--admin .ui-pageheader-controls .admin-page-hero-input {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ui-pageheader--admin {
+    padding: 24px;
+  }
+
+  .ui-pageheader--admin .ui-pageheader-actions {
+    width: 100%;
+  }
+
+  .ui-pageheader--admin .ui-pageheader-main {
+    flex-wrap: wrap;
+  }
+
+  .ui-pageheader--admin .ui-pageheader-controls .admin-page-hero-control {
+    flex: 1 1 calc(50% - 8px);
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 /* WHAT: Motion para sa map. */
@@ -682,6 +935,25 @@
 
   .ui-pageheader--dashboard {
     padding: 20px;
+  }
+}
+
+/* WHAT: Sa encoder dashboard lang (<1200px), itago ang mapa at gawing
+   full-width ang filters.
+   WHY: lima na ang control groups (period + quick range + barangay); kapag
+        naka-limit sa 52% ang lapad, nagiging 4 rows ang header.
+   NOTE: admin dashboard ay walang .ui-pageheader--encoder kaya hindi ito
+         naaapektuhan. */
+@media (max-width: 1199.98px) {
+  .ui-pageheader--encoder .ui-pageheader-art,
+  .ui-pageheader--encoder .ui-pageheader-art-glow,
+  .ui-pageheader--encoder .ui-pageheader-art-grid {
+    display: none;
+  }
+
+  .ui-pageheader--encoder .ui-pageheader-main,
+  .ui-pageheader--encoder .ui-pageheader-controls {
+    max-width: 100%;
   }
 }
 

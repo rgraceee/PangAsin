@@ -102,7 +102,7 @@ export default function useTargetEvaluation() {
     const first = paced.find((r) => r.isForecast && r.requiredPace !== null && r.requiredPace !== undefined);
     if (!first) return null;
     const ratio = first.target > 0 ? first.requiredPace / first.target : 0;
-    const base = `${fmtMT(first.requiredPace)} MT a month from ${first.label} onward`;
+    const base = `${fmtMT(first.requiredPace)} Metric Tons (MT) a month from ${first.label} onward`;
     return ratio > 3
       ? `${base} to still reach the annual target - ${ratio.toFixed(0)}x the monthly target, so the target is out of reach at this pace (markers shown at a capped scale).`
       : `${base} to still reach the annual target.`;

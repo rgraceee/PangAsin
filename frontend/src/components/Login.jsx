@@ -6,12 +6,12 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row } from 'react-bootstrap';
-import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Phone, Scale, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Phone, Scale, ShieldCheck, Trophy } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Reveal from './Reveal';
 import { SkeletonBlock } from './Skeleton';
 import { loadPublicDashboardData, loginAPI, getMunicipalityProduction } from '../services/dataService';
-import { formatMTWithUnit } from '../utils/volumeFormat';
+import { formatMT, formatMTWithUnit } from '../utils/volumeFormat';
 import { useToast } from './Toast';
 import AdminKpiCard from './admin/AdminKpiCard';
 import useCountUp from '../hooks/useCountUp';
@@ -41,6 +41,58 @@ function formatProductionYears(records) {
   });
   ranges.push(start === previous ? `${start}` : `${start}–${previous}`);
   return ranges;
+}
+
+/* WHAT: Logo file ng bawat salt-producing municipality.
+   WHY: isang beses lang ideklara ang filename/extensions (may .jpeg ang Dasol);
+        ang fallback ay initials para hindi mabasag ang card kapag kulang ang asset. */
+const MUNICIPALITY_LOGOS = {
+  alaminos: 'alaminos.png',
+  'alaminos city': 'alaminos.png',
+  anda: 'anda.png',
+  bani: 'bani.png',
+  bolinao: 'bolinao.png',
+  dasol: 'dasol.png',
+  infanta: 'infanta.png',
+  'san fabian': 'sanfabian.png',
+};
+
+function municipalityLogoUrl(name) {
+  const key = String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const file = MUNICIPALITY_LOGOS[key];
+  return file ? `/static/municipalities_logo/${file}` : null;
+}
+
+function municipalityInitials(name) {
+  return String(name || '')
+    .replace(/[^A-Za-z ]/g, '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join('');
+}
+
+/* WHAT: Logo crest ng munisipyo; initials ang fallback kapag walang asset. */
+function MunicipalityLogo({ name, size = 'md' }) {
+  const src = municipalityLogoUrl(name);
+  return (
+    <span className={`login-muni-logo-wrap login-muni-logo-wrap--${size}`}>
+      {src ? (
+        <img
+          src={src}
+          alt={`${name} logo`}
+          className="login-muni-logo"
+          width="84"
+          height="84"
+          loading={size === 'lg' ? 'eager' : 'lazy'}
+          decoding="async"
+        />
+      ) : (
+        <span className="login-muni-logo-initials" aria-hidden="true">{municipalityInitials(name)}</span>
+      )}
+    </span>
+  );
 }
 
 export default function Login({ onLogin }) {
@@ -328,6 +380,7 @@ export default function Login({ onLogin }) {
             </p>
           </div>
 
+<<<<<<< HEAD
 <div ref={statsRef} className="login-muni-grid-wrap">
   {municipalityCards.length === 0 ? (
     <div className="text-center text-muted">Municipality production data unavailable.</div>
@@ -363,6 +416,66 @@ export default function Login({ onLogin }) {
     </>
   )}
 </div>
+=======
+          <div ref={statsRef} className="login-muni-grid-wrap">
+            {municipalityCards.length === 0 ? (
+              <div className="text-center text-muted">Municipality production data unavailable.</div>
+            ) : (
+              <>
+                <div className="login-muni-top">
+                  <Reveal className="login-about-reveal">
+                    <Card className="login-muni-kpi login-muni-kpi--top">
+                      <Card.Body className="login-muni-body login-muni-body--top">
+                        <div className="login-muni-identity">
+                          <MunicipalityLogo name={municipalityCards[0].name} size="lg" />
+                          <div>
+                            <div className="login-muni-eyebrow">
+                              <Trophy size={13} aria-hidden="true" />
+                              Top producing municipality
+                            </div>
+                            <div className="login-muni-name">{municipalityCards[0].name}</div>
+                          </div>
+                        </div>
+                        <div className="login-muni-stats">
+                          <div className="login-muni-value-row">
+                            <span className="login-muni-value">{formatMT(municipalityCards[0].productionMT)}</span>
+                            <span className="login-muni-unit">Metric Tons (MT)</span>
+                          </div>
+                          <div className="login-muni-bar" aria-hidden="true">
+                            <span style={{ width: `${municipalityCards[0].percentageOfTotal || 0}%` }} />
+                          </div>
+                          <div className="login-muni-share">
+                            {(municipalityCards[0].percentageOfTotal || 0).toFixed(1)}% of provincial total
+                          </div>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Reveal>
+                </div>
+                <div className="login-muni-grid">
+                  {municipalityCards.slice(1).map((m) => (
+                    <Reveal className="login-about-reveal" key={m.id}>
+                      <Card className="login-muni-kpi">
+                        <Card.Body className="login-muni-body">
+                          <MunicipalityLogo name={m.name} />
+                          <div className="login-muni-name">{m.name}</div>
+                          <div className="login-muni-value-row">
+                            <span className="login-muni-value">{formatMT(m.productionMT)}</span>
+                            <span className="login-muni-unit">Metric Tons (MT)</span>
+                          </div>
+                          <div className="login-muni-bar" aria-hidden="true">
+                            <span style={{ width: `${m.percentageOfTotal || 0}%` }} />
+                          </div>
+                          <div className="login-muni-share">{(m.percentageOfTotal || 0).toFixed(1)}% of provincial total</div>
+                        </Card.Body>
+                      </Card>
+                    </Reveal>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         </Container>
       </section>
 

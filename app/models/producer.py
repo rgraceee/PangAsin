@@ -17,7 +17,7 @@ class Producer(db.Model):
     age = db.Column(db.Integer, nullable=True)
     age_bracket = db.Column(db.String(16), nullable=True)
     sex = db.Column(db.String(20), nullable=False)
-    address = db.Column(db.String(255), nullable=False)
+    address = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,

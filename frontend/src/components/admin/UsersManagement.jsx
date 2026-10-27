@@ -7,6 +7,7 @@ import { SkeletonList } from '../Skeleton';
 import { Pencil, Power } from 'lucide-react';
 import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 
 const USER_ROLES = ['admin', 'encoder'];
 
@@ -114,9 +115,11 @@ export default function UsersManagement() {
     <>
       <PageHeader
         id="admin-users"
-        variant="sub"
+        variant="clean"
+        className="ui-pageheader--admin"
         title="User Management"
-        subtitle="Manage admin and encoder accounts, roles, and access. Encoder accounts are created when a municipality is added; new accounts cannot be created from this screen."
+        subtitle="Manage admin and encoder accounts, roles, and access."
+        art={<MunicipalityMapArt mode="province" />}
       >
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="um-role">Role</label>
@@ -172,7 +175,7 @@ export default function UsersManagement() {
                 <tr key={u.id}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
-                  <td><span className={`record-status-badge ${u.role === 'admin' ? 'status-approved' : 'status-draft'}`}>{u.role}</span></td>
+                  <td><span className={`record-status-badge ${u.role === 'admin' ? 'status-approved' : 'status-pending'}`}>{u.role}</span></td>
                   <td>{u.municipality_name || '—'}</td>
                   <td><span className={`record-status-badge ${u.status === 'active' ? 'status-approved' : 'status-rejected'}`}>{u.status}</span></td>
                   <td>{u.last_login ? new Date(u.last_login).toLocaleString() : '—'}</td>

@@ -788,15 +788,13 @@ body {
 }
 
 .login-muni-top {
-  display: flex;
-  justify-content: center;
+  display: block;
   width: 100%;
   margin-bottom: 30px;
 }
 
 .login-muni-top .login-muni-kpi {
-  width: calc((100% - 60px) / 3);
-  min-width: 240px;
+  width: 100%;
 }
 
 .login-muni-grid {
@@ -806,38 +804,219 @@ body {
   width: 100%;
 }
 
-.login-muni-kpi {
+/* WHAT: Pantay ang taas ng cards sa grid kahit magkaiba ang haba ng pangalan. */
+.login-muni-grid > .login-about-reveal {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 16px;
+}
+
+.login-muni-grid .login-muni-kpi {
+  width: 100%;
+}
+
+/* WHAT: Municipality card na naka-highlight ang production value.
+   WHY: logo crest sa itaas, malaking MT value, at share bar ng provincial total. */
+.login-muni-kpi {
+  position: relative;
+  height: 100%;
   text-align: center;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid rgba(12, 35, 58, 0.08);
   background: var(--white);
   box-shadow: 0 14px 32px -22px rgba(12, 35, 64, 0.45);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  overflow: hidden;
 }
 
 .login-muni-kpi:hover {
   transform: translateY(-3px);
-  box-shadow: 0 22px 40px -24px rgba(12, 35, 64, 0.55);
+  border-color: rgba(21, 101, 200, 0.22);
+  box-shadow: 0 24px 42px -24px rgba(12, 35, 64, 0.55);
+}
+
+.login-muni-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 20px 20px;
+}
+
+.login-muni-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+  padding: 7px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 1px solid rgba(12, 35, 58, 0.08);
+  box-shadow: 0 8px 18px -12px rgba(12, 35, 64, 0.5);
+  margin-bottom: 2px;
 }
 
 .login-muni-logo {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  flex-shrink: 0;
-  margin-bottom: 0;
-  border-radius: 10px;
-  padding: 4px;
-  background: rgba(21, 101, 200, 0.08);
+  display: block;
 }
 
-.login-muni-kpi .admin-kpi-value {
+.login-muni-logo-initials {
+  color: var(--p-ocean);
   font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.login-muni-name {
+  color: var(--p-navy);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.login-muni-value-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.login-muni-value {
+  color: var(--p-navy);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.login-muni-unit {
+  color: var(--p-ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.login-muni-bar {
+  width: 100%;
+  max-width: 210px;
+  height: 6px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  background: rgba(12, 35, 58, 0.08);
+  overflow: hidden;
+}
+
+.login-muni-bar > span {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--p-ocean), #29B039);
+}
+
+.login-muni-share {
+  color: var(--p-ink-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* ---------- Featured (top producing) card ---------- */
+.login-muni-kpi--top {
+  text-align: left;
+  border: 0;
+  background:
+    radial-gradient(120% 170% at 100% 0%, rgba(21, 101, 200, 0.5) 0%, rgba(21, 101, 200, 0) 58%),
+    linear-gradient(135deg, #0C2340 0%, #122C4E 55%, #173257 100%);
+  box-shadow: 0 26px 50px -28px rgba(12, 35, 64, 0.75);
+}
+
+.login-muni-kpi--top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 32px 58px -28px rgba(12, 35, 64, 0.8);
+}
+
+.login-muni-body--top {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  padding: 26px 30px;
+  text-align: left;
+}
+
+.login-muni-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.login-muni-logo-wrap--lg {
+  width: 84px;
+  height: 84px;
+  padding: 9px;
+  border: 0;
+  box-shadow: 0 14px 26px -16px rgba(0, 0, 0, 0.7);
+}
+
+.login-muni-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--p-gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.login-muni-kpi--top .login-muni-name {
+  margin-top: 3px;
+  color: var(--white);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.login-muni-stats {
+  display: flex;
+  flex: 1 1 300px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.login-muni-kpi--top .login-muni-value-row {
+  justify-content: flex-end;
+}
+
+.login-muni-kpi--top .login-muni-value {
+  color: var(--white);
+  font-size: 38px;
+}
+
+.login-muni-kpi--top .login-muni-unit {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+}
+
+.login-muni-kpi--top .login-muni-bar {
+  max-width: 320px;
+  margin: 4px 0 0 auto;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.login-muni-kpi--top .login-muni-bar > span {
+  background: linear-gradient(90deg, var(--p-gold), #FFD08A);
+}
+
+.login-muni-kpi--top .login-muni-share {
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .login-muni-kpi,
@@ -845,6 +1024,35 @@ body {
   writing-mode: horizontal-tb;
   word-break: normal;
   overflow-wrap: normal;
+}
+
+@media (max-width: 700px) {
+  .login-muni-body--top {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 22px;
+  }
+  .login-muni-logo-wrap--lg {
+    width: 66px;
+    height: 66px;
+  }
+  .login-muni-kpi--top .login-muni-name {
+    font-size: 21px;
+  }
+  .login-muni-stats {
+    width: 100%;
+    flex: none;
+    align-items: flex-start;
+  }
+  .login-muni-kpi--top .login-muni-value-row {
+    justify-content: flex-start;
+  }
+  .login-muni-kpi--top .login-muni-value {
+    font-size: 30px;
+  }
+  .login-muni-kpi--top .login-muni-bar {
+    margin-left: 0;
+  }
 }
 
 @media (max-width: 900px) {
@@ -1322,11 +1530,6 @@ body {
   background: var(--white);
   vertical-align: middle;
   font-variant-numeric: tabular-nums;
-}
-
-.admin-content .encoder-table tbody tr:nth-child(odd) td,
-.admin-content .admin-table tbody tr:nth-child(odd) td {
-  background: #fbfcfe;
 }
 
 .admin-content .encoder-table tbody tr:last-child td,
@@ -2938,6 +3141,55 @@ body {
   }
 }
 
+/* Create-report form: same label/control language as the header filters */
+.report-form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-text-muted);
+}
+
+.report-form .form-select,
+.report-form .form-control {
+  height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+}
+
+.report-form .form-select:focus,
+.report-form .form-control:focus {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+.report-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.report-form-hint {
+  font-size: 12.5px;
+  color: var(--ui-text-2);
+}
+
+@media (max-width: 575.98px) {
+  .report-form-actions .ui-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Report preview tables */
 .report-preview-table {
   font-size: 12.5px;
@@ -3537,3 +3789,74 @@ body {
   .swal2-noanimation.swal2-show,
   .swal2-icon.swal2-icon-show { animation: none !important; }
 }
+
+/* ============================================================
+   WHAT: Enhanced na record tables para sa 3 encoder manage pages
+         (Production Records, Environment Records, Salt Farmer Master List).
+   WHY: mas madaling i-scan ang data — mas malinaw na header, zebra rows,
+        mas mahaba ang row spacing, at tabular numbers.
+   NOTE: scoped sa .ui-records-table kaya hindi nagbabago ang admin pages.
+   ============================================================ */
+.admin-content .ui-records-table thead th {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+  background: #f4f7fb;
+  border-bottom: 1px solid var(--ui-border);
+  white-space: nowrap;
+}
+
+.admin-content .ui-records-table tbody td {
+  padding: 13px 16px;
+  font-size: 13.5px;
+  color: var(--ui-text-2);
+  background: var(--ui-surface);
+  border-bottom: 1px solid #eef1f6;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--ui-t-fast);
+}
+
+/* WHAT: Halili-haliling subtle tint. WHY: sinusundan ng mata ang mahabang row. */
+.admin-content .ui-records-table tbody tr:nth-child(even) td {
+  background: #fafbfd;
+}
+
+.admin-content .ui-records-table tbody tr:hover td {
+  background: var(--ui-accent-tint);
+}
+
+.admin-content .ui-records-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-content .ui-records-table tbody td:first-child {
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+/* WHAT: Mas malinaw na status badge sa loob ng record tables. */
+.ui-records-table .badge {
+  padding: 0.38em 0.62em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* WHAT: Maliit na pill para sa Report Type column.
+   WHY: pareho ang hitsura ng Production at Environment rows. */
+.ui-type-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+

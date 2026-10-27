@@ -84,27 +84,36 @@ export default function MunicipalityAnalytics() {
         id="admin-municipality"
         variant="section"
         title="Municipality Analytics"
+<<<<<<< HEAD
         subtitle={`Municipality production data and operational producer details for ${view.scopeLabel}.`}
+=======
+        subtitle={`Production and salt farmer breakdown for ${view.scopeLabel}.`}
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
       />
 
       <div className="muni-scope-bar">
         <span className="muni-scope-chip">Scope: {view.scopeLabel}</span>
         <span className="muni-scope-note">
           <Info size={12} strokeWidth={2} aria-hidden="true" />
+<<<<<<< HEAD
           Production volume uses estimates from Adjusted_Estimates.xlsx. Producers come from the master list; beds, area,
           methods, and environment details remain from approved operational reports.
+=======
+          Production, beds and area come from approved production records (all time). Salt farmers come from the
+          master list.
+>>>>>>> 2d552db87db1db72a07070ef1210a4dd5c7abbf7
         </span>
       </div>
 
       <KpiGrid columns={4} className="muni-kpi-strip">
         <KpiCard
           icon={Users}
-          title="Registered Producers"
+          title="Registered Salt Farmers"
           value={view.registeredTotal}
           supporting={topProducer
             ? `${topProducer.name} has the most (${fmtInt(topProducer.count)})`
             : 'From the master list'}
-          info="Distinct producers registered in the master list. Production reports also log producer-months, which count the same people again each month."
+          info="Distinct salt farmers registered in the master list. Production reports also log salt farmer-months, which count the same people again each month."
         />
         <KpiCard
           icon={Building2}
