@@ -1,4 +1,4 @@
-// WHAT: Small dismissible banner that appears only when the approved records
+// WHAT: Small dismissible banner that appears only when record-based data
 //       really did collapse against the previous year.
 // WHY: the admin must know that a forecast anchored on older years may not
 //       match reality - without hiding or changing any number.

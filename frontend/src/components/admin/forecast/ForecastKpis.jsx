@@ -28,11 +28,11 @@ export default function ForecastKpis({
     <KpiGrid columns={5} className="fc-kpis">
       <KpiCard
         icon={ChartLine}
-        title="Recorded Production"
+        title="Municipality Production"
         value={recordedMT === null ? null : fmtMT(recordedMT)}
         unit="Metric Tons (MT)"
-        supporting={`Approved records, ${recordedPeriodLabel}${recordedThrough ? ` through ${recordedThrough}` : ''}.`}
-        info={definition('recordedMt') + ' Source: approved production records only.'}
+        supporting={`Municipality production data, ${recordedPeriodLabel}${recordedThrough ? ` through ${recordedThrough}` : ''}.`}
+        info={definition('recordedMt') + ' Source: Adjusted_Estimates.xlsx; approved submissions are separate.'}
         loading={loading}
       />
 
@@ -71,10 +71,10 @@ export default function ForecastKpis({
 
       <KpiCard
         icon={ShieldCheck}
-        title="Forecast Confidence"
+        title="Model Reliability"
         value={confidenceLabel}
-        supporting="Combines data volume and backtest accuracy."
-        info={definition('forecastConfidence') + ' Source: the latest forecast run.'}
+        supporting="Based on rolling backtests of this production series."
+        info={definition('forecastConfidence') + ' Based on rolling validation against the production series.'}
         tone={confidence === 'high' ? 'good' : confidence === 'moderate' ? 'default' : 'bad'}
         loading={loading}
       />
@@ -84,7 +84,7 @@ export default function ForecastKpis({
         title="Data Readiness"
         value={readinessLabel}
         supporting={readinessSupporting}
-        info="Ready = at least 24 months of approved records and data from at least 5 of 7 municipalities. Limited = at least 12 months. Otherwise not enough data."
+        info="Readiness is based on the amount of municipality production history available; it does not measure independent source validation."
         tone={readiness?.level === 'ready' ? 'good' : readiness?.level === 'limited' ? 'default' : 'bad'}
         loading={loading}
       />

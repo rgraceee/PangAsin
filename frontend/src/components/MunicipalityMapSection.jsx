@@ -149,13 +149,16 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
           const trendSymbol = m.productionChangePercent >= 0 ? '↑' : '↓';
           const trendClass = m.productionChangePercent >= 0 ? 'text-success' : 'text-danger';
           const changeText = m.productionChangePercent != null ? `${trendSymbol} ${Math.abs(m.productionChangePercent)}%` : '—';
+          const methodLabel = m.dominantMethod
+            ? `${m.dominantMethod.charAt(0).toUpperCase()}${m.dominantMethod.slice(1)}`
+            : 'Not included in source data';
           const tooltipContent = `
             <div style="min-width:160px">
               <strong>${m.name}</strong><br/>
               <span style="font-size:0.85rem">Production: ${m.productionMT.toLocaleString()} Metric Tons (MT)</span><br/>
               <span style="font-size:0.85rem">Tier: ${m ? (tierFor(m.productionMT).charAt(0).toUpperCase() + tierFor(m.productionMT).slice(1)) : ''}</span><br/>
               <span class="${trendClass}" style="font-size:0.85rem">${changeText}</span><br/>
-              <span style="font-size:0.85rem;color:#495057">Method: ${m.dominantMethod.charAt(0).toUpperCase() + m.dominantMethod.slice(1)}</span>
+              <span style="font-size:0.85rem;color:#495057">Method: ${methodLabel}</span>
             </div>
           `;
           layer.bindTooltip(tooltipContent, { sticky: true, direction: 'right', offset: [12, 0], className: 'muni-hover-tooltip' });
@@ -187,17 +190,21 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
             const changePct = m.productionChangePercent;
             const trendSymbol = changePct != null ? (changePct >= 0 ? '↑' : '↓') : '';
             const changeText = changePct != null ? `${trendSymbol} ${Math.abs(changePct)}%` : '—';
-            const kgPerBed = m.saltBeds > 0 ? ((m.productionMT * 1000) / m.saltBeds).toFixed(2) : '—';
+            const methodLabel = m.dominantMethod
+              ? `${m.dominantMethod.charAt(0).toUpperCase()}${m.dominantMethod.slice(1)}`
+              : 'Not included in source data';
+            const bedEstimateLabel = m.saltBeds
+              ? `${m.saltBeds.toLocaleString()}${m.saltBedsYear ? ` (${m.saltBedsYear} dataset)` : ''}`
+              : '—';
             const html = buildMapDetailCard({
               name: m.name,
               rows: [
                 ['Current Production', `${m.productionMT.toLocaleString()} Metric Tons (MT)`],
                 ['Change', changeText],
-                ['Production Area', `${(m.productionAreaSqm || 0).toLocaleString()} m²`],
-                ['Salt Beds', (m.saltBeds || 0).toLocaleString()],
-                ['Dominant Method', m.dominantMethod.charAt(0).toUpperCase() + m.dominantMethod.slice(1)],
-                ['Male / Female', genderText],
-                ['Kg per Bed', kgPerBed],
+                ['Production Area', m.productionAreaSqm == null ? 'Not included in source data' : `${m.productionAreaSqm.toLocaleString()} m²`],
+                ['Salt Beds', bedEstimateLabel],
+                ['Dominant Method', methodLabel],
+                ['Male / Female (approved submissions)', genderText],
               ],
             });
             const b = layer.getBounds();
@@ -257,7 +264,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
             </span>
             <div className="fc-card-head-text">
               <h5 className="fc-card-title">Salt Production Across Pangasinan</h5>
-              <p className="fc-card-sub">Recorded production distribution by municipality</p>
+              <p className="fc-card-sub">Workbook-derived production data by municipality</p>
             </div>
           </div>
         </Card.Header>
@@ -267,7 +274,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
           <div
             className="map-wrapper"
             role="region"
-            aria-label="Choropleth map of Pangasinan showing recorded salt production per municipality. Hover or select a shaded municipality to view its production details."
+            aria-label="Choropleth map of Pangasinan showing source-labeled salt production per municipality. Hover or select a shaded municipality to view its data."
           >
             <div className="map-container" ref={mapRef}></div>
           </div>
@@ -295,7 +302,7 @@ const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals
 </div>
           <p className="text-muted small mb-0 mt-2">
             Select a municipality on the map to view its detailed summary. Shaded gray municipalities have no
-            recorded production yet. Municipal boundaries referenced from NAMRIA / PSA administrative data.
+            source data. For salt beds, Alaminos City's count is observed; other values are workbook-derived, and San Fabian's figure is a cooked-salt bed-equivalent, not a physical count. Producer demographics shown in details are from approved submissions. Municipal boundaries referenced from NAMRIA / PSA administrative data.
             &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
           </p>
         </Card.Body>

@@ -31,7 +31,7 @@ export default function MunicipalityAnalytics() {
   const selectedMuni = searchParams.get('muni') || '';
 
   useEffect(() => {
-    getAdminStats()
+    getAdminStats({ source: 'municipality_production' })
       .then((stats) => { setData(stats); setLoading(false); })
       .catch((err) => { setError(err.message); setLoading(false); });
   }, []);
@@ -54,6 +54,7 @@ export default function MunicipalityAnalytics() {
       profile: buildProfile(masterScope),
       environment: buildEnvironment(data.environment_by_municipality || [], scope),
       tableRows: buildTableRows(scope, masterList),
+      productionMunicipalityCount: scope.filter((m) => m.productionMonths > 0).length,
       totalBeds: scope.reduce((sum, m) => sum + (m.beds || 0), 0),
       totalArea: scope.reduce((sum, m) => sum + (m.area || 0), 0),
     };
@@ -83,15 +84,15 @@ export default function MunicipalityAnalytics() {
         id="admin-municipality"
         variant="section"
         title="Municipality Analytics"
-        subtitle={`Production and salt farmer breakdown for ${view.scopeLabel}.`}
+        subtitle={`Municipality production data and salt farmer details for ${view.scopeLabel}.`}
       />
 
       <div className="muni-scope-bar">
         <span className="muni-scope-chip">Scope: {view.scopeLabel}</span>
         <span className="muni-scope-note">
           <Info size={12} strokeWidth={2} aria-hidden="true" />
-          Production, beds and area come from approved production records (all time). Salt farmers come from the
-          master list.
+          Production volume uses estimates from Adjusted_Estimates.xlsx. Salt farmers come from the master list;
+          beds, area, methods, and environment details remain from approved operational reports.
         </span>
       </div>
 
@@ -108,16 +109,16 @@ export default function MunicipalityAnalytics() {
         <KpiCard
           icon={Building2}
           title="Municipalities"
-          value={view.scope.length}
-          supporting="with approved production records"
-          info="Municipalities in the current scope that have approved production records."
+          value={view.productionMunicipalityCount}
+          supporting="with municipality production data"
+          info="Municipalities in scope with at least one month in the municipality production dataset."
         />
         <KpiCard
           icon={Layers}
           title="Salt Beds"
           value={view.totalBeds}
           supporting="from approved production records"
-          info="Sum of the salt beds reported on approved production records."
+          info="Sum of the salt beds reported on approved operational production records; these are separate from the municipality production dataset."
         />
         <KpiCard
           icon={MapPin}
@@ -125,7 +126,7 @@ export default function MunicipalityAnalytics() {
           value={view.totalArea}
           unit="m²"
           supporting={`across ${fmtInt(view.totalBeds)} salt beds`}
-          info="Sum of salt beds x area per bed, from approved production records."
+          info="Sum of salt beds x area per bed, from approved operational production records."
         />
       </KpiGrid>
 

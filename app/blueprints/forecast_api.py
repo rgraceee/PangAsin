@@ -43,6 +43,7 @@ def _serialize_run(run):
         "period_start": run.period_start.isoformat(),
         "period_end": run.period_end.isoformat(),
         "algorithm": run.algorithm,
+        "data_source": run.data_source,
         "readiness": run.readiness,
         "reliability": run.reliability,
         "trend_direction": run.trend_direction,
@@ -120,7 +121,14 @@ def list_runs():
     municipality_id = request.args.get("municipality_id", type=int)
     scope = request.args.get("scope")
     latest = request.args.get("latest") in ("1", "true", "yes")
-    q = ForecastRun.query
+    source = request.args.get("source", "municipality_production")
+    if source == "municipality_estimates":
+        source = "municipality_production"
+    if source not in ("municipality_production", "approved_records"):
+        return jsonify({
+            "error": "source must be municipality_production or approved_records."
+        }), 400
+    q = ForecastRun.query.filter_by(data_source=source)
     if scope == "all":
         # Province-wide run: municipality_id IS NULL.
         q = q.filter(ForecastRun.municipality_id.is_(None))

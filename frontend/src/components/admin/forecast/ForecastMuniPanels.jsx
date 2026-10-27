@@ -1,5 +1,5 @@
 // WHAT: One full-width card with two panels side by side: "Forecast vs recent
-//       average" and "Year-over-year (approved records)".
+//       average" and "Year-over-year production".
 // WHY: they are two DIFFERENT metrics, so each gets its own title, but they
 //      share one municipality order, one set of axis labels and one colour
 //      meaning, so the two charts can be read against each other.
@@ -47,17 +47,17 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
             rows={rows}
             valueKey="yoy"
             statusKey="yoyStatus"
-            title="Year-over-year (approved records)"
+            title="Year-over-year production"
             subTitle="Last 12 complete months compared with the previous 12 complete months."
             unitLabel="Year-over-year change"
-            sourceNote="Source: approved production records, two complete 12-month calendar blocks."
+            sourceNote="Source: municipality production data, two complete 12-month calendar blocks."
             height={height}
           />
         </div>
         <p className="fc-chart-caption">
-          The two panels measure different things: the left panel is a model projection, the right panel is
-          recorded production. A municipality is marked as incomplete when a month inside the 12-month block
-          has no approved record, so no percentage is shown for it.
+          The two panels measure different things: the left panel is a model projection, the right panel compares
+          municipality production data. A municipality is marked as incomplete when a month inside the 12-month
+          block has no source row, so no percentage is shown for it.
         </p>
       </Card.Body>
     </Card>

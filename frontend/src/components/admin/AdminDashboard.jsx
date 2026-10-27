@@ -2,7 +2,7 @@ import React, { Component, useEffect, useState, useMemo, useRef, useCallback } f
 import { useSearchParams } from 'react-router-dom';
 import { Alert, Card } from 'react-bootstrap';
 import L from 'leaflet';
-import { Boxes, Ruler, Scale, MapPin } from 'lucide-react';
+import { Boxes, Scale, MapPin } from 'lucide-react';
 import {
   getAdminStats, getAdminMonths,
   getAdminSupplyDemand,
@@ -26,6 +26,21 @@ const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
 /* WHAT: Consistent Metric Tons (MT) formatting — max 2 decimals + thousands separators.
    WHY: pareho ang pagtitingnan ng lahat ng volume sa buong dashboard. */
 const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+function buildMunicipalityTooltip(municipality, tierThresholds) {
+  const tier = getProductionTier(municipality.volumeMT, tierThresholds);
+  const tierLabel = `${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
+  return `
+    <div style="min-width:170px">
+      <strong>${municipality.name}</strong><br/>
+      <span style="font-size:0.85rem">Total: ${fmtMT(municipality.volumeMT)} Metric Tons (MT)</span><br/>
+      <span style="font-size:0.85rem">Tier: ${tierLabel}</span><br/>
+      <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(municipality.area)} m² · ${(municipality.beds || 0).toLocaleString()} beds</span><br/>
+      <span style="font-size:0.85rem;color:#495057">${(municipality.registered || 0).toLocaleString()} salt farmers</span><br/>
+      <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
+    </div>
+  `;
+}
 
 /* WHAT: Tiny error boundary that wraps ONLY the hero map art.
    WHY: a projection or render error inside the decorative SVG must never
@@ -100,7 +115,9 @@ export default function AdminDashboard({ user }) {
 
   const selectedMuni = urlMuni; // '' = Pangasinan (province-wide)
   const selYear = hasValidYear ? urlYearRaw : resolvedDefaultMonth.slice(0, 4);
-  const selMonth = isAllMonths ? '' : (hasValidMonth ? urlMonthRaw : resolvedDefaultMonth.slice(5, 7));
+  const selMonth = isAllMonths
+    ? ''
+    : String(hasValidMonth ? monthNumber : Number(resolvedDefaultMonth.slice(5, 7)));
   /* WHAT: Pinagsamang period key (YYYY-MM) o '' kapag "All months".
      WHY: ito ang ipinapasa sa /trends para sa month-scoped reporting stats. */
   const selectedAdminMonth = (isAllMonths || !selMonth)
@@ -116,27 +133,39 @@ export default function AdminDashboard({ user }) {
   }, [adminMonths, resolvedDefaultMonth, hasValidYear, urlYearRaw]);
 
   useEffect(() => {
-    getAdminMonths()
+    getAdminMonths({ source: 'municipality_production' })
       .then((res) => {
         setAdminMonths(res.months || []);
       })
-      .catch(() => {});
+      .catch((err) => setError(err.message));
   }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
+    let active = true;
+    const statsParams = {
+      source: 'municipality_production',
+      year: selYear,
+    };
+    if (selMonth) statsParams.month = Number(selMonth);
     Promise.all([
-      getAdminStats(),
-      getAdminSupplyDemand().catch(() => null),
+      getAdminStats(statsParams),
+      getAdminSupplyDemand(),
     ])
       .then(([s, sd]) => {
+        if (!active) return;
         setStats(s);
         setSupplyDemand(sd);
         setLoading(false);
       })
-      .catch((err) => { setError(err.message); setLoading(false); });
-  }, []);
+      .catch((err) => {
+        if (!active) return;
+        setError(err.message);
+        setLoading(false);
+      });
+    return () => { active = false; };
+  }, [selYear, selMonth]);
 
   /* WHAT: muniData mula sa stats (default: [] habang/sa hindi pa ready).
      WHY: null-safe — kung wala pa ang stats o nawawala ang by_municipality
@@ -152,7 +181,7 @@ export default function AdminDashboard({ user }) {
         registered: m.total_registered_producers,
         male: m.total_male_producers,
         female: m.total_female_producers,
-        records: m.record_count,
+        records: m.production_month_count ?? m.record_count,
         efficiency: m.total_salt_beds > 0 ? Math.round((m.total_volume_mt / m.total_salt_beds) * 1000) / 1000 : 0,
       }))
       .sort((a, b) => b.volumeMT - a.volumeMT);
@@ -179,10 +208,26 @@ export default function AdminDashboard({ user }) {
     return <Alert variant="danger">{error}</Alert>;
   }
 
-  const totalVolumeMT = Math.round((stats.total_volume_mt || 0) * 100) / 100;
+  const selectedMunicipalityStats = selectedMuni
+    ? (stats.by_municipality || []).find((row) => row.municipality_name === selectedMuni)
+    : null;
+  const scopedProductionMT = selectedMuni
+    ? selectedMunicipalityStats?.total_volume_mt
+    : stats.total_volume_mt;
+  const totalVolumeMT = scopedProductionMT == null
+    ? null
+    : Math.round(scopedProductionMT * 100) / 100;
   const demandBenchmark = supplyDemand?.pangasinan?.demand_volume ?? 0;
-  const supplyDemandGap = demandBenchmark ? totalVolumeMT - demandBenchmark : null;
+  const localSupplyMT = supplyDemand?.pangasinan?.local_production;
+  const supplyPeriod = supplyDemand?.pangasinan?.local_supply_period;
+  const demandYear = supplyDemand?.pangasinan?.year;
+  const supplyDemandGap = demandBenchmark && localSupplyMT != null
+    ? localSupplyMT - demandBenchmark
+    : null;
   const supplyDemandLabel = supplyDemandGap == null ? 'N/A' : (supplyDemandGap >= 0 ? 'Surplus' : 'Shortage');
+  const supplySourceNote = supplyPeriod
+    ? `Pangasinan-wide comparison, unaffected by dashboard filters. Supply uses Adjusted_Estimates.xlsx from ${supplyPeriod.start} to ${supplyPeriod.end}; demand is the ${demandYear} annual benchmark.`
+    : 'Municipality production data is not available for the supply comparison.';
 
   /* WHAT: Filter bar (municipality / month / year) sa kanang block ng hero.
      WHY: pinapalitan ang dating "Generate report" at "Validation queue" buttons;
@@ -195,7 +240,9 @@ export default function AdminDashboard({ user }) {
   };
   const resetFilters = () => setSearchParams({});
   const isDefaultFilters = urlMuni === '' && urlMonthRaw === '' && urlYearRaw === '';
-  const periodHasData = selectedAdminMonth === '' || adminMonths.includes(selectedAdminMonth);
+  const periodHasData = selectedAdminMonth
+    ? adminMonths.includes(selectedAdminMonth)
+    : adminMonths.some((month) => month.startsWith(`${selYear}-`));
 
   const headerActions = (
     <>
@@ -255,14 +302,22 @@ return (
         {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
            WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
                 (Pang-general ang values — province-wide, hindi sumasabay sa muni filter.) */}
-        <KpiCard icon={Boxes} title="Total Production" value={totalVolumeMT} unit="Metric Tons (MT)" supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`} />
+        <KpiCard
+          icon={Boxes}
+          title="Total Production"
+          value={totalVolumeMT}
+          unit="Metric Tons (MT)"
+          supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
+          info="Source: Adjusted_Estimates.xlsx."
+        />
         <KpiCard
           icon={Scale}
-          title="Supply-Demand Balance"
+          title="Province-wide Balance"
           value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
           unit={supplyDemandGap == null ? undefined : 'Metric Tons (MT)'}
           badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
           supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
+          info={supplySourceNote}
         />
         <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
       </KpiGrid>
@@ -297,14 +352,17 @@ function MunicipalityMap({ muniData, selectedName }) {
   const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
   const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
   const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
+  const municipalityDataRef = useRef({});
+  municipalityDataRef.current = Object.fromEntries(
+    muniData.map((municipality) => [normName(municipality.name), municipality]),
+  );
+  const mapScaleRef = useRef({ min, max, tierThresholds });
+  mapScaleRef.current = { min, max, tierThresholds };
 
   const renderPopup = useCallback((m) => {
     const genderText = m.registered > 0
       ? `${(m.male || 0).toLocaleString()} / ${(m.female || 0).toLocaleString()}`
       : '—';
-    /* WHAT: Kg per Bed = (volumeMT * 1000) / beds, 2 decimal places.
-       WHY: dating admin card (Sep 18) ang ginagamit ng kg-per-bed; 16.09 sa Bani. */
-    const kgPerBed = m.beds > 0 ? ((m.volumeMT * 1000) / m.beds).toFixed(2) : '—';
     return buildMapDetailCard({
       name: m.name,
       rows: [
@@ -314,7 +372,6 @@ function MunicipalityMap({ muniData, selectedName }) {
         ['Salt Beds', (m.beds || 0).toLocaleString()],
         ['Registered Salt Farmers', (m.registered || 0).toLocaleString()],
         ['Male / Female', genderText],
-        ['Kg per Bed', kgPerBed],
       ],
     });
   }, []);
@@ -322,8 +379,6 @@ function MunicipalityMap({ muniData, selectedName }) {
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    const byName = Object.fromEntries(muniData.map((m) => [normName(m.name), m]));
-    const tierFor = (value) => getProductionTier(value, tierThresholds);
     const producingNames = new Set(muniData.map((m) => normName(m.name)));
 
     const allFeatures = [...geojsonAll.features, ...geojson.features];
@@ -411,11 +466,12 @@ function MunicipalityMap({ muniData, selectedName }) {
        },
     }).addTo(map);
 
-geoJsonLayerRef.current = L.geoJSON(geojson, {
+    geoJsonLayerRef.current = L.geoJSON(geojson, {
       style: (feature) => {
-        const m = byName[normName(feature.properties.name)];
+        const m = municipalityDataRef.current[normName(feature.properties.name)];
+        const { min: currentMin, max: currentMax } = mapScaleRef.current;
         return {
-          fillColor: m ? greenScale(m.volumeMT, min, max) : NON_PRODUCING_FILL,
+          fillColor: m ? greenScale(m.volumeMT, currentMin, currentMax) : NON_PRODUCING_FILL,
           weight: 1.5,
           opacity: 0.9,
           color: '#ffffff',
@@ -423,25 +479,23 @@ geoJsonLayerRef.current = L.geoJSON(geojson, {
         };
       },
       onEachFeature: (feature, layer) => {
-        const m = byName[normName(feature.properties.name)];
+        const municipalityKey = normName(feature.properties.name);
+        const m = municipalityDataRef.current[municipalityKey];
         if (!m) return;
-        layer.bindTooltip(
-          `
-            <div style="min-width:170px">
-              <strong>${m.name}</strong><br/>
-               <span style="font-size:0.85rem">Total: ${fmtMT(m.volumeMT)} Metric Tons (MT)</span><br/>
-               <span style="font-size:0.85rem">Tier: ${getProductionTier(m.volumeMT, tierThresholds).charAt(0).toUpperCase() + getProductionTier(m.volumeMT, tierThresholds).slice(1)}</span><br/>
-              <span style="font-size:0.85rem;color:#495057">Area: ${fmtMT(m.area)} m² · ${(m.beds || 0).toLocaleString()} beds</span><br/>
-              <span style="font-size:0.85rem;color:#495057">${(m.registered || 0).toLocaleString()} salt farmers</span><br/>
-              <span style="font-size:0.8rem;color:#6c757d">Click for full details</span>
-            </div>
-          `,
-          { sticky: true, direction: 'auto', offset: [0, -10] }
-        );
+        layer.bindTooltip(buildMunicipalityTooltip(m, tierThresholds), {
+          sticky: true,
+          direction: 'auto',
+          offset: [0, -10],
+        });
         layer.on({
           mouseover: (e) => {
             const target = e.target;
             if (detailOpenRef.current) return;
+            const currentMuni = municipalityDataRef.current[municipalityKey];
+            if (!currentMuni) return;
+            target.setTooltipContent(
+              buildMunicipalityTooltip(currentMuni, mapScaleRef.current.tierThresholds),
+            );
             target.setStyle({ fillOpacity: 0.9, weight: 2.5 });
             if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
               target.bringToFront();
@@ -463,7 +517,9 @@ geoJsonLayerRef.current = L.geoJSON(geojson, {
             L.DomEvent.stopPropagation(e.originalEvent);
             detailOpenRef.current = true;
             layer.closeTooltip();
-            const html = renderPopup(m);
+            const currentMuni = municipalityDataRef.current[municipalityKey];
+            if (!currentMuni) return;
+            const html = renderPopup(currentMuni);
             const b = layer.getBounds();
             const anchor = L.latLng(
               b.getCenter().lat,
@@ -485,7 +541,7 @@ geoJsonLayerRef.current = L.geoJSON(geojson, {
       },
     }).addTo(map);
 
-if (geoJsonLayerRef.current) {
+    if (geoJsonLayerRef.current) {
       const container = mapRef.current;
       let resizeObserver = null;
       let fitted = false;
@@ -509,22 +565,34 @@ if (geoJsonLayerRef.current) {
         window.requestAnimationFrame(fitToProvince);
       }
     }
-  }, [muniData, min, max, tierThresholds, renderPopup]);
+  }, []);
 
-  /* WHAT: I-highlight ang napiling munisipalidad sa malaking mapa (reset muna lahat).
-     WHY: solid accent + puting border para malinaw kung alin ang naka-filter;
-          naiposisyon pagkatapos ng init effect para may layers nang mai-istyle. */
   useEffect(() => {
     const gl = geoJsonLayerRef.current;
     if (!gl) return;
     const selKey = selectedName ? normName(selectedName) : '';
     gl.eachLayer((layer) => {
-      gl.resetStyle(layer);
-      if (selKey && normName(layer.feature?.properties?.name) === selKey) {
-        layer.setStyle({ fillColor: BRAND.ocean, fillOpacity: 0.96, weight: 3, color: '#ffffff', opacity: 1 });
+      const municipalityKey = normName(layer.feature?.properties?.name || '');
+      const municipality = municipalityDataRef.current[municipalityKey];
+      if (!municipality) {
+        gl.resetStyle(layer);
+        return;
       }
+      const style = municipalityKey === selKey
+        ? { fillColor: BRAND.ocean, fillOpacity: 0.96, weight: 3, color: '#ffffff', opacity: 1 }
+        : {
+          fillColor: greenScale(municipality.volumeMT, min, max),
+          fillOpacity: 0.9,
+          weight: 1.5,
+          color: '#ffffff',
+          opacity: 0.9,
+        };
+      layer.setStyle(style);
+      layer.setTooltipContent(
+        buildMunicipalityTooltip(municipality, tierThresholds),
+      );
     });
-  }, [selectedName]);
+  }, [muniData, min, max, tierThresholds, selectedName]);
 
   return (
     <Card className="encoder-card h-100 admin-map-section">
@@ -555,8 +623,9 @@ if (geoJsonLayerRef.current) {
   </p>
 </div>
         <p className="text-muted small mb-0 mt-2">
-          Based on total recorded volume from approved production records. Shaded gray municipalities have no
-          recorded production yet. Municipal boundaries referenced from NAMRIA / PSA administrative data.
+          Production shading uses municipality dataset volume for the selected year and month; area, beds, and
+          producer details use approved operational records. 2026 workbook estimates are not independent observations.
+          Shaded gray municipalities have no dataset production in this period. Municipal boundaries referenced from NAMRIA / PSA administrative data.
           &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
         </p>
       </Card.Body>

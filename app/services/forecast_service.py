@@ -6,13 +6,11 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import warnings
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
 
 from app.extensions import db
 from app.models.forecast import ForecastRun, ForecastPoint
-from app.models.production_record import ProductionRecord
 from app.models.municipality import Municipality
+from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.services.aggregates import (
     _monthly_aggregates,
     _reindex_complete,
@@ -23,6 +21,7 @@ from sqlalchemy import func
 # Reference epoch for computing real (non-compressed) month positions.
 _EPOCH_YEAR = 2000
 _EPOCH_MONTH = 1
+PRODUCTION_DATA_SOURCE = "municipality_production"
 
 
 def _readiness(label_values):
@@ -75,199 +74,80 @@ def _expected_change(values: List[float], forecast_values: List[float]) -> Optio
 #                    the month immediately following the last observed offset
 # ---------------------------------------------------------------------------
 
-def _plan_linear():
-    def fit(offsets, values):
-        x = np.array(offsets, dtype=float).reshape(-1, 1)
-        y = np.array(values, dtype=float)
-        model = LinearRegression().fit(x, y)
-        return {"model": model, "last_offset": offsets[-1]}
-
-    def predict_next(state, offsets, values):
-        return float(state["model"].predict([[state["last_offset"] + 1]])[0])
-
-    return {"name": "linear_regression", "fit": fit, "predict_next": predict_next}
-
-
-def _plan_random_forest():
-    def fit(offsets, values):
-        if len(values) < 2:
-            return {"model": None, "last_value": values[-1], "last_month": offsets[-1] % 12 or 12}
-        lag = np.array(values[:-1], dtype=float).reshape(-1, 1)
-        month = np.array([(o % 12 or 12) for o in offsets[1:]], dtype=float).reshape(-1, 1)
-        X = np.hstack([lag, month])
-        y = np.array(values[1:], dtype=float)
-        model = RandomForestRegressor(n_estimators=200, random_state=42, min_samples_leaf=1).fit(X, y)
-        last_value = values[-1]
-        last_month = offsets[-1] % 12 or 12
-        return {"model": model, "last_value": last_value, "last_month": last_month}
-
-    def predict_next(state, offsets, values):
-        if state["model"] is None:
-            return float(state["last_value"])
-        next_month = (state["last_month"] % 12) + 1
-        x = np.array([[state["last_value"], float(next_month)]])
-        return float(state["model"].predict(x)[0])
-
-    return {"name": "random_forest", "fit": fit, "predict_next": predict_next}
-
-
 def _plan_arima():
     def fit(offsets, values):
-        try:
-            from pmdarima import auto_arima
-        except Exception:
-            auto_arima = None
-        last_month = offsets[-1] % 12 or 12
-        next_month = (last_month % 12) + 1
-        if auto_arima is not None and len(values) >= 8:
-            try:
-                seasonal = len(values) >= 24
-                m = 12 if seasonal else 1
-                model = auto_arima(
-                    np.asarray(values, dtype=float),
-                    seasonal=seasonal,
-                    m=m,
-                    start_p=0, start_q=0, max_p=4, max_q=4,
-                    d=0, max_d=1,
-                    stepwise=True,
-                    suppress_warnings=True,
-                    error_action="ignore",
-                    random_state=42,
-                )
-                return {"model": model, "next_month": next_month, "using_arima": True}
-            except Exception:
-                pass
-        # Fallback: a naive seasonal-mean / last-value baseline when ARIMA fails.
-        return {"model": None, "next_month": next_month, "using_arima": False, "last_value": values[-1]}
+        from statsmodels.tsa.arima.model import ARIMA
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            model = ARIMA(
+                np.log1p(np.asarray(values, dtype=float)),
+                order=(1, 1, 1),
+            ).fit()
+        return {"model": model}
 
     def predict_next(state, offsets, values):
-        if state.get("using_arima") and state["model"] is not None:
-            fc = state["model"].predict(n_periods=1)
-            return float(fc[0])
-        return float(state.get("last_value", values[-1]))
+        transformed_prediction = float(
+            np.asarray(state["model"].forecast(steps=1))[0]
+        )
+        return max(0.0, float(np.expm1(transformed_prediction)))
 
     return {"name": "arima", "fit": fit, "predict_next": predict_next}
 
 
-def _plan_sarimax():
-    """SARIMAX candidate model.
-
-    Seasonal period m=12 only when the series has at least 24 months;
-    otherwise non-seasonal orders are used. Small grid search capped at
-    about 16 fits, picked by AIC. enforce_stationarity and
-    enforce_invertibility are both False. Convergence warnings are
-    suppressed and failed fits are skipped.
-    """
+def _plan_sarima():
     plan = {
-        "name": "sarimax",
+        "name": "sarima",
         "fit": None,
         "predict_next": None,
-        "order": None,
-        "seasonal_order": None,
+        "order": [1, 1, 1],
+        "seasonal_order": [1, 1, 1, 12],
     }
 
     def fit(offsets, values):
-        try:
-            from statsmodels.tsa.statespace.sarimax import SARIMAX
-        except Exception:
-            plan["order"] = None
-            plan["seasonal_order"] = None
-            return {
-                "model": None,
-                "using_sarimax": False,
-                "last_value": values[-1] if values else 0.0,
-            }
-
         if len(values) < 24:
-            plan["order"] = None
-            plan["seasonal_order"] = None
-            return {
-                "model": None,
-                "using_sarimax": False,
-                "last_value": values[-1] if values else 0.0,
-            }
+            raise ValueError("SARIMA requires at least 24 monthly observations.")
 
-        seasonal = len(values) >= 24
-        m = 12 if seasonal else 1
-        max_d_seasonal = 0 if len(values) < 36 else 1
-
-        y = np.asarray(values, dtype=float)
-        best_aic = float("inf")
-        best_result = None
-        best_order = None
-        best_seasonal_order = None
-        fits = 0
-        max_fits = 16
+        from statsmodels.tsa.statespace.sarimax import SARIMAX
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            for p in (0, 1):
-                for d in (0, 1):
-                    for q in (0, 1):
-                        for P in (0, 1):
-                            seasonal_Ds = (0,) if max_d_seasonal == 0 else (0, 1)
-                            for D in seasonal_Ds:
-                                for Q in (0, 1):
-                                    if fits >= max_fits:
-                                        break
-                                    if not seasonal and (P or D or Q):
-                                        continue
-                                    try:
-                                        model = SARIMAX(
-                                            y,
-                                            order=(p, d, q),
-                                            seasonal_order=(P, D, Q, m),
-                                            enforce_stationarity=False,
-                                            enforce_invertibility=False,
-                                        )
-                                        result = model.fit(disp=False)
-                                        fits += 1
-                                        aic = float(result.aic)
-                                        if aic < best_aic:
-                                            best_aic = aic
-                                            best_result = result
-                                            best_order = (p, d, q)
-                                            best_seasonal_order = (P, D, Q, m)
-                                    except Exception:
-                                        continue
-
-        plan["order"] = list(best_order) if best_order is not None else None
-        plan["seasonal_order"] = list(best_seasonal_order) if best_seasonal_order is not None else None
-
-        if best_result is None:
-            return {
-                "model": None,
-                "using_sarimax": False,
-                "last_value": values[-1] if values else 0.0,
-            }
-
-        return {
-            "model": best_result,
-            "using_sarimax": True,
-            "order": list(best_order),
-            "seasonal_order": list(best_seasonal_order),
-            "aic": best_aic,
-        }
+            model = SARIMAX(
+                np.asarray(values, dtype=float),
+                order=(1, 1, 1),
+                seasonal_order=(1, 1, 1, 12),
+                enforce_stationarity=False,
+                enforce_invertibility=False,
+            ).fit(disp=False)
+        return {"model": model}
 
     def predict_next(state, offsets, values):
-        if not state.get("using_sarimax") or state["model"] is None:
-            return float(state.get("last_value", values[-1] if values else 0.0))
-        try:
-            fc = state["model"].get_forecast(steps=1)
-            return float(fc.predicted_mean[0])
-        except Exception:
-            return float(state.get("last_value", values[-1] if values else 0.0))
+        return float(np.asarray(state["model"].get_forecast(steps=1).predicted_mean)[0])
 
     plan["fit"] = fit
     plan["predict_next"] = predict_next
     return plan
 
 
+def _plan_seasonal_naive():
+    def fit(offsets, values):
+        return {
+            "values": list(values),
+            "last_offset": offsets[-1],
+        }
+
+    def predict_next(state, offsets, values):
+        if len(state["values"]) >= 12:
+            return float(state["values"][-12])
+        return float(state["values"][-1])
+
+    return {"name": "seasonal_naive", "fit": fit, "predict_next": predict_next}
+
+
 _MODEL_PLANS = {
-    "linear_regression": _plan_linear,
-    "random_forest": _plan_random_forest,
     "arima": _plan_arima,
-    "sarimax": _plan_sarimax,
+    "sarima": _plan_sarima,
+    "seasonal_naive": _plan_seasonal_naive,
 }
 
 
@@ -313,16 +193,16 @@ def _metrics(actual, predicted):
 
 
 def _best_model(offsets, values):
-    """Compare the models on a rolling holdout; return (winner_name, metrics, candidate_metrics).
+    """Select ARIMA, SARIMA, or seasonal naive from a rolling holdout.
 
-    candidate_metrics includes the model's orders for SARIMAX (e.g. "order" and
-    "seasonal_order") so they can be stored and reported.
+    Candidate fit failures are recorded in candidate_metrics so another
+    available model can still be selected without hiding the failure.
     """
     n = len(values)
     holdout = max(2, min(6, n // 3))
     train_n = n - holdout
     if train_n < 3:
-        return "linear_regression", None, None
+        return "seasonal_naive", None, None
 
     train_offsets = offsets[:train_n]
     train_values = values[:train_n]
@@ -332,14 +212,22 @@ def _best_model(offsets, values):
     results = {}
     for name, plan_factory in _MODEL_PLANS.items():
         plan = plan_factory()
-        preds = _walk_forecast(plan, train_offsets, train_values, holdout)
-        m = _metrics(test_values, preds)
-        if name == "sarimax":
-            m = dict(m) if m else {}
-            if plan.get("order") is not None:
-                m["order"] = plan["order"]
-            if plan.get("seasonal_order") is not None:
-                m["seasonal_order"] = plan["seasonal_order"]
+        try:
+            preds = _walk_forecast(plan, train_offsets, train_values, holdout)
+            m = _metrics(test_values, preds) or {}
+        except (ImportError, ValueError, RuntimeError, np.linalg.LinAlgError) as exc:
+            m = {
+                "mae": None,
+                "rmse": None,
+                "mape": None,
+                "r2": None,
+                "error": f"Training unavailable: {type(exc).__name__}.",
+            }
+        if name == "arima":
+            m["order"] = [1, 1, 1]
+        elif name == "sarima":
+            m["order"] = [1, 1, 1]
+            m["seasonal_order"] = [1, 1, 1, 12]
         candidate_metrics[name] = m
         results[name] = m
 
@@ -355,148 +243,11 @@ def _best_model(offsets, values):
     return winner, results.get(winner), candidate_metrics
 
 
-# ---------------------------------------------------------------------------
-# Incomplete-tail detection and seasonal anchoring (no hardcoded years).
-# ---------------------------------------------------------------------------
-
-def _detect_incomplete_tail(labels, values):
-    """Return whether the latest in-progress year is under-reported.
-
-    Anchor on the latest fully reported year (a year with at least 10 months of
-    approved records). Flag the tail as incomplete when the latest year's same
-    months fall below 30% of the anchor year's same months.
-
-    Returns (flag, affected_tail_positions) where positions are measured from
-    the end of the series (0 = last month).
-    """
-    if not labels or not values:
-        return False, []
-
-    # Group values by year -> {month: value}
-    year_months = {}
-    for lb, v in zip(labels, values):
-        year = int(lb[:4])
-        month = int(lb[5:7])
-        year_months.setdefault(year, {})[month] = v
-
-    if not year_months:
-        return False, []
-
-    years = sorted(year_months.keys())
-
-    # Anchor: latest year with at least 10 months of data.
-    anchor_year = None
-    for y in reversed(years):
-        if len(year_months[y]) >= 10:
-            anchor_year = y
-            break
-
-    if anchor_year is None:
-        return False, []
-
-    latest_year = years[-1]
-
-    # If the latest year IS the anchor year, it is fully reported.
-    if latest_year == anchor_year:
-        return False, []
-
-    anchor_data = year_months[anchor_year]
-    latest_data = year_months[latest_year]
-    productive_months = {m for m, v in anchor_data.items() if v is not None and v > 0}
-
-    below = []
-    for month, v in latest_data.items():
-        # Missing months (None) are skipped — never treated as zero production.
-        if v is None:
-            continue
-        anchor_val = anchor_data.get(month)
-        if anchor_val is not None and anchor_val > 0 and v < 0.30 * anchor_val:
-            if month in productive_months:
-                below.append(month)
-
-    if not below:
-        return False, []
-
-    positions = [
-        len(labels) - 1 - i
-        for i, lb in enumerate(reversed(labels))
-        if int(lb[:4]) == latest_year
-    ]
-    return True, positions
-
-
-def _seasonal_profile(labels, values, anchor_year):
-    """Per-month-of-year mean volumes for the given anchor year.
-
-    Missing months (None) are excluded.
-    """
-    profile = {}
-    for lb, v in zip(labels, values):
-        if v is None:
-            continue
-        month = int(lb[5:7])
-        year = int(lb[:4])
-        if year != anchor_year:
-            continue
-        profile.setdefault(month, []).append(float(v))
-    if not profile:
-        return None
-    return {m: float(sum(vs)) / len(vs) for m, vs in profile.items()}
-
-
-def _find_anchor_year(labels, values):
-    """Find the latest year with at least 10 months of approved records."""
-    if not labels:
-        return None
-    year_counts = {}
-    for lb in labels:
-        y = int(lb[:4])
-        year_counts[y] = year_counts.get(y, 0) + 1
-    for y in sorted(year_counts.keys(), reverse=True):
-        if year_counts[y] >= 10:
-            return y
-    return None
-
-
-def _forecast_anchored(labels, values, forecast_horizon: int = 12):
-    """Produce a projection anchored to the latest fully reported year's seasonal
-    profile. Falls back to the recent average when no complete year exists.
-
-    Missing months are None (never zeros); they are excluded from averages.
-    """
-    anchor_year = _find_anchor_year(labels, values)
-    note = ""
-    observed = [v for v in values if v is not None]
-    flat_past = sum(observed) / len(observed) if observed else 0.0
-
-    if anchor_year is not None:
-        profile = _seasonal_profile(labels, values, anchor_year)
-        if profile:
-            last_label = labels[-1]
-            preds = []
-            for i in range(1, forecast_horizon + 1):
-                nl = _next_month_label(last_label, i)
-                month = int(nl[5:7])
-                val = profile.get(month, flat_past)
-                preds.append(max(0.0, float(val)))
-            note = (
-                "Recent months appear partially reported (year in progress). "
-                f"Forecast anchored to the {anchor_year} seasonal production pattern."
-            )
-            return preds, note
-
-    preds = [flat_past] * forecast_horizon
-    note = "Forecast anchored to the recent average production level."
-    return preds, note
-
-
 def _non_nan_pairs(offsets: List[int], values: List[Optional[float]]) -> Tuple[List[int], List[float]]:
     """Return (offsets, values) with NaN / None months removed.
 
-    Some models (linear regression, random forest) cannot consume missing
-    months; SARIMAX can handle them internally. Callers that need a fully
-    observed series drop the gaps here so missing months are never treated as
-    zeros.
+    Model fitting uses observed points only, so missing months are never
+    treated as zeros.
     """
     clean_offsets = []
     clean_values = []
@@ -569,14 +320,14 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
     forecast_horizon = max(1, min(36, int(forecast_horizon or 12)))
 
     # Auto history window: last 3 years up to the last month with data.
-    last_ym = _last_month_with_data(municipality_id)
+    last_ym = _last_month_with_data(municipality_id, source="production")
     if last_ym is None:
-        # No approved data at all for this scope.
         run = ForecastRun(
             municipality_id=municipality_id,
             period_start=date.today().replace(day=1),
             period_end=date.today().replace(day=1),
             readiness="not_ready",
+            data_source=PRODUCTION_DATA_SOURCE,
         )
         db.session.add(run)
         db.session.flush()
@@ -588,7 +339,7 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
         run.candidate_metrics = None
         run.model_comparison = None
         run.backtest = None
-        run.note = "No approved production data available for this scope."
+        run.note = "No municipality production data is available for this scope."
         db.session.commit()
         return run
 
@@ -596,19 +347,25 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
     period_end = date(ly, lm, 1)
     period_start = date(ly - 3, lm, 1)
 
-    labels, values, offsets = _monthly_aggregates(municipality_id, period_start, period_end)
+    labels, values, offsets = _monthly_aggregates(
+        municipality_id, period_start, period_end, source="production"
+    )
     # Complete monthly index; missing months are None (never zeros).
     complete_labels, complete_values, complete_offsets = _reindex_complete(
         labels, values, offsets, period_start.isoformat()[:7], last_ym)
 
-    observed = [v for v in complete_values if v is not None]
-    readiness = _readiness(observed)
+    observed_labels = [
+        label for label, value in zip(complete_labels, complete_values)
+        if value is not None
+    ]
+    readiness = _readiness(observed_labels)
 
     run = ForecastRun(
         municipality_id=municipality_id,
         period_start=period_start,
         period_end=period_end,
         readiness=readiness,
+        data_source=PRODUCTION_DATA_SOURCE,
     )
     db.session.add(run)
     db.session.flush()
@@ -625,63 +382,66 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
         run.candidate_metrics = None
         run.model_comparison = None
         run.backtest = None
-        run.note = "Insufficient data to forecast (need at least 6 observed months)."
+        run.note = (
+            "Insufficient municipality production data to forecast "
+            "(need at least 6 observed months)."
+        )
         db.session.commit()
         return run
-
-    incomplete, tail_positions = _detect_incomplete_tail(complete_labels, complete_values)
 
     last_label = complete_labels[-1] if complete_labels else last_ym
     all_labels = complete_labels + [_next_month_label(last_label, i + 1) for i in range(forecast_horizon)]
     note = None
 
-    sarimax_state = None
-    sarimax_lower = None
-    sarimax_upper = None
+    sarima_state = None
+    sarima_lower = None
+    sarima_upper = None
 
     candidate_metrics = None
     winner_metrics = None
     algorithm = "none"
     preds = []
 
-    if incomplete:
-        preds, note = _forecast_anchored(complete_labels, complete_values, forecast_horizon)
-        algorithm = "seasonal_baseline"
-        winner_metrics = None
-    else:
-        winner, winner_metrics, candidate_metrics = _best_model(obs_offsets, obs_values)
-        algorithm = winner
+    winner, winner_metrics, candidate_metrics = _best_model(obs_offsets, obs_values)
+    algorithm = winner
 
-        if algorithm == "sarimax":
-            plan = _MODEL_PLANS["sarimax"]()
-            sarimax_state = plan["fit"](obs_offsets, obs_values)
-            if sarimax_state.get("using_sarimax") and sarimax_state["model"] is not None:
-                try:
-                    fc = sarimax_state["model"].get_forecast(steps=forecast_horizon)
-                    preds = [max(0.0, float(v)) for v in fc.predicted_mean]
-                    conf = fc.conf_int(alpha=0.10)
-                    conf_vals = conf.values if hasattr(conf, "values") else conf
-                    sarimax_lower = [max(0.0, float(row[0])) for row in conf_vals]
-                    sarimax_upper = [max(0.0, float(row[1])) for row in conf_vals]
-                except Exception:
-                    sarimax_state = None
-                    preds = _walk_forecast(
-                        _MODEL_PLANS["linear_regression"](), obs_offsets, obs_values, forecast_horizon
-                    )
-                    algorithm = "linear_regression"
-            else:
-                sarimax_state = None
-                preds = _walk_forecast(
-                    _MODEL_PLANS["linear_regression"](), obs_offsets, obs_values, forecast_horizon
-                )
-                algorithm = "linear_regression"
-        else:
-            plan = _MODEL_PLANS[algorithm]()
-            preds = _walk_forecast(plan, obs_offsets, obs_values, forecast_horizon)
+    if algorithm == "sarima":
+        plan = _MODEL_PLANS["sarima"]()
+        try:
+            sarima_state = plan["fit"](obs_offsets, obs_values)
+            forecast = sarima_state["model"].get_forecast(steps=forecast_horizon)
+            preds = [max(0.0, float(value)) for value in forecast.predicted_mean]
+            confidence = forecast.conf_int(alpha=0.10)
+            confidence_values = (
+                confidence.values if hasattr(confidence, "values") else confidence
+            )
+            sarima_lower = [
+                max(0.0, float(row[0])) for row in confidence_values
+            ]
+            sarima_upper = [
+                max(0.0, float(row[1])) for row in confidence_values
+            ]
+        except (ImportError, ValueError, RuntimeError, np.linalg.LinAlgError) as exc:
+            sarima_state = None
+            algorithm = "seasonal_naive"
+            winner_metrics = (candidate_metrics or {}).get("seasonal_naive")
+            preds = _walk_forecast(
+                _MODEL_PLANS["seasonal_naive"](),
+                obs_offsets,
+                obs_values,
+                forecast_horizon,
+            )
+            note = (
+                "SARIMA fitting failed; seasonal naive was used instead "
+                f"({type(exc).__name__})."
+            )
+    else:
+        plan = _MODEL_PLANS[algorithm]()
+        preds = _walk_forecast(plan, obs_offsets, obs_values, forecast_horizon)
 
     # Backtest (accuracy check) for the chosen model's holdout months.
     backtest = None
-    if not incomplete and winner_metrics is not None:
+    if winner_metrics is not None:
         holdout = max(2, min(6, len(obs_values) // 3))
         if len(obs_values) - holdout >= 3:
             backtest = _backtest(algorithm, obs_offsets, obs_values, holdout)
@@ -701,17 +461,21 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
     history_values = [float(v) if v is not None else None for v in complete_values]
     n_hist = len(complete_labels)
 
-    if sarimax_state is not None and sarimax_lower is not None and sarimax_upper is not None:
-        all_lower = [None] * n_hist + sarimax_lower
-        all_upper = [None] * n_hist + sarimax_upper
+    if sarima_state is not None and sarima_lower is not None and sarima_upper is not None:
+        all_lower = [None] * n_hist + sarima_lower
+        all_upper = [None] * n_hist + sarima_upper
     else:
-        x_full = np.array(obs_offsets, dtype=float).reshape(-1, 1)
         y_full = np.array(obs_values, dtype=float)
-        lin = LinearRegression().fit(x_full, y_full)
-        residuals = y_full - lin.predict(x_full)
+        residuals = np.array([
+            point["actual"] - point["predicted"]
+            for point in (backtest or [])
+            if point.get("actual") is not None
+        ], dtype=float)
         monthly_avg = float(np.mean(y_full)) if len(y_full) else 0.0
         if len(residuals) > 1:
             std_err = float(np.std(residuals, ddof=1))
+        elif len(residuals) == 1:
+            std_err = abs(float(residuals[0]))
         else:
             std_err = float(np.std(y_full)) * 0.5 if len(y_full) else monthly_avg * 0.2
         std_err = max(std_err, monthly_avg * 0.05)
@@ -759,7 +523,7 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
         model_comparison = comparison
 
     run.algorithm = algorithm
-    run.reliability = _reliability(readiness, len(obs_values)) if not incomplete else "moderate"
+    run.reliability = _reliability(readiness, len(obs_values))
     run.trend_direction = trend
     run.expected_change_pct = expected
     run.projected_total = projected
@@ -768,8 +532,12 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
     run.mape = winner_metrics["mape"] if winner_metrics and winner_metrics.get("mape") is not None else None
     run.r2 = winner_metrics["r2"] if winner_metrics and winner_metrics.get("r2") is not None else None
     run.candidate_metrics = candidate_metrics
-    run.note = note if note else None
-    run.incomplete_tail = incomplete
+    source_note = (
+        "Forecast trained on source-labeled municipality monthly production data; "
+        "all monthly values are estimates and the 2026 Jan-Sep series is generated."
+    )
+    run.note = f"{note} {source_note}" if note else source_note
+    run.incomplete_tail = False
     run.backtest = backtest
     db.session.commit()
     return run
@@ -786,26 +554,43 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
     from app.models.municipality import Municipality
     municipalities = Municipality.query.filter_by(status="active").order_by(Municipality.name).all()
 
-    # Collect per-municipality forecasts (reuse latest run if available, else run).
+    # Reuse a forecast only when it covers this source period and requested horizon.
     month_preds: dict = {}   # label -> [values]
     month_lower: dict = {}
     month_upper: dict = {}
-    methods = {}
     any_ready = False
     for m in municipalities:
+        latest_data_month = _last_month_with_data(m.id, source="production")
         latest = (
-            ForecastRun.query.filter_by(municipality_id=m.id)
+            ForecastRun.query.filter_by(
+                municipality_id=m.id,
+                data_source=PRODUCTION_DATA_SOURCE,
+            )
             .order_by(ForecastRun.created_at.desc())
             .first()
         )
-        if latest and latest.points and any(p.is_forecast for p in latest.points):
-            pts = sorted([p for p in latest.points if p.is_forecast], key=lambda p: p.period_label)
-            for p in pts[:forecast_horizon]:
+        latest_points = (
+            sorted(
+                [p for p in latest.points if p.is_forecast],
+                key=lambda p: p.period_label,
+            )
+            if latest and latest.points
+            else []
+        )
+        latest_matches_data = (
+            latest_data_month is not None
+            and latest is not None
+            and latest.period_end.strftime("%Y-%m") == latest_data_month
+        )
+        if (
+            latest_matches_data
+            and len(latest_points) >= forecast_horizon
+        ):
+            for p in latest_points[:forecast_horizon]:
                 month_preds.setdefault(p.period_label, []).append(float(p.predicted_value or 0))
                 if p.lower_bound is not None and p.upper_bound is not None:
-                    month_lower.setdefault(p.period_label, []).append(float(p.upper_bound) - float(p.predicted_value or 0))
+                    month_lower.setdefault(p.period_label, []).append(float(p.predicted_value or 0) - float(p.lower_bound))
                     month_upper.setdefault(p.period_label, []).append(float(p.upper_bound) - float(p.predicted_value or 0))
-            methods[m.id] = latest.algorithm
             if latest.algorithm != "none":
                 any_ready = True
         else:
@@ -814,9 +599,8 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
                 if p.is_forecast:
                     month_preds.setdefault(p.period_label, []).append(float(p.predicted_value or 0))
                     if p.lower_bound is not None and p.upper_bound is not None:
-                        month_lower.setdefault(p.period_label, []).append(float(p.upper_bound) - float(p.predicted_value or 0))
+                        month_lower.setdefault(p.period_label, []).append(float(p.predicted_value or 0) - float(p.lower_bound))
                         month_upper.setdefault(p.period_label, []).append(float(p.upper_bound) - float(p.predicted_value or 0))
-            methods[m.id] = run_m.algorithm
             if run_m.algorithm != "none":
                 any_ready = True
 
@@ -827,6 +611,7 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
             period_start=date.today().replace(day=1),
             period_end=date.today().replace(day=1),
             readiness="not_ready",
+            data_source=PRODUCTION_DATA_SOURCE,
         )
         db.session.add(run)
         db.session.flush()
@@ -838,7 +623,7 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
         run.candidate_metrics = None
         run.model_comparison = None
         run.backtest = None
-        run.note = "No approved production data available for any municipality."
+        run.note = "No municipality production data is available."
         db.session.commit()
         return run
 
@@ -869,7 +654,10 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
     total_weight = 0.0
     for m in municipalities:
         latest_m = (
-            ForecastRun.query.filter_by(municipality_id=m.id)
+            ForecastRun.query.filter_by(
+                municipality_id=m.id,
+                data_source=PRODUCTION_DATA_SOURCE,
+            )
             .order_by(ForecastRun.created_at.desc())
             .first()
         )
@@ -885,6 +673,7 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
         period_start=all_labels[0] and date(int(all_labels[0][:4]), int(all_labels[0][5:7]), 1),
         period_end=date(int(all_labels[-1][:4]), int(all_labels[-1][5:7]), 1),
         readiness="ready" if any_ready else "not_ready",
+        data_source=PRODUCTION_DATA_SOURCE,
     )
     db.session.add(run)
     db.session.flush()
@@ -905,150 +694,13 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
     run.candidate_metrics = None
     run.model_comparison = None
     run.backtest = None
-    run.note = "Province total = sum of municipality forecasts; band = root-sum-square of per-municipality half-widths."
+    run.note = (
+        "Province total is the sum of municipality production forecasts; "
+        "the band is the root-sum-square of per-municipality half-widths. "
+        "Historical municipality production is sourced from the workbook dataset."
+    )
     db.session.commit()
     return run
-
-    incomplete, tail_positions = _detect_incomplete_tail(labels, values)
-
-    last_label = labels[-1] if labels else period_start.isoformat()[:7]
-    all_labels = labels + [_next_month_label(last_label, i + 1) for i in range(forecast_horizon)]
-    note = None
-
-    sarimax_state = None
-    sarimax_lower = None
-    sarimax_upper = None
-
-    if incomplete:
-        # Prior months complete, but the trailing ones collapsed (mid-year
-        # partial reporting). Anchor the projection to the established seasonal
-        # pattern so it does not forecast a false collapse.
-        preds, note = _forecast_anchored(labels, values, forecast_horizon)
-        algorithm = "seasonal_anchor"
-        winner_metrics = None
-        candidate_metrics = None
-    else:
-        winner, winner_metrics, candidate_metrics = _best_model(offsets, values)
-        algorithm = winner
-
-        if algorithm == "sarimax":
-            plan = _MODEL_PLANS["sarimax"]()
-            sarimax_state = plan["fit"](offsets, values)
-            if sarimax_state.get("using_sarimax") and sarimax_state["model"] is not None:
-                try:
-                    fc = sarimax_state["model"].get_forecast(steps=forecast_horizon)
-                    preds = [max(0.0, float(v)) for v in fc.predicted_mean]
-                    conf = fc.conf_int(alpha=0.10)
-                    conf_vals = conf.values if hasattr(conf, "values") else conf
-                    sarimax_lower = [max(0.0, float(row[0])) for row in conf_vals]
-                    sarimax_upper = [max(0.0, float(row[1])) for row in conf_vals]
-                except Exception:
-                    sarimax_state = None
-                    preds = _walk_forecast(
-                        _MODEL_PLANS["linear_regression"](), offsets, values, forecast_horizon
-                    )
-                    algorithm = "linear_regression"
-            else:
-                # SARIMAX could not be fitted; fall back silently to linear.
-                sarimax_state = None
-                preds = _walk_forecast(
-                    _MODEL_PLANS["linear_regression"](), offsets, values, forecast_horizon
-                )
-                algorithm = "linear_regression"
-        else:
-            plan = _MODEL_PLANS[algorithm]()
-            preds = _walk_forecast(plan, offsets, values, forecast_horizon)
-
-    # Trend direction from the winner's fitted linear trend when available.
-    state = None
-    if not incomplete and algorithm == "linear_regression":
-        plan = _MODEL_PLANS["linear_regression"]()
-        state = plan["fit"](offsets, values)
-
-    if algorithm == "linear_regression" and state is not None:
-        slope = float(state["model"].coef_[0])
-        monthly_avg = float(np.mean(values)) if len(values) else 0.0
-        slope_pct = (slope / monthly_avg * 100.0) if monthly_avg != 0 else 0.0
-        trend = _trend_direction(slope_pct)
-    else:
-        # Approximate slope over the observed window end-to-end for labeling.
-        if len(offsets) > 1:
-            diff = offsets[-1] - offsets[0]
-            slope = (values[-1] - values[0]) / diff if diff else 0.0
-            monthly_avg = float(np.mean(values)) if len(values) else 0.0
-            slope_pct = (slope / monthly_avg * 100.0) if monthly_avg != 0 else 0.0
-            trend = _trend_direction(slope_pct)
-        else:
-            trend = "stable"
-
-    # Confidence band.
-    if sarimax_state is not None and sarimax_lower is not None and sarimax_upper is not None:
-        # Use SARIMAX's own confidence interval.
-        all_lower = [None] * len(values) + sarimax_lower
-        all_upper = [None] * len(values) + sarimax_upper
-    else:
-        # Residual-based confidence band from a linear fit over the full history.
-        x_full = np.array(offsets, dtype=float).reshape(-1, 1)
-        y_full = np.array(values, dtype=float)
-        lin = LinearRegression().fit(x_full, y_full)
-        residuals = y_full - lin.predict(x_full)
-        monthly_avg = float(np.mean(y_full)) if len(y_full) else 0.0
-        if len(residuals) > 1:
-            std_err = float(np.std(residuals, ddof=1))
-        else:
-            std_err = float(np.std(y_full)) * 0.5 if len(y_full) else monthly_avg * 0.2
-        std_err = max(std_err, monthly_avg * 0.05)
-
-        all_lower = [None] * len(values) + [max(0.0, float(v) - 1.65 * std_err) for v in preds]
-        all_upper = [None] * len(values) + [max(0.0, float(v) + 1.65 * std_err) for v in preds]
-
-    all_values = list(values) + [max(0.0, float(v)) for v in preds]
-    all_forecast = [False] * len(values) + [True] * forecast_horizon
-
-    for i in range(len(all_labels)):
-        db.session.add(ForecastPoint(
-            run_id=run.id,
-            period_label=all_labels[i],
-            predicted_value=all_values[i],
-            lower_bound=all_lower[i],
-            upper_bound=all_upper[i],
-            is_forecast=all_forecast[i],
-        ))
-
-    expected = _expected_change(values, list(preds))
-    projected = float(sum(preds))
-
-    # Build model_comparison from candidate_metrics.
-    model_comparison = None
-    if candidate_metrics:
-        chosen = algorithm
-        comparison = []
-        for algo, m in candidate_metrics.items():
-            comparison.append({
-                "algorithm": algo,
-                "rmse": m.get("rmse") if isinstance(m, dict) else None,
-                "mae": m.get("mae") if isinstance(m, dict) else None,
-                "mape": m.get("mape") if isinstance(m, dict) else None,
-                "chosen": algo == chosen,
-            })
-        comparison.sort(key=lambda x: x["rmse"] if x["rmse"] is not None else float("inf"))
-        model_comparison = comparison
-
-    run.algorithm = algorithm
-    run.reliability = _reliability(readiness, len(values)) if not incomplete else "moderate"
-    run.trend_direction = trend
-    run.expected_change_pct = expected
-    run.projected_total = projected
-    run.mae = winner_metrics["mae"] if winner_metrics and winner_metrics.get("mae") is not None else None
-    run.rmse = winner_metrics["rmse"] if winner_metrics and winner_metrics.get("rmse") is not None else None
-    run.mape = winner_metrics["mape"] if winner_metrics and winner_metrics.get("mape") is not None else None
-    run.r2 = winner_metrics["r2"] if winner_metrics and winner_metrics.get("r2") is not None else None
-    run.candidate_metrics = candidate_metrics
-    run.note = note if note else None
-    run.incomplete_tail = incomplete
-    db.session.commit()
-    return run
-
 
 def _next_month_label(current_ym: str, offset: int) -> str:
     y, m = int(current_ym[:4]), int(current_ym[5:7])
@@ -1067,7 +719,10 @@ def get_municipality_outlook():
     results = []
     for m in municipalities:
         latest_run = (
-            ForecastRun.query.filter_by(municipality_id=m.id)
+            ForecastRun.query.filter_by(
+                municipality_id=m.id,
+                data_source=PRODUCTION_DATA_SOURCE,
+            )
             .order_by(ForecastRun.created_at.desc())
             .first()
         )
@@ -1083,7 +738,9 @@ def get_municipality_outlook():
                 "last_run_at": latest_run.created_at.isoformat() + "Z" if latest_run.created_at else None,
             })
         else:
-            labels, values, offsets = _monthly_aggregates(m.id, date(2020, 1, 1), date.today())
+            labels, values, offsets = _monthly_aggregates(
+                m.id, date(2020, 1, 1), date.today(), source="production"
+            )
             readiness = _readiness(labels)
             results.append({
                 "municipality_id": m.id,
@@ -1127,7 +784,9 @@ def _derive_seasonal_weights(municipality_id: Optional[int]):
 
     hist_start = date(2020, 1, 1)
     hist_end = date.today()
-    labels, values, _ = _monthly_aggregates(municipality_id, hist_start, hist_end)
+    labels, values, _ = _monthly_aggregates(
+        municipality_id, hist_start, hist_end, source="production"
+    )
 
     if not labels:
         return [w / sum(DEFAULT_WEIGHTS) for w in DEFAULT_WEIGHTS], "default"
@@ -1170,7 +829,9 @@ def _complete_years_with_data(municipality_id: Optional[int] = None) -> List[int
     Same "complete year" convention used for the seasonal weights, so the
     historical share and the monthly target come from the same population.
     """
-    labels, _, _ = _monthly_aggregates(municipality_id, date(2000, 1, 1), date.today())
+    labels, _, _ = _monthly_aggregates(
+        municipality_id, date(2000, 1, 1), date.today(), source="production"
+    )
     counts: dict = {}
     for lb in labels:
         y = int(lb[:4])
@@ -1178,24 +839,20 @@ def _complete_years_with_data(municipality_id: Optional[int] = None) -> List[int
     return sorted(y for y, c in counts.items() if c >= 10)
 
 
-def _approved_production_by_municipality(years: List[int]) -> dict:
-    """Approved production per municipality over the given complete years."""
+def _estimated_production_by_municipality(years: List[int]) -> dict:
+    """Estimated production per municipality over the given complete years."""
     if not years:
         return {}
-    start = date(min(years), 1, 1)
-    end = date(max(years), 12, 31)
     rows = (
         db.session.query(
-            ProductionRecord.municipality_id,
-            func.sum(ProductionRecord.production_volume_mt).label("v"),
+            MunicipalityMonthlyProduction.municipality_id,
+            func.sum(MunicipalityMonthlyProduction.production_kg).label("kg"),
         )
-        .filter(ProductionRecord.status == "approved")
-        .filter(ProductionRecord.record_date >= start)
-        .filter(ProductionRecord.record_date <= end)
-        .group_by(ProductionRecord.municipality_id)
+        .filter(MunicipalityMonthlyProduction.production_year.in_(years))
+        .group_by(MunicipalityMonthlyProduction.municipality_id)
         .all()
     )
-    return {r.municipality_id: float(r.v or 0) for r in rows}
+    return {r.municipality_id: float(r.kg or 0) / 1000.0 for r in rows}
 
 
 def _municipality_target_breakdown(
@@ -1219,6 +876,7 @@ def _municipality_target_breakdown(
     latest_run_id: dict = {}
     for run in (
         ForecastRun.query.filter(ForecastRun.municipality_id.isnot(None))
+        .filter(ForecastRun.data_source == PRODUCTION_DATA_SOURCE)
         .order_by(ForecastRun.created_at.desc())
         .all()
     ):
@@ -1239,7 +897,7 @@ def _municipality_target_breakdown(
 
     # 3) Historical share of approved production over the complete years.
     complete_years = _complete_years_with_data(None)
-    historical = _approved_production_by_municipality(complete_years)
+    historical = _estimated_production_by_municipality(complete_years)
     historical_total = sum(historical.values())
 
     rows = []
@@ -1310,13 +968,19 @@ def evaluate_target(
     forecast_upper = []
     if municipality_id is not None:
         latest_run = (
-            ForecastRun.query.filter_by(municipality_id=municipality_id)
+            ForecastRun.query.filter_by(
+                municipality_id=municipality_id,
+                data_source=PRODUCTION_DATA_SOURCE,
+            )
             .order_by(ForecastRun.created_at.desc())
             .first()
         )
     else:
         latest_run = (
-            ForecastRun.query.filter_by(municipality_id=None)
+            ForecastRun.query.filter_by(
+                municipality_id=None,
+                data_source=PRODUCTION_DATA_SOURCE,
+            )
             .order_by(ForecastRun.created_at.desc())
             .first()
         )
@@ -1451,13 +1115,18 @@ def evaluate_target(
     # The calendar year of the latest approved record for this scope. The
     # year-end projection is the approved records so far plus the forecast for
     # the remaining months of that same year.
-    last_record_month = _last_month_with_data(municipality_id)
+    last_record_month = _last_month_with_data(
+        municipality_id, source="production"
+    )
     evaluation_year = int(last_record_month[:4]) if last_record_month else date.today().year
     months_remaining_in_year = (12 - int(last_record_month[5:7])) if last_record_month else 0
 
-    # Approved records so far in the evaluation year, by month.
+    # Municipality estimates so far in the evaluation year, by month.
     ytd_labels, ytd_values, _ = _monthly_aggregates(
-        municipality_id, date(evaluation_year, 1, 1), date(evaluation_year, 12, 31)
+        municipality_id,
+        date(evaluation_year, 1, 1),
+        date(evaluation_year, 12, 31),
+        source="production",
     )
     ytd_approved = [
         {"month": lb, "total_mt": float(v)} for lb, v in zip(ytd_labels, ytd_values)

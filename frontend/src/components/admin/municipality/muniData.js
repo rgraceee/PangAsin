@@ -75,6 +75,7 @@ export function normaliseProduction(rows) {
     beds: m.total_salt_beds || 0,
     area: m.total_area_sqm || 0,
     records: m.record_count || 0,
+    productionMonths: m.production_month_count || 0,
   }));
 }
 

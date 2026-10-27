@@ -2,7 +2,7 @@
 //       calendar month, with the dry and wet seasons shaded.
 // WHY: a season is a cycle, not 12 separate quantities. The two zones say
 //      what the chart is about before the numbers are even read. Months with
-//      no approved record stay empty - the line breaks, never drawn as zero.
+//      no source row stays empty - the line breaks, never drawn as zero.
 import { useState } from 'react';
 import {
   ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, CartesianGrid,
@@ -68,7 +68,7 @@ export default function ForecastSeasonalityChart({ series, reportingMonth, scope
           {lowest && <ChartChip label={`Lowest: ${lowest.label} at ${fmtMT(lowest.value)} Metric Tons (MT)`} meta />}
         </>
       )}
-      caption="Production concentrates in the dry season (amihan, Nov–May) and collapses through the wet season (habagat, Jun–Oct). Averages use only months with approved records."
+      caption="Production concentrates in the dry season (amihan, Nov–May) and falls through the wet season (habagat, Jun–Oct). Averages use municipality production data."
       className="fc-season-card"
     >
       <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>

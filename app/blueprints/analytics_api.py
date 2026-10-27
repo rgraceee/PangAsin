@@ -7,12 +7,14 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models.production_record import ProductionRecord
+from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.models.forecast import ForecastRun, ForecastPoint
 from app.models.municipality import Municipality
 from app.models.demand_benchmark import DemandBenchmark
 from app.models.producer import Producer
 from app.models.producer_report import ProducerReportEntry
 from app.services.forecast_service import (
+    PRODUCTION_DATA_SOURCE,
     run_forecast,
     run_forecast_all_municipalities,
     get_municipality_outlook,
@@ -130,6 +132,172 @@ def _complete_years(labels):
     return {y for y, c in counts.items() if c >= _COMPLETE_YEAR_MONTHS}
 
 
+def _production_descriptive(municipality_id, months):
+    """Return descriptive history for the source-labeled production dataset."""
+    latest = (
+        MunicipalityMonthlyProduction.query
+        .order_by(
+            MunicipalityMonthlyProduction.production_year.desc(),
+            MunicipalityMonthlyProduction.production_month.desc(),
+        )
+        .first()
+    )
+    if latest is None:
+        return jsonify({
+            "scope": "all_municipalities" if municipality_id is None else municipality_id,
+            "data_source": "municipality_production",
+            "kpis": {"latest_record_month": None},
+            "history": {
+                "months_with_data": 0,
+                "municipalities_with_data": 0,
+                "municipalities_total": Municipality.query.filter_by(status="active").count(),
+                "municipality_months": {},
+            },
+            "monthly_series": [],
+            "seasonal_pattern": [],
+        })
+
+    latest_month = date(latest.production_year, latest.production_month, 1)
+    end = _add_months(latest_month, 1)
+    all_rows_query = MunicipalityMonthlyProduction.query.filter(
+        MunicipalityMonthlyProduction.production_year <= latest.production_year
+    )
+    if municipality_id is not None:
+        all_rows_query = all_rows_query.filter(
+            MunicipalityMonthlyProduction.municipality_id == municipality_id
+        )
+    estimate_rows = all_rows_query.order_by(
+        MunicipalityMonthlyProduction.production_year,
+        MunicipalityMonthlyProduction.production_month,
+    ).all()
+
+    monthly_totals = {}
+    per_municipality = {}
+    municipality_months = {}
+    province_months = set()
+    year_totals = {}
+    for row in estimate_rows:
+        label = f"{row.production_year:04d}-{row.production_month:02d}"
+        value = float(row.production_kg) / 1000.0
+        monthly_totals[label] = monthly_totals.get(label, 0.0) + value
+        per_municipality.setdefault(row.municipality_id, {})[label] = value
+        municipality_months.setdefault(row.municipality_id, set()).add(label)
+        province_months.add(label)
+        year_totals[row.production_year] = year_totals.get(row.production_year, 0.0) + value
+
+    all_labels = sorted(monthly_totals)
+    all_values = [monthly_totals[label] for label in all_labels]
+    complete_years = _complete_years(all_labels)
+    year_month_totals = {
+        year: {month: None for month in range(1, 13)}
+        for year in complete_years
+    }
+    for label, value in zip(all_labels, all_values):
+        year = int(label[:4])
+        month = int(label[5:7])
+        if year in complete_years:
+            existing = year_month_totals[year][month]
+            year_month_totals[year][month] = (
+                value if existing is None else existing + value
+            )
+
+    seasonal_pattern = []
+    for month in range(1, 13):
+        values_for_month = [
+            year_month_totals[year][month]
+            for year in complete_years
+            if year_month_totals[year][month] is not None
+        ]
+        if values_for_month:
+            seasonal_pattern.append({
+                "month": month,
+                "month_name": MONTH_NAMES[month - 1],
+                "avg_mt": round(sum(values_for_month) / len(values_for_month), 3),
+            })
+    yearly_overlay = {
+        str(year): [
+            (
+                round(year_month_totals[year][month], 3)
+                if year_month_totals[year][month] is not None
+                else None
+            )
+            for month in range(1, 13)
+        ]
+        for year in sorted(complete_years)
+    }
+    by_municipality = []
+    grand_total = sum(year_totals.values())
+    municipality_names = {
+        municipality.id: municipality.name
+        for municipality in Municipality.query.filter_by(status="active").all()
+    }
+    for muni_id, series in per_municipality.items():
+        total = sum(series.values())
+        by_municipality.append({
+            "id": muni_id,
+            "name": municipality_names.get(muni_id, "Unknown"),
+            "recorded_mt": round(total, 3),
+            "share_pct": round(total / grand_total * 100, 1) if grand_total else 0.0,
+            "record_count": len(series),
+        })
+    by_municipality.sort(key=lambda row: row["recorded_mt"], reverse=True)
+
+    this_year = latest.production_year
+    last_year = this_year - 1
+    last_year_total = year_totals.get(last_year, 0.0)
+    this_year_total = year_totals.get(this_year, 0.0)
+    yoy_change_pct = (
+        round((this_year_total - last_year_total) / last_year_total * 100, 1)
+        if last_year_total
+        else None
+    )
+    series_start = _month_start_offset(latest_month, -(months - 1))
+    series_rows = [
+        {"month": label, "total_mt": round(value, 3)}
+        for label, value in zip(all_labels, all_values)
+        if series_start <= date(int(label[:4]), int(label[5:7]), 1) < end
+    ]
+    best_month = (
+        max(zip(all_labels, all_values), key=lambda item: item[1])[0]
+        if all_values
+        else None
+    )
+    history = {
+        "months_with_data": len(province_months),
+        "municipalities_with_data": len(municipality_months),
+        "municipalities_total": Municipality.query.filter_by(status="active").count(),
+        "municipality_months": {
+            str(muni_id): len(labels)
+            for muni_id, labels in municipality_months.items()
+        },
+    }
+    return jsonify({
+        "scope": "all_municipalities" if municipality_id is None else municipality_id,
+        "data_source": "municipality_production",
+        "filters": {"months": months, "production_method": None},
+        "kpis": {
+            "total_recorded_mt": round(sum(all_values), 3),
+            "this_year_mt": round(this_year_total, 3),
+            "last_year_mt": round(last_year_total, 3),
+            "yoy_change_pct": yoy_change_pct,
+            "best_month": best_month,
+            "municipalities_reporting": len(by_municipality),
+            "latest_record_month": (
+                f"{latest.production_year:04d}-{latest.production_month:02d}"
+            ),
+        },
+        "history": history,
+        "monthly_series": series_rows,
+        "yearly_overlay": yearly_overlay,
+        "by_municipality": by_municipality,
+        "seasonal_pattern": seasonal_pattern,
+        "producers": [],
+        "methods_share": [],
+        "yield_by_municipality": [],
+        "reporting_grid": [],
+    })
+
+
 # ===========================================================================
 # Descriptive: What our data shows
 # ===========================================================================
@@ -159,6 +327,17 @@ def descriptive():
     months = request.args.get("months", type=int) or 24
     months = max(1, min(120, months))
     production_method = request.args.get("production_method") or None
+    source = request.args.get("source", "approved_records")
+    if source == "municipality_estimates":
+        source = "municipality_production"
+    if source == "municipality_production":
+        if production_method:
+            return jsonify({
+                "error": "Production-method filters are unavailable for this production dataset."
+            }), 400
+        return _production_descriptive(municipality_id, months)
+    if source != "approved_records":
+        return jsonify({"error": "source must be approved_records or municipality_production."}), 400
 
     today = date.today()
     this_year = today.year
@@ -395,6 +574,7 @@ def descriptive():
 
     return jsonify({
         "scope": "all_municipalities" if municipality_id is None else municipality_id,
+        "data_source": "approved_records",
         "filters": {
             "months": months,
             "production_method": production_method,
@@ -476,37 +656,37 @@ def predictive():
     today = date.today()
     # Resolve the requested period.
     period = {"start": None, "end": None, "months": 0, "label": range_opt}
-    last_ym = _last_month_with_data(municipality_id)
+    last_ym = _last_month_with_data(municipality_id, source="production")
     last_data_date = None
     if last_ym:
         last_data_date = date(int(last_ym[:4]), int(last_ym[5:7]), 1)
 
     if range_opt == "this_month":
         period["start"] = date(today.year, today.month, 1)
-        period["end"] = _add_months(period["start"], 1)
+        period["end"] = _add_months(period["start"], 0)
         period["months"] = 1
         period["label"] = "This month"
     elif range_opt == "next_3":
-        base = last_data_date or today
+        base = _add_months(last_data_date, 1) if last_data_date else today
         period["start"] = date(base.year, base.month, 1)
-        period["end"] = _add_months(period["start"], 3)
+        period["end"] = _add_months(period["start"], 2)
         period["months"] = 3
         period["label"] = "Next 3 months"
     elif range_opt == "rest_of_year":
-        base = last_data_date or today
+        base = _add_months(last_data_date, 1) if last_data_date else today
         period["start"] = date(base.year, base.month, 1)
         period["end"] = date(base.year, 12, 31)
-        period["months"] = 12 - base.month + 1
+        period["months"] = max(1, 12 - base.month + 1)
         period["label"] = "Rest of this year"
     elif range_opt == "custom" and start and end:
-        period["start"] = start
-        period["end"] = end
+        period["start"] = date(start.year, start.month, 1)
+        period["end"] = _add_months(date(end.year, end.month, 1), 0)
         period["months"] = (end.year - start.year) * 12 + (end.month - start.month) + 1
         period["label"] = "Custom period"
     else:  # next_12 default
-        base = last_data_date or today
+        base = _add_months(last_data_date, 1) if last_data_date else today
         period["start"] = date(base.year, base.month, 1)
-        period["end"] = _add_months(period["start"], 12)
+        period["end"] = _add_months(period["start"], 11)
         period["months"] = 12
         period["label"] = "Next 12 months"
 
@@ -614,7 +794,10 @@ def predictive():
     muni_list = Municipality.query.filter_by(status="active").order_by(Municipality.name).all()
     for m in muni_list:
         run_m = (
-            ForecastRun.query.filter_by(municipality_id=m.id)
+            ForecastRun.query.filter_by(
+                municipality_id=m.id,
+                data_source=PRODUCTION_DATA_SOURCE,
+            )
             .order_by(ForecastRun.created_at.desc())
             .first()
         )
@@ -710,4 +893,3 @@ def predictive():
         raise ValueError(
             f"Forecast total mismatch: headline={forecast_mt}, muni_sum={muni_fc_sum}"
         )
-

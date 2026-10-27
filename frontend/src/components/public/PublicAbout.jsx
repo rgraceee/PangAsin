@@ -54,9 +54,11 @@ export default function PublicAbout() {
           are validated, benchmarked against demand, and turned into forecasts and targets.
         </p>
         <p className="public-about-body">
-          This dashboard is the Center&rsquo;s public window: approved and aggregated salt production
-          information from the salt-producing municipalities of Pangasinan, presented with the demand
-          benchmarks that give those numbers context.
+          This dashboard is the Center&rsquo;s public window for municipality
+          production and salt-bed data, presented with the demand benchmarks that give them context.
+          This dataset is distinct from approved barangay submissions, which remain preserved in the
+          operational system. The January–September 2026 monthly series is generated from workbook
+          synthesis and is not independently observed.
         </p>
       </div>
 

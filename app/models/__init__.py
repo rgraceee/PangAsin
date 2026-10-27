@@ -8,5 +8,24 @@ from app.models.report import Report
 from app.models.environment_report import EnvironmentReport
 from app.models.producer_report import ProducerReport, ProducerReportEntry
 from app.models.producer import Producer
+from app.models.municipality_production import (
+    MunicipalityMonthlyProduction,
+    MunicipalitySaltBedData,
+)
 
-__all__ = ["Municipality", "Barangay", "User", "ProductionRecord", "ForecastRun", "ForecastPoint", "DemandBenchmark", "Report", "EnvironmentReport", "ProducerReport", "ProducerReportEntry", "Producer"]
+__all__ = [
+    "Municipality",
+    "Barangay",
+    "User",
+    "ProductionRecord",
+    "ForecastRun",
+    "ForecastPoint",
+    "DemandBenchmark",
+    "Report",
+    "EnvironmentReport",
+    "ProducerReport",
+    "ProducerReportEntry",
+    "Producer",
+    "MunicipalityMonthlyProduction",
+    "MunicipalitySaltBedData",
+]

@@ -9,12 +9,14 @@ from app.models.producer_report import ProducerReport, ProducerReportEntry
 from app.models.producer import Producer
 from app.models.barangay import Barangay
 from app.models.municipality import Municipality
+from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.models.user import User
 from app.models.demand_benchmark import DemandBenchmark
 from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from app.services.data_quality import build_data_quality, DATA_QUALITY_RANGES
+from app.services.aggregates import _last_month_with_data
 from app.constants import AGE_BUCKET_FIELDS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
 from app.status_constants import ALLOWED_STATUSES
 from app.utils import _admin_only, _parse_date
@@ -508,6 +510,11 @@ def review_producer_submission(report_id):
 def stats():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
+    production_source = request.args.get("source", "approved_records")
+    if production_source not in ("approved_records", "municipality_production"):
+        return jsonify({
+            "error": "source must be approved_records or municipality_production."
+        }), 400
 
     by_municipality = (
         db.session.query(
@@ -744,8 +751,123 @@ def stats():
         )
     ]
 
+    production_period = None
+    production_includes_synthetic = False
+    if production_source == "municipality_production":
+        production_year_raw = request.args.get("year")
+        production_month_raw = request.args.get("month")
+        try:
+            production_year = int(production_year_raw) if production_year_raw is not None else None
+            production_month = int(production_month_raw) if production_month_raw is not None else None
+        except ValueError:
+            return jsonify({"error": "year and month must be valid integers."}), 400
+        if production_year is not None and not 1 <= production_year <= 9999:
+            return jsonify({"error": "year must be between 1 and 9999."}), 400
+        if production_month is not None and not 1 <= production_month <= 12:
+            return jsonify({"error": "month must be between 1 and 12."}), 400
+
+        production_query = db.session.query(
+            MunicipalityMonthlyProduction.municipality_id,
+            func.sum(MunicipalityMonthlyProduction.production_kg).label("production_kg"),
+            func.count(MunicipalityMonthlyProduction.id).label("month_count"),
+            func.sum(
+                db.case(
+                    (MunicipalityMonthlyProduction.is_synthetic.is_(True), 1),
+                    else_=0,
+                )
+            ).label("synthetic_month_count"),
+            func.min(
+                func.to_char(
+                    func.make_date(
+                        MunicipalityMonthlyProduction.production_year,
+                        MunicipalityMonthlyProduction.production_month,
+                        1,
+                    ),
+                    "YYYY-MM",
+                )
+            ).label("start_month"),
+            func.max(
+                func.to_char(
+                    func.make_date(
+                        MunicipalityMonthlyProduction.production_year,
+                        MunicipalityMonthlyProduction.production_month,
+                        1,
+                    ),
+                    "YYYY-MM",
+                )
+            ).label("end_month"),
+        )
+        if production_year is not None:
+            production_query = production_query.filter(
+                MunicipalityMonthlyProduction.production_year == production_year
+            )
+        if production_month is not None:
+            production_query = production_query.filter(
+                MunicipalityMonthlyProduction.production_month == production_month
+            )
+        production_rows = (
+            production_query
+            .group_by(MunicipalityMonthlyProduction.municipality_id)
+            .all()
+        )
+        production_by_municipality = {
+            row.municipality_id: row for row in production_rows
+        }
+        municipality_stats_by_id = {
+            row["municipality_id"]: row for row in municipality_stats
+        }
+        for municipality in Municipality.query.filter_by(status="active").all():
+            row = production_by_municipality.get(municipality.id)
+            municipality_stat = municipality_stats_by_id.get(municipality.id)
+            if municipality_stat is None:
+                municipality_stat = {
+                    "municipality_id": municipality.id,
+                    "municipality_name": municipality.name,
+                    "record_count": 0,
+                    "total_area_sqm": 0.0,
+                    "total_salt_beds": 0,
+                    "total_registered_producers": 0,
+                    "total_male_producers": 0,
+                    "total_female_producers": 0,
+                    "by_barangay": by_barangay_by_muni.get(municipality.id, []),
+                }
+                municipality_stats.append(municipality_stat)
+            municipality_stat["total_volume_mt"] = (
+                float(row.production_kg or 0) / 1000.0 if row else 0.0
+            )
+            municipality_stat["production_month_count"] = (
+                int(row.month_count) if row else 0
+            )
+            municipality_stat["synthetic_month_count"] = (
+                int(row.synthetic_month_count or 0) if row else 0
+            )
+        total_volume = sum(
+            float(row.production_kg or 0) / 1000.0
+            for row in production_rows
+        )
+        total_production_month_count = sum(
+            int(row.month_count) for row in production_rows
+        )
+        total_synthetic_month_count = sum(
+            int(row.synthetic_month_count or 0) for row in production_rows
+        )
+        if production_rows:
+            production_period = {
+                "start": min(row.start_month for row in production_rows),
+                "end": max(row.end_month for row in production_rows),
+            }
+        production_includes_synthetic = total_synthetic_month_count > 0
+    else:
+        total_production_month_count = 0
+        total_synthetic_month_count = 0
+
     return jsonify({
         "total_volume_mt": float(total_volume),
+        "production_data_source": production_source,
+        "production_period": production_period,
+        "production_includes_synthetic": production_includes_synthetic,
+        "production_month_count": total_production_month_count,
+        "synthetic_month_count": total_synthetic_month_count,
         "total_area_sqm": float(total_area or 0),
         "record_count": total_records,
         "total_salt_beds": int(total_beds or 0),
@@ -834,18 +956,37 @@ def supply_demand():
     provincial = DemandBenchmark.query.filter_by(geographic_scope="provincial").order_by(DemandBenchmark.year.desc()).first()
     national = DemandBenchmark.query.filter_by(geographic_scope="national").order_by(DemandBenchmark.year.desc()).first()
 
-    pangasinan_local_mt = (
-        db.session.query(func.sum(ProductionRecord.production_volume_mt))
-        .filter(ProductionRecord.status == "approved")
-        .scalar()
-        or 0
+    latest_production_month = _last_month_with_data(
+        None, source="production"
     )
-    local_production_mt = round(float(pangasinan_local_mt), 3)
+    local_supply_period = None
+    local_production_mt = None
+    if latest_production_month:
+        months = _month_block(latest_production_month, 12)
+        _, monthly_totals = _production_month_totals(months)
+        local_production_mt = round(sum(monthly_totals.values()), 3)
+        start_year = int(months[0][:4])
+        end_year = int(months[-1][:4])
+        synthetic_months = {
+            f"{row.production_year:04d}-{row.production_month:02d}"
+            for row in MunicipalityMonthlyProduction.query.filter(
+                MunicipalityMonthlyProduction.is_synthetic.is_(True),
+                MunicipalityMonthlyProduction.production_year >= start_year,
+                MunicipalityMonthlyProduction.production_year <= end_year,
+            ).all()
+        }
+        local_supply_period = {
+            "start": months[0],
+            "end": months[-1],
+            "includes_synthetic": any(month in synthetic_months for month in months),
+        }
 
     pangasinan = {
         "year": provincial.year if provincial else datetime.utcnow().year,
         "demand_volume": float(provincial.demand_volume) if provincial else None,
-        "local_production": local_production_mt if local_production_mt > 0 else (float(provincial.local_production) if provincial and provincial.local_production else None),
+        "local_production": local_production_mt,
+        "local_supply_period": local_supply_period,
+        "data_source": "municipality_production",
         "import_volume": float(provincial.import_volume) if provincial and provincial.import_volume is not None else None,
         "source_name": provincial.source_name if provincial else None,
     }
@@ -871,6 +1012,30 @@ def supply_demand():
 def admin_months():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
+    source = request.args.get("source", "approved_records")
+    if source == "municipality_production":
+        rows = (
+            db.session.query(
+                MunicipalityMonthlyProduction.production_year,
+                MunicipalityMonthlyProduction.production_month,
+            )
+            .distinct()
+            .order_by(
+                MunicipalityMonthlyProduction.production_year,
+                MunicipalityMonthlyProduction.production_month,
+            )
+            .all()
+        )
+        return jsonify({
+            "months": [
+                f"{row.production_year:04d}-{row.production_month:02d}"
+                for row in rows
+            ]
+        })
+    if source != "approved_records":
+        return jsonify({
+            "error": "source must be approved_records or municipality_production."
+        }), 400
     rows = (
         db.session.query(
             func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
@@ -958,10 +1123,25 @@ def _approved_month_totals(months, production_method=None):
     return per_muni, province
 
 
+def _production_month_totals(months):
+    """Municipality production data grouped by month and municipality."""
+    requested = set(months)
+    per_municipality = {}
+    province = {}
+    for row in MunicipalityMonthlyProduction.query.all():
+        label = f"{row.production_year:04d}-{row.production_month:02d}"
+        if label not in requested:
+            continue
+        value = float(row.production_kg) / 1000.0
+        per_municipality.setdefault(row.municipality_id, {})[label] = value
+        province[label] = province.get(label, 0.0) + value
+    return per_municipality, province
+
+
 @admin_api_bp.route("/trends", methods=["GET"])
 @login_required
 def trends():
-    """Year-over-year comparison of approved production records.
+    """Year-over-year comparison of approved records or municipality production data.
 
     Compares TWO COMPLETE 12-month calendar blocks: the 12 months ending on
     the latest month that has approved records ("current") and the 12 months
@@ -979,14 +1159,44 @@ def trends():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
 
+    source = request.args.get("source", "approved_records")
+    if source == "municipality_estimates":
+        source = "municipality_production"
     production_method = request.args.get("production_method") or None
-    latest = (
-        db.session.query(func.max(ProductionRecord.record_date))
-        .filter(ProductionRecord.status == "approved")
-        .scalar()
-    )
-    if latest is None:
-        return jsonify({"trend": [], "municipalities": [], "period": None, "totals": None})
+    if source not in ("approved_records", "municipality_production"):
+        return jsonify({"error": "source must be approved_records or municipality_production."}), 400
+    if source == "municipality_production" and production_method:
+        return jsonify({
+            "error": "Production-method filters are unavailable for this production dataset."
+        }), 400
+
+    if source == "municipality_production":
+        latest = MunicipalityMonthlyProduction.query.order_by(
+            MunicipalityMonthlyProduction.production_year.desc(),
+            MunicipalityMonthlyProduction.production_month.desc(),
+        ).first()
+        latest_month = (
+            f"{latest.production_year:04d}-{latest.production_month:02d}"
+            if latest
+            else None
+        )
+    else:
+        latest = (
+            db.session.query(func.max(ProductionRecord.record_date))
+            .filter(ProductionRecord.status == "approved")
+            .scalar()
+        )
+        latest_month = (
+            f"{latest.year:04d}-{latest.month:02d}" if latest else None
+        )
+    if latest_month is None:
+        return jsonify({
+            "trend": [],
+            "municipalities": [],
+            "period": None,
+            "totals": None,
+            "data_source": source,
+        })
 
     anchor = request.args.get("month")
     if anchor:
@@ -996,13 +1206,15 @@ def trends():
             return jsonify({"error": "month must be in YYYY-MM format."}), 400
         anchor_ym = anchor
     else:
-        anchor_ym = f"{latest.year:04d}-{latest.month:02d}"
+        anchor_ym = latest_month
 
     current_months = _month_block(anchor_ym, 12)
     previous_months = _month_block(_shift_month(current_months[0], -1), 12)
-    per_muni, province = _approved_month_totals(
-        sorted(set(current_months + previous_months)), production_method
-    )
+    months = sorted(set(current_months + previous_months))
+    if source == "municipality_production":
+        per_muni, province = _production_month_totals(months)
+    else:
+        per_muni, province = _approved_month_totals(months, production_method)
 
     municipalities = []
     for m in Municipality.query.filter_by(status="active").order_by(Municipality.name).all():
@@ -1042,6 +1254,7 @@ def trends():
     ]
 
     return jsonify({
+        "data_source": source,
         "trend": trend,
         "municipalities": municipalities,
         "totals": totals,

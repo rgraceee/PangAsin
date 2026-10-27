@@ -101,7 +101,7 @@ export const LABELS = {
   forecastMethod: {
     label: "Forecast method",
     unit: null,
-    defn: "The model used to produce the forecast (Linear Regression, Random Forest, ARIMA, SARIMAX, Seasonal baseline, or Not forecast).",
+    defn: "The selected forecast candidate (ARIMA, SARIMA, seasonal naive, or not forecast).",
     scope: "kpi",
   },
   rangeLowMt: {
@@ -202,7 +202,8 @@ export const FORECAST_METHOD_NAMES = {
   linear_regression: "Linear Regression",
   random_forest: "Random Forest",
   arima: "ARIMA",
-  sarimax: "SARIMAX",
+  sarima: "SARIMA",
+  sarimax: "SARIMA",
   seasonal_anchor: "Seasonal baseline (last complete year)",
   seasonal_baseline: "Seasonal baseline (last complete year)",
   none: "Not forecast (insufficient data)",
@@ -212,7 +213,8 @@ export const FORECAST_METHOD_ACRONYMS = {
   linear_regression: "Linear Regression",
   random_forest: "Random Forest",
   arima: "ARIMA",
-  sarimax: "SARIMAX",
+  sarima: "SARIMA",
+  sarimax: "SARIMA",
 };
 
 export const DATA_SUFFICIENCY = {

@@ -109,7 +109,7 @@ LABELS = {
     "forecast_method": {
         "label": "Forecast method",
         "unit": None,
-        "defn": "The model used to produce the forecast (Linear Regression, Random Forest, ARIMA, SARIMAX, Seasonal baseline, or Not forecast).",
+        "defn": "The selected forecast candidate (ARIMA, SARIMA, seasonal naive, or not forecast).",
         "scope": "kpi",
     },
     "range_low_mt": {
@@ -213,7 +213,8 @@ FORECAST_METHOD_NAMES = {
     "linear_regression": "Linear Regression",
     "random_forest": "Random Forest",
     "arima": "ARIMA",
-    "sarimax": "SARIMAX",
+    "sarima": "SARIMA",
+    "sarimax": "SARIMA",
     "seasonal_anchor": "Seasonal baseline (last complete year)",
     "seasonal_baseline": "Seasonal baseline (last complete year)",
     "none": "Not forecast (insufficient data)",
@@ -224,7 +225,8 @@ FORECAST_METHOD_ACRONYMS = {
     "linear_regression": "Linear Regression",
     "random_forest": "Random Forest",
     "arima": "ARIMA",
-    "sarimax": "SARIMAX",
+    "sarima": "SARIMA",
+    "sarimax": "SARIMA",
 }
 
 # ---------------------------------------------------------------------------

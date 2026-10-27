@@ -51,7 +51,10 @@ export function getSupplyDemand(scope) {
     labels: ['Pangasinan Supply', 'Demand Benchmark'],
     values: [pa.localSupply || 0, pa.demandBenchmark || 0],
     unit: 'Metric Tons (MT)',
-    note: 'Compiled from database demand benchmarks',
+    period: pa.localSupplyPeriod || null,
+    note: pa.localSupplyPeriod
+      ? `Workbook-derived production data for ${pa.localSupplyPeriod.start} through ${pa.localSupplyPeriod.end}; compared with an annual demand benchmark.`
+      : 'No municipality production period is available.',
   };
 }
 
@@ -139,8 +142,9 @@ export function getEncoderMonths() {
   return api('/encoder/months');
 }
 
-export function getAdminMonths() {
-  return api('/admin/months');
+export function getAdminMonths(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/months${qs ? `?${qs}` : ''}`);
 }
 
 export function getRecords(params = {}) {
@@ -217,8 +221,9 @@ export function reviewAdminProducerReport(id, payload) {
   return api(`/admin/producer-reports/${id}/review`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
-export function getAdminStats() {
-  return api('/admin/stats');
+export function getAdminStats(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/stats${qs ? `?${qs}` : ''}`);
 }
 
 export function getDataQuality(params = {}) {
