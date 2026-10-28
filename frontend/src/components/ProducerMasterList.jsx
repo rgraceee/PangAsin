@@ -5,6 +5,7 @@ import { CalendarDays, Clock, Pencil, Plus, Search, Trash2, Users, ContactRound 
 import { createProducer, deleteProducer, getEncoderProducerReports, getProducers, updateProducer } from '../services/dataService';
 import { confirmDelete } from '../services/feedback';
 import { useToast } from './Toast';
+import { SkeletonList } from './Skeleton';
 import KpiCard from './ui/KpiCard';
 import KpiGrid from './ui/KpiGrid';
 import PageHeader from './admin/PageHeader';
@@ -313,7 +314,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           </Card.Header>
           <Card.Body className="p-0">
             {pendingLoading ? (
-              <div className="text-center py-4"><Spinner animation="border" size="sm" /></div>
+              <div className="text-center py-4"><SkeletonList rows={3} cols={6} /></div>
             ) : (
               <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
                 <thead><tr><th>Salt Farmer</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Status</th><th>Submitted</th></tr></thead>
@@ -356,7 +357,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
            </div>
         </Card.Header>
         <Card.Body className="p-0">
-          {loading ? <div className="text-center py-5"><Spinner animation="border" size="sm" /></div> : visibleRows.length === 0 ? (
+          {loading ? <div className="text-center py-4"><SkeletonList rows={6} cols={adminView ? 6 : 7} /></div> : visibleRows.length === 0 ? (
             <div className="chart-empty py-5">
               {adminView ? 'No salt farmers match the current filters.' : 'No salt farmers match the selected filters.'}
             </div>

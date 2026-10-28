@@ -2,7 +2,7 @@ import { useId } from 'react';
 
 export default function PageHeader({
   id, title, subtitle, children, action, actions, variant = 'main', eyebrow,
-  art, filter, compact = false, status, stat, className = '',
+  art, filter, compact = false, status, stat, className = '', icon: Icon,
 }) {
   const rawId = useId();
   const dotId = `ph-dots-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -17,9 +17,17 @@ export default function PageHeader({
   if (variant === 'section') {
     return (
       <header className="ui-section" id={id}>
-        <h2 className="ui-section-title">{title}</h2>
-        {subtitle ? <p className="ui-section-sub">{subtitle}</p> : null}
-        <div className="ui-section-rule" aria-hidden="true" />
+        <div className="ui-section-head">
+          {Icon ? (
+            <span className="ui-section-icon" aria-hidden="true">
+              <Icon size={20} strokeWidth={2} />
+            </span>
+          ) : null}
+          <div className="ui-section-copy">
+            <h2 className="ui-section-title">{title}</h2>
+            {subtitle ? <p className="ui-section-sub">{subtitle}</p> : null}
+          </div>
+        </div>
       </header>
     );
   }

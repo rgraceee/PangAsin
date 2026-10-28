@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Badge, Card, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Card, Table } from 'react-bootstrap';
 import { useOutletContext } from 'react-router-dom';
 import { Clock, Layers, Leaf, MapPin, Plus } from 'lucide-react';
 import {
@@ -9,6 +9,7 @@ import {
 } from '../../services/dataService';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
+import { SkeletonList } from '../Skeleton';
 import PageHeader from '../admin/PageHeader';
 import MunicipalityMapArt from './MunicipalityMapArt';
 import ReportImportActions from './ReportImportActions';
@@ -252,7 +253,7 @@ export default function EnvironmentRecordsPage() {
         <Card.Body className="p-0">
           {error && <Alert variant="danger" className="m-3">{error}</Alert>}
           {loading ? (
-            <div className="d-flex justify-content-center py-5"><Spinner animation="border" size="sm" /></div>
+            <div className="text-center py-4"><SkeletonList rows={6} cols={7} /></div>
           ) : filtered.length === 0 ? (
             <div className="chart-empty py-5">
               {hasFilter

@@ -13,6 +13,7 @@ import {
 } from '../../ui/chartTheme';
 import MuniCard, { MuniChip } from './MuniCard';
 import { TrendTooltip } from './muniTooltips';
+import { SkeletonChart } from '../../Skeleton';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const RANGES = [
@@ -102,9 +103,8 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
       </div>
 
       {state.loading ? (
-        <div className="muni-empty">
-          <span className="muni-empty-chip">Loading</span>
-          Loading the monthly trend…
+        <div className="muni-chart muni-chart--trend">
+          <SkeletonChart height="100%" />
         </div>
       ) : state.error ? (
         <div className="muni-empty">

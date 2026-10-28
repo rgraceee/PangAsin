@@ -181,6 +181,10 @@ export function getAdminMunicipalities() {
   return api('/admin/municipalities');
 }
 
+export function getAdminBarangays() {
+  return api('/admin/barangays');
+}
+
 export function getAdminUsers(params = {}) {
   const qs = new URLSearchParams(params).toString();
   return api(`/admin/users${qs ? `?${qs}` : ''}`);

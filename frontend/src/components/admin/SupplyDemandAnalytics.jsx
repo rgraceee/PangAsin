@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Row, Col, Card, Alert } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
-import { Boxes, Target, Percent, Info } from 'lucide-react';
+import { Boxes, Target, Percent, Info, Scale } from 'lucide-react';
 import { getAdminSupplyDemand } from '../../services/dataService';
 import { BRAND, STATUS } from '../../theme/colors';
 import KpiCard from '../ui/KpiCard';
@@ -126,6 +126,7 @@ export default function SupplyDemandAnalytics() {
       <PageHeader
         id="admin-supply-demand"
         variant="section"
+        icon={Scale}
         title="Supply &amp; Demand Analytics"
         subtitle="Domestic salt supply compared with demand benchmarks."
       />
@@ -159,12 +160,6 @@ export default function SupplyDemandAnalytics() {
           supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} Metric Tons (MT)`}
         />
       </KpiGrid>
-
-      {gap < 0 && (
-        <Alert variant="warning" className="mb-3">
-          Local supply is below the demand benchmark. Additional production or imports may be needed to meet demand.
-        </Alert>
-      )}
 
       <Row className="g-3">
         <Col lg={6}>

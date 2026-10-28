@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import {
-  getAdminRecords, getAdminRecord, getAdminMunicipalities, reviewAdminRecord,
+  getAdminRecords, getAdminRecord, getAdminMunicipalities, getAdminBarangays, reviewAdminRecord,
   getAdminEnvironmentReports, reviewAdminEnvironmentReport,
   getAdminProducerReports, reviewAdminProducerReport,
 } from '../../services/dataService';
@@ -35,13 +35,11 @@ export default function ValidationQueue() {
   const [records, setRecords] = useState([]);
   const [reportType, setReportType] = useState('production');
   const [munis, setMunis] = useState([]);
+  const [barangays, setBarangays] = useState([]);
   const [filters, setFilters] = useState({
     municipality_id: '',
     barangay_id: '',
     status: 'pending',
-    q: '',
-    start: '',
-    end: '',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,11 +66,12 @@ export default function ValidationQueue() {
     const params = {};
     if (f.status) params.status = f.status;
     if (f.municipality_id) params.municipality_id = f.municipality_id;
+    if (f.barangay_id) params.barangay_id = f.barangay_id;
     const request = type === 'environment'
       ? getAdminEnvironmentReports(params).then((r) => r.reports || [])
       : type === 'producer'
         ? getAdminProducerReports(params).then((r) => r.reports || [])
-        : getAdminRecords({ ...params, q: f.q, start: f.start, end: f.end }).then((r) => r.records || []);
+        : getAdminRecords(params).then((r) => r.records || []);
     request
       .then((rows) => { setRecords(rows); setLoading(false); })
       .catch((err) => { setError(err.message); setLoading(false); });
@@ -80,6 +79,7 @@ export default function ValidationQueue() {
 
   useEffect(() => {
     getAdminMunicipalities().then((res) => setMunis(res.municipalities || [])).catch(() => {});
+    getAdminBarangays().then((res) => setBarangays(res.barangays || [])).catch(() => {});
   }, []);
 
   useEffect(() => { load(filters, reportType); }, [filters, load, reportType]);
@@ -114,9 +114,50 @@ export default function ValidationQueue() {
     }
   }, [someSelected, allSelected]);
 
-  const handleFilter = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
+  /* WHAT: Barangay options follow the selected municipality.
+     WHY: keeps the dropdown short and prevents cross-municipality choices. */
+  const barangayOptions = useMemo(
+    () => (filters.municipality_id
+      ? barangays.filter((b) => String(b.municipality_id) === String(filters.municipality_id))
+      : []),
+    [barangays, filters.municipality_id],
+  );
+
+  const handleFilter = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+      // WHAT: Changing municipality invalidates the old barangay.
+      ...(name === 'municipality_id' ? { barangay_id: '' } : {}),
+    }));
+  };
+
+  /* WHAT: Keep a value across tabs unless the new tab cannot use it.
+     WHY: only the invalid value resets; the rest of the filter state survives. */
+  const handleTabChange = (type) => {
+    if (type === reportType) return;
+    setReportType(type);
+    setFilters((prev) => {
+      const next = { ...prev };
+      if (next.municipality_id && !munis.some((m) => String(m.id) === String(next.municipality_id))) {
+        next.municipality_id = '';
+      }
+      const allowedBarangays = barangays.filter(
+        (b) => String(b.municipality_id) === String(next.municipality_id),
+      );
+      if (next.barangay_id && !allowedBarangays.some((b) => String(b.id) === String(next.barangay_id))) {
+        next.barangay_id = '';
+      }
+      if (next.status && !STATUS_OPTIONS.includes(next.status)) {
+        next.status = '';
+      }
+      return next;
+    });
+  };
+
   const handleClear = () => setFilters({
-    municipality_id: '', barangay_id: '', status: 'pending', q: '', start: '', end: '',
+    municipality_id: '', barangay_id: '', status: 'pending',
   });
 
   const toggleRow = (id) => {
@@ -223,7 +264,7 @@ export default function ValidationQueue() {
   };
 
   const hasFilter = Boolean(
-    filters.municipality_id || filters.q || filters.start || filters.end || (filters.status && filters.status !== 'pending')
+    filters.municipality_id || filters.barangay_id || filters.status !== 'pending'
   );
   const reportTypeLabel = REPORT_TYPE_LABELS[reportType] || reportType;
 
@@ -339,7 +380,7 @@ export default function ValidationQueue() {
                 type="button"
                 className={`ui-btn-${reportType === type ? 'primary' : 'outline'}`}
                 aria-pressed={reportType === type}
-                onClick={() => setReportType(type)}
+                onClick={() => handleTabChange(type)}
               >
                 {REPORT_TYPE_LABELS[type] || type}
               </button>
@@ -364,18 +405,20 @@ export default function ValidationQueue() {
             {munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
-        {reportType === 'production' && <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="vq-q">Barangay</label>
-          <input id="vq-q" type="text" className="form-control admin-page-hero-input" name="q" placeholder="Search barangay…" value={filters.q} onChange={handleFilter} />
-        </div>}
-        {reportType === 'production' && <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="vq-start">Start date</label>
-          <input id="vq-start" type="date" className="form-control admin-page-hero-input" name="start" value={filters.start} onChange={handleFilter} />
-        </div>}
-        {reportType === 'production' && <div className="admin-page-hero-control">
-          <label className="admin-page-hero-field" htmlFor="vq-end">End date</label>
-          <input id="vq-end" type="date" className="form-control admin-page-hero-input" name="end" value={filters.end} onChange={handleFilter} />
-        </div>}
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="vq-barangay">Barangay</label>
+          <select
+            id="vq-barangay"
+            className="form-select admin-page-hero-select"
+            name="barangay_id"
+            value={filters.barangay_id}
+            onChange={handleFilter}
+            disabled={!filters.municipality_id}
+          >
+            <option value="">{filters.municipality_id ? 'All' : 'Select municipality first'}</option>
+            {barangayOptions.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
       </PageHeader>
 
       <Card className="encoder-card admin-card">

@@ -136,8 +136,9 @@
   margin: 0 0 0.75rem;
   font-size: 14.5px;
   line-height: 1.65;
+  text-align: left;
   color: var(--p-ink);
-  max-width: 62ch;
+  max-width: 65ch;
 }
 
 .public-intro-body:last-child {
@@ -207,6 +208,13 @@
   line-height: 1.35;
 }
 
+.public-fact-updated {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- About the ASIN Center + Mandate ---------- */
 .public-about {
   display: grid;
@@ -246,6 +254,7 @@
   margin: 0 0 0.85rem;
   font-size: 14px;
   line-height: 1.65;
+  text-align: left;
   color: var(--p-ink);
   max-width: none;
 }

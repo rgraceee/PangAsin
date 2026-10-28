@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
 import { Filter, RotateCcw, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { SkeletonBlock } from '../../Skeleton';
 
 const PERIODS = [
   { value: '6', label: '6 months' },
@@ -32,7 +33,7 @@ function findScrollParent(el) {
 
 /* Plain-English "how old is this data" label. */
 export function formatUpdated(timestamp) {
-  if (!timestamp) return 'Loading\u2026';
+  if (!timestamp) return '';
   const minutes = Math.floor((Date.now() - timestamp) / 60000);
   if (minutes < 1) return 'Updated just now';
   if (minutes < 60) return `Updated ${minutes} min ago`;
@@ -138,7 +139,9 @@ export default function ForecastFilters({
             >
               <RefreshCw size={14} strokeWidth={1.75} />
             </button>
-            <span className="fc-filterbar-updated">{updatedLabel}</span>
+            {lastUpdated
+              ? <span className="fc-filterbar-updated">{updatedLabel}</span>
+              : <SkeletonBlock className="fc-filterbar-updated" width={120} height={11} />}
           </div>
         </div>
       </div>

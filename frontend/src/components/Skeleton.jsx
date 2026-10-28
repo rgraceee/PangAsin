@@ -67,7 +67,7 @@ export function SkeletonChart({ height = 260 }) {
         {Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton-chart-line" />)}
       </div>
       <div className="skeleton-chart-bars">
-        {Array.from({ length: 10 }).map((_, i) => <div key={i} className="skeleton-chart-bar" style={{ height: `${28 + ((i * 17) % 55)}%` }} />)}
+        {Array.from({ length: 10 }).map((_, i) => <div key={i} className="skeleton skeleton-chart-bar" style={{ height: `${28 + ((i * 17) % 55)}%` }} />)}
       </div>
     </div>
   );

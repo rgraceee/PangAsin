@@ -3,13 +3,13 @@
 //      list actually contain - every panel states its scope and its source, and
 //      the scope follows the municipality selector above it.
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { Alert, Col, Row } from 'react-bootstrap';
-import { Users, Building2, Layers, MapPin, Info } from 'lucide-react';
+import { Users, ContactRound, Boxes, Building2 } from 'lucide-react';
 import { getAdminStats } from '../../../services/dataService';
 import KpiCard from '../../ui/KpiCard';
 import KpiGrid from '../../ui/KpiGrid';
 import PageHeader from '../PageHeader';
+import DashboardFilters, { useDashboardFilters } from '../DashboardFilters';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../../Skeleton';
 import MuniRegisteredChart from './MuniRegisteredChart';
 import MuniMethodChart from './MuniMethodChart';
@@ -19,7 +19,7 @@ import MuniMonthlyTrendChart from './MuniMonthlyTrendChart';
 
 import MuniDetailsTable from './MuniDetailsTable';
 import {
-  scopeRows, normaliseProduction, normaliseMasterList, normaliseMethods, fmtInt,
+  scopeRows, normaliseProduction, normaliseMasterList, normaliseMethods, fmtInt, fmtMT,
 } from './muniData';
 import {
   buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows,
@@ -29,14 +29,34 @@ export default function MunicipalityAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchParams] = useSearchParams();
-  const selectedMuni = searchParams.get('muni') || '';
+  const { selectedMuni, selMonth, selYear, mode, rangeStart, rangeEnd } = useDashboardFilters();
 
   useEffect(() => {
-    getAdminStats({ source: 'municipality_production' })
-      .then((stats) => { setData(stats); setLoading(false); })
-      .catch((err) => { setError(err.message); setLoading(false); });
-  }, []);
+    let active = true;
+    setError(null);
+    const params = { source: 'municipality_production' };
+    if (mode === 'range') {
+      if (rangeStart && rangeEnd) {
+        params.start = rangeStart;
+        params.end = rangeEnd;
+      }
+    } else {
+      params.year = selYear;
+      if (selMonth) params.month = Number(selMonth);
+    }
+    getAdminStats(params)
+      .then((stats) => {
+        if (!active) return;
+        setData(stats);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err.message);
+        setLoading(false);
+      });
+    return () => { active = false; };
+  }, [mode, rangeStart, rangeEnd, selYear, selMonth]);
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -55,9 +75,7 @@ export default function MunicipalityAnalytics() {
       method: buildMethodRows(methodScope),
       profile: buildProfile(masterScope),
       tableRows: buildTableRows(scope, masterList),
-      productionMunicipalityCount: scope.filter((m) => m.productionMonths > 0).length,
-      totalBeds: scope.reduce((sum, m) => sum + (m.beds || 0), 0),
-      totalArea: scope.reduce((sum, m) => sum + (m.area || 0), 0),
+      totalProduction: scope.reduce((sum, m) => sum + (m.volumeMT || 0), 0),
     };
   }, [data, selectedMuni]);
 
@@ -72,7 +90,7 @@ export default function MunicipalityAnalytics() {
       <div className="skeleton-dashboard">
         <SkeletonBlock width="45%" height={24} />
         <SkeletonBlock width="70%" height={13} />
-        <div className="mt-4"><SkeletonCards count={4} /></div>
+        <div className="mt-4"><SkeletonCards count={3} /></div>
         <div className="row g-3 mt-1">
           <div className="col-lg-8"><div className="skeleton-card"><SkeletonChart height={300} /></div></div>
           <div className="col-lg-4"><div className="skeleton-card"><SkeletonChart height={240} /></div></div>
@@ -84,26 +102,32 @@ export default function MunicipalityAnalytics() {
   if (!view) return null;
 
   const topProducer = view.registeredRows[0];
+  const gender = view.profile.sex.reduce((acc, row) => {
+    acc[row.key] = row.value;
+    return acc;
+  }, {});
 
   return (
     <div className="muni-page">
       <PageHeader
         id="admin-municipality"
         variant="section"
+        icon={Building2}
         title="Municipality Analytics"
         subtitle={`Municipality production data and salt farmer details for ${view.scopeLabel}.`}
       />
 
-      <div className="muni-scope-bar">
-        <span className="muni-scope-chip">Scope: {view.scopeLabel}</span>
-        <span className="muni-scope-note">
-          <Info size={12} strokeWidth={2} aria-hidden="true" />
-          Production volume uses estimates from Adjusted_Estimates.xlsx. Salt farmers come from the master list;
-          beds, area, and methods remain from approved operational reports.
-        </span>
-      </div>
+      <DashboardFilters className="mb-3" />
 
-      <KpiGrid columns={4} className="muni-kpi-strip">
+      <KpiGrid columns={3} className="muni-kpi-strip">
+        <KpiCard
+          icon={Boxes}
+          title="Total Production"
+          value={fmtMT(view.totalProduction)}
+          unit="Metric Tons (MT)"
+          supporting="for the selected period"
+          info="Production volume from Adjusted_Estimates.xlsx for the selected municipality and period."
+        />
         <KpiCard
           icon={Users}
           title="Registered Salt Farmers"
@@ -114,26 +138,12 @@ export default function MunicipalityAnalytics() {
           info="Distinct salt farmers registered in the master list. Production reports also log salt farmer-months, which count the same people again each month."
         />
         <KpiCard
-          icon={Building2}
-          title="Municipalities"
-          value={view.productionMunicipalityCount}
-          supporting="with municipality production data"
-          info="Municipalities in scope with at least one month in the municipality production dataset."
-        />
-        <KpiCard
-          icon={Layers}
-          title="Salt Beds"
-          value={view.totalBeds}
-          supporting="from approved production records"
-          info="Sum of the salt beds reported on approved operational production records; these are separate from the municipality production dataset."
-        />
-        <KpiCard
-          icon={MapPin}
-          title="Total Area"
-          value={view.totalArea}
-          unit="m²"
-          supporting={`across ${fmtInt(view.totalBeds)} salt beds`}
-          info="Sum of salt beds x area per bed, from approved operational production records."
+          icon={ContactRound}
+          title="Gender Distribution"
+          value={`${fmtInt(gender.male || 0)} / ${fmtInt(gender.female || 0)}`}
+          unit="Male / Female"
+          supporting={gender.other > 0 ? `Other: ${fmtInt(gender.other)}` : undefined}
+          info="Registered salt farmers by sex — male / female."
         />
       </KpiGrid>
 

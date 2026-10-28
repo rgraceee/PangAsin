@@ -4,7 +4,7 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, C
 import { Lightbulb, ChartLine, TrendingUp, ChartColumn } from 'lucide-react';
 import { getAdminMunicipalities, evaluateTarget } from '../../services/dataService';
 import { useToast } from '../Toast';
-import { SkeletonChart } from '../Skeleton';
+import { SkeletonBlock, SkeletonChart } from '../Skeleton';
 import { BRAND } from '../../theme/colors';
 
 export default function DecisionSupport() {
@@ -137,7 +137,7 @@ export default function DecisionSupport() {
       {loading && (
         <Card className="fc-card mb-3">
           <Card.Body>
-            <div className="text-muted small mb-2">Evaluating target against forecast…</div>
+            <SkeletonBlock className="mb-2" width="45%" height={12} />
             <SkeletonChart height={320} />
           </Card.Body>
         </Card>

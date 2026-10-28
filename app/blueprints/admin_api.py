@@ -19,7 +19,7 @@ from app.services.data_quality import build_data_quality, DATA_QUALITY_RANGES
 from app.services.aggregates import _last_month_with_data
 from app.constants import AGE_BUCKET_FIELDS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
 from app.status_constants import ALLOWED_STATUSES
-from app.utils import _admin_only, _parse_date
+from app.utils import _admin_only
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
 
@@ -121,6 +121,28 @@ def list_municipalities():
                 "record_count": record_counts.get(m.id, 0),
             }
             for m in munis
+        ]
+    })
+
+
+@admin_api_bp.route("/barangays", methods=["GET"])
+@login_required
+def list_barangays():
+    # WHAT: Read-only source ng lahat ng barangay para sa admin filters.
+    # WHY: /encoder/barangays ay encoder-only at scoped sa assigned municipality,
+    #      kaya kailangan ng admin-wide list para sa dependent dropdown.
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    barangays = Barangay.query.order_by(Barangay.name).all()
+    return jsonify({
+        "barangays": [
+            {
+                "id": b.id,
+                "name": b.name,
+                "municipality_id": b.municipality_id,
+            }
+            for b in barangays
         ]
     })
 
@@ -246,8 +268,6 @@ def list_records():
     muni = request.args.get("municipality_id", type=int)
     barangay_id = request.args.get("barangay_id", type=int)
     q = request.args.get("q")
-    start = request.args.get("start")
-    end = request.args.get("end")
     page = request.args.get("page", type=int)
     limit = request.args.get("limit", type=int)
 
@@ -264,16 +284,6 @@ def list_records():
         query = query.join(Barangay, Barangay.id == ProductionRecord.barangay_id).filter(
             Barangay.name.ilike(like)
         )
-    if start:
-        try:
-            query = query.filter(ProductionRecord.record_date >= _parse_date(start))
-        except ValueError:
-            return jsonify({"error": "start must be YYYY-MM-DD."}), 400
-    if end:
-        try:
-            query = query.filter(ProductionRecord.record_date <= _parse_date(end))
-        except ValueError:
-            return jsonify({"error": "end must be YYYY-MM-DD."}), 400
 
     total = query.count()
     if page and limit and page > 0 and limit > 0:
@@ -408,12 +418,15 @@ def list_environment_submissions():
     query = EnvironmentReport.query
     status = request.args.get("status")
     municipality_id = request.args.get("municipality_id", type=int)
+    barangay_id = request.args.get("barangay_id", type=int)
     if status:
         if status not in ALLOWED_STATUSES:
             return jsonify({"error": f"status must be one of: {', '.join(ALLOWED_STATUSES)}."}), 400
         query = query.filter(EnvironmentReport.status == status)
     if municipality_id:
         query = query.filter(EnvironmentReport.municipality_id == municipality_id)
+    if barangay_id:
+        query = query.filter(EnvironmentReport.barangay_id == barangay_id)
     reports = query.order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc()).all()
     return jsonify({"reports": [_serialize_environment_submission(report) for report in reports]})
 
@@ -451,12 +464,22 @@ def list_producer_submissions():
     query = ProducerReport.query
     status = request.args.get("status")
     municipality_id = request.args.get("municipality_id", type=int)
+    barangay_id = request.args.get("barangay_id", type=int)
     if status:
         if status not in ALLOWED_STATUSES:
             return jsonify({"error": f"status must be one of: {', '.join(ALLOWED_STATUSES)}."}), 400
         query = query.filter(ProducerReport.status == status)
     if municipality_id:
         query = query.filter(ProducerReport.municipality_id == municipality_id)
+    if barangay_id:
+        # WHAT: Match reports that have at least one entry in the barangay.
+        # WHY: a salt-farmer report is municipality-level, so barangay scope
+        #      lives on its entries; distinct avoids duplicate reports.
+        query = (
+            query.join(ProducerReportEntry, ProducerReportEntry.report_id == ProducerReport.id)
+            .filter(ProducerReportEntry.barangay_id == barangay_id)
+            .distinct()
+        )
     reports = query.order_by(ProducerReport.created_at.desc(), ProducerReport.id.desc()).all()
     return jsonify({"reports": [_serialize_producer_submission(report) for report in reports]})
 
@@ -766,6 +789,24 @@ def stats():
         if production_month is not None and not 1 <= production_month <= 12:
             return jsonify({"error": "month must be between 1 and 12."}), 400
 
+        # WHAT: Optional inclusive date range (YYYY-MM-DD) for the monthly
+        #       production source. WHY: the dashboard's Date range filter is
+        #       month-based data, so a range includes every month it touches.
+        production_start_raw = request.args.get("start")
+        production_end_raw = request.args.get("end")
+        production_start = None
+        production_end = None
+        if production_start_raw or production_end_raw:
+            if not (production_start_raw and production_end_raw):
+                return jsonify({"error": "start and end must be provided together."}), 400
+            try:
+                production_start = datetime.strptime(production_start_raw, "%Y-%m-%d").date()
+                production_end = datetime.strptime(production_end_raw, "%Y-%m-%d").date()
+            except ValueError:
+                return jsonify({"error": "start and end must use YYYY-MM-DD."}), 400
+            if production_start > production_end:
+                return jsonify({"error": "start must be on or before end."}), 400
+
         production_query = db.session.query(
             MunicipalityMonthlyProduction.municipality_id,
             func.sum(MunicipalityMonthlyProduction.production_kg).label("production_kg"),
@@ -804,6 +845,22 @@ def stats():
         if production_month is not None:
             production_query = production_query.filter(
                 MunicipalityMonthlyProduction.production_month == production_month
+            )
+        if production_start is not None:
+            production_query = production_query.filter(
+                func.make_date(
+                    MunicipalityMonthlyProduction.production_year,
+                    MunicipalityMonthlyProduction.production_month,
+                    1,
+                ) >= production_start.replace(day=1)
+            )
+        if production_end is not None:
+            production_query = production_query.filter(
+                func.make_date(
+                    MunicipalityMonthlyProduction.production_year,
+                    MunicipalityMonthlyProduction.production_month,
+                    1,
+                ) <= production_end.replace(day=1)
             )
         production_rows = (
             production_query
@@ -895,16 +952,16 @@ def data_quality():
     # WHY: "months" is the documented parameter ("all" = every month since data
     #      gathering started); "range" is still accepted because the shared API
     #      client sends that one.
-    raw_months = request.args.get("months") or request.args.get("range") or 36
+    raw_months = request.args.get("months") or request.args.get("range") or 12
     if str(raw_months).strip().lower() == "all":
         range_months = "all"
     else:
         try:
             range_months = int(raw_months)
         except (TypeError, ValueError):
-            range_months = 36
+            range_months = 12
         if range_months not in DATA_QUALITY_RANGES:
-            range_months = 36
+            range_months = 12
 
     return jsonify(build_data_quality(range_months))
 

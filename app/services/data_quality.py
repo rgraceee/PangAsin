@@ -18,8 +18,9 @@ from app.models.production_record import ProductionRecord
 DATA_START = date(2023, 1, 1)
 
 # WHAT: The month windows the admin may look at.
-# WHY: The page only offers 12/24/36 months; anything else falls back to 36.
-DATA_QUALITY_RANGES = (12, 24, 36)
+# WHY: The page offers exactly 6 and 12 months; anything else falls back to
+#      the 12-month default so an unknown window cannot widen the report.
+DATA_QUALITY_RANGES = (6, 12)
 
 # WHAT: The thresholds and weights used to score a municipality.
 # WHY: Defined once and shipped with every response, so the UI can never
@@ -63,7 +64,7 @@ def _month_key(value: date) -> str:
 def _month_window(end: date, count) -> list:
     """Return the "YYYY-MM" keys of the window, oldest first.
 
-    `count` is the number of months back from the current month (12, 24, 36).
+    `count` is the number of months back from the current month (6, 12).
     `count=None` means the whole history: every month from DATA_START up to
     the current month. The window always ends on the current month and never
     starts before DATA_START.
@@ -121,10 +122,10 @@ def _empty_payload(months: list, current_month: str) -> dict:
     }
 
 
-def build_data_quality(range_months=36) -> dict:
+def build_data_quality(range_months=12) -> dict:
     """Build the whole Data Quality payload for the admin page.
 
-    `range_months` is 12, 24 or 36 for a look-back window, or "all"/None for
+    `range_months` is 6 or 12 for a look-back window, or "all"/None for
     the whole history since data gathering started.
     """
     today = date.today()

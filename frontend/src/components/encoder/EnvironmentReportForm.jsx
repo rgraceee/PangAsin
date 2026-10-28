@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Spinner } from 'react-bootstrap';
+import { Form } from 'react-bootstrap';
 import { Plus } from 'lucide-react';
 import {
   createEncoderBarangay,
@@ -12,6 +12,7 @@ import ReportSection from './ReportSection';
 import ReportField from './ReportField';
 import ReportSummary from './ReportSummary';
 import ReportImportActions from './ReportImportActions';
+import { SkeletonForm } from '../Skeleton';
 
 const METHODS = [
   { id: 'cooked', label: 'Cooked' },
@@ -165,7 +166,7 @@ export default function EnvironmentReportForm({ user, onClose, onSaved, onImport
         />
       )}
       {loading ? (
-        <div className="ui-report-skeleton d-flex justify-content-center py-4"><Spinner animation="border" size="sm" /></div>
+        <div className="ui-report-skeleton"><SkeletonForm /></div>
       ) : step === 0 ? (
         <Form id="environment-report-form" onSubmit={goToReview}>
           <ReportSection title="Environment Details">

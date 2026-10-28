@@ -6,7 +6,7 @@ import { Alert, Card } from 'react-bootstrap';
 import { CalendarDays, TrendingUp, Lightbulb } from 'lucide-react';
 import PageHeader from '../PageHeader';
 import MunicipalityMapArt from '../../encoder/MunicipalityMapArt';
-import { SkeletonChart } from '../../Skeleton';
+import { SkeletonBlock, SkeletonChart } from '../../Skeleton';
 import TargetForm from './TargetForm';
 import TargetSummary from './TargetSummary';
 import TargetPaceChart from './TargetPaceChart';
@@ -54,7 +54,7 @@ export default function TargetEvaluation() {
       {t.loading && (
         <Card className="te-card mb-3">
           <Card.Body>
-            <div className="te-muted mb-2">Comparing the target with the forecast…</div>
+            <SkeletonBlock className="mb-2" width="45%" height={12} />
             <SkeletonChart height={320} />
           </Card.Body>
         </Card>

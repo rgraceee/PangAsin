@@ -437,6 +437,15 @@
   right: 24px;
 }
 
+/* WHAT: Mas magaan ang left fade ng admin art panel.
+   WHY: the province SVG is centered in this narrow panel; the default 22%
+        fade was eating the western edge of the map. 10% keeps the soft blend
+        toward the text without clipping the province shape. */
+.ui-pageheader--admin .ui-pageheader-art {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 10%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 10%);
+}
+
 /* WHAT: Ang Reset button ay nakadikit sa ilalim ng filter row. */
 .ui-pageheader--admin .dashboard-filter-reset {
   align-self: flex-end;
@@ -826,10 +835,48 @@
   transition: border-color var(--ui-t-fast), box-shadow var(--ui-t-fast);
 }
 
-.dashboard-filter select:focus {
+/* WHAT: Parehong hitsura ng select para sa Start/End date inputs. */
+.dashboard-filter input[type="date"] {
+  height: 40px;
+  padding: 0 12px;
+  min-width: 150px;
+  font-size: 14px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  transition: border-color var(--ui-t-fast), box-shadow var(--ui-t-fast);
+}
+
+.dashboard-filter select:focus,
+.dashboard-filter input[type="date"]:focus {
   outline: none;
   border-color: var(--ui-accent);
   box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+/* WHAT: Apply button para sa draft na Start/End date range. */
+.dashboard-filter-apply {
+  height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--ui-accent);
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-input);
+  cursor: pointer;
+  transition: background var(--ui-t-fast), border-color var(--ui-t-fast), opacity var(--ui-t-fast);
+}
+
+.dashboard-filter-apply:hover:not(:disabled) {
+  background: var(--ui-accent-dark);
+  border-color: var(--ui-accent-dark);
+}
+
+.dashboard-filter-apply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* WHAT: Ghost Reset button — lumalabas lang kapag non-default ang filter. */
@@ -884,7 +931,9 @@
   }
 
   .dashboard-filter select,
-  .dashboard-filter-reset {
+  .dashboard-filter input[type="date"],
+  .dashboard-filter-reset,
+  .dashboard-filter-apply {
     width: 100%;
   }
 }

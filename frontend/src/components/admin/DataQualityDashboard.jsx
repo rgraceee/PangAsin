@@ -6,11 +6,12 @@
 //      where its numbers come from. The header and the KPI cards follow the
 //      Dashboard's design language so both pages feel like one product.
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Spinner } from 'react-bootstrap';
+import { Alert, Button, Card } from 'react-bootstrap';
 import {
   AlertTriangle, BadgeCheck, CalendarRange, ClipboardCheck, ClipboardList, RefreshCw,
 } from 'lucide-react';
 import { getDataQuality } from '../../services/dataService';
+import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
@@ -21,9 +22,9 @@ import { STATE_LEGEND, formatMonth, formatTimestamp, toneForPercent } from './da
 import './data-quality/dataQuality.css';
 
 const RANGE_OPTIONS = [
-  { value: 12, label: 'Last 12 months' },
-  { value: 24, label: 'Last 24 months' },
   { value: 'all', label: 'All months' },
+  { value: 6, label: 'Last 6 months' },
+  { value: 12, label: 'Last 12 months' },
 ];
 
 /* WHAT: The status of a KPI card, shown as the small text badge the Dashboard
@@ -42,7 +43,7 @@ export default function DataQualityDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [range, setRange] = useState('all');
+  const [range, setRange] = useState(12);
   const [selectedId, setSelectedId] = useState(null);
 
   const load = useCallback((value) => {
@@ -67,11 +68,13 @@ export default function DataQualityDashboard() {
 
   if (loading && !data) {
     return (
-      <div className="dq-page d-flex flex-column align-items-center justify-content-center py-5">
-        <Spinner animation="border" variant="primary" role="status" />
-        <p className="mt-3 mb-0" style={{ fontSize: 13, color: '#6C757D' }}>
-          Loading the data quality report...
-        </p>
+      <div className="admin-dashboard-page dq-page skeleton-dashboard">
+        <div className="ui-pageheader ui-pageheader--dashboard">
+          <SkeletonBlock width="100%" height={24} />
+          <SkeletonBlock className="mt-2" width="60%" height={13} />
+        </div>
+        <div className="mt-4"><SkeletonCards count={4} /></div>
+        <div className="skeleton-card"><SkeletonChart height={340} /></div>
       </div>
     );
   }
@@ -142,13 +145,14 @@ export default function DataQualityDashboard() {
       <div className="dq-refreshable">
         <KpiGrid columns={4}>
           <KpiCard
-            icon={BadgeCheck}
-            title="Fields filled in"
-            value={kpis.field_pct}
-            unit="%"
-            badge={statusBadge(toneForPercent(kpis.field_pct, thresholds))}
-            supporting={`Across all ${fields.length} required fields`}
-            info="Share of the required fields that are filled in on approved records. A value of 0 is a valid answer; an empty field is not."
+            icon={ClipboardCheck}
+            title="Waiting for review"
+            value={kpis.pending_total}
+            badge={statusBadge(pendingTone)}
+            supporting={kpis.pending_total > 0
+              ? `The oldest has been waiting ${kpis.oldest_pending_days} day${kpis.oldest_pending_days === 1 ? '' : 's'}.`
+              : 'Nothing is waiting for review.'}
+            info="Records submitted by the encoders that no admin has reviewed yet. A month with a waiting record is not the same as a month with no record at all."
           />
           <KpiCard
             icon={CalendarRange}
@@ -169,14 +173,13 @@ export default function DataQualityDashboard() {
             info="Municipalities whose score or reporting gap means they need attention. The list below shows exactly which ones and what to do."
           />
           <KpiCard
-            icon={ClipboardCheck}
-            title="Waiting for review"
-            value={kpis.pending_total}
-            badge={statusBadge(pendingTone)}
-            supporting={kpis.pending_total > 0
-              ? `The oldest has been waiting ${kpis.oldest_pending_days} day${kpis.oldest_pending_days === 1 ? '' : 's'}.`
-              : 'Nothing is waiting for review.'}
-            info="Records submitted by the encoders that no admin has reviewed yet. A month with a waiting record is not the same as a month with no record at all."
+            icon={BadgeCheck}
+            title="Fields filled in"
+            value={kpis.field_pct}
+            unit="%"
+            badge={statusBadge(toneForPercent(kpis.field_pct, thresholds))}
+            supporting={`Across all ${fields.length} required fields`}
+            info="Share of the required fields that are filled in on approved records. A value of 0 is a valid answer; an empty field is not."
           />
         </KpiGrid>
 

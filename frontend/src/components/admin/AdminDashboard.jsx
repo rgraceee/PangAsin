@@ -2,10 +2,9 @@ import React, { Component, useEffect, useState, useMemo, useRef, useCallback } f
 import { useSearchParams } from 'react-router-dom';
 import { Alert, Card } from 'react-bootstrap';
 import L from 'leaflet';
-import { Boxes, Scale, MapPin } from 'lucide-react';
+import { Boxes, Scale, MapPin, Building2 } from 'lucide-react';
 import {
-  getAdminStats, getAdminMonths,
-  getAdminSupplyDemand,
+  getAdminStats, getAdminSupplyDemand,
 } from '../../services/dataService';
 import { BRAND, greenScale, GREEN_LIGHT, GREEN_DARK } from '../../theme/colors';
 import { buildProvinceMaskRings, addProvinceMask, addLightBasemap, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../../utils/mapLayers';
@@ -16,7 +15,7 @@ import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
-import MunicipalityMapSection from '../../components/MunicipalityMapSection';
+import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -67,94 +66,24 @@ class HeroMapErrorBoundary extends Component {
   }
 }
 
-/* WHAT: Mga pagpipilian sa Municipality filter (7 salt-producing + Pangasinan).
-   WHY: parehas na ayos sa SALT_LIST ng MunicipalityMapArt para tugma ang highlight. */
-const MUNI_OPTIONS = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta', 'San Fabian'];
-
-/* WHAT: Buong pangalan ng buwan para sa Month dropdown (January..December).
-   WHY: mas malinaw kaysa Jan/Feb at kasya pa rin sa 190px na filter. */
-const MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
-  new Date(2000, i, 1).toLocaleString('en-US', { month: 'long' }));
-const MONTH_NUMBERS = Array.from({ length: 12 }, (_, i) => String(i + 1));
-
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState(null);
   const [supplyDemand, setSupplyDemand] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [adminMonths, setAdminMonths] = useState([]);
 
-  /* WHAT: URL-driven filters (muni/month/year) gamit ang query params.
-     WHY: shareable/reload-safe ang view; ang dashboard ay view lang (walang bagong API). */
-  const [searchParams, setSearchParams] = useSearchParams();
-  const urlMuni = searchParams.get('muni') || '';
-  const urlMonthRaw = searchParams.get('month') || '';
-  const urlYearRaw = searchParams.get('year') || '';
-
-  /* WHAT: Sanitize ang URL month/year — huwag ipadala ang invalid na value sa trends.
-     WHY: ang '/trends?month=13' ay magbabalik ng 400; i-ignore na lang ang invalid. */
-  /* WHAT: Kapag walang ?month sa URL (o 'all'), "All months" ang default.
-     WHY: para tumugma ang mapa at KPIs sa total ng taon, hindi sa isang buwan lang. */
-  const isAllMonths = urlMonthRaw === '' || urlMonthRaw === 'all';
-  const monthNumber = Number(urlMonthRaw);
-  const hasValidMonth = !isAllMonths && Number.isInteger(monthNumber) && monthNumber >= 1 && monthNumber <= 12;
-  const hasValidYear = /^\d{4}$/.test(urlYearRaw);
-
-  const todayIso = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, []);
-
-  /* WHAT: Default na period = ngayong buwan; kung wala ito sa adminMonths ay
-     gamitin ang pinakahuling buwan na may data (kaparehas ng dating behavior).
-     WHY: kapag walang URL params, may sensible na default pa rin ang dashboard. */
-  const resolvedDefaultMonth = useMemo(() => {
-    if (adminMonths.length > 0 && !adminMonths.includes(todayIso)) {
-      return adminMonths[adminMonths.length - 1];
-    }
-    return todayIso;
-  }, [adminMonths, todayIso]);
-
-  const selectedMuni = urlMuni; // '' = Pangasinan (province-wide)
-  const selYear = hasValidYear ? urlYearRaw : resolvedDefaultMonth.slice(0, 4);
-
-  /* WHAT: '' = All months. Specific month lang kapag may valid na ?month=1..12.
-     WHY: dati, kapag walang ?month, ginagamit ang resolvedDefaultMonth (isang buwan). */
-  const selMonth = hasValidMonth ? String(monthNumber) : '';
-
-  /* WHAT: Pinagsamang period key (YYYY-MM) o '' kapag "All months".
-     WHY: ito ang ipinapasa sa /trends para sa month-scoped reporting stats. */
-  const selectedAdminMonth = (isAllMonths || !selMonth)
-    ? ''
-    : `${selYear}-${String(Number(selMonth)).padStart(2, '0')}`;
-
-  const yearOptions = useMemo(() => {
-    const years = new Set(adminMonths.map((m) => m.slice(0, 4)));
-    years.add(String(new Date().getFullYear()));
-    if (resolvedDefaultMonth) years.add(resolvedDefaultMonth.slice(0, 4));
-    if (hasValidYear) years.add(urlYearRaw);
-    return Array.from(years).sort((a, b) => b.localeCompare(a));
-  }, [adminMonths, resolvedDefaultMonth, hasValidYear, urlYearRaw]);
-
-  useEffect(() => {
-    getAdminMonths({ source: 'municipality_production' })
-      .then((res) => {
-        setAdminMonths(res.months || []);
-      })
-      .catch((err) => setError(err.message));
-  }, []);
+  /* WHAT: Muni lang ang kailangan ng header para sa map highlight.
+     WHY: province-wide na ang KPI row at ang mapa; ang Month/Year filters ay
+          nasa Municipality Analytics section at doon na lang nag-a-apply. */
+  const [searchParams] = useSearchParams();
+  const selectedMuni = searchParams.get('muni') || '';
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     let active = true;
-    const statsParams = {
-      source: 'municipality_production',
-      year: selYear,
-    };
-    if (selMonth) statsParams.month = Number(selMonth);
     Promise.all([
-      getAdminStats(statsParams),
+      getAdminStats({ source: 'municipality_production' }),
       getAdminSupplyDemand(),
     ])
       .then(([s, sd]) => {
@@ -169,7 +98,7 @@ export default function AdminDashboard({ user }) {
         setLoading(false);
       });
     return () => { active = false; };
-  }, [selYear, selMonth]);
+  }, []);
 
   /* WHAT: muniData mula sa stats (default: [] habang/sa hindi pa ready).
      WHY: null-safe — kung wala pa ang stats o nawawala ang by_municipality
@@ -201,7 +130,7 @@ export default function AdminDashboard({ user }) {
           <SkeletonBlock width="100%" height={24} />
           <SkeletonBlock className="mt-2" width="60%" height={13} />
         </div>
-        <div className="mt-4"><SkeletonCards count={3} /></div>
+        <div className="mt-4"><SkeletonCards count={4} /></div>
         <div className="row g-3 mt-1">
           <div className="col-lg-12"><div className="skeleton-card"><SkeletonChart height={480} /></div></div>
         </div>
@@ -213,15 +142,10 @@ export default function AdminDashboard({ user }) {
     return <Alert variant="danger">{error}</Alert>;
   }
 
-  const selectedMunicipalityStats = selectedMuni
-    ? (stats.by_municipality || []).find((row) => row.municipality_name === selectedMuni)
-    : null;
-  const scopedProductionMT = selectedMuni
-    ? selectedMunicipalityStats?.total_volume_mt
-    : stats.total_volume_mt;
-  const totalVolumeMT = scopedProductionMT == null
+  const totalVolumeMT = stats.total_volume_mt == null
     ? null
-    : Math.round(scopedProductionMT * 100) / 100;
+    : Math.round(stats.total_volume_mt * 100) / 100;
+  const municipalityCount = muniData.filter((m) => (m.records || 0) > 0).length;
   const demandBenchmark = supplyDemand?.pangasinan?.demand_volume ?? 0;
   const localSupplyMT = supplyDemand?.pangasinan?.local_production;
   const supplyPeriod = supplyDemand?.pangasinan?.local_supply_period;
@@ -234,66 +158,6 @@ export default function AdminDashboard({ user }) {
     ? `Pangasinan-wide comparison, unaffected by dashboard filters. Supply uses Adjusted_Estimates.xlsx from ${supplyPeriod.start} to ${supplyPeriod.end}; demand is the ${demandYear} annual benchmark.`
     : 'Municipality production data is not available for the supply comparison.';
 
-  /* WHAT: Filter bar (municipality / month / year) sa kanang block ng hero.
-     WHY: pinapalitan ang dating "Generate report" at "Validation queue" buttons;
-          URL-driven ang state para shareable/reload-safe; may Reset kapag non-default. */
-  const updateParam = (key, value) => {
-    const next = new URLSearchParams(searchParams.toString());
-    if (value) next.set(key, value);
-    else next.delete(key);
-    setSearchParams(next);
-  };
-
-  const resetFilters = () => setSearchParams({});
-
-  /* WHAT: Default pa rin ang ?month=all, kaya hindi lalabas ang Reset dahil lang doon.
-     WHY: pareho na ang kahulugan ng walang ?month at ?month=all. */
-  const isDefaultFilters = urlMuni === '' && (urlMonthRaw === '' || urlMonthRaw === 'all') && urlYearRaw === '';
-
-  const periodHasData = selectedAdminMonth
-    ? adminMonths.includes(selectedAdminMonth)
-    : adminMonths.some((month) => month.startsWith(`${selYear}-`));
-
-  const headerActions = (
-    <>
-      <label className="admin-page-hero-control" htmlFor="admin-muni">
-        <span className="admin-page-hero-field">Municipality</span>
-        <select id="admin-muni" className="form-select admin-page-hero-select" value={selectedMuni} onChange={(e) => updateParam('muni', e.target.value)}>
-          <option value="">Pangasinan</option>
-          {MUNI_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </label>
-
-      <label className="admin-page-hero-control" htmlFor="admin-month">
-        <span className="admin-page-hero-field">Month</span>
-        <select
-          id="admin-month"
-          className="form-select admin-page-hero-select"
-          value={selMonth}
-          onChange={(e) => updateParam('month', e.target.value)}
-        >
-          <option value="">All months</option>
-          {MONTH_NUMBERS.map((num, i) => <option key={num} value={num}>{MONTH_LABELS[i]}</option>)}
-        </select>
-      </label>
-
-      <label className="admin-page-hero-control" htmlFor="admin-year">
-        <span className="admin-page-hero-field">Year</span>
-        <select id="admin-year" className="form-select admin-page-hero-select" value={selYear} onChange={(e) => updateParam('year', e.target.value)}>
-          {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </label>
-
-      {!isDefaultFilters && (
-        <button type="button" className="dashboard-filter-reset" onClick={resetFilters}>Reset</button>
-      )}
-
-      {!periodHasData && (
-        <p className="dashboard-filter-note" role="status">No data for this period.</p>
-      )}
-    </>
-  );
-
   return (
     <div className="admin-dashboard-page">
       {/* WHAT: Polished hero card matching the encoder style: 20px radius, 1px border,
@@ -305,30 +169,18 @@ export default function AdminDashboard({ user }) {
         variant="clean"
         className="ui-pageheader--admin"
         title="Dashboard"
-        subtitle={selectedMuni
-          ? `Production monitoring for ${selectedMuni}, Pangasinan.`
-          : 'Province-wide salt production monitoring for Pangasinan.'}
+        subtitle="Province-wide salt production monitoring for Pangasinan."
         art={(
           <HeroMapErrorBoundary>
-            <MunicipalityMapSection />
+            <MunicipalityMapArt mode="province" selectedName={selectedMuni} />
           </HeroMapErrorBoundary>
         )}
-      >
-        {headerActions}
-      </PageHeader>
+      />
 
-      <KpiGrid columns={3}>
+      <KpiGrid columns={4}>
         {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
            WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
                 (Pang-general ang values — province-wide, hindi sumasabay sa muni filter.) */}
-        <KpiCard
-          icon={Boxes}
-          title="Total Production"
-          value={totalVolumeMT}
-          unit="Metric Tons (MT)"
-          supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
-          info="Source: Adjusted_Estimates.xlsx."
-        />
         <KpiCard
           icon={Scale}
           title="Province-wide Balance"
@@ -338,7 +190,22 @@ export default function AdminDashboard({ user }) {
           supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
           info={supplySourceNote}
         />
+        <KpiCard
+          icon={Boxes}
+          title="Total Production"
+          value={totalVolumeMT}
+          unit="Metric Tons (MT)"
+          supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
+          info="Source: Adjusted_Estimates.xlsx."
+        />
         <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
+        <KpiCard
+          icon={Building2}
+          title="Municipalities"
+          value={municipalityCount}
+          supporting="with municipality production data"
+          info="Municipalities in scope with at least one month in the municipality production dataset."
+        />
       </KpiGrid>
 
       {/* WHAT: Full-width map — wala nang side panel sa tabi nito.

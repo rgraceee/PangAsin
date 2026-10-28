@@ -5,7 +5,7 @@ stored in the database (Supabase) into the shape the public React dashboard
 expects. No login is required.
 """
 from flask import Blueprint, jsonify
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from types import SimpleNamespace
 from sqlalchemy import func
 
@@ -42,6 +42,22 @@ def _latest_production_month():
     if latest is None:
         return None
     return date(latest.production_year, latest.production_month, 1)
+
+
+def _iso_utc(value):
+    """Return a timestamp as ISO-8601 UTC (``...Z``), or None.
+
+    WHAT: The database stores naive UTC timestamps (``datetime.utcnow``).
+    WHY: The browser formats this value in Asia/Manila, so the API must be
+         explicit that the value is UTC instead of leaving it ambiguous.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
 
 
 def _month_with_offset(month_start, offset):
@@ -211,6 +227,8 @@ def _production():
         return {
             "provinceTotalMT": 0.0,
             "records": [],
+            "latestRecordDate": None,
+            "lastUpdatedAt": None,
             "dataSource": "municipality_production",
             "sourceLabel": PRODUCTION_SOURCE_LABEL,
         }
@@ -226,9 +244,28 @@ def _production():
         for production in monthly_production
     ]
     province_total_mt = round(sum(row["totalMT"] for row in records), 3)
+
+    # WHAT: The newest monthly period, shown as its last calendar day.
+    # WHY: The workbook dataset is monthly, so the exact "data as of" date is
+    #      the final day of the latest month it covers (e.g. 2026-09 -> 30 Sep).
+    latest = monthly_production[-1]
+    latest_record_date = (
+        _month_with_offset(date(latest.production_year, latest.production_month, 1), 1)
+        - timedelta(days=1)
+    )
+
+    # WHAT: The publish/import time of the public municipality dataset.
+    # WHY: municipality_monthly_production has no updated_at or approval field,
+    #      so created_at is the best available timestamp for this dataset.
+    last_updated_at = db.session.query(
+        func.max(MunicipalityMonthlyProduction.created_at)
+    ).scalar()
+
     return {
         "provinceTotalMT": province_total_mt,
         "records": records,
+        "latestRecordDate": latest_record_date.isoformat(),
+        "lastUpdatedAt": _iso_utc(last_updated_at),
         "dataSource": "municipality_production",
         "sourceLabel": PRODUCTION_SOURCE_LABEL,
     }

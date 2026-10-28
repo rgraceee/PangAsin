@@ -26,34 +26,6 @@
   font-family: "Montserrat", sans-serif;
 }
 
-/* ===== Scope bar ===== */
-
-.muni-scope-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-
-.muni-scope-chip {
-  padding: 4px 12px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--muni-navy);
-  border-radius: 999px;
-}
-
-.muni-scope-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--muni-muted);
-}
-
 /* ===== Cards ===== */
 
 .muni-card {
