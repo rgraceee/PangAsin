@@ -1,8 +1,8 @@
 // WHAT: "Municipality Details" as a sortable, plain-white table.
-// WHY: the numbers were left-aligned with three decimals, the header showed a
-//      literal "m\u00B2", and the leading municipality was not obvious. Rows are
-//      sorted on click, numbers are right-aligned and the production column
-//      carries a thin bar so the ranking reads at a glance.
+// WHY: the numbers were left-aligned with three decimals and the header showed
+//      a literal "m\u00B2". Rows are sorted on click and numbers are right-aligned
+//      with tabular figures; the table itself stays neutral so the data reads
+//      first.
 import { useMemo, useState } from 'react';
 import { ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import MuniCard, { MuniChip } from './MuniCard';
@@ -31,7 +31,6 @@ export default function MuniDetailsTable({ rows, scopeLabel }) {
     return list;
   }, [rows, sort]);
 
-  const maxVolume = Math.max(...rows.map((r) => r.volumeMT || 0), 1);
   const toggle = (key) => {
     setSort((s) => (s.key === key
       ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
@@ -52,7 +51,12 @@ export default function MuniDetailsTable({ rows, scopeLabel }) {
               {COLUMNS.map((col) => {
                 const active = sort.key === col.key;
                 return (
-                  <th key={col.key} className={col.align === 'right' ? 'is-right' : ''}>
+                  <th
+                    key={col.key}
+                    scope="col"
+                    className={col.align === 'right' ? 'is-right' : ''}
+                    aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
                     <button type="button" className={`muni-sort${active ? ' is-active' : ''}`} onClick={() => toggle(col.key)}>
                       {col.label}
                       {active
@@ -65,20 +69,10 @@ export default function MuniDetailsTable({ rows, scopeLabel }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row, index) => (
-              <tr key={row.id} className={index === 0 ? 'is-leading' : ''}>
-                <td className="muni-cell-name">
-                  {row.name}
-                  {index === 0 && <span className="muni-lead-tag">Top</span>}
-                </td>
-                <td className="is-right">
-                  <span
-                    className="muni-bar-cell"
-                    style={{ '--muni-bar': `${((row.volumeMT || 0) / maxVolume) * 100}%` }}
-                  >
-                    {fmtMT(row.volumeMT)}
-                  </span>
-                </td>
+            {sorted.map((row) => (
+              <tr key={row.id}>
+                <td className="muni-cell-name">{row.name}</td>
+                <td className="is-right">{fmtMT(row.volumeMT)}</td>
                 <td className="is-right">{fmtInt(row.producers)}</td>
                 <td className="is-right">{fmtInt(row.beds)}</td>
                 <td className="is-right">{fmtInt(row.area)}</td>

@@ -145,7 +145,7 @@ export default function MunicipalityAnalytics() {
 
       <Row className="g-3 mb-3">
         <Col lg={7} md={12}>
-          <MuniProductionChart rows={view.scope} selectedMuni={selectedMuni} />
+          <MuniProductionChart rows={view.scope} />
         </Col>
         <Col lg={5} md={12}>
           <MuniMethodChart rows={view.method.rows} total={view.method.total} />
@@ -156,7 +156,7 @@ export default function MunicipalityAnalytics() {
 
       <Row className="g-3 mb-3">
         <Col lg={12} md={12}>
-          <MuniProfileChart profile={view.profile} registeredRows={view.registeredRows} registeredTotal={view.registeredTotal} selectedMuni={selectedMuni} />
+          <MuniProfileChart profile={view.profile} registeredRows={view.registeredRows} registeredTotal={view.registeredTotal} />
         </Col>
       </Row>
 

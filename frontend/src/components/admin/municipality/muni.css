@@ -93,9 +93,69 @@
 .muni-card-sub { margin: 2px 0 0; font-size: 12px; color: var(--muni-muted); line-height: 1.4; }
 .muni-card-body { padding: 14px 16px 16px; }
 
-.muni-chart { width: 100%; }
+.muni-chart { width: 100%; min-width: 0; }
+.muni-chart--trend { height: 300px; }
+.muni-chart--bars { height: 300px; }
+.muni-chart--age { height: 280px; }
 .muni-caption { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--muni-muted); }
 .muni-muted-sm { font-size: 12px; color: var(--muni-muted); }
+
+/* ===== Chart tooltip ===== */
+
+.muni-tooltip {
+  min-width: 172px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--muni-text);
+  background: #fff;
+  border: 1px solid var(--muni-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px -14px rgba(12, 35, 64, 0.32);
+  pointer-events: none;
+}
+
+.muni-tooltip-label {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muni-muted);
+}
+
+.muni-tooltip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+}
+
+.muni-tooltip-row > span {
+  font-size: 13px;
+  color: var(--muni-text-2);
+}
+
+.muni-tooltip-row > b {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muni-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.muni-tooltip-row--secondary {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--muni-border);
+}
+
+.muni-tooltip-source {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--muni-muted);
+}
 
 /* ===== Chips ===== */
 
@@ -136,7 +196,63 @@
   flex-direction: column;
 }
 
-.muni-method-donut { width: 190px; height: 190px; flex-shrink: 0; }
+/* WHAT: The profile card spans the full row, so the donut and legend sit
+   side by side as one centred block instead of stretching across the card. */
+.muni-method--wide { flex-direction: row; max-width: 560px; margin: 0 auto; }
+.muni-method--wide .muni-donut { width: 230px; height: 230px; }
+.muni-method--wide .muni-legend { flex: 1 1 0; }
+
+/* WHAT: Shared donut shell + the value in the hole. WHY: the hovered slice's
+   number replaces the total without moving the donut or the legend. */
+.muni-donut { position: relative; width: 200px; height: 200px; flex-shrink: 0; margin: 0 auto; }
+
+.muni-donut-center {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 20px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* The Recharts tooltip must stay above the centre readout, otherwise the two
+   texts stack on top of each other when a slice is hovered. */
+.muni-donut .recharts-tooltip-wrapper { z-index: 3; }
+
+.muni-donut-center-value {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--muni-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.muni-donut-center-value em {
+  margin-left: 3px;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--muni-muted);
+}
+
+.muni-donut-center-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--muni-muted);
+}
+
+.muni-donut-center-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muni-ocean);
+  font-variant-numeric: tabular-nums;
+}
 
 .muni-legend {
   display: grid;
@@ -184,17 +300,31 @@
 
 .muni-tab {
   padding: 5px 14px;
+  font-family: inherit;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--muni-text-2);
   background: transparent;
   border: none;
   border-radius: 7px;
+  cursor: pointer;
   transition: background-color 150ms ease, color 150ms ease;
 }
 
 .muni-tab:hover { color: var(--muni-text); background: #fff; }
 .muni-tab.is-active { color: #fff; background: var(--muni-navy); }
+
+.muni-tab:focus-visible {
+  outline: 2px solid var(--muni-ocean);
+  outline-offset: 2px;
+}
+
+.muni-tabs--filters {
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.muni-tab-panel { min-width: 0; }
 
 /* ===== Stat tiles (environment) ===== */
 
@@ -231,18 +361,32 @@
 
 /* ===== Table ===== */
 
-.muni-table-wrap { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+/* WHAT: A neutral table - white, no zebra, no cell colours.
+   WHY: the old TOP badge, production bar and cream leading row competed with
+        the numbers. Only the data and the sort state carry emphasis now. */
+.muni-table-wrap {
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px;
+}
 
 .muni-table {
   width: 100%;
-  border-collapse: collapse;
+  min-width: 680px;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: #fff;
 }
 
 .muni-table th {
-  padding: 0 12px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 10px 12px;
   text-align: left;
   white-space: nowrap;
+  background: #fff;
   border-bottom: 1px solid var(--muni-border);
 }
 
@@ -253,61 +397,53 @@
   align-items: center;
   gap: 5px;
   padding: 0;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muni-muted);
   background: none;
   border: none;
+  cursor: pointer;
   transition: color 150ms ease;
 }
 
-.muni-sort:hover { color: var(--muni-ocean); }
-.muni-sort.is-active { color: var(--muni-navy); }
+.muni-sort:hover { color: var(--muni-text-2); }
+.muni-sort.is-active { color: var(--muni-text-2); }
+
+.muni-sort:focus-visible {
+  outline: 2px solid var(--muni-ocean);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
 
 .muni-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #F1F3F6;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--muni-border);
   color: var(--muni-text-2);
+  font-weight: 400;
+  line-height: 1.25;
   vertical-align: middle;
 }
 
-.muni-table tbody tr { background: #fff; transition: background-color 150ms ease; }
-.muni-table tbody tr:hover { background: #F7F9FC; }
-.muni-table tbody tr.is-leading { background: #FBF6EC; }
-.muni-table tbody tr.is-leading:hover { background: #FAF1E0; }
-.muni-table td.is-right { text-align: right; font-variant-numeric: tabular-nums; }
+.muni-table tbody tr {
+  background: #fff;
+  transition: background-color 150ms ease;
+}
+
+.muni-table tbody tr:hover { background: var(--muni-hover); }
+.muni-table tbody tr:last-child td { border-bottom: none; }
+
+.muni-table td.is-right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 
 .muni-cell-name {
-  font-weight: 600;
   color: var(--muni-text);
+  font-weight: 400;
   white-space: nowrap;
-}
-
-.muni-lead-tag {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 1px 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: #8A5A06;
-  background: #FBF0DA;
-  border: 1px solid #F0DEB8;
-  border-radius: 999px;
-}
-
-.muni-bar-cell {
-  position: relative;
-  display: inline-block;
-  min-width: 130px;
-  padding: 3px 8px;
-  border-radius: 5px;
-  font-weight: 600;
-  color: var(--muni-text);
-  background: linear-gradient(to left, #E4EDF9 var(--muni-bar, 0%), transparent var(--muni-bar, 0%));
 }
 
 /* ===== Empty state ===== */
@@ -349,7 +485,9 @@
 
 @media (max-width: 767px) {
   .muni-method { flex-direction: column; align-items: stretch; }
-  .muni-method-donut { width: 100%; height: 210px; }
+  .muni-method--wide { flex-direction: column; }
+  .muni-method--wide .muni-donut { width: 184px; height: 184px; }
+  .muni-method--wide .muni-legend { flex: 1 1 100%; }
   .muni-legend { flex: 1 1 100%; }
 }
 
@@ -357,4 +495,8 @@
   .muni-tiles { grid-template-columns: minmax(0, 1fr); }
   .muni-card-body { padding: 12px 12px 14px; }
   .muni-table-wrap { margin: 0 -12px; padding: 0 12px; }
+  .muni-chart--trend { height: 260px; }
+  .muni-chart--bars { height: 260px; }
+  .muni-chart--age { height: 250px; }
+  .muni-donut { width: 184px; height: 184px; }
 }

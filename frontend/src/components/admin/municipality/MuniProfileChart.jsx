@@ -1,9 +1,9 @@
 // WHAT: "Salt Farmers" profile - registered by municipality, age, gender behind pills.
 import { useState } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { UserRound } from 'lucide-react';
 import MuniCard, { MuniChip } from './MuniCard';
 import MuniAgeChart from './MuniAgeChart';
+import MuniDonut from './MuniDonut';
 import MuniRegisteredChart from './MuniRegisteredChart';
 import { fmtInt, fmtPct } from './muniData';
 import { GenderTooltip } from './muniTooltips';
@@ -14,12 +14,21 @@ const TABS = [
   { key: 'gender', label: 'Gender distribution' },
 ];
 
-export default function MuniProfileChart({ profile, registeredRows, registeredTotal, selectedMuni }) {
+export default function MuniProfileChart({ profile, registeredRows, registeredTotal }) {
   const [tab, setTab] = useState('registered');
+  const [tabChanged, setTabChanged] = useState(false);
   const { total, age, sex } = profile || { total: 0, age: [], sex: [] };
-  const leader = tab === 'age'
-    ? (age || []).reduce((b, a) => (a.value > b.value ? a : b), (age || [])[0])
-    : (sex || []).reduce((b, s) => (s.value > b.value ? s : b), (sex || [])[0]);
+
+  /* WHAT: The intro animation belongs to the first card paint only.
+     WHY: each tab mounts a fresh chart, so without this flag every tab switch
+          would replay the 800ms intro and read as a page reload. */
+  const animate = !tabChanged;
+  const activeTab = TABS.find((t) => t.key === tab) || TABS[0];
+
+  const chooseTab = (key) => {
+    if (key !== tab) setTabChanged(true);
+    setTab(key);
+  };
 
   return (
     <MuniCard
@@ -41,48 +50,56 @@ export default function MuniProfileChart({ profile, registeredRows, registeredTo
             role="tab"
             aria-selected={tab === t.key}
             className={`muni-tab${tab === t.key ? ' is-active' : ''}`}
-            onClick={() => setTab(t.key)}
+            onClick={() => chooseTab(t.key)}
           >
             {t.label}
           </button>
         ))}
       </div>
 
-      {tab === 'registered' ? (
-        <MuniRegisteredChart rows={registeredRows || []} total={registeredTotal || 0} selectedMuni={selectedMuni} bare />
-      ) : total === 0 ? (
-        <div className="muni-empty">
-          <span className="muni-empty-chip">No data</span>
-          No salt farmer records for the selected municipalities.
-        </div>
-      ) : tab === 'age' ? (
-        <MuniAgeChart age={age} />
-      ) : (
-        <div className="muni-method">
-          <div className="muni-method-donut">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={sex} cx="50%" cy="50%" innerRadius={58} outerRadius={92} paddingAngle={2} dataKey="value" nameKey="name" stroke="none">
-                  {sex.map((entry) => <Cell key={entry.key} fill={entry.color} />)}
-                </Pie>
-                <Tooltip content={<GenderTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
+      <div className="muni-tab-panel" role="tabpanel" aria-label={activeTab.label}>
+        {tab === 'registered' ? (
+          <MuniRegisteredChart
+            rows={registeredRows || []}
+            total={registeredTotal || 0}
+            bare
+            animate={animate}
+          />
+        ) : total === 0 ? (
+          <div className="muni-empty">
+            <span className="muni-empty-chip">No data</span>
+            No salt farmer records for the selected municipalities.
           </div>
-          <ul className="muni-legend" role="list">
-            {sex.map((row) => (
-              <li key={row.key} className="muni-legend-item">
-                <span className="muni-legend-swatch" style={{ background: row.color }} />
-                <span className="muni-legend-name">{row.name}</span>
-                <span className="muni-legend-value">{fmtInt(row.value)}</span>
-                <span className="muni-legend-pct">{fmtPct(row.pct)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        ) : tab === 'age' ? (
+          <MuniAgeChart age={age} animate={animate} />
+        ) : (
+          <div className="muni-method muni-method--wide">
+            <MuniDonut
+              rows={sex}
+              total={total}
+              unit=""
+              label="Salt farmers"
+              tooltip={<GenderTooltip />}
+              chartKey="gender-distribution"
+              animate={animate}
+              ariaLabel={`Gender split of ${fmtInt(total)} registered salt farmers`}
+            />
+            <ul className="muni-legend" role="list">
+              {sex.map((row) => (
+                <li key={row.key} className="muni-legend-item">
+                  <span className="muni-legend-swatch" style={{ background: row.color }} />
+                  <span className="muni-legend-name">{row.name}</span>
+                  <span className="muni-legend-value">{fmtInt(row.value)}</span>
+                  <span className="muni-legend-pct">{fmtPct(row.pct)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
       {tab === 'registered' && (
-        <p className="muni-caption" style={{ marginTop: 8 }}>
+        <p className="muni-caption">
           The master list holds the registered salt farmers. Production reports log the same people again each month, so they are not counted here.
         </p>
       )}

@@ -3868,3 +3868,48 @@ body {
   white-space: nowrap;
 }
 
+
+/* ===== Validation Queue: batch actions ===== */
+
+/* WHAT: The selection strip above the queue table.
+   WHY: the count and the bulk buttons sit on one neutral bar, so a large
+        selection never looks like a floating toolbar. */
+.vq-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--ui-hover-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+}
+
+.vq-bulk-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.vq-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.vq-check-col {
+  width: 40px;
+  text-align: center;
+}
+
+.vq-check-col .form-check-input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.vq-check-col .form-check-input:disabled {
+  cursor: not-allowed;
+}

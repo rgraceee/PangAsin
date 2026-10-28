@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import {
   getAdminRecords, getAdminRecord, getAdminMunicipalities, reviewAdminRecord,
@@ -31,7 +31,7 @@ function DetailRow({ label, value }) {
 }
 
 export default function ValidationQueue() {
-  const { toastSuccess, toastError } = useToast();
+  const { toastSuccess, toastError, toastInfo } = useToast();
   const [records, setRecords] = useState([]);
   const [reportType, setReportType] = useState('production');
   const [munis, setMunis] = useState([]);
@@ -50,6 +50,17 @@ export default function ValidationQueue() {
   const [reviewAction, setReviewAction] = useState(null);
   const [reviewComment, setReviewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState(null);
+  const [bulkComment, setBulkComment] = useState('');
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [bulkFailures, setBulkFailures] = useState([]);
+  const [bulkSkipped, setBulkSkipped] = useState(0);
+  const [bulkRemaining, setBulkRemaining] = useState(0);
+  const [bulkStopping, setBulkStopping] = useState(false);
+  const headerCheckRef = useRef(null);
+  const bulkCancelRef = useRef(false);
 
   const load = useCallback((f, type) => {
     setLoading(true);
@@ -73,10 +84,74 @@ export default function ValidationQueue() {
 
   useEffect(() => { load(filters, reportType); }, [filters, load, reportType]);
 
+  /* WHAT: Only pending rows can be acted on. WHY: the API rejects any other
+     status with a 409, so the checkboxes must match that rule. */
+  const pendingRows = records.filter((r) => r.status === 'pending');
+  const selectedSet = new Set(selectedIds);
+  const allSelected = pendingRows.length > 0 && pendingRows.every((r) => selectedSet.has(r.id));
+  const someSelected = pendingRows.some((r) => selectedSet.has(r.id));
+
+  /* WHAT: A tab or filter change clears the selection.
+     WHY: a hidden row must never be approved by a bulk action. */
+  useEffect(() => {
+    setSelectedIds([]);
+    setBulkFailures([]);
+    setBulkSkipped(0);
+    setBulkRemaining(0);
+  }, [reportType, filters]);
+
+  /* WHAT: Drop ids that are no longer in the queue or no longer pending.
+     WHY: keeps the count and the bulk action in sync after a reload. */
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter(
+      (id) => records.some((r) => r.id === id && r.status === 'pending'),
+    ));
+  }, [records]);
+
+  useEffect(() => {
+    if (headerCheckRef.current) {
+      headerCheckRef.current.indeterminate = someSelected && !allSelected;
+    }
+  }, [someSelected, allSelected]);
+
   const handleFilter = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
   const handleClear = () => setFilters({
     municipality_id: '', barangay_id: '', status: 'pending', q: '', start: '', end: '',
   });
+
+  const toggleRow = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleAll = () => {
+    setSelectedIds(allSelected ? [] : pendingRows.map((r) => r.id));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setBulkFailures([]);
+    setBulkSkipped(0);
+    setBulkRemaining(0);
+  };
+
+  const openBulk = (action) => {
+    setBulkAction(action);
+    setBulkComment('');
+    setBulkFailures([]);
+    setBulkSkipped(0);
+    setBulkRemaining(0);
+    setBulkStopping(false);
+    bulkCancelRef.current = false;
+    setBulkProgress({ done: 0, total: selectedIds.length });
+  };
+
+  /* WHAT: Ask the running batch to stop after the request in flight.
+     WHY: an in-flight review cannot be aborted safely, so the loop checks this
+          flag before every next record. */
+  const requestBulkCancel = () => {
+    bulkCancelRef.current = true;
+    setBulkStopping(true);
+  };
 
   const handleView = (id) => {
     if (reportType !== 'production') {
@@ -152,6 +227,102 @@ export default function ValidationQueue() {
   );
   const reportTypeLabel = REPORT_TYPE_LABELS[reportType] || reportType;
 
+  /* WHAT: Reuse the single-record review endpoints for every selected id.
+     WHY: they already enforce admin-only + pending-only and keep the salt
+          farmer master-list side effects. A 409 means someone reviewed the
+          row in the meantime, so it is reported as skipped, not failed. */
+  const submitBulk = async () => {
+    if (!bulkAction || bulkSubmitting) return;
+    const reason = bulkComment.trim();
+    if (bulkAction === 'rejected' && !reason) return;
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    const review = reportType === 'environment'
+      ? reviewAdminEnvironmentReport
+      : reportType === 'producer'
+        ? reviewAdminProducerReport
+        : reviewAdminRecord;
+
+    setBulkSubmitting(true);
+    setBulkStopping(false);
+    setBulkRemaining(0);
+    bulkCancelRef.current = false;
+    setBulkProgress({ done: 0, total: ids.length });
+    const failures = [];
+    let completed = 0;
+    let skipped = 0;
+    let processed = 0;
+
+    for (let i = 0; i < ids.length; i += 1) {
+      if (bulkCancelRef.current) break;
+      try {
+        await review(ids[i], {
+          status: bulkAction,
+          reviewer_comment: reason || null,
+        });
+        completed += 1;
+      } catch (err) {
+        if (err.status === 409) {
+          skipped += 1;
+        } else {
+          failures.push({ id: ids[i], message: err.message || 'Could not save the review.' });
+        }
+      }
+      processed += 1;
+      setBulkProgress({ done: processed, total: ids.length });
+    }
+
+    const remaining = ids.slice(processed);
+    const failedIds = failures.map((f) => f.id);
+
+    setBulkSubmitting(false);
+    setBulkStopping(false);
+    setBulkSkipped(skipped);
+    setBulkFailures(failures);
+    setBulkRemaining(remaining.length);
+    setSelectedIds([...failedIds, ...remaining]);
+    setBulkAction(null);
+
+    if (completed > 0) {
+      toastSuccess(
+        `${completed} ${reportTypeLabel.toLowerCase()} record${completed === 1 ? '' : 's'} ${bulkAction}.`,
+        bulkAction === 'approved' ? 'Batch approved' : 'Batch rejected',
+      );
+    }
+    if (failures.length > 0) {
+      toastError(
+        `${failures.length} record${failures.length === 1 ? '' : 's'} could not be reviewed.`,
+        'Batch incomplete',
+      );
+    }
+    if (remaining.length > 0) {
+      toastInfo(
+        `Stopped after ${processed} of ${ids.length} records. ${remaining.length} left selected.`,
+        'Batch stopped',
+      );
+    }
+    if (completed === 0 && failures.length === 0 && skipped > 0 && remaining.length === 0) {
+      toastError('All selected records were already reviewed.', 'Nothing to update');
+    }
+
+    await load(filters, reportType);
+  };
+
+  const selectAllCell = (
+    <th className="vq-check-col">
+      <input
+        ref={headerCheckRef}
+        type="checkbox"
+        className="form-check-input"
+        aria-label="Select all pending records"
+        checked={allSelected}
+        onChange={toggleAll}
+        disabled={pendingRows.length === 0}
+      />
+    </th>
+  );
+
   return (
     <>
       <PageHeader
@@ -214,7 +385,44 @@ export default function ValidationQueue() {
             {hasFilter && <Button variant="link" size="sm" onClick={handleClear}>Clear filters</Button>}
           </div>
 
+          {selectedIds.length > 0 && (
+            <div className="vq-bulk-bar" role="region" aria-label="Batch actions">
+              <span className="vq-bulk-count">{selectedIds.length} selected</span>
+              <div className="vq-bulk-actions">
+                <Button size="sm" variant="success" onClick={() => openBulk('approved')}>
+                  <Check size={15} /> Approve selected
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => openBulk('rejected')}>
+                  <X size={15} /> Reject selected
+                </Button>
+                <Button size="sm" variant="link" onClick={clearSelection}>Clear</Button>
+              </div>
+            </div>
+          )}
+
         {error && <Alert variant="danger">{error}</Alert>}
+        {bulkFailures.length > 0 && (
+          <Alert variant="warning" dismissible onClose={() => setBulkFailures([])}>
+            <div className="fw-semibold mb-1">
+              {bulkFailures.length} record{bulkFailures.length === 1 ? '' : 's'} could not be reviewed
+            </div>
+            <ul className="mb-0 small">
+              {bulkFailures.map((f) => (
+                <li key={f.id}>Record #{f.id}: {f.message}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+        {bulkSkipped > 0 && (
+          <Alert variant="info">
+            {bulkSkipped} selected record{bulkSkipped === 1 ? ' was' : 's were'} already reviewed and skipped.
+          </Alert>
+        )}
+        {bulkRemaining > 0 && (
+          <Alert variant="secondary">
+            Batch stopped with {bulkRemaining} record{bulkRemaining === 1 ? '' : 's'} left selected.
+          </Alert>
+        )}
         {loading && <div className="text-center py-2"><SkeletonList rows={6} cols={6} /></div>}
         {!loading && records.length === 0 && (
           <Alert variant="info">No records match the current filters.</Alert>
@@ -223,6 +431,7 @@ export default function ValidationQueue() {
           <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
             <thead>
               {reportType === 'production' ? <tr>
+                {selectAllCell}
                 <th>Municipality</th>
                 <th>Barangay</th>
                 <th>Date</th>
@@ -231,14 +440,26 @@ export default function ValidationQueue() {
                 <th>Status</th>
                 <th>Actions</th>
               </tr> : reportType === 'environment' ? <tr>
+                {selectAllCell}
                 <th>Municipality</th><th>Barangay</th><th>Salt Beds</th><th>Methods</th><th>Submitter</th><th>Status</th><th>Actions</th>
               </tr> : <tr>
+                {selectAllCell}
                 <th>Municipality</th><th>Salt Farmer Entries</th><th>Submitter</th><th>Status</th><th>Actions</th>
               </tr>}
             </thead>
             <tbody>
               {records.map((r) => (
                 <tr key={r.id}>
+                  <td className="vq-check-col">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      aria-label={`Select ${reportTypeLabel} record ${r.id}`}
+                      checked={selectedSet.has(r.id)}
+                      onChange={() => toggleRow(r.id)}
+                      disabled={r.status !== 'pending'}
+                    />
+                  </td>
                   {reportType === 'production' ? <>
                     <td>{r.municipality_name}</td>
                     <td>{r.barangay}</td>
@@ -388,6 +609,77 @@ export default function ValidationQueue() {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDetail(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        show={Boolean(bulkAction)}
+        onHide={() => { if (!bulkSubmitting) setBulkAction(null); }}
+        size="md"
+        centered
+        backdrop={bulkSubmitting ? 'static' : true}
+        keyboard={!bulkSubmitting}
+      >
+        <Modal.Header closeButton={!bulkSubmitting}>
+          <Modal.Title>
+            {bulkAction === 'approved' ? 'Approve' : 'Reject'} {selectedIds.length} record{selectedIds.length === 1 ? '' : 's'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="small text-muted">
+            {reportTypeLabel} records that are still pending will be {bulkAction === 'approved' ? 'approved' : 'rejected'}.
+            This cannot be undone from this screen.
+          </p>
+          <Form.Group>
+            <Form.Label>
+              {bulkAction === 'approved' ? 'Approval comment (optional)' : 'Rejection reason'}
+            </Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={bulkComment}
+              onChange={(e) => setBulkComment(e.target.value)}
+              placeholder={bulkAction === 'approved' ? 'Optional note for the encoders…' : 'Why are these being rejected?'}
+              disabled={bulkSubmitting}
+            />
+            {bulkAction === 'rejected' && (
+              <Form.Text className="text-muted">
+                {bulkComment.trim()
+                  ? 'This reason will be saved on every selected record.'
+                  : 'A reason is required before you can reject these records.'}
+              </Form.Text>
+            )}
+          </Form.Group>
+          {bulkSubmitting && (
+            <div className="mt-2" aria-live="polite">
+              <div className="small text-muted">
+                {bulkStopping
+                  ? 'Finishing the current record, then stopping…'
+                  : `Reviewing ${bulkProgress.done} of ${bulkProgress.total}…`}
+              </div>
+              {!bulkStopping && (
+                <div className="small text-muted">Cancel stops after the current record.</div>
+              )}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={bulkSubmitting ? requestBulkCancel : () => setBulkAction(null)}
+            disabled={bulkSubmitting && bulkStopping}
+          >
+            {bulkSubmitting ? (bulkStopping ? 'Stopping…' : 'Cancel') : 'Cancel'}
+          </Button>
+          <Button
+            variant={bulkAction === 'approved' ? 'success' : 'danger'}
+            onClick={submitBulk}
+            disabled={bulkSubmitting || (bulkAction === 'rejected' && !bulkComment.trim())}
+          >
+            {bulkSubmitting
+              ? `Saving… (${bulkProgress.done}/${bulkProgress.total})`
+              : `Confirm ${bulkAction === 'approved' ? 'Approve' : 'Reject'}`}
+          </Button>
         </Modal.Footer>
       </Modal>
     </Card>
