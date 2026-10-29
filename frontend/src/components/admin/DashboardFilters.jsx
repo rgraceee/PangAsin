@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ChevronDown, Loader2, MapPin } from 'lucide-react';
 import { getAdminMonths } from '../../services/dataService';
+import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 
-/* WHAT: Mga pagpipilian sa Municipality filter (7 salt-producing + Pangasinan).
-   WHY: parehas na ayos sa SALT_LIST ng MunicipalityMapArt para tugma ang highlight. */
-export const MUNI_OPTIONS = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta', 'San Fabian'];
+/* WHAT: Municipality options come from the active database directory.
+   WHY: Adding or deactivating a municipality must update this filter without a
+        code change, and the map highlight must match the same list. */
 
 /* WHAT: Buong pangalan ng buwan para sa Month dropdown (January..December).
    WHY: mas malinaw kaysa Jan/Feb at kasya pa rin sa filter. */
@@ -12,14 +14,50 @@ const MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
   new Date(2000, i, 1).toLocaleString('en-US', { month: 'long' }));
 const MONTH_NUMBERS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
+const MUNICIPALITY_PARAM = 'municipality';
+const LEGACY_MUNICIPALITY_PARAM = 'muni';
+const MUNICIPALITY_STORAGE_KEY = 'pangasin.admin.municipality';
+
 const isIsoDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+/* WHAT: Slug rules matching app/services/municipality_service.py.
+   WHY: The API already returns the slug, but the fallback keeps older cached
+        directory payloads working until the next refresh. */
+export function municipalitySlug(name) {
+  let value = String(name || '').trim().toLowerCase();
+  if (value.startsWith('city of ')) value = value.slice('city of '.length);
+  if (value.endsWith(' city')) value = value.slice(0, -' city'.length);
+  return value.replace(/[^a-z0-9]+/g, '');
+}
+
+function readStoredMunicipality() {
+  try {
+    return window.localStorage.getItem(MUNICIPALITY_STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function storeMunicipality(slug) {
+  try {
+    if (slug) window.localStorage.setItem(MUNICIPALITY_STORAGE_KEY, slug);
+    else window.localStorage.removeItem(MUNICIPALITY_STORAGE_KEY);
+  } catch {
+    /* WHAT: Private mode / blocked storage must never break the filter. */
+  }
+}
 
 /* WHAT: Isang source of truth para sa URL-driven na muni/period filters.
    WHY: pareho ang reading, validation, at default ng filter bar at ng section
-        na gumagamit ng values nito (Municipality Analytics). */
+        na gumagamit ng values nito (Admin Dashboard at Municipality Analytics). */
 export function useDashboardFilters() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [adminMonths, setAdminMonths] = useState([]);
+  const {
+    municipalities,
+    activeNames: muniOptions,
+    loading: directoryLoading,
+  } = useMunicipalityDirectory();
 
   useEffect(() => {
     let active = true;
@@ -33,11 +71,105 @@ export function useDashboardFilters() {
     return () => { active = false; };
   }, []);
 
-  const urlMuni = searchParams.get('muni') || '';
+  const urlSlug = (searchParams.get(MUNICIPALITY_PARAM) || '').trim().toLowerCase();
+  const legacyMuniName = searchParams.get(LEGACY_MUNICIPALITY_PARAM) || '';
   const urlMonthRaw = searchParams.get('month') || '';
   const urlYearRaw = searchParams.get('year') || '';
   const urlStartRaw = searchParams.get('start') || '';
   const urlEndRaw = searchParams.get('end') || '';
+
+  /* WHAT: Isang listahan ng {id, name, slug} para sa chip dropdown at URL.
+     WHY: The slug is the stable value in the query string; the name is still
+          what Municipality Analytics uses for its client-side scope labels. */
+  const municipalityOptions = useMemo(() => municipalities
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      slug: m.slug || municipalitySlug(m.name),
+    }))
+    .filter((m) => m.name && m.slug)
+    .sort((a, b) => a.name.localeCompare(b.name)), [municipalities]);
+
+  const municipalityBySlug = useMemo(
+    () => new Map(municipalityOptions.map((m) => [m.slug, m])),
+    [municipalityOptions],
+  );
+
+  /* WHAT: The URL wins. The stored slug is only used to restore a selection
+     after a refresh when the URL has no municipality param yet.
+     WHY: A shared link must open the municipality it names, not the last one
+          this browser happened to pick. */
+  const [storedSlug, setStoredSlug] = useState(() => readStoredMunicipality());
+  /* WHAT: Ang stored slug ay fallback lang bago mag-restore sa URL.
+     WHY: kapag pinili na ang "All municipalities", walang dating slug na dapat
+          bumalik kahit nasa localStorage pa ito. */
+  const [restoreDone, setRestoreDone] = useState(false);
+  const selectedMunicipalitySlug = useMemo(() => {
+    if (urlSlug) return urlSlug;
+    if (legacyMuniName) {
+      const match = municipalityOptions.find((m) => m.name === legacyMuniName);
+      return match ? match.slug : '';
+    }
+    if (
+      !restoreDone
+      && !directoryLoading
+      && storedSlug
+      && municipalityBySlug.has(storedSlug)
+    ) {
+      return storedSlug;
+    }
+    return '';
+  }, [
+    urlSlug, legacyMuniName, municipalityOptions, directoryLoading,
+    storedSlug, municipalityBySlug, restoreDone,
+  ]);
+
+  const selectedMunicipality = municipalityBySlug.get(selectedMunicipalitySlug) || null;
+  const selectedMuni = selectedMunicipality?.name || '';
+
+  /* WHAT: Isang beses lang i-restore ang stored na bayan sa URL.
+     WHY: pagkatapos ng Reset, "All municipalities" na ang dapat manatili kahit
+          may dating naka-save pang slug sa localStorage. */
+  useEffect(() => {
+    if (directoryLoading) return;
+    const next = new URLSearchParams(searchParams.toString());
+    let changed = false;
+
+    if (!urlSlug && !legacyMuniName) {
+      if (!restoreDone && storedSlug && municipalityBySlug.has(storedSlug)) {
+        next.set(MUNICIPALITY_PARAM, storedSlug);
+        changed = true;
+      }
+    } else if (legacyMuniName && !urlSlug) {
+      const match = municipalityOptions.find((m) => m.name === legacyMuniName);
+      if (match) {
+        next.set(MUNICIPALITY_PARAM, match.slug);
+        next.delete(LEGACY_MUNICIPALITY_PARAM);
+        changed = true;
+      }
+    } else if (urlSlug && !municipalityBySlug.has(urlSlug)) {
+      /* WHAT: Unknown/inactive slug -> province-wide instead of an API error.
+         WHY: the backend still validates the slug; the UI just self-heals. */
+      next.delete(MUNICIPALITY_PARAM);
+      changed = true;
+    }
+
+    if (changed) setSearchParams(next, { replace: true });
+    if (!restoreDone) setRestoreDone(true);
+  }, [
+    directoryLoading, urlSlug, legacyMuniName, storedSlug, municipalityOptions,
+    municipalityBySlug, searchParams, setSearchParams, restoreDone,
+  ]);
+
+  /* WHAT: Kapag may valid na slug sa URL, gawin itong huling pinili sa browser.
+     WHY: refresh at next visit ay pareho ang municipality na bubukas. */
+  useEffect(() => {
+    if (directoryLoading) return;
+    if (urlSlug && municipalityBySlug.has(urlSlug)) {
+      storeMunicipality(urlSlug);
+      setStoredSlug(urlSlug);
+    }
+  }, [directoryLoading, urlSlug, municipalityBySlug]);
 
   /* WHAT: 'year' (Year + Month) o 'range' (Start/End date + Apply).
      WHY: dalawang paraan ng pag-scope ng period sa parehong data source. */
@@ -65,7 +197,6 @@ export function useDashboardFilters() {
   const hasValidMonth = !isAllMonths && Number.isInteger(monthNumber) && monthNumber >= 1 && monthNumber <= 12;
   const hasValidYear = /^\d{4}$/.test(urlYearRaw);
 
-  const selectedMuni = urlMuni; // '' = Pangasinan (province-wide)
   const selYear = hasValidYear ? urlYearRaw : resolvedDefaultMonth.slice(0, 4);
   const selMonth = hasValidMonth ? String(monthNumber) : '';
 
@@ -95,7 +226,7 @@ export function useDashboardFilters() {
 
   /* WHAT: Default pa rin ang ?month=all, kaya hindi lalabas ang Reset dahil lang doon.
      WHY: pareho na ang kahulugan ng walang ?month at ?month=all. */
-  const isDefaultFilters = urlMuni === '' && mode === 'year'
+  const isDefaultFilters = !selectedMunicipalitySlug && mode === 'year'
     && (urlMonthRaw === '' || urlMonthRaw === 'all') && urlYearRaw === '';
 
   const updateParam = (key, value) => {
@@ -105,12 +236,33 @@ export function useDashboardFilters() {
     setSearchParams(next);
   };
 
-  const resetFilters = () => setSearchParams({});
+  const selectMunicipality = (slug) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (slug) next.set(MUNICIPALITY_PARAM, slug);
+    else next.delete(MUNICIPALITY_PARAM);
+    next.delete(LEGACY_MUNICIPALITY_PARAM);
+    setSearchParams(next);
+    storeMunicipality(slug);
+    /* WHAT: Keep the fallback in sync with the explicit choice.
+       WHY: clearing the saved slug must clear the chip too; a stale mount-time
+            value would otherwise restore the old municipality after "All". */
+    setStoredSlug(slug);
+  };
+
+  const resetFilters = () => {
+    storeMunicipality('');
+    setStoredSlug('');
+    setSearchParams({});
+  };
 
   return {
     searchParams,
     setSearchParams,
     adminMonths,
+    muniOptions,
+    municipalityOptions,
+    municipalityLoading: directoryLoading,
+    selectedMunicipalitySlug,
     selectedMuni,
     selMonth,
     selYear,
@@ -122,6 +274,7 @@ export function useDashboardFilters() {
     rangeStart,
     rangeEnd,
     updateParam,
+    selectMunicipality,
     resetFilters,
   };
 }
@@ -129,21 +282,27 @@ export function useDashboardFilters() {
 /* WHAT: Municipality / period filter bar (Year/Month o Start/End date range).
    WHY: dating nasa dashboard header; ngayon nasa itaas ng Municipality Analytics.
         Pareho pa rin ang IDs at URL params kaya walang binago sa backend. */
-export default function DashboardFilters({ className = '' }) {
+export default function DashboardFilters({
+  className = '', loading = false, canSelectMunicipality = true,
+}) {
   const {
     searchParams,
     setSearchParams,
+    selectedMunicipalitySlug,
     selectedMuni,
     selMonth,
     selYear,
     yearOptions,
     adminMonths,
+    municipalityOptions,
+    municipalityLoading,
     periodHasData,
     isDefaultFilters,
     mode,
     rangeStart,
     rangeEnd,
     updateParam,
+    selectMunicipality,
     resetFilters,
   } = useDashboardFilters();
 
@@ -163,6 +322,8 @@ export default function DashboardFilters({ className = '' }) {
     : null;
   const canApplyRange = rangeComplete && !rangeError;
   const rangeApplied = Boolean(rangeStart && rangeEnd);
+  const refreshing = loading || municipalityLoading;
+  const municipalityLabel = selectedMuni || 'Pangasinan';
 
   const changeMode = (value) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -193,18 +354,37 @@ export default function DashboardFilters({ className = '' }) {
 
   return (
     <div className={`dashboard-filters ${className}`.trim()}>
-      <label className="dashboard-filter" htmlFor="admin-muni">
-        <span className="dashboard-filter__label">Municipality</span>
-        <select
-          id="admin-muni"
-          className="form-select"
-          value={selectedMuni}
-          onChange={(e) => updateParam('muni', e.target.value)}
+      <div className="dashboard-filter dashboard-filter--municipality">
+        <label className="dashboard-filter__label" htmlFor="admin-muni">Municipality</label>
+        <span
+          className={`dashboard-muni-chip${refreshing ? ' is-loading' : ''}`}
+          aria-busy={refreshing ? 'true' : undefined}
         >
-          <option value="">Pangasinan</option>
-          {MUNI_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </label>
+          <MapPin size={14} strokeWidth={2} aria-hidden="true" />
+          <span className="dashboard-muni-chip__label">{municipalityLabel}</span>
+          {refreshing ? (
+            <Loader2 size={14} className="muni-spin dashboard-muni-chip__spinner" aria-hidden="true" />
+          ) : (
+            <ChevronDown size={14} strokeWidth={2} aria-hidden="true" className="dashboard-muni-chip__chevron" />
+          )}
+          {canSelectMunicipality ? (
+            <select
+              id="admin-muni"
+              className="dashboard-muni-chip__select"
+              aria-label="Municipality"
+              value={selectedMunicipalitySlug}
+              onChange={(e) => selectMunicipality(e.target.value)}
+            >
+              <option value="">All municipalities</option>
+              {municipalityOptions.map((m) => (
+                <option key={m.slug} value={m.slug}>{m.name}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="visually-hidden">Municipality is fixed for encoder accounts.</span>
+          )}
+        </span>
+      </div>
 
       <label className="dashboard-filter" htmlFor="admin-period-mode">
         <span className="dashboard-filter__label">Filter by</span>

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, ContactRound, Users,
+  LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, ContactRound, Users, Map,
+  ScrollText,
 } from 'lucide-react';
 import { getAdminStats } from '../../services/dataService';
 import {
@@ -27,6 +28,8 @@ const FORECAST_GROUP = {
 const MANAGE_ITEMS = [
   { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
   { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/admin/master-list' },
+  { id: 'municipalities', label: 'Municipalities', icon: Map, path: '/admin/municipalities' },
+  { id: 'audit-logs', label: 'Audit Log', icon: ScrollText, path: '/admin/audit-logs' },
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
 
@@ -39,6 +42,8 @@ function activeIdFromPath(pathname) {
   if (pathname === '/admin/forecast') return 'forecast';
   if (pathname === '/admin/reports') return 'reports';
   if (pathname === '/admin/master-list') return 'master-list';
+  if (pathname === '/admin/municipalities') return 'municipalities';
+  if (pathname === '/admin/audit-logs') return 'audit-logs';
   if (pathname === '/admin/users') return 'users';
   return 'dashboard';
 }

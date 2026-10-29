@@ -10,6 +10,7 @@ import KpiCard from './ui/KpiCard';
 import KpiGrid from './ui/KpiGrid';
 import PageHeader from './admin/PageHeader';
 import MunicipalityMapArt from './encoder/MunicipalityMapArt';
+import useMunicipalityDirectory from '../hooks/useMunicipalityDirectory';
 import ReportModal from './encoder/ReportModal';
 import ReportField from './encoder/ReportField';
 import ProducerReportForm from './encoder/ProducerReportForm';
@@ -46,6 +47,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   const outlet = useOutletContext();
   const activeUser = user || outlet?.user;
   const adminView = isAdmin || activeUser?.role === 'admin';
+  const { activeNames } = useMunicipalityDirectory();
   const { toastSuccess, toastError } = useToast();
   const [filters, setFilters] = useState({ municipality_id: '', barangay_id: '', sex: '', age_group: '' });
   const [adminSearch, setAdminSearch] = useState('');
@@ -221,7 +223,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         className={adminView ? 'ui-pageheader--admin' : ''}
         title="Salt Farmer Master List"
         subtitle={adminView ? 'Registered salt farmers across Pangasinan, organized by municipality and barangay.' : `Registered salt farmers in ${activeUser?.municipality_name || 'your municipality'}.`}
-        art={adminView ? <MunicipalityMapArt mode="province" /> : <MunicipalityMapArt highlightName={activeUser?.municipality_name} />}
+        art={adminView ? <MunicipalityMapArt mode="province" activeNames={activeNames} /> : <MunicipalityMapArt highlightName={activeUser?.municipality_name} />}
         compact={!adminView}
       >
         {adminView && (

@@ -97,6 +97,13 @@ export function getMe() {
   return api('/auth/me');
 }
 
+export function changePassword(currentPassword, newPassword) {
+  return api('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+}
+
 export function getEncoderBarangays() {
   return api('/encoder/barangays');
 }
@@ -179,6 +186,90 @@ export function getAdminMe() {
 
 export function getAdminMunicipalities() {
   return api('/admin/municipalities');
+}
+
+/* WHAT: Shared, cached active-municipality directory for filters and maps.
+   WHY: Every page must read the same database-managed list, so one cache keeps
+        the labels, counts and map highlights in sync and avoids refetching. */
+let municipalityDirectoryCache = null;
+let municipalityDirectoryPromise = null;
+
+export function getPublicMunicipalities({ force = false } = {}) {
+  if (!force && municipalityDirectoryCache) {
+    return Promise.resolve(municipalityDirectoryCache);
+  }
+  if (!force && municipalityDirectoryPromise) {
+    return municipalityDirectoryPromise;
+  }
+  municipalityDirectoryPromise = apiNoAuth('/api/public/municipalities')
+    .then((data) => {
+      municipalityDirectoryCache = data;
+      return data;
+    })
+    .finally(() => {
+      municipalityDirectoryPromise = null;
+    });
+  return municipalityDirectoryPromise;
+}
+
+export function invalidateMunicipalityDirectory() {
+  municipalityDirectoryCache = null;
+  municipalityDirectoryPromise = null;
+}
+
+export function createAdminMunicipality(payload) {
+  return api('/admin/municipalities', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function updateAdminMunicipality(id, payload) {
+  return api(`/admin/municipalities/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export function deleteAdminMunicipality(id, payload) {
+  return api(`/admin/municipalities/${id}`, { method: 'DELETE', body: JSON.stringify(payload) });
+}
+
+export function seedAdminMunicipalities(payload = {}) {
+  return api('/admin/municipalities/seed', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+async function apiUpload(path, formData) {
+  const res = await fetch(`/api${path}`, {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || data.errors?.join(', ') || 'Upload failed');
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+export function uploadAdminMunicipalityGeojson(id, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload(`/admin/municipalities/${id}/geojson`, formData);
+}
+
+export function deleteAdminMunicipalityGeojson(id) {
+  return api(`/admin/municipalities/${id}/geojson`, { method: 'DELETE' });
+}
+
+export function renameAdminBarangay(id, name) {
+  return api(`/admin/barangays/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) });
+}
+
+export function deleteAdminBarangay(id) {
+  return api(`/admin/barangays/${id}`, { method: 'DELETE' });
+}
+
+export function getAdminAuditLogs(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/admin/audit-logs${qs ? `?${qs}` : ''}`);
 }
 
 export function getAdminBarangays() {

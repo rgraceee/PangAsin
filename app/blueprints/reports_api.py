@@ -11,6 +11,7 @@ from app.extensions import db
 from app.models.report import Report, REPORT_TYPES, REPORT_FORMATS
 from app.models.user import User
 from app.models.barangay import Barangay
+from app.models.municipality import Municipality
 from app.services.report_service import generate_report_file, build_report_data
 from app.utils import _admin_only, _parse_date
 
@@ -94,6 +95,9 @@ def create_report():
             municipality_id = int(municipality_id)
         except (TypeError, ValueError):
             return jsonify({"error": "municipality_id must be an integer."}), 400
+        municipality = db.session.get(Municipality, municipality_id)
+        if not municipality:
+            return jsonify({"error": "municipality_id is invalid."}), 400
     if barangay_id:
         try:
             barangay_id = int(barangay_id)
@@ -102,6 +106,12 @@ def create_report():
         barangay = db.session.get(Barangay, barangay_id)
         if not barangay:
             return jsonify({"error": "barangay_id is invalid."}), 400
+        # WHAT: A barangay already identifies its municipality.
+        # WHY: Reject mismatched pairs instead of silently overwriting the scope.
+        if municipality_id and barangay.municipality_id != municipality_id:
+            return jsonify({
+                "error": "barangay_id does not belong to the given municipality_id."
+            }), 400
         municipality_id = barangay.municipality_id
 
     report = Report(

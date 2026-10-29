@@ -5,11 +5,11 @@ import {
   computeLabelPlacement,
   focusBoxCentered,
   normalizeMunicipalityName,
-  SALT_MUNICIPALITY_NAMES,
   uniformFocusWidth,
 } from '../../utils/municipalityGeo';
 
-/* WHAT: Ayos ng 7 salt-producing municipalities para sa province mode dots/legend. */
+/* WHAT: Fallback na listahan kapag walang activeNames mula sa database.
+   WHY: Pinapanatili ang dating highlight bago mag-load ang directory. */
 const SALT_LIST = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta', 'San Fabian'];
 
 /* WHAT: Static na inline SVG na mapa ng Pangasinan (hindi Leaflet, walang tiles).
@@ -19,7 +19,7 @@ const SALT_LIST = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta
    WHY: default ay 'single' pa rin — ang AdminDashboard lang ang nagpasa ng explicit
         mode="province"; kung 'province' ang default ay nagbago ang /encoder at
         ProducerMasterList na walang mode mula sa pag-focus sa sariling bayan. */
-export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, selectedName = '', productionByName = null, activeNames = null }) {
+export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, selectedName = '', productionByName = null, activeNames = null, onSelect = null, selectableNames = null }) {
   const rawId = useId();
   const uid = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
   /* WHAT: buildMunicipalityArt is module-level cached and never null, but guard anyway
@@ -30,14 +30,45 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
 
   /* WHAT: Selected municipality ng /admin filter ('' = Pangasinan / walang highlight).
      WHY: province mode — ang napiling bayan ay solid accent + pangalan + kuat na pulse;
-          ang ibang 6 ay light green na walang pill (hindi na value labels). */
+          ang ibang active na bayan ay light green na walang pill (hindi na value labels). */
   const selectedKey = selectedName ? normalizeMunicipalityName(selectedName) : '';
 
+  /* WHAT: DB-driven active municipality list, with the bundled list as fallback.
+     WHY: Adding or deactivating a municipality must update the highlighted shapes. */
+  const activeList = useMemo(() => {
+    const list = Array.isArray(activeNames) ? activeNames.filter(Boolean) : [];
+    return list.length ? list : SALT_LIST;
+  }, [activeNames]);
+  const activeKeyList = useMemo(
+    () => activeList.map(normalizeMunicipalityName),
+    [activeList],
+  );
+  const activeSet = useMemo(() => new Set(activeKeyList), [activeKeyList]);
+
+  /* WHAT: Optional na selectable set para sa admin header map.
+     WHY: Additive lang ito; kapag walang onSelect, decorative pa rin ang mapa
+          at walang nababagong behavior sa ibang pages. */
+  const selectableSet = useMemo(() => {
+    if (typeof onSelect !== 'function') return null;
+    const list = Array.isArray(selectableNames) && selectableNames.length
+      ? selectableNames
+      : activeList;
+    return new Set(list.filter(Boolean).map(normalizeMunicipalityName));
+  }, [onSelect, selectableNames, activeList]);
+  const interactive = isProvince && Boolean(selectableSet);
+
+  const handleSelectKeyDown = (event, name) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelect?.(name);
+    }
+  };
+
   const highlightSet = useMemo(() => {
-    if (isProvince) return SALT_MUNICIPALITY_NAMES;
+    if (isProvince) return activeSet;
     const list = Array.isArray(highlightName) ? highlightName : [highlightName];
     return new Set(list.filter(Boolean).map(normalizeMunicipalityName));
-  }, [highlightName, isProvince]);
+  }, [highlightName, isProvince, activeSet]);
 
   /* WHAT: Guard the shape filters — shapes is always an array from buildMunicipalityArt,
      but we never trust it blindly. */
@@ -50,8 +81,8 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
 
   /* WHAT: Iisang focus width (scale) para sa lahat ng encoder. WHY: pantay ang zoom. */
   const focusWidth = useMemo(
-    () => uniformFocusWidth(SALT_LIST.map((n) => bounds[normalizeMunicipalityName(n)]), width, height),
-    [bounds, width, height],
+    () => uniformFocusWidth(activeKeyList.map((n) => bounds[n]), width, height),
+    [activeKeyList, bounds, width, height],
   );
 
   /* WHAT: Focus box (zoom) na naka-center sa encoder municipality, naka-lock sa loob ng lalawigan.
@@ -67,8 +98,8 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
 
   const activeViewBox = `${frameBox.x.toFixed(1)} ${frameBox.y.toFixed(1)} ${frameBox.w.toFixed(1)} ${frameBox.h.toFixed(1)}`;
 
-  /* WHAT: Fixed na ayos ng 7 salt municipality para sa staggered pulse. */
-  const saltOrder = useMemo(() => SALT_LIST.map((n) => normalizeMunicipalityName(n)), []);
+  /* WHAT: Ayos ng active municipalities para sa staggered pulse. */
+  const saltOrder = useMemo(() => activeKeyList, [activeKeyList]);
 
   /* WHAT: Never render the SVG if the projected geometry is missing — fallback to a
      plain div so a projection error can never white-screen the page. */
@@ -86,9 +117,10 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
         className="munimap-svg"
         viewBox={activeViewBox}
         preserveAspectRatio="xMidYMid meet"
-        aria-hidden="true"
-        role="presentation"
-        focusable="false"
+        aria-hidden={interactive ? undefined : 'true'}
+        role={interactive ? 'group' : 'presentation'}
+        aria-label={interactive ? 'Pangasinan municipality map. Choose a municipality to find it in the table.' : undefined}
+        focusable={interactive ? undefined : 'false'}
       >
         <defs>
           <filter id={`${uid}-glow`} x="-40%" y="-40%" width="180%" height="180%">
@@ -103,8 +135,8 @@ export default function MunicipalityMapArt({ highlightName, mode = 'single', cla
           /* WHAT: Buong lalawigan; shade from productionByName if provided. */
           shapes.map((s) => {
             const norm = normalizeMunicipalityName(s.name);
-            const salt = SALT_MUNICIPALITY_NAMES.has(norm);
-            const selected = salt && selectedKey === norm;
+            const salt = activeSet.has(norm);
+            const selected = selectedKey === norm;
 const volume = productionByName ? (productionByName[s.name] ?? productionByName[norm]) : null;
             const hasData = volume !== null && volume !== undefined;
             const vals = productionByName ? Object.values(productionByName).filter((v) => v !== null && v !== undefined) : [];
@@ -115,15 +147,21 @@ const volume = productionByName ? (productionByName[s.name] ?? productionByName[
             const bucket = hasData ? Math.min(4, Math.floor(t * 5)) : -1;
             const fills = ['#E5E7EB', '#DBEAFE', '#93C5FD', '#3B82F6', '#1D4ED8'];
             const fill = hasData ? fills[bucket + (bucket >= 0 ? 1 : 0)] : undefined;
+            const selectable = Boolean(selectableSet?.has(norm));
             return (
               <path
                 key={s.key}
                 d={s.d}
-                className={`munimap-shape${salt ? (selected ? ' munimap-shape--active' : ' munimap-shape--province') : ''}`}
+                className={`munimap-shape${selected ? ' munimap-shape--active' : (salt ? ' munimap-shape--province' : '')}${selectable ? ' munimap-shape--selectable' : ''}`}
                 style={hasData ? { fill } : undefined}
                 stroke="#374151"
                 strokeWidth="0.6"
                 filter={selected ? `url(#${uid}-glow)` : undefined}
+                role={selectable ? 'button' : undefined}
+                tabIndex={selectable ? 0 : undefined}
+                aria-label={selectable ? `Select ${s.name}` : undefined}
+                onClick={selectable ? () => onSelect(s.name) : undefined}
+                onKeyDown={selectable ? (event) => handleSelectKeyDown(event, s.name) : undefined}
               >
                 <title>{hasData ? `${s.name}: ${Number(volume).toLocaleString()} MT` : s.name}</title>
               </path>
@@ -131,9 +169,9 @@ const volume = productionByName ? (productionByName[s.name] ?? productionByName[
           })
         ) : (
           <>
-            {/* WHAT: Buong lalawigan (pinakamaga) + ang 7 salt-producing (neutral). */}
+            {/* WHAT: Buong lalawigan (pinakamaga) + ang active municipalities (neutral). */}
             {baseShapes.map((s) => {
-              const salt = SALT_MUNICIPALITY_NAMES.has(normalizeMunicipalityName(s.name));
+              const salt = activeSet.has(normalizeMunicipalityName(s.name));
               return (
                 <path
                   key={s.key}
@@ -220,13 +258,18 @@ const volume = productionByName ? (productionByName[s.name] ?? productionByName[
       {isProvince ? (
         /* WHAT: Compact na legend. WHY: ipinapaliwanag ang kulay ng mga munisipyo. */
         <div className="munimap-legend">
+          {interactive && (
+            <span className="munimap-legend__item munimap-legend__hint">
+              Click a municipality to find it below
+            </span>
+          )}
           {productionByName && Object.keys(productionByName).length > 0 ? (
             <span className="munimap-legend__item">Lower production → Higher production</span>
           ) : (
             <>
               <span className="munimap-legend__item">
                 <span className="munimap-legend__dot munimap-legend__dot--salt" aria-hidden="true" />
-                Salt-producing municipality
+                Active municipality
               </span>
               <span className="munimap-legend__item">
                 <span className="munimap-legend__dot munimap-legend__dot--other" aria-hidden="true" />

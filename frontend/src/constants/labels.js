@@ -18,7 +18,14 @@ export const UNIT_MT_PER_HA = "Metric Tons (MT) per hectare";
 export const UNIT_MONTH = "month";
 
 export const SCOPE_ALL = "all_municipalities";
-export const SCOPE_ALL_LABEL = "All 7 municipalities";
+// WHAT: Template + helper for the province-wide scope label.
+// WHY: The municipality list is database-managed, so the number of active
+//      municipalities must be passed in instead of hard-coding "7".
+export const SCOPE_ALL_LABEL_TEMPLATE = "All {count} municipalities";
+export const scopeAllLabel = (count) =>
+  (Number(count) > 1
+    ? SCOPE_ALL_LABEL_TEMPLATE.replace("{count}", String(count))
+    : "All municipalities");
 export const SCOPE_ALL_NOTE =
   "Scope label used for the province-wide view. Never \"province-wide\" or \"Pangasinan total\".";
 
@@ -64,7 +71,7 @@ export const LABELS = {
   recordedCoveragePct: {
     label: "Recorded coverage",
     unit: UNIT_PCT,
-    defn: "Approved recorded production divided by salt demand, as a percentage. Counts approved records from the 7 salt-producing municipalities only; actual production may be higher.",
+    defn: "Approved recorded production divided by salt demand, as a percentage. Counts approved records from active municipalities only; actual production may be higher.",
     scope: "kpi",
   },
   recordedShareOfLocalPct: {

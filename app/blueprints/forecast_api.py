@@ -4,7 +4,6 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models.forecast import ForecastRun, ForecastPoint
-from app.models.municipality import Municipality
 from app.services.forecast_service import (
     run_forecast,
     run_forecast_all_municipalities,
@@ -12,6 +11,7 @@ from app.services.forecast_service import (
     evaluate_target,
 )
 from app.utils import _admin_only, _parse_date
+from app.services.municipalities import is_active_municipality
 
 forecast_api_bp = Blueprint("forecast_api", __name__, url_prefix="/api/admin/forecast")
 
@@ -89,9 +89,9 @@ def run():
     if forecast_horizon < 1 or forecast_horizon > 36:
         return jsonify({"error": "forecast_horizon must be between 1 and 36."}), 400
 
-    # Validate municipality_id exists when a specific scope is requested.
-    if municipality_id is not None and not Municipality.query.get(municipality_id):
-        return jsonify({"error": "municipality_id is invalid."}), 400
+    # Validate municipality_id is an existing active municipality.
+    if municipality_id is not None and not is_active_municipality(municipality_id):
+        return jsonify({"error": "municipality_id is invalid or inactive."}), 400
 
     # WHAT: The history window and forecast horizon are now auto-set: history is
     #      the last 3 years up to the last month with data; the forecast runs
@@ -133,6 +133,8 @@ def list_runs():
         # Province-wide run: municipality_id IS NULL.
         q = q.filter(ForecastRun.municipality_id.is_(None))
     elif municipality_id is not None:
+        if not is_active_municipality(municipality_id):
+            return jsonify({"error": "municipality_id is invalid or inactive."}), 400
         q = q.filter_by(municipality_id=municipality_id)
     runs = q.order_by(ForecastRun.created_at.desc()).limit(1 if latest else 50).all()
 
@@ -173,6 +175,8 @@ def evaluate_target_route():
         municipality_id = None
 
     annual_target = body.get("annual_target")
+    if municipality_id is not None and not is_active_municipality(municipality_id):
+        return jsonify({"error": "municipality_id is invalid or inactive."}), 400
     if annual_target is None or str(annual_target).strip() == "":
         return jsonify({"error": "annual_target is required."}), 400
 

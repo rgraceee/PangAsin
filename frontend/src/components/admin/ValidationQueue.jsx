@@ -13,6 +13,7 @@ import IconButton from '../IconButton';
 import { formatMT } from '../../utils/volumeFormat';
 import PageHeader from './PageHeader';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
+import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 import { STATUS_OPTIONS } from '../../constants/labels';
 
 const REPORT_TYPE_LABELS = {
@@ -32,6 +33,7 @@ function DetailRow({ label, value }) {
 
 export default function ValidationQueue() {
   const { toastSuccess, toastError, toastInfo } = useToast();
+  const { activeNames } = useMunicipalityDirectory();
   const [records, setRecords] = useState([]);
   const [reportType, setReportType] = useState('production');
   const [munis, setMunis] = useState([]);
@@ -387,7 +389,7 @@ export default function ValidationQueue() {
             ))}
           </div>
         )}
-        art={<MunicipalityMapArt mode="province" />}
+        art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       >
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="vq-status">Status</label>

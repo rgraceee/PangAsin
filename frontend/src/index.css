@@ -3149,6 +3149,103 @@ body {
   }
 }
 
+/* ============================================================
+   Reports hero — shorter than the shared admin hero
+   ============================================================ */
+/* WHAT: 128px lang ang taas (vs 200px) at naka-center ang text.
+   WHY: dati may malaking blangko sa ilalim ng description; ang report
+        header ay title + isang linya lang, kaya hindi kailangan ng 200px. */
+.ui-pageheader--admin.report-hero {
+  min-height: 128px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ui-pageheader--admin.report-hero .ui-pageheader-main {
+  align-items: center;
+}
+
+.ui-pageheader--admin.report-hero .ui-pageheader-art {
+  top: 8px;
+  bottom: 8px;
+  right: 20px;
+  width: 30%;
+}
+
+.ui-pageheader--admin.report-hero .ui-pageheader-art-glow {
+  right: 20px;
+  width: 30%;
+}
+
+/* WHAT: Sa tablet, panatilihin ang mapa sa kanan pero 62% lang ang text.
+   WHY: hindi nagsasapawan ang title/subtitle at ang mapa/legend. */
+@media (min-width: 768px) and (max-width: 1199.98px) {
+  .ui-pageheader--admin.report-hero .ui-pageheader-art {
+    display: flex;
+  }
+
+  .ui-pageheader--admin.report-hero .ui-pageheader-main {
+    max-width: 62%;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ui-pageheader--admin.report-hero {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .ui-pageheader--admin.report-hero .ui-pageheader-main {
+    max-width: 100%;
+  }
+}
+
+/* ============================================================
+   Report cards + form controls
+   ============================================================ */
+.report-card {
+  margin-bottom: 24px;
+}
+
+.report-card:last-child {
+  margin-bottom: 0;
+}
+
+.report-card .card-header {
+  padding: 18px 24px;
+}
+
+.report-card .card-body {
+  padding: 24px;
+}
+
+/* WHAT: Plain line icons sa report card headers.
+   WHY: mas malinaw na UI icon kaysa sa saturated gradient square na
+        mukhang emoji; accent color lang ang naghihiwalay sa bawat card. */
+.report-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.report-card-icon--create {
+  color: #1565C8;
+}
+
+.report-card-icon--preview {
+  color: #B45309;
+}
+
+.report-card-icon--list {
+  color: var(--ui-accent-dark);
+}
+
 /* Create-report form: same label/control language as the header filters */
 .report-form-label {
   display: block;
@@ -3160,13 +3257,18 @@ body {
 
 .report-form .form-select,
 .report-form .form-control {
-  height: 38px;
-  padding: 0 10px;
+  height: 48px;
+  padding: 0 12px;
   font-size: 13px;
   color: var(--ui-text);
   background-color: var(--ui-surface);
   border: 1px solid var(--ui-guide);
   border-radius: var(--ui-radius-input);
+  transition: border-color var(--ui-t-fast), box-shadow var(--ui-t-fast);
+}
+
+.report-form .form-select {
+  padding-right: 30px;
 }
 
 .report-form .form-select:focus,
@@ -3175,25 +3277,720 @@ body {
   box-shadow: 0 0 0 3px var(--ui-accent-tint);
 }
 
-.report-form-actions {
+/* WHAT: Sapat na lapad para buo ang dd/mm/yyyy at may espasyo sa icon. */
+.report-form input[type="date"].form-control {
+  min-width: 150px;
+  padding-right: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-form input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.report-form input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.report-form .form-control[aria-invalid="true"],
+.report-form .form-control[aria-invalid="true"]:focus {
+  border-color: var(--ui-danger);
+  box-shadow: 0 0 0 3px var(--ui-danger-tint);
+}
+
+/* WHAT: Isang row ang Content | Scope | Time | From | To | actions.
+   WHY: grid na may ratio columns; auto ang huling column para sa
+        format segmented control + Generate button. */
+.report-filter-row {
+  display: grid;
+  grid-template-columns:
+    minmax(116px, 1.2fr)
+    minmax(210px, 1.6fr)
+    minmax(116px, 1fr)
+    minmax(150px, 1fr)
+    minmax(150px, 1fr)
+    auto;
+  align-items: end;
+  gap: 8px;
+}
+
+/* Kapag preset ang Time, wala ang From/To — reflow sa 4 columns. */
+.report-filter-row--preset {
+  grid-template-columns:
+    minmax(116px, 1.2fr)
+    minmax(210px, 1.6fr)
+    minmax(116px, 1fr)
+    auto;
+}
+
+/* Kapag Year, isang Year field na sumasakop sa dalawang date columns. */
+.report-filter-row--year {
+  grid-template-columns:
+    minmax(116px, 1.2fr)
+    minmax(210px, 1.6fr)
+    minmax(116px, 1fr)
+    minmax(150px, 1fr)
+    minmax(150px, 1fr)
+    auto;
+}
+
+.report-filter-field {
+  min-width: 0;
+}
+
+.report-filter-field .report-form-label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.report-filter-field--year {
+  grid-column: 4 / 6;
+}
+
+.report-filter-field--scope .form-select {
+  font-size: 12px;
+  padding-left: 8px;
+  padding-right: 24px;
+  background-position: right 6px center;
+}
+
+.report-filter-field--time .form-select {
+  font-size: 12.5px;
+}
+
+/* WHAT: PDF/Word segmented control sa tabi ng Generate button. */
+.report-generate-group {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.report-format-seg {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 48px;
+  padding: 3px;
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-hover-bg);
+}
+
+.report-format-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 7px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ui-text-2);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--ui-t-fast), color var(--ui-t-fast), box-shadow var(--ui-t-fast);
+}
+
+.report-format-option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.report-format-option:hover {
+  color: var(--ui-text);
+}
+
+.report-format-option.is-active {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: var(--ui-shadow);
+}
+
+.report-format-option:has(input:focus-visible) {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+
+.report-generate-btn {
+  flex: 0 0 auto;
+  height: 48px;
+  padding: 0 12px;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background-color var(--ui-t-fast), transform var(--ui-t-fast), box-shadow var(--ui-t-fast);
+}
+
+.report-generate-btn:hover:not(:disabled) {
+  box-shadow: 0 8px 18px -10px rgba(20, 107, 31, 0.65);
+}
+
+.report-generate-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.report-generate-btn:focus-visible {
+  outline: 2px solid var(--ui-accent-dark);
+  outline-offset: 2px;
+}
+
+.report-generate-btn .spinner-border {
+  width: 15px;
+  height: 15px;
+  border-width: 2px;
+}
+
+.report-filter-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  color: var(--ui-text-muted);
+}
+
+.report-filter-hint svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.report-field-error {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ui-danger);
+}
+
+.report-form-error {
+  margin: 16px 0 0;
+}
+
+/* Municipality / barangay follow-up fields (same 48px control language). */
+.report-scope-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 560px;
+  margin-top: 16px;
+}
+
+/* WHAT: Sa mas makitid na screen, 2 columns ang filters at full-width
+   ang Generate group. WHY: hindi kasya ang 6 controls nang maayos. */
+@media (max-width: 1399.98px) {
+  .report-filter-row,
+  .report-filter-row--range,
+  .report-filter-row--preset,
+  .report-filter-row--year {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-filter-field--year {
+    grid-column: auto;
+  }
+
+  .report-filter-row--range .report-filter-field--time,
+  .report-filter-row--preset .report-filter-field--time {
+    grid-column: 1 / -1;
+  }
+
+  .report-generate-group {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .report-generate-btn {
+    flex: 1 1 auto;
+    width: auto;
+  }
+}
+
+/* WHAT: Sa mobile, isang column at full-width ang format + button. */
+@media (max-width: 575.98px) {
+  .report-filter-row,
+  .report-filter-row--range,
+  .report-filter-row--preset,
+  .report-filter-row--year {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-generate-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-format-seg {
+    width: 100%;
+  }
+
+  .report-format-option {
+    flex: 1 1 0;
+  }
+
+  .report-generate-btn {
+    width: 100%;
+  }
+
+  .report-scope-fields {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: none;
+  }
+}
+
+/* ============================================================
+   Generated reports — toggle, toolbar, table, pagination
+   ============================================================ */
+.report-list-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   flex-wrap: wrap;
+}
+
+.report-view-btn {
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.report-view-chev {
+  transition: transform var(--ui-t-slow);
+}
+
+.report-view-btn.is-open .report-view-chev {
+  transform: rotate(180deg);
+}
+
+.report-view-btn:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.report-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--ui-text-2);
+  background: var(--ui-hover-bg);
+  border: 1px dashed var(--ui-guide);
+  border-radius: var(--ui-radius-row);
+}
+
+.report-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+  background: var(--ui-surface);
+  color: var(--ui-text-muted);
+}
+
+.report-empty-state strong {
+  color: var(--ui-text);
+  font-size: 14px;
+}
+
+.report-empty-state p {
+  max-width: 420px;
+  font-size: 13px;
+}
+
+.report-clear-btn {
+  margin-top: 8px;
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.report-table-toolbar {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  margin-top: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.report-search {
+  position: relative;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.report-search .form-control {
+  height: 40px;
+  padding-left: 36px;
+  font-size: 13px;
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+}
+
+.report-search .form-control:focus {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+.report-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: var(--ui-text-muted);
+  pointer-events: none;
+}
+
+.report-format-filter {
+  flex: 0 0 170px;
+}
+
+.report-format-filter .form-select {
+  height: 40px;
+  padding: 0 34px 0 12px;
+  font-size: 13px;
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+}
+
+.report-format-filter .form-select:focus {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+.report-table-count {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.report-list-table {
+  font-size: 13px;
+}
+
+.report-list-table thead th {
+  white-space: nowrap;
+}
+
+.report-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.report-sort-btn svg {
+  opacity: 0.45;
+}
+
+.report-sort-btn:hover,
+.report-sort-btn.is-active {
+  color: var(--ui-text);
+}
+
+.report-sort-btn.is-active svg {
+  opacity: 0.9;
+}
+
+.report-sort-btn:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.report-actions-head {
+  text-align: right;
+}
+
+.report-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-name-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.report-name-btn:hover:not(:disabled) {
+  color: var(--ui-accent-dark);
+  text-decoration-color: currentColor;
+}
+
+.report-name-btn:disabled {
+  color: var(--ui-text-2);
+  cursor: default;
+}
+
+.report-name-btn:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.report-period-cell,
+.report-date-cell {
+  color: var(--ui-text-2);
+  white-space: nowrap;
+}
+
+.report-format-badge,
+.report-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.report-format-badge {
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.report-format-badge--pdf {
+  background: #FDECEC;
+  border: 1px solid #F7C9C9;
+  color: #B42318;
+}
+
+.report-format-badge--docx {
+  background: #EAF1FE;
+  border: 1px solid #C9DAFB;
+  color: #1D4ED8;
+}
+
+.report-format-badge--other {
+  background: var(--ui-active-bg);
+  border: 1px solid var(--ui-guide);
+  color: var(--ui-text-2);
+}
+
+.report-status-badge {
+  text-transform: capitalize;
+}
+
+.report-status-badge--generated {
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+}
+
+.report-status-badge--pending {
+  background: var(--ui-warning-tint);
+  color: #9A5B00;
+}
+
+.report-status-badge--failed {
+  background: var(--ui-danger-tint);
+  color: #B42318;
+}
+
+.report-actions-cell {
+  text-align: right;
+}
+
+/* WHAT: Sticky actions kapag horizontal ang scroll ng table.
+   WHY: laging kita ang download/delete kahit makitid ang screen. */
+@media (max-width: 1399.98px) {
+  .report-list-table th:last-child,
+  .report-list-table td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    /* WHAT: Solid na background — ang row hover ay semi-transparent, kaya
+       kung i-inherit ito ay nakikita ang tekstong dumadaan sa ilalim.
+       WHY: #F1F6FC = rgba(21,101,200,0.06) na naka-flatten sa puti. */
+    background-color: var(--ui-surface);
+    box-shadow: -10px 0 12px -12px rgba(15, 23, 42, 0.45);
+  }
+
+  .report-list-table tbody tr:hover td:last-child {
+    background-color: #F1F6FC;
+  }
+
+  .report-list-table thead th:last-child {
+    background-color: var(--ui-surface);
+    z-index: 3;
+  }
+}
+
+.report-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.report-row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--ui-guide);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--ui-t-fast), border-color var(--ui-t-fast), color var(--ui-t-fast);
+}
+
+.report-row-action:hover {
+  background: var(--ui-hover-bg);
+  color: var(--ui-text);
+}
+
+.report-row-action--pdf:hover {
+  background: #FDECEC;
+  border-color: #F7C9C9;
+  color: #B42318;
+}
+
+.report-row-action--docx:hover {
+  background: #EAF1FE;
+  border-color: #C9DAFB;
+  color: #1D4ED8;
+}
+
+.report-row-action--delete {
+  padding: 0 8px;
+  border-color: #F3C6C6;
+  background: var(--ui-surface);
+  color: var(--ui-danger);
+}
+
+.report-row-action--delete:hover {
+  background: var(--ui-danger-tint);
+  border-color: #E9A8A8;
+  color: #B42318;
+}
+
+.report-row-action.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.report-row-action:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.report-row-action--delete:focus-visible {
+  outline-color: var(--ui-danger);
+}
+
+.report-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--ui-border);
 }
 
-.report-form-hint {
+.report-pagination-info {
   font-size: 12.5px;
-  color: var(--ui-text-2);
+  color: var(--ui-text-muted);
 }
 
-@media (max-width: 575.98px) {
-  .report-form-actions .ui-btn-primary {
-    width: 100%;
+.report-pagination-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.report-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--ui-guide);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--ui-t-fast), border-color var(--ui-t-fast), color var(--ui-t-fast);
+}
+
+.report-page-btn:hover:not(:disabled) {
+  background: var(--ui-hover-bg);
+  color: var(--ui-text);
+}
+
+.report-page-btn.is-active {
+  background: var(--ui-accent-tint);
+  border-color: var(--ui-accent);
+  color: var(--ui-accent-dark);
+}
+
+.report-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.report-page-btn:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+  .report-format-filter {
+    flex: 1 1 100%;
+  }
+
+  .report-table-count {
+    margin-left: 0;
+  }
+
+  .report-pagination {
     justify-content: center;
   }
 }

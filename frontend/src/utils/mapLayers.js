@@ -28,10 +28,13 @@ export const ESRI_LIGHT_ATTRIBUTION =
 //      "API key required" na watermark per tile kung wala), kaya ang Esri
 //      World Light Gray ang gamit — magaan ang tone, libre, walang key.
 export function addLightBasemap(map) {
-  L.tileLayer(ESRI_LIGHT_URL, {
+  const layer = L.tileLayer(ESRI_LIGHT_URL, {
     attribution: ESRI_LIGHT_ATTRIBUTION,
     maxZoom: 16,
   }).addTo(map);
+  // WHAT: Ibalik ang layer para makapag-listen ang picker sa tile errors.
+  // WHY: Kapag offline, may graceful notice kaysa blangkong gray na mapa.
+  return layer;
 }
 
 export function buildProvinceMaskRings(geoJsons, bounds) {

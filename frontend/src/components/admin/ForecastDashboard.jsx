@@ -24,7 +24,8 @@ import {
 import {
   fmtMT, monthLong, monthNumber,
 } from './forecast/forecastData';
-import { SCOPE_ALL_LABEL } from '../../constants/labels';
+import { scopeAllLabel } from '../../constants/labels';
+import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 
 const DEFAULT_FILTERS = {
   recordedWindow: 'all',
@@ -48,6 +49,7 @@ function SectionHead({ icon: Icon, title, subtitle }) {
 function InnerForecastDashboard() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const set = (key) => (value) => setFilters((f) => ({ ...f, [key]: value }));
+  const { activeNames } = useMunicipalityDirectory();
 
   const {
     municipalities, outlook, trends, descriptive, selectedRun,
@@ -60,10 +62,18 @@ function InnerForecastDashboard() {
   const { lastUpdated, refreshing, refresh } = useAutoRefresh(reload);
 
   const scopeName = useMemo(() => {
-    if (filters.selectedMuni === 'all') return SCOPE_ALL_LABEL;
+    if (filters.selectedMuni === 'all') {
+      return scopeAllLabel(activeNames.length || municipalities.length);
+    }
     const m = municipalities.find((x) => String(x.id) === String(filters.selectedMuni));
     return m ? m.name : '\u2014';
-  }, [filters.selectedMuni, municipalities]);
+  }, [filters.selectedMuni, municipalities, activeNames.length]);
+
+  const municipalityOptions = useMemo(() => {
+    if (activeNames.length === 0) return municipalities;
+    const active = new Set(activeNames);
+    return municipalities.filter((m) => active.has(m.name));
+  }, [municipalities, activeNames]);
 
   const horizon = forecastPoints.length;
   const hasForecast = horizon > 0;
@@ -112,7 +122,7 @@ function InnerForecastDashboard() {
           Data as of {latestRecordMonth ? monthLong(latestRecordMonth) : 'No data yet'}
         </span>
       )}
-      art={<MunicipalityMapArt mode="province" />}
+      art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
     />
   );
 
@@ -150,7 +160,8 @@ function InnerForecastDashboard() {
         forecastHorizon={filters.forecastHorizon}
         onForecastHorizon={set('forecastHorizon')}
         selectedMuni={filters.selectedMuni}
-        municipalities={municipalities}
+        municipalities={municipalityOptions}
+        municipalityCount={activeNames.length || municipalityOptions.length}
         onSelectedMuni={set('selectedMuni')}
         province={filters.province}
         onProvince={set('province')}
@@ -220,14 +231,14 @@ function InnerForecastDashboard() {
         <SectionHead
           icon={Building2}
           title="Municipalities"
-          subtitle="Every municipality of the seven, in one order, with the places that need a decision first."
+          subtitle="Every active municipality, in one order, with the places that need a decision first."
         />
         <Row className="g-3">
           <Col lg={12} className="d-flex">
             <ForecastMuniPanels rows={muniRows} height={320} />
           </Col>
           <Col lg={12} className="d-flex">
-            <ForecastNeedsAttention items={attentionItems} />
+            <ForecastNeedsAttention items={attentionItems} total={muniRows.length} />
           </Col>
         </Row>
       </section>

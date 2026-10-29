@@ -62,15 +62,18 @@ export function directionFromPct(changePct) {
   return 'stable';
 }
 
-/* Readiness: 24+ months AND 5 of 7 municipalities -> Ready; 12+ -> Limited. */
+/* Readiness: 24+ months AND at least 70% of active municipalities with data
+   -> Ready; 12+ -> Limited. Proportional so adding/deactivating municipalities
+   does not require a new hard-coded ratio. */
 export function computeReadiness(history, scopeId) {
   const h = history || {};
-  const total = h.municipalities_total || 7;
+  const total = h.municipalities_total || 0;
   const withData = h.municipalities_with_data || 0;
   const monthsByMuni = h.municipality_months || {};
   if (scopeId === 'all') {
     const months = h.months_with_data || 0;
-    const level = months >= 24 && withData >= 5 ? 'ready' : months >= 12 ? 'limited' : 'not_ready';
+    const coverage = total > 0 ? withData / total : 0;
+    const level = months >= 24 && coverage >= 0.7 ? 'ready' : months >= 12 ? 'limited' : 'not_ready';
     return { level, months, withData, total };
   }
   const months = monthsByMuni[String(scopeId)] || 0;

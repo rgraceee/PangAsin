@@ -24,7 +24,16 @@ UNIT_MONTH = "month"
 # Scope label
 # ---------------------------------------------------------------------------
 SCOPE_ALL = "all_municipalities"
-SCOPE_ALL_LABEL = "All 7 municipalities"
+# WHAT: Template + helper for the province-wide scope label.
+# WHY: The municipality list is database-managed, so the number of active
+#      municipalities must be passed in instead of hard-coding "7".
+SCOPE_ALL_LABEL_TEMPLATE = "All {count} municipalities"
+
+
+def scope_all_label(count):
+    return SCOPE_ALL_LABEL_TEMPLATE.format(count=count)
+
+
 SCOPE_ALL_NOTE = "Scope label used for the province-wide view. Never \"province-wide\" or \"Pangasinan total\"."
 
 # ---------------------------------------------------------------------------
@@ -72,7 +81,7 @@ LABELS = {
     "recorded_coverage_pct": {
         "label": "Recorded coverage",
         "unit": UNIT_PCT,
-        "defn": "Approved recorded production divided by salt demand, as a percentage. Counts approved records from the 7 salt-producing municipalities only; actual production may be higher.",
+        "defn": "Approved recorded production divided by salt demand, as a percentage. Counts approved records from active municipalities only; actual production may be higher.",
         "scope": "kpi",
     },
     "recorded_share_of_local_pct": {

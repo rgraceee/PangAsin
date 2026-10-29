@@ -1,4 +1,4 @@
-# WHAT: Municipality table — isang bayan sa Pangasinan (7 salt-producing areas).
+# WHAT: Municipality table — isang bayan sa Pangasinan (DB-managed list).
 # WHY: Reference ng bawat production record; ang geojson_ref ang link sa map boundary.
 from app.extensions import db
 from datetime import datetime
@@ -15,6 +15,10 @@ class Municipality(db.Model):
     status = db.Column(db.Enum("active", "inactive", name="municipality_status_enum"), default="active", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.Index("uq_municipalities_name_lower", db.func.lower(name), unique=True),
+    )
 
     users = db.relationship("User", backref="municipality", lazy=True)
     barangays = db.relationship("Barangay", backref="municipality", lazy=True)

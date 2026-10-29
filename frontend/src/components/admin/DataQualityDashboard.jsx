@@ -19,6 +19,7 @@ import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import DqHeatmap from './data-quality/DqHeatmap';
 import DqFieldCompleteness from './data-quality/DqFieldCompleteness';
 import { STATE_LEGEND, formatMonth, formatTimestamp, toneForPercent } from './data-quality/dqData';
+import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 import './data-quality/dataQuality.css';
 
 const RANGE_OPTIONS = [
@@ -45,6 +46,7 @@ export default function DataQualityDashboard() {
   const [error, setError] = useState(null);
   const [range, setRange] = useState(12);
   const [selectedId, setSelectedId] = useState(null);
+  const { activeNames } = useMunicipalityDirectory();
 
   const load = useCallback((value) => {
     setRefreshing(true);
@@ -126,7 +128,7 @@ export default function DataQualityDashboard() {
         title="Data Quality"
         subtitle="How complete the records are, and which months still have no report."
         actions={headerActions}
-        art={<MunicipalityMapArt mode="province" />}
+        art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       >
         <div className="dq-range-pills d-flex flex-row gap-2 flex-nowrap align-items-center">
           {RANGE_OPTIONS.map((option) => (

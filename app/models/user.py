@@ -15,9 +15,14 @@ class User(db.Model, UserMixin):
     role = db.Column(db.Enum("admin", "encoder", name="user_role_enum"), nullable=False)
     municipality_id = db.Column(db.Integer, db.ForeignKey("municipalities.id"), nullable=True)
     status = db.Column(db.Enum("active", "inactive", name="user_status_enum"), default="active", nullable=False)
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
     last_login = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.Index("uq_users_email_lower", db.func.lower(email), unique=True),
+    )
 
     production_records = db.relationship("ProductionRecord", foreign_keys="ProductionRecord.submitted_by", backref="submitter", lazy=True)
 

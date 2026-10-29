@@ -12,7 +12,16 @@ from app import create_app
 from app.extensions import db
 
 
-TABLES = ["production_records", "forecast_runs", "forecast_points", "producers", "barangays"]
+TABLES = [
+    "municipalities",
+    "users",
+    "barangays",
+    "production_records",
+    "forecast_runs",
+    "forecast_points",
+    "producers",
+    "audit_logs",
+]
 
 app = create_app()
 with app.app_context():

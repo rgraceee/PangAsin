@@ -26,6 +26,11 @@ from app.services.aggregates import (
     _reporting_grid,
 )
 from app.utils import _admin_only, _parse_date
+from app.services.municipalities import (
+    active_municipality_ids_subquery,
+    is_active_municipality,
+    scope_all_label,
+)
 from datetime import date, timedelta
 from sqlalchemy import func, extract, case
 
@@ -56,7 +61,13 @@ def _add_months(source_date, months):
 
 
 def _query_records(municipality_id, start=None, end=None, production_method=None):
-    q = ProductionRecord.query.filter(ProductionRecord.status == "approved")
+    q = (
+        ProductionRecord.query
+        .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
+    )
     if municipality_id is not None:
         q = q.filter(ProductionRecord.municipality_id == municipality_id)
     if start is not None:
@@ -136,6 +147,11 @@ def _production_descriptive(municipality_id, months):
     """Return descriptive history for the source-labeled production dataset."""
     latest = (
         MunicipalityMonthlyProduction.query
+        .filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
         .order_by(
             MunicipalityMonthlyProduction.production_year.desc(),
             MunicipalityMonthlyProduction.production_month.desc(),
@@ -161,6 +177,10 @@ def _production_descriptive(municipality_id, months):
     end = _add_months(latest_month, 1)
     all_rows_query = MunicipalityMonthlyProduction.query.filter(
         MunicipalityMonthlyProduction.production_year <= latest.production_year
+    ).filter(
+        MunicipalityMonthlyProduction.municipality_id.in_(
+            active_municipality_ids_subquery()
+        )
     )
     if municipality_id is not None:
         all_rows_query = all_rows_query.filter(
@@ -314,7 +334,7 @@ def descriptive():
     (MT); producers counts; methods share (MT); yield_per_bed_mt (MT/bed) and
     yield_per_ha_mt (MT/ha); reporting_grid (boolean per municipality/month).
 
-    Query: municipality_id (optional, defaults to all 7 municipalities),
+    Query: municipality_id (optional, defaults to all active municipalities),
            months (optional, how many calendar months of monthly history to
            return; default 24, max 120),
            production_method (optional solar|cooked|hybrid; narrows every
@@ -387,6 +407,7 @@ def descriptive():
         )
         .join(Municipality, Municipality.id == ProductionRecord.municipality_id)
         .filter(ProductionRecord.status == "approved")
+        .filter(Municipality.status == "active")
     )
     if municipality_id is not None:
         muni_rows = muni_rows.filter(ProductionRecord.municipality_id == municipality_id)
@@ -648,6 +669,8 @@ def predictive():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality_id = request.args.get("municipality_id", type=int)
+    if municipality_id is not None and not is_active_municipality(municipality_id):
+        return jsonify({"error": "municipality_id is invalid or inactive."}), 400
     range_opt = request.args.get("range") or "next_12"
     start = _parse_date(request.args.get("start")) if request.args.get("start") else None
     end = _parse_date(request.args.get("end")) if request.args.get("end") else None
@@ -697,10 +720,13 @@ def predictive():
     horizon = max(period["months"], 12)
     if municipality_id is None:
         forecast_run = run_forecast_all_municipalities(horizon)
-        scope_label = "All 7 municipalities"
+        scope_label = scope_all_label()
     else:
         forecast_run = run_forecast(municipality_id, horizon)
-        scope_label = "All 7 municipalities" if municipality_id is None else str(municipality_id)
+        forecast_municipality = db.session.get(Municipality, municipality_id)
+        scope_label = (
+            forecast_municipality.name if forecast_municipality else str(municipality_id)
+        )
 
     # Build series: history + forecast with bounds.
     points = sorted(forecast_run.points, key=lambda p: p.period_label) if forecast_run.points else []
@@ -828,7 +854,7 @@ def predictive():
     # Assumptions (plain language).
     assumptions = [
         "Future demand is the latest demand benchmark held flat, plus an optional annual growth % (default 0%).",
-        "Recorded coverage counts approved records from the 7 salt-producing municipalities only; actual production may be higher.",
+        "Recorded coverage counts approved records from active municipalities only; actual production may be higher.",
         "Partial-month reporting: the current month may be under-reported because the year is still in progress.",
         f"Forecast method used: {forecast_run.algorithm or 'none'}.",
     ]

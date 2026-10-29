@@ -3,6 +3,7 @@
 //      every number comes from the API response - nothing is calculated twice.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getAdminMunicipalities, evaluateTarget } from '../../../services/dataService';
+import useMunicipalityDirectory from '../../../hooks/useMunicipalityDirectory';
 import { useToast } from '../../Toast';
 import { buildYearTimeline, fmtMT } from './targetData';
 import { addRequiredPace, buildSummary } from './targetSummaryData';
@@ -10,6 +11,7 @@ import { buildMunicipalityRows } from './targetMuniData';
 
 export default function useTargetEvaluation() {
   const { toastSuccess, toastError } = useToast();
+  const { activeNames } = useMunicipalityDirectory();
   const [municipalities, setMunicipalities] = useState([]);
   const [selectedMuni, setSelectedMuni] = useState('all');
   const [annualTarget, setAnnualTarget] = useState('');
@@ -21,9 +23,17 @@ export default function useTargetEvaluation() {
 
   useEffect(() => {
     getAdminMunicipalities()
-      .then((res) => setMunicipalities(res.municipalities || []))
+      .then((res) => {
+        const list = res.municipalities || [];
+        if (activeNames.length === 0) {
+          setMunicipalities(list);
+          return;
+        }
+        const active = new Set(activeNames);
+        setMunicipalities(list.filter((m) => active.has(m.name)));
+      })
       .catch(() => {});
-  }, []);
+  }, [activeNames]);
 
   const runEvaluation = useCallback(() => {
     const target = Number(annualTarget);

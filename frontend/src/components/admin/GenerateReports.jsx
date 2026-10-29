@@ -1,13 +1,31 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Row, Col, Card, Form, Table, Alert, Spinner } from 'react-bootstrap';
+import { Card, Form, Table, Alert, Spinner } from 'react-bootstrap';
 import { getAdminMunicipalities, getAdminStats, getAdminMonths, createReport, getReports, getReport, getReportDownloadUrl, deleteReport } from '../../services/dataService';
 import { confirmDelete } from '../../services/feedback';
 import { useToast } from '../Toast';
 import { SkeletonList, SkeletonChart } from '../Skeleton';
-import { Eye, Download, Trash2, FileText, FilePlus2, ClipboardList, SearchX, ChevronDown, ChevronUp } from 'lucide-react';
-import IconButton from '../IconButton';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Download,
+  Eye,
+  EyeOff,
+  FilePlus2,
+  FileText,
+  Info,
+  Search,
+  SearchX,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import PageHeader from './PageHeader';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
+import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 import { displayHeader } from '../../constants/labels';
 
 const CONTENT_TYPES = [
@@ -34,6 +52,20 @@ const SCOPE_LEVELS = [
   { id: 'barangay', label: 'Single barangay' },
 ];
 
+const TIME_MODES = [
+  { id: 'range', label: 'Date range' },
+  { id: 'this_month', label: 'This month' },
+  { id: 'last_quarter', label: 'Last quarter' },
+  { id: 'year', label: 'Year' },
+];
+
+const FORMAT_OPTIONS = [
+  { id: 'pdf', label: 'PDF' },
+  { id: 'docx', label: 'Word' },
+];
+
+const PAGE_SIZE = 8;
+
 const DATA_SECTIONS = [
   ['municipalities', 'Municipalities'],
   ['by_municipality', 'By Municipality'],
@@ -56,9 +88,48 @@ const SUMMARY_LINES = [
   ['Overall Quality Score', 'overall_quality_score', (v) => `${v}%`],
 ];
 
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+function toISODate(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function thisMonthRange() {
+  const now = new Date();
+  return [
+    toISODate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    toISODate(now),
+  ];
+}
+
+function lastQuarterRange() {
+  const now = new Date();
+  const quarter = Math.floor(now.getMonth() / 3) - 1;
+  const year = now.getFullYear() + Math.floor(quarter / 4);
+  const index = ((quarter % 4) + 4) % 4;
+  const start = new Date(year, index * 3, 1);
+  const end = new Date(year, index * 3 + 3, 0);
+  return [toISODate(start), toISODate(end)];
+}
+
 function formatDateRange(start, end) {
   if (!start && !end) return 'All records';
   return [start, end].filter(Boolean).join(' to ');
+}
+
+function formatDateTime(value) {
+  if (!value) return '\u2014';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '\u2014';
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function formatCell(value) {
@@ -68,6 +139,31 @@ function formatCell(value) {
     return rounded.toLocaleString();
   }
   return String(value);
+}
+
+function reportScopeLabel(report) {
+  if (!report) return '';
+  if (report.barangay_name) return `Barangay ${report.barangay_name}`;
+  if (report.municipality_name) return `Municipality ${report.municipality_name}`;
+  return 'Province-wide';
+}
+
+function reportTypeLabel(report) {
+  if (!report) return '';
+  return TYPE_LABEL[report.report_type] || report.report_type || '\u2014';
+}
+
+function formatLabel(format) {
+  if (!format) return '\u2014';
+  if (format === 'docx') return 'DOCX';
+  if (format === 'pdf') return 'PDF';
+  return String(format).toUpperCase();
+}
+
+function formatBadgeClass(format) {
+  if (format === 'pdf') return 'report-format-badge--pdf';
+  if (format === 'docx') return 'report-format-badge--docx';
+  return 'report-format-badge--other';
 }
 
 // A report "has data" if any of its table sections has rows, or if any of the
@@ -109,6 +205,35 @@ function DataTable({ title, rows }) {
   );
 }
 
+function SortableTh({ label, column, activeKey, direction, onSort }) {
+  const active = activeKey === column;
+  return (
+    <th aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button
+        type="button"
+        className={`report-sort-btn${active ? ' is-active' : ''}`}
+        onClick={() => onSort(column)}
+      >
+        <span>{label}</span>
+        {active
+          ? (direction === 'asc'
+            ? <ArrowUp size={12} aria-hidden="true" />
+            : <ArrowDown size={12} aria-hidden="true" />)
+          : <ArrowUpDown size={12} aria-hidden="true" />}
+      </button>
+    </th>
+  );
+}
+
+const SORT_ACCESSORS = {
+  report: reportTypeLabel,
+  scope: reportScopeLabel,
+  period: (r) => r.date_range_start || '',
+  format: (r) => r.format || '',
+  requester: (r) => r.requester_name || '',
+  created_at: (r) => r.created_at || '',
+};
+
 export default function GenerateReports() {
   const { toastSuccess, toastError } = useToast();
   const [content, setContent] = useState('production');
@@ -120,19 +245,28 @@ export default function GenerateReports() {
   const [endDate, setEndDate] = useState('');
   const [year, setYear] = useState('');
   const [years, setYears] = useState([]);
+  const [format, setFormat] = useState('pdf');
   const [municipalities, setMunicipalities] = useState([]);
   const [barangaysByMuni, setBarangaysByMuni] = useState({});
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [showFilesFor, setShowFilesFor] = useState(null);
   const [showReports, setShowReports] = useState(false);
   const [error, setError] = useState(null);
   const [previewError, setPreviewError] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [currentReport, setCurrentReport] = useState(null);
   const [previewData, setPreviewData] = useState(null);
+  const [generateStatus, setGenerateStatus] = useState('');
+  const [reportSearch, setReportSearch] = useState('');
+  const [reportFormatFilter, setReportFormatFilter] = useState('');
+  const [sortKey, setSortKey] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
+  const [page, setPage] = useState(1);
+  const { activeNames } = useMunicipalityDirectory();
   const previewRef = React.useRef(null);
+
+  const invalidRange = Boolean(startDate && endDate && startDate > endDate);
 
   const loadReports = () => {
     getReports()
@@ -173,6 +307,10 @@ export default function GenerateReports() {
     setBarangayId('');
   }, [municipalityId, scope]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [reportSearch, reportFormatFilter, sortKey, sortDir]);
+
   const visibleBarangays = useMemo(
     () => (municipalityId ? barangaysByMuni[Number(municipalityId)] || [] : []),
     [municipalityId, barangaysByMuni]
@@ -192,23 +330,32 @@ export default function GenerateReports() {
     scrollToPreview();
   };
 
+  const failGeneration = (message) => {
+    setError(message);
+    setGenerateStatus(message);
+  };
+
   const handleView = () => {
     setError(null);
     setPreviewError(null);
     if (scope === 'municipality' && !municipalityId) {
-      setError('Please select a municipality.');
+      failGeneration('Please select a municipality.');
       return;
     }
     if (scope === 'barangay') {
-      if (!municipalityId) { setError('Please select a municipality first.'); return; }
-      if (!barangayId) { setError('Please select a barangay.'); return; }
+      if (!municipalityId) { failGeneration('Please select a municipality first.'); return; }
+      if (!barangayId) { failGeneration('Please select a barangay.'); return; }
     }
     if (timeMode === 'range' && ((startDate && !endDate) || (!startDate && endDate))) {
-      setError('Set both a start and an end date, or leave both empty for all records.');
+      failGeneration('Set both a start and an end date, or leave both empty for all records.');
+      return;
+    }
+    if (timeMode === 'range' && invalidRange) {
+      failGeneration('From date must be on or before the To date.');
       return;
     }
     if (timeMode === 'year' && !year) {
-      setError('Select a year.');
+      failGeneration('Select a year.');
       return;
     }
 
@@ -217,19 +364,25 @@ export default function GenerateReports() {
     if (timeMode === 'range') {
       start = startDate || null;
       end = endDate || null;
-    } else {
+    } else if (timeMode === 'year') {
       start = `${year}-01-01`;
       end = `${year}-12-31`;
+    } else if (timeMode === 'this_month') {
+      [start, end] = thisMonthRange();
+    } else if (timeMode === 'last_quarter') {
+      [start, end] = lastQuarterRange();
     }
 
     const payload = {
       report_type: content,
+      format,
       date_range_start: start,
       date_range_end: end,
     };
     if (scope === 'municipality') payload.municipality_id = Number(municipalityId);
     if (scope === 'barangay') payload.barangay_id = Number(barangayId);
 
+    setGenerateStatus('Generating report\u2026');
     setCreating(true);
     setPreviewData(null);
     setCurrentReport(null);
@@ -239,12 +392,14 @@ export default function GenerateReports() {
         showPreview(res.report, res.data);
         setShowReports(true);
         loadReports();
+        setGenerateStatus('Report generated. Preview is ready.');
         toastSuccess('The report has been generated and is ready to preview.', 'Report generated');
       })
       .catch((err) => {
         setCreating(false);
         const message = err.message || 'Something went wrong while generating the report. Please try again.';
         setPreviewError(message);
+        setGenerateStatus(message);
         toastError(message);
       });
   };
@@ -273,12 +428,16 @@ export default function GenerateReports() {
       : r.municipality_name ? ` for ${r.municipality_name}` : '';
     const confirmed = await confirmDelete({
       title: 'Delete this report?',
-      text: `This will permanently remove the <strong>${TYPE_LABEL[r.report_type] || r.report_type}</strong> report${label} and its file. This cannot be undone.`,
+      text: `This will permanently remove the <strong>${reportTypeLabel(r)}</strong> report${label} and its file. This cannot be undone.`,
       confirmText: 'Delete',
     });
     if (!confirmed) return;
     deleteReport(r.id)
       .then(() => {
+        if (currentReport && currentReport.id === r.id) {
+          setCurrentReport(null);
+          setPreviewData(null);
+        }
         loadReports();
         toastSuccess('The report has been deleted.', 'Report deleted');
       })
@@ -303,90 +462,218 @@ export default function GenerateReports() {
       .filter(Boolean);
   }, [previewData]);
 
-  const previewScopeLabel = currentReport
-    ? currentReport.barangay_name
-      ? `Barangay ${currentReport.barangay_name}`
-      : currentReport.municipality_name
-        ? `Municipality ${currentReport.municipality_name}`
-        : 'Province-wide'
-    : '';
+  const previewScopeLabel = currentReport ? reportScopeLabel(currentReport) : '';
+
+  const filteredReports = useMemo(() => {
+    const term = reportSearch.trim().toLowerCase();
+    return reports.filter((r) => {
+      if (reportFormatFilter && r.format !== reportFormatFilter) return false;
+      if (!term) return true;
+      const haystack = [
+        reportTypeLabel(r),
+        r.report_type,
+        r.municipality_name,
+        r.barangay_name,
+        r.requester_name,
+        r.status,
+        r.format,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [reports, reportSearch, reportFormatFilter]);
+
+  const sortedReports = useMemo(() => {
+    const accessor = SORT_ACCESSORS[sortKey] || SORT_ACCESSORS.created_at;
+    const rows = [...filteredReports];
+    rows.sort((a, b) => {
+      const av = accessor(a) || '';
+      const bv = accessor(b) || '';
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return rows;
+  }, [filteredReports, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedReports.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pagedReports = sortedReports.slice(pageStart, pageStart + PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pageNumbers = useMemo(() => {
+    const first = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+    const last = Math.min(totalPages, first + 4);
+    const numbers = [];
+    for (let i = first; i <= last; i += 1) numbers.push(i);
+    return numbers;
+  }, [safePage, totalPages]);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'created_at' ? 'desc' : 'asc');
+    }
+  };
+
+  const clearReportFilters = () => {
+    setReportSearch('');
+    setReportFormatFilter('');
+  };
+
+  const filterRowClass = timeMode === 'range'
+    ? 'report-filter-row report-filter-row--range'
+    : timeMode === 'year'
+      ? 'report-filter-row report-filter-row--year'
+      : 'report-filter-row report-filter-row--preset';
 
   return (
     <div>
       <PageHeader
         id="admin-reports"
         variant="clean"
-        className="ui-pageheader--admin"
+        className="ui-pageheader--admin report-hero"
         title="Generate Reports"
         subtitle="Create summary reports for export based on the production records."
-        art={<MunicipalityMapArt mode="province" />}
+        art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       />
 
-      <Card className="encoder-card mb-3">
+      <Card className="encoder-card report-card">
         <Card.Header>
           <div className="admin-card-head">
-            <span className="admin-card-head-icon admin-kpi-accent-oceanbg">
-              <FilePlus2 size={16} strokeWidth={2} />
+            <span className="report-card-icon report-card-icon--create" aria-hidden="true">
+              <FilePlus2 size={19} strokeWidth={2} />
             </span>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
               <h5 className="admin-card-head-title">Create a New Report</h5>
-              <span className="badge text-bg-light">PDF + Word</span>
             </div>
           </div>
         </Card.Header>
         <Card.Body>
-          <Row className="g-3 report-form">
-            <Col md={3}>
+          <div className={`report-form ${filterRowClass}`}>
+            <div className="report-filter-field">
               <label className="report-form-label" htmlFor="report-content">Content</label>
               <Form.Select id="report-content" value={content} onChange={(e) => setContent(e.target.value)}>
                 {CONTENT_TYPES.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </Form.Select>
-            </Col>
-            <Col md={3}>
+            </div>
+
+            <div className="report-filter-field report-filter-field--scope">
               <label className="report-form-label" htmlFor="report-scope">Scope</label>
               <Form.Select id="report-scope" value={scope} onChange={(e) => setScope(e.target.value)}>
                 {SCOPE_LEVELS.map((s) => (
                   <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </Form.Select>
-            </Col>
-            <Col md={6}>
-              <span className="report-form-label">Time</span>
-              <Row className="g-2">
-                <Col xs={4}>
-                  <Form.Select value={timeMode} onChange={(e) => setTimeMode(e.target.value)} aria-label="Time mode">
-                    <option value="range">Date range</option>
-                    <option value="year">Year</option>
-                  </Form.Select>
-                </Col>
-                {timeMode === 'range' ? (
-                  <>
-                    <Col xs={4}>
-                      <Form.Control type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} aria-label="Start date" />
-                    </Col>
-                    <Col xs={4}>
-                      <Form.Control type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} aria-label="End date" />
-                    </Col>
-                  </>
-                ) : (
-                  <Col xs={8}>
-                    <Form.Select value={year} onChange={(e) => setYear(e.target.value)} aria-label="Year">
-                      {years.length === 0 && <option value="">No years available</option>}
-                      {years.map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </Form.Select>
-                  </Col>
-                )}
-              </Row>
-            </Col>
-          </Row>
+            </div>
 
-          {(scope === 'municipality' || scope === 'barangay') && (
-            <Row className="g-3 report-form mt-1">
-              <Col md={3}>
+            <div className="report-filter-field report-filter-field--time">
+              <label className="report-form-label" htmlFor="report-time-mode">Time</label>
+              <Form.Select
+                id="report-time-mode"
+                value={timeMode}
+                onChange={(e) => setTimeMode(e.target.value)}
+              >
+                {TIME_MODES.map((mode) => (
+                  <option key={mode.id} value={mode.id}>{mode.label}</option>
+                ))}
+              </Form.Select>
+            </div>
+
+            {timeMode === 'range' && (
+              <>
+                <div className="report-filter-field report-filter-field--date">
+                  <label className="report-form-label" htmlFor="report-start-date">From date</label>
+                  <Form.Control
+                    id="report-start-date"
+                    type="date"
+                    value={startDate}
+                    max={endDate || undefined}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    aria-invalid={invalidRange || undefined}
+                    aria-describedby={invalidRange ? 'report-date-error' : undefined}
+                  />
+                </div>
+                <div className="report-filter-field report-filter-field--date">
+                  <label className="report-form-label" htmlFor="report-end-date">To date</label>
+                  <Form.Control
+                    id="report-end-date"
+                    type="date"
+                    value={endDate}
+                    min={startDate || undefined}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    aria-invalid={invalidRange || undefined}
+                    aria-describedby={invalidRange ? 'report-date-error' : undefined}
+                  />
+                </div>
+              </>
+            )}
+
+            {timeMode === 'year' && (
+              <div className="report-filter-field report-filter-field--year">
+                <label className="report-form-label" htmlFor="report-year">Year</label>
+                <Form.Select
+                  id="report-year"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                >
+                  {years.length === 0 && <option value="">No years available</option>}
+                  {years.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </Form.Select>
+              </div>
+            )}
+
+            <div className="report-generate-group">
+              <div className="report-format-seg" role="group" aria-label="Export format">
+                {FORMAT_OPTIONS.map((option) => (
+                  <label
+                    key={option.id}
+                    className={`report-format-option${format === option.id ? ' is-active' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="report-format"
+                      value={option.id}
+                      checked={format === option.id}
+                      onChange={() => setFormat(option.id)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="ui-btn-primary report-generate-btn"
+                onClick={handleView}
+                disabled={creating}
+                aria-busy={creating}
+              >
+                {creating ? (
+                  <><Spinner as="span" animation="border" size="sm" aria-hidden="true" />Generating&hellip;</>
+                ) : (
+                  <><Sparkles size={16} strokeWidth={2.2} aria-hidden="true" />Generate report</>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {invalidRange && (
+            <p id="report-date-error" className="report-field-error" role="alert">
+              From date must be on or before the To date.
+            </p>
+          )}
+
+          {scope !== 'province' && (
+            <div className="report-form report-scope-fields">
+              <div className="report-filter-field">
                 <label className="report-form-label" htmlFor="report-municipality">Municipality</label>
                 <Form.Select id="report-municipality" value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value)}>
                   <option value="">Select municipality&hellip;</option>
@@ -394,9 +681,9 @@ export default function GenerateReports() {
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </Form.Select>
-              </Col>
+              </div>
               {scope === 'barangay' && (
-                <Col md={3}>
+                <div className="report-filter-field">
                   <label className="report-form-label" htmlFor="report-barangay">Barangay</label>
                   <Form.Select id="report-barangay" value={barangayId} onChange={(e) => setBarangayId(e.target.value)} disabled={!municipalityId}>
                     <option value="">{municipalityId ? 'Select barangay\u2026' : 'Select a municipality first'}</option>
@@ -404,41 +691,38 @@ export default function GenerateReports() {
                       <option key={b.barangay_id} value={b.barangay_id}>{b.barangay}</option>
                     ))}
                   </Form.Select>
-                </Col>
+                </div>
               )}
-            </Row>
+            </div>
           )}
 
-          <div className="report-form-actions">
-            <span className="report-form-hint">
-              Reports are built from approved records, then downloaded as PDF or Word.
-            </span>
-            <button type="button" className="ui-btn-primary" onClick={handleView} disabled={creating}>
-              {creating ? (
-                <><Spinner as="span" animation="border" size="sm" aria-hidden="true" />Generating&hellip;</>
-              ) : (
-                <><Eye size={16} strokeWidth={2.2} aria-hidden="true" />Generate report</>
-              )}
-            </button>
-          </div>
-          {error && <Alert variant="danger" className="mt-3 mb-0">{error}</Alert>}
+          {error && <Alert variant="danger" className="report-form-error" role="alert">{error}</Alert>}
+
+          <p className="report-filter-hint">
+            <Info size={14} strokeWidth={2} aria-hidden="true" />
+            <span>Reports are built from approved records, then downloaded as PDF or Word.</span>
+          </p>
+
+          <p className="visually-hidden" role="status" aria-live="polite">
+            {creating ? 'Generating report\u2026' : generateStatus}
+          </p>
         </Card.Body>
       </Card>
 
       {previewError && (
-        <Alert variant="danger" className="mb-3">
+        <Alert variant="danger" className="report-card">
           <strong>Could not show the report.</strong> {previewError}
         </Alert>
       )}
 
       {(currentReport || previewLoading) && (
-        <Card className="encoder-card mb-3" ref={previewRef}>
+        <Card className="encoder-card report-card" ref={previewRef}>
           <Card.Header>
             <div className="admin-card-head">
-              <span className="admin-card-head-icon admin-kpi-accent-goldbg">
-                <Eye size={16} strokeWidth={2} />
+              <span className="report-card-icon report-card-icon--preview" aria-hidden="true">
+                <Eye size={19} strokeWidth={2} />
               </span>
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
                 <h5 className="admin-card-head-title">Report Preview</h5>
                 {currentReport && (
                   <span className="badge text-bg-light">Report #{currentReport.id}</span>
@@ -452,7 +736,7 @@ export default function GenerateReports() {
             ) : currentReport && (
               <>
                 <div className="report-preview-meta">
-                  <span><strong>Content:</strong> {TYPE_LABEL[currentReport.report_type] || currentReport.report_type}</span>
+                  <span><strong>Content:</strong> {reportTypeLabel(currentReport)}</span>
                   <span><strong>Scope:</strong> {previewScopeLabel}</span>
                   <span><strong>Period:</strong> {formatDateRange(currentReport.date_range_start, currentReport.date_range_end)}</span>
                 </div>
@@ -471,7 +755,7 @@ export default function GenerateReports() {
                   previewTables.map((t) => <DataTable key={t.key} title={t.label} rows={t.rows} />)
                 ) : (
                   <div className="report-preview-empty">
-                    <SearchX size={32} strokeWidth={1.5} />
+                    <SearchX size={32} strokeWidth={1.5} aria-hidden="true" />
                     <strong>No records found</strong>
                     <p className="mb-0">
                       No matching records for {previewScopeLabel.toLowerCase()} in{' '}
@@ -488,7 +772,7 @@ export default function GenerateReports() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Download size={18} strokeWidth={2.2} />Download PDF file
+                    <Download size={18} strokeWidth={2.2} aria-hidden="true" />Download PDF file
                   </a>
                   <a
                     className="report-dl-btn report-dl-btn--word"
@@ -496,7 +780,7 @@ export default function GenerateReports() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Download size={18} strokeWidth={2.2} />Download Word (.docx) file
+                    <Download size={18} strokeWidth={2.2} aria-hidden="true" />Download Word (.docx) file
                   </a>
                 </div>
               </>
@@ -505,13 +789,13 @@ export default function GenerateReports() {
         </Card>
       )}
 
-      <Card className="encoder-card">
-        <Card.Header className="d-flex justify-content-between align-items-center gap-3">
+      <Card className="encoder-card report-card report-list-card">
+        <Card.Header className="report-list-head">
           <div className="admin-card-head">
-            <span className="admin-card-head-icon admin-kpi-accent-greenbg">
-              <ClipboardList size={16} strokeWidth={2} />
+            <span className="report-card-icon report-card-icon--list" aria-hidden="true">
+              <ClipboardList size={19} strokeWidth={2} />
             </span>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
               <h5 className="admin-card-head-title">Generated Reports</h5>
               {!loading && reports.length > 0 && (
                 <span className="badge text-bg-light">{reports.length}</span>
@@ -520,111 +804,198 @@ export default function GenerateReports() {
           </div>
           <button
             type="button"
-            className="view-reports-link"
+            className={`ui-btn-outline report-view-btn${showReports ? ' is-open' : ''}`}
             onClick={() => setShowReports((v) => !v)}
             aria-expanded={showReports}
             aria-controls="generated-reports-body"
           >
             {showReports ? 'Hide Reports' : 'View Reports'}
-            {showReports ? (
-              <ChevronUp size={16} strokeWidth={2.2} className="report-vr-chev" />
-            ) : (
-              <ChevronDown size={16} strokeWidth={2.2} className="report-vr-chev" />
-            )}
+            <ChevronDown size={16} strokeWidth={2.2} className="report-view-chev" aria-hidden="true" />
           </button>
         </Card.Header>
-        <Card.Body id="generated-reports-body" className="p-0">
+        <Card.Body id="generated-reports-body">
           {!showReports ? (
-            <div className="text-muted p-4 text-center small">
-              Reports are hidden. Click &ldquo;View Reports&rdquo; above to see all generated reports.
+            <div className="report-empty-state">
+              <span className="report-empty-icon" aria-hidden="true"><EyeOff size={22} strokeWidth={1.8} /></span>
+              <strong>Reports are hidden</strong>
+              <p className="mb-0">Use &ldquo;View Reports&rdquo; to browse, download, or delete generated reports.</p>
             </div>
           ) : loading ? (
-            <div className="text-center p-3"><SkeletonList rows={5} cols={6} /></div>
+            <div className="text-center py-3"><SkeletonList rows={5} cols={6} /></div>
           ) : reports.length === 0 ? (
-            <div className="text-muted p-4 text-center">No reports generated yet. Fill in the form above to create one.</div>
+            <div className="report-empty-state">
+              <span className="report-empty-icon" aria-hidden="true"><FileText size={22} strokeWidth={1.8} /></span>
+              <strong>No reports yet</strong>
+              <p className="mb-0">Generate your first report above and it will appear here.</p>
+            </div>
           ) : (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
-              <thead>
-                <tr>
-                  <th>Type</th>
-                  <th>Scope</th>
-                  <th>Date Range</th>
-                  <th>Format</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((r) => (
-                  <React.Fragment key={r.id}>
-                    <tr>
-                      <td><span className="badge text-bg-light me-1">{TYPE_LABEL[r.report_type] || r.report_type}</span></td>
-                      <td>{r.barangay_name || r.municipality_name || 'Province-wide'}</td>
-                      <td>{formatDateRange(r.date_range_start, r.date_range_end)}</td>
-                      <td className="text-uppercase">{r.format}</td>
-                      <td><span className={`record-status-badge status-${r.status === 'failed' ? 'rejected' : r.status === 'generated' ? 'approved' : 'pending'}`}>{r.status}</span></td>
-                      <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '\u2014'}</td>
-                      <td className="text-end">
-                        <div className="row-actions">
-                          <IconButton
-                            icon={Eye}
-                            label="Preview report"
-                            variant="outline-primary"
-                            className="row-action-btn"
-                            onClick={() => openPreview(r)}
-                            disabled={r.status !== 'generated'}
-                          />
-                          <IconButton
-                            icon={Download}
-                            label={showFilesFor === r.id ? 'Hide download links' : 'Show download links'}
-                            variant={showFilesFor === r.id ? 'primary' : 'outline-success'}
-                            className="row-action-btn"
-                            onClick={() => setShowFilesFor(showFilesFor === r.id ? null : r.id)}
-                            disabled={r.status !== 'generated'}
-                          />
-                          <IconButton
-                            icon={Trash2}
-                            label="Delete report"
-                            variant="outline-danger"
-                            className="row-action-btn"
-                            onClick={() => handleDelete(r)}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    {showFilesFor === r.id && (
-                      <tr className="report-files-row">
-                        <td colSpan={7}>
-                          <div className="report-files-panel">
-                            <span className="small text-muted me-3">
-                              <FileText size={14} strokeWidth={2} className="me-1" />Files for {TYPE_LABEL[r.report_type] || r.report_type}
-                              {' '}{r.barangay_name || r.municipality_name ? `(\u00b7 ${r.barangay_name || r.municipality_name})` : '\u00b7 Province-wide'}:
-                            </span>
-                            <a
-                              className="report-dl-btn report-dl-btn--pdf report-dl-btn--sm"
-                              href={getReportDownloadUrl(r.id, 'pdf')}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Download size={14} strokeWidth={2.2} />PDF (.pdf)
-                            </a>
-                            <a
-                              className="report-dl-btn report-dl-btn--word report-dl-btn--sm"
-                              href={getReportDownloadUrl(r.id, 'docx')}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Download size={14} strokeWidth={2.2} />Word (.docx)
-                            </a>
-                          </div>
-                        </td>
+            <>
+              <div className="report-table-toolbar">
+                <div className="report-search">
+                  <Search size={16} strokeWidth={2} className="report-search-icon" aria-hidden="true" />
+                  <label className="visually-hidden" htmlFor="report-search">Search reports</label>
+                  <input
+                    id="report-search"
+                    type="search"
+                    className="form-control"
+                    placeholder="Search report, scope, or requester"
+                    value={reportSearch}
+                    onChange={(e) => setReportSearch(e.target.value)}
+                  />
+                </div>
+                <div className="report-format-filter">
+                  <label className="visually-hidden" htmlFor="report-format-filter">Filter by format</label>
+                  <Form.Select
+                    id="report-format-filter"
+                    value={reportFormatFilter}
+                    onChange={(e) => setReportFormatFilter(e.target.value)}
+                  >
+                    <option value="">All formats</option>
+                    <option value="pdf">PDF</option>
+                    <option value="docx">Word (DOCX)</option>
+                  </Form.Select>
+                </div>
+                <span className="report-table-count" aria-live="polite">
+                  {sortedReports.length} of {reports.length} report{reports.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {sortedReports.length === 0 ? (
+                <div className="report-empty-state">
+                  <span className="report-empty-icon" aria-hidden="true"><SearchX size={22} strokeWidth={1.8} /></span>
+                  <strong>No reports match your filters</strong>
+                  <p className="mb-0">Try a different search term or format.</p>
+                  <button type="button" className="ui-btn-outline report-clear-btn" onClick={clearReportFilters}>
+                    Clear filters
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Table responsive hover className="mb-0 report-list-table admin-table">
+                    <thead>
+                      <tr>
+                        <SortableTh label="Report" column="report" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                        <SortableTh label="Scope" column="scope" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                        <SortableTh label="Period" column="period" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                        <SortableTh label="Format" column="format" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                        <SortableTh label="Generated by" column="requester" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                        <SortableTh label="Date" column="created_at" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                        <th className="report-actions-head">Actions</th>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </Table>
+                    </thead>
+                    <tbody>
+                      {pagedReports.map((r) => {
+                        const generated = r.status === 'generated';
+                        return (
+                          <tr key={r.id}>
+                            <td>
+                              <div className="report-cell-name">
+                                <button
+                                  type="button"
+                                  className="report-name-btn"
+                                  onClick={() => openPreview(r)}
+                                  disabled={!generated}
+                                  title={generated ? 'Preview report' : 'Preview unavailable'}
+                                >
+                                  {reportTypeLabel(r)}
+                                </button>
+                                <span className={`report-status-badge report-status-badge--${r.status}`}>
+                                  {r.status}
+                                </span>
+                              </div>
+                            </td>
+                            <td>{reportScopeLabel(r)}</td>
+                            <td className="report-period-cell">{formatDateRange(r.date_range_start, r.date_range_end)}</td>
+                            <td>
+                              <span className={`report-format-badge ${formatBadgeClass(r.format)}`}>
+                                {formatLabel(r.format)}
+                              </span>
+                            </td>
+                            <td>{r.requester_name || '\u2014'}</td>
+                            <td className="report-date-cell">{formatDateTime(r.created_at)}</td>
+                            <td className="report-actions-cell">
+                              <div className="report-row-actions">
+                                <a
+                                  className={`report-row-action report-row-action--pdf${generated ? '' : ' is-disabled'}`}
+                                  href={generated ? getReportDownloadUrl(r.id, 'pdf') : undefined}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`Download PDF for ${reportTypeLabel(r)} report`}
+                                  aria-disabled={!generated}
+                                  tabIndex={generated ? undefined : -1}
+                                  onClick={(e) => { if (!generated) e.preventDefault(); }}
+                                >
+                                  <Download size={14} strokeWidth={2.2} aria-hidden="true" />PDF
+                                </a>
+                                <a
+                                  className={`report-row-action report-row-action--docx${generated ? '' : ' is-disabled'}`}
+                                  href={generated ? getReportDownloadUrl(r.id, 'docx') : undefined}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`Download Word for ${reportTypeLabel(r)} report`}
+                                  aria-disabled={!generated}
+                                  tabIndex={generated ? undefined : -1}
+                                  onClick={(e) => { if (!generated) e.preventDefault(); }}
+                                >
+                                  <Download size={14} strokeWidth={2.2} aria-hidden="true" />Word
+                                </a>
+                                <button
+                                  type="button"
+                                  className="report-row-action report-row-action--delete"
+                                  onClick={() => handleDelete(r)}
+                                  aria-label={`Delete ${reportTypeLabel(r)} report`}
+                                  title="Delete report"
+                                >
+                                  <Trash2 size={14} strokeWidth={2.2} aria-hidden="true" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+
+                  <div className="report-pagination">
+                    <span className="report-pagination-info">
+                      Showing {pageStart + 1}&ndash;{Math.min(pageStart + PAGE_SIZE, sortedReports.length)} of {sortedReports.length}
+                    </span>
+                    <div className="report-pagination-btns">
+                      <button
+                        type="button"
+                        className="report-page-btn"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={safePage === 1}
+                        aria-label="Previous page"
+                      >
+                        <ChevronLeft size={15} aria-hidden="true" />
+                      </button>
+                      {pageNumbers.map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          className={`report-page-btn${n === safePage ? ' is-active' : ''}`}
+                          onClick={() => setPage(n)}
+                          aria-label={`Page ${n}`}
+                          aria-current={n === safePage ? 'page' : undefined}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="report-page-btn"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={safePage === totalPages}
+                        aria-label="Next page"
+                      >
+                        <ChevronRight size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
           )}
         </Card.Body>
       </Card>

@@ -6,6 +6,7 @@ import { Alert, Card } from 'react-bootstrap';
 import { CalendarDays, TrendingUp, Lightbulb } from 'lucide-react';
 import PageHeader from '../PageHeader';
 import MunicipalityMapArt from '../../encoder/MunicipalityMapArt';
+import useMunicipalityDirectory from '../../../hooks/useMunicipalityDirectory';
 import { SkeletonBlock, SkeletonChart } from '../../Skeleton';
 import TargetForm from './TargetForm';
 import TargetSummary from './TargetSummary';
@@ -17,6 +18,7 @@ import { fmtMT, fmtPct } from './targetData';
 
 export default function TargetEvaluation() {
   const t = useTargetEvaluation();
+  const { activeNames } = useMunicipalityDirectory();
 
   return (
     <div className="admin-single-page te-page">
@@ -32,7 +34,7 @@ export default function TargetEvaluation() {
             {t.results ? `Evaluation year ${t.results.evaluation_year}` : 'Runs on the fly - nothing is saved'}
           </span>
         )}
-        art={<MunicipalityMapArt mode="province" selectedName={t.selectedMuni} />}
+        art={<MunicipalityMapArt mode="province" selectedName={t.selectedMuni} activeNames={activeNames} />}
       />
 
       <TargetForm

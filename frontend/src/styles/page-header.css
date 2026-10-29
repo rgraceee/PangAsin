@@ -558,8 +558,8 @@
   stroke-width: 2;
 }
 
-/* WHAT: Province mode — buong mapa neutral, ang 7 salt accent na mas maliwanag.
-   WHY: opacity para mag-mukhang "set" ang 7 at hindi kasing-tindi ng single highlight. */
+/* WHAT: Province mode — buong mapa neutral, ang active municipalities accent na mas maliwanag.
+   WHY: opacity para mag-mukhang "set" ang active list at hindi kasing-tindi ng single highlight. */
 .munimap-shape--province {
   fill: var(--ui-accent);
   opacity: 0.45;
@@ -570,6 +570,26 @@
         hindi harangin ang header controls; SVG lang ang interactive. */
 .munimap--province .munimap-shape {
   pointer-events: auto;
+}
+
+/* WHAT: Admin header map selection (additive lang; walang onSelect = decorative).
+   WHY: Kapag pinindot ang munisipyo, makikita agad sa table sa ibaba. */
+.munimap-shape--selectable {
+  cursor: pointer;
+}
+
+.munimap-shape--selectable:hover {
+  opacity: 0.82;
+}
+
+.munimap-shape--selectable:focus-visible {
+  outline: none;
+  stroke: var(--ui-accent-dark);
+  stroke-width: 2.4;
+}
+
+.munimap-legend__hint {
+  font-style: italic;
 }
 
 /* WHAT: Province mode ay column para may espasyo ang legend sa ilalim ng mapa. */
@@ -823,6 +843,75 @@
   color: var(--ui-text-2);
 }
 
+/* WHAT: Municipality chip na dropdown — parehong green pill ng encoder.
+   WHY: isang control lang ang hitsura (light green bg, green text, pin icon,
+        pill radius) pero native <select> pa rin ang nagbubukas ng options.
+        Ang select ay transparent at naka-overlay para keyboard/touch native. */
+.dashboard-filter--municipality {
+  min-width: 150px;
+}
+
+.dashboard-muni-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border: 1px solid rgba(41, 176, 57, 0.18);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color var(--ui-t-fast), box-shadow var(--ui-t-fast), opacity var(--ui-t-fast);
+}
+
+.dashboard-muni-chip:hover {
+  border-color: var(--ui-accent);
+}
+
+.dashboard-muni-chip:focus-within {
+  outline: none;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+.dashboard-muni-chip.is-loading {
+  opacity: 0.82;
+}
+
+.dashboard-muni-chip__label {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-muni-chip__chevron,
+.dashboard-muni-chip__spinner {
+  flex: none;
+  margin-left: 2px;
+  opacity: 0.85;
+}
+
+/* WHAT: Mas specific kaysa sa .dashboard-filter select para manatiling
+   transparent overlay ang native select sa loob ng 36px chip.
+   WHY: kung mananalo ang generic 40px select styles, lumalabas ito sa chip. */
+.dashboard-filter .dashboard-muni-chip__select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
 .dashboard-filter select {
   height: 40px;
   padding: 0 12px;
@@ -928,6 +1017,19 @@
     flex-direction: column;
     align-items: stretch;
     width: 100%;
+  }
+
+  .dashboard-filter--municipality,
+  .dashboard-muni-chip {
+    width: 100%;
+  }
+
+  .dashboard-muni-chip {
+    justify-content: space-between;
+  }
+
+  .dashboard-muni-chip__label {
+    max-width: none;
   }
 
   .dashboard-filter select,

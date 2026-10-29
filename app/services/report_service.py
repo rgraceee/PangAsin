@@ -354,6 +354,9 @@ def build_forecast_data():
     return {
         "report_title": "Forecast Report",
         "runs": runs_data,
+        # WHAT: One row per municipality so the report shows coverage even when a
+        #       municipality has no forecast run yet.
+        "outlook": outlook,
     }
 
 
@@ -624,6 +627,9 @@ def write_excel(data, filepath):
     if "runs" in data and isinstance(data["runs"], list):
         sheet = wb.create_sheet("Forecast Runs")
         sheet_from_rows(sheet, data["runs"])
+    if "outlook" in data and isinstance(data["outlook"], list):
+        sheet = wb.create_sheet("Municipality Outlook")
+        sheet_from_rows(sheet, data["outlook"])
     if "by_municipality" in data and isinstance(data["by_municipality"], list):
         sheet = wb.create_sheet("By Municipality")
         sheet_from_rows(sheet, data["by_municipality"])
@@ -690,6 +696,7 @@ def write_pdf(data, filepath):
         ("By Barangay", "by_barangay"),
         ("Monthly Trend", "monthly_trend"),
         ("Forecast Runs", "runs"),
+        ("Municipality Outlook", "outlook"),
         ("Salt Farmer Entries", "producers"),
         ("Environment Reports", "environment_reports"),
     ]
@@ -791,6 +798,7 @@ def write_docx(data, filepath):
         ("By Barangay", "by_barangay"),
         ("Monthly Trend", "monthly_trend"),
         ("Forecast Runs", "runs"),
+        ("Municipality Outlook", "outlook"),
         ("Salt Farmer Entries", "producers"),
         ("Environment Reports", "environment_reports"),
     ]

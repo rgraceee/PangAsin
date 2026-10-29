@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 from app.extensions import db
 from app.models.production_record import ProductionRecord
 from app.models.municipality_production import MunicipalityMonthlyProduction
+from app.services.municipalities import active_municipality_ids_subquery
 
 # Reference epoch for computing real (non-compressed) month positions.
 _EPOCH_YEAR = 2000
@@ -147,6 +148,14 @@ def _monthly_aggregates(
             query = query.filter(
                 MunicipalityMonthlyProduction.municipality_id == municipality_id
             )
+        # WHAT: Inactive municipalities are hidden from every aggregate.
+        # WHY: Deactivation must remove their historical rows from analytics and
+        #      forecasts without deleting the data.
+        query = query.filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
         rows = query.order_by(
             MunicipalityMonthlyProduction.production_year,
             MunicipalityMonthlyProduction.production_month,
@@ -168,6 +177,9 @@ def _monthly_aggregates(
         .filter(ProductionRecord.status == "approved")
         .filter(ProductionRecord.record_date >= start)
         .filter(ProductionRecord.record_date <= end)
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
     )
     if municipality_id is not None:
         q = q.filter(ProductionRecord.municipality_id == municipality_id)
@@ -241,6 +253,11 @@ def _last_month_with_data(
             query = query.filter(
                 MunicipalityMonthlyProduction.municipality_id == municipality_id
             )
+        query = query.filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
         row = query.order_by(
             MunicipalityMonthlyProduction.production_year.desc(),
             MunicipalityMonthlyProduction.production_month.desc(),
@@ -255,6 +272,9 @@ def _last_month_with_data(
     q = (
         ProductionRecord.query
         .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
     )
     if municipality_id is not None:
         q = q.filter(ProductionRecord.municipality_id == municipality_id)

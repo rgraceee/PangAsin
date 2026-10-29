@@ -31,6 +31,9 @@ export default function RequireAdmin({ user, isLoading, setUser, children }) {
     return () => { mounted = false; };
   }, [user, isLoading, setUser]);
 
+  if (user?.must_change_password) {
+    return <Navigate to="/change-password" replace />;
+  }
   if (state.loading) {
     return <div className="auth-skeleton-wrap"><SkeletonPage /></div>;
   }

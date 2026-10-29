@@ -1,5 +1,4 @@
 import React, { Component, useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { Alert, Card } from 'react-bootstrap';
 import L from 'leaflet';
 import { Boxes, Scale, MapPin, Building2 } from 'lucide-react';
@@ -14,8 +13,9 @@ import geojsonAll from '../../data/pangasinan_municipalities_all.json';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
-import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
+import { SkeletonCards, SkeletonChart } from '../Skeleton';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
+import DashboardFilters, { useDashboardFilters } from './DashboardFilters';
 
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -72,24 +72,52 @@ export default function AdminDashboard({ user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  /* WHAT: Muni lang ang kailangan ng header para sa map highlight.
-     WHY: province-wide na ang KPI row at ang mapa; ang Month/Year filters ay
-          nasa Municipality Analytics section at doon na lang nag-a-apply. */
-  const [searchParams] = useSearchParams();
-  const selectedMuni = searchParams.get('muni') || '';
+  /* WHAT: Isang filter source para sa buong dashboard: municipality + period.
+     WHY: the chip, Year, and Month controls above the KPIs must scope every
+          section with the same values, and the URL is the shared state. */
+  const {
+    selectedMuni,
+    selectedMunicipalitySlug,
+    selYear,
+    selMonth,
+    mode,
+    rangeStart,
+    rangeEnd,
+    muniOptions: activeNames,
+  } = useDashboardFilters();
+
+  /* WHAT: Supply/demand benchmark ay province-wide at hindi sumasabay sa filter.
+     WHY: isang beses lang ito kailangan; separate effect para hindi ito
+          nagre-refetch tuwing magbabago ang municipality o period. */
+  useEffect(() => {
+    let active = true;
+    getAdminSupplyDemand()
+      .then((sd) => { if (active) setSupplyDemand(sd); })
+      .catch(() => { if (active) setSupplyDemand(null); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     let active = true;
-    Promise.all([
-      getAdminStats({ source: 'municipality_production' }),
-      getAdminSupplyDemand(),
-    ])
-      .then(([s, sd]) => {
+
+    const params = { source: 'municipality_production' };
+    if (selectedMunicipalitySlug) params.municipality = selectedMunicipalitySlug;
+    if (mode === 'range') {
+      if (rangeStart && rangeEnd) {
+        params.start = rangeStart;
+        params.end = rangeEnd;
+      }
+    } else {
+      params.year = selYear;
+      if (selMonth) params.month = Number(selMonth);
+    }
+
+    getAdminStats(params)
+      .then((s) => {
         if (!active) return;
         setStats(s);
-        setSupplyDemand(sd);
         setLoading(false);
       })
       .catch((err) => {
@@ -98,7 +126,7 @@ export default function AdminDashboard({ user }) {
         setLoading(false);
       });
     return () => { active = false; };
-  }, []);
+  }, [selectedMunicipalitySlug, mode, rangeStart, rangeEnd, selYear, selMonth]);
 
   /* WHAT: muniData mula sa stats (default: [] habang/sa hindi pa ready).
      WHY: null-safe — kung wala pa ang stats o nawawala ang by_municipality
@@ -120,29 +148,7 @@ export default function AdminDashboard({ user }) {
       .sort((a, b) => b.volumeMT - a.volumeMT);
   }, [stats]);
 
-  if (loading) {
-    return (
-      <div className="skeleton-dashboard">
-        <div className="ui-pageheader ui-pageheader--dashboard">
-          {/* WHAT: Skeleton placeholders para sa hero title/subtitle.
-             WHY: habang nagi-load pa ang stats, may nakikitang loading state sa
-                  header (hindi blank), bago lumabas ang totoong art. */}
-          <SkeletonBlock width="100%" height={24} />
-          <SkeletonBlock className="mt-2" width="60%" height={13} />
-        </div>
-        <div className="mt-4"><SkeletonCards count={4} /></div>
-        <div className="row g-3 mt-1">
-          <div className="col-lg-12"><div className="skeleton-card"><SkeletonChart height={480} /></div></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return <Alert variant="danger">{error}</Alert>;
-  }
-
-  const totalVolumeMT = stats.total_volume_mt == null
+  const totalVolumeMT = stats?.total_volume_mt == null
     ? null
     : Math.round(stats.total_volume_mt * 100) / 100;
   const municipalityCount = muniData.filter((m) => (m.records || 0) > 0).length;
@@ -158,6 +164,10 @@ export default function AdminDashboard({ user }) {
     ? `Pangasinan-wide comparison, unaffected by dashboard filters. Supply uses Adjusted_Estimates.xlsx from ${supplyPeriod.start} to ${supplyPeriod.end}; demand is the ${demandYear} annual benchmark.`
     : 'Municipality production data is not available for the supply comparison.';
 
+  const scopeName = selectedMuni || 'Pangasinan';
+  const subtitle = `Record, review, and manage salt production data for ${scopeName}.`;
+  const showSkeleton = loading && !stats;
+
   return (
     <div className="admin-dashboard-page">
       {/* WHAT: Polished hero card matching the encoder style: 20px radius, 1px border,
@@ -169,48 +179,73 @@ export default function AdminDashboard({ user }) {
         variant="clean"
         className="ui-pageheader--admin"
         title="Dashboard"
-        subtitle="Province-wide salt production monitoring for Pangasinan."
+        subtitle={subtitle}
         art={(
           <HeroMapErrorBoundary>
-            <MunicipalityMapArt mode="province" selectedName={selectedMuni} />
+            <MunicipalityMapArt mode="province" selectedName={selectedMuni} activeNames={activeNames} />
           </HeroMapErrorBoundary>
         )}
-      />
+      >
+        <DashboardFilters
+          loading={loading}
+          canSelectMunicipality={user?.role === 'admin'}
+        />
+      </PageHeader>
 
-      <KpiGrid columns={4}>
-        {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
-           WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
-                (Pang-general ang values — province-wide, hindi sumasabay sa muni filter.) */}
-        <KpiCard
-          icon={Scale}
-          title="Province-wide Balance"
-          value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
-          unit={supplyDemandGap == null ? undefined : 'Metric Tons (MT)'}
-          badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
-          supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
-          info={supplySourceNote}
-        />
-        <KpiCard
-          icon={Boxes}
-          title="Total Production"
-          value={totalVolumeMT}
-          unit="Metric Tons (MT)"
-          supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
-          info="Source: Adjusted_Estimates.xlsx."
-        />
-        <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
-        <KpiCard
-          icon={Building2}
-          title="Municipalities"
-          value={municipalityCount}
-          supporting="with municipality production data"
-          info="Municipalities in scope with at least one month in the municipality production dataset."
-        />
-      </KpiGrid>
+      {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
 
-      {/* WHAT: Full-width map — wala nang side panel sa tabi nito.
-         WHY: inalis ang lahat ng charts/tables sa gilid; mas malaki ang mapa. */}
-      <MunicipalityMap muniData={muniData} selectedName={selectedMuni} />
+      {showSkeleton ? (
+        <div className="skeleton-dashboard" aria-busy="true">
+          <SkeletonCards count={4} />
+          <div className="row g-3 mt-1">
+            <div className="col-lg-12"><div className="skeleton-card"><SkeletonChart height={480} /></div></div>
+          </div>
+        </div>
+      ) : stats ? (
+        <div aria-busy={loading ? 'true' : undefined}>
+          <KpiGrid columns={4}>
+            {/* WHAT: Numeric na value + maliit na unit at badge; hiwalay sa title.
+               WHY: pare-parehong format sa lahat ng KPI — thousands, max 2 decimals.
+                    (Ang supply/demand balance lang ang province-wide; sumasabay na
+                    sa municipality + period filter ang iba.) */}
+            <KpiCard
+              icon={Scale}
+              title="Province-wide Balance"
+              value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
+              unit={supplyDemandGap == null ? undefined : 'Metric Tons (MT)'}
+              badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
+              supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
+              info={supplySourceNote}
+            />
+            <KpiCard
+              icon={Boxes}
+              title="Total Production"
+              value={totalVolumeMT}
+              unit="Metric Tons (MT)"
+              supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
+              info="Source: Adjusted_Estimates.xlsx."
+            />
+            <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
+            <KpiCard
+              icon={Building2}
+              title="Municipalities"
+              value={municipalityCount}
+              supporting="with municipality production data"
+              info="Municipalities in scope with at least one month in the municipality production dataset."
+            />
+          </KpiGrid>
+
+          {/* WHAT: Full-width map — wala nang side panel sa tabi nito.
+             WHY: inalis ang lahat ng charts/tables sa gilid; mas malaki ang mapa.
+                  Remount kapag iba ang municipality scope para tama ang context
+                  layers (green producing vs gray non-producing) sa unang paint. */}
+          <MunicipalityMap
+            key={selectedMunicipalitySlug || 'all'}
+            muniData={muniData}
+            selectedName={selectedMuni}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -540,7 +575,8 @@ function MunicipalityMap({ muniData, selectedName }) {
           ></div>
 
           <p className="map-range-note">
-            {fmtMT(min)} Metric Tons (MT) → {fmtMT(max)} Metric Tons (MT) across the {muniData.length} municipalities
+            {fmtMT(min)} Metric Tons (MT) → {fmtMT(max)} Metric Tons (MT) across the {muniData.length}{' '}
+            {muniData.length === 1 ? 'municipality' : 'municipalities'}
           </p>
         </div>
 

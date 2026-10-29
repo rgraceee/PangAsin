@@ -80,4 +80,44 @@ export function confirmAction({
   }).then((res) => res.isConfirmed);
 }
 
+/* WHAT: Text prompt para sa maliit na rename flow.
+   WHY: Ang barangay rename ay isang field lang; hindi kailangan ng buong modal. */
+export function promptText({
+  title = 'Enter a value',
+  text = '',
+  inputValue = '',
+  confirmText = 'Save',
+  inputPlaceholder = '',
+  danger = false,
+}) {
+  return Swal.fire({
+    title,
+    html: text || undefined,
+    input: 'text',
+    inputValue,
+    inputPlaceholder,
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: danger ? '#E53935' : '#1565C8',
+    focusCancel: false,
+    reverseButtons: true,
+    showCloseButton: true,
+    buttonsStyling: false,
+    inputValidator: (value) => {
+      if (!value || !value.trim()) return 'This field cannot be empty.';
+      if (value.trim().length > 100) return 'Use at most 100 characters.';
+      return undefined;
+    },
+    customClass: {
+      popup: `pangasin-swal-dialog pangasin-swal-dialog--${danger ? 'danger' : 'confirm'}`,
+      title: 'pangasin-swal-title',
+      htmlContainer: 'pangasin-swal-html',
+      confirmButton: 'pangasin-swal-btn pangasin-swal-btn--confirm',
+      cancelButton: 'pangasin-swal-btn pangasin-swal-btn--cancel',
+      closeButton: 'pangasin-swal-close',
+    },
+  }).then((res) => (res.isConfirmed ? res.value.trim() : null));
+}
+
 export { Swal };

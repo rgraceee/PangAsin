@@ -9,7 +9,7 @@ import { getAdminStats } from '../../../services/dataService';
 import KpiCard from '../../ui/KpiCard';
 import KpiGrid from '../../ui/KpiGrid';
 import PageHeader from '../PageHeader';
-import DashboardFilters, { useDashboardFilters } from '../DashboardFilters';
+import { useDashboardFilters } from '../DashboardFilters';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../../Skeleton';
 import MuniRegisteredChart from './MuniRegisteredChart';
 import MuniMethodChart from './MuniMethodChart';
@@ -29,12 +29,15 @@ export default function MunicipalityAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { selectedMuni, selMonth, selYear, mode, rangeStart, rangeEnd } = useDashboardFilters();
+  const {
+    selectedMuni, selectedMunicipalitySlug, selMonth, selYear, mode, rangeStart, rangeEnd,
+  } = useDashboardFilters();
 
   useEffect(() => {
     let active = true;
     setError(null);
     const params = { source: 'municipality_production' };
+    if (selectedMunicipalitySlug) params.municipality = selectedMunicipalitySlug;
     if (mode === 'range') {
       if (rangeStart && rangeEnd) {
         params.start = rangeStart;
@@ -56,7 +59,7 @@ export default function MunicipalityAnalytics() {
         setLoading(false);
       });
     return () => { active = false; };
-  }, [mode, rangeStart, rangeEnd, selYear, selMonth]);
+  }, [selectedMunicipalitySlug, mode, rangeStart, rangeEnd, selYear, selMonth]);
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -116,8 +119,6 @@ export default function MunicipalityAnalytics() {
         title="Municipality Analytics"
         subtitle={`Municipality production data and salt farmer details for ${view.scopeLabel}.`}
       />
-
-      <DashboardFilters className="mb-3" />
 
       <KpiGrid columns={3} className="muni-kpi-strip">
         <KpiCard

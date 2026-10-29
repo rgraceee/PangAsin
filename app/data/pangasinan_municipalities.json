@@ -1,0 +1,242 @@
+[
+  {
+    "name": "Agno",
+    "latitude": 16.098567,
+    "longitude": 119.815586
+  },
+  {
+    "name": "Aguilar",
+    "latitude": 15.83411,
+    "longitude": 120.212618
+  },
+  {
+    "name": "Alcala",
+    "latitude": 15.838204,
+    "longitude": 120.525302
+  },
+  {
+    "name": "Anda",
+    "latitude": 16.288119,
+    "longitude": 119.970148
+  },
+  {
+    "name": "Asingan",
+    "latitude": 15.989788,
+    "longitude": 120.661819
+  },
+  {
+    "name": "Balungao",
+    "latitude": 15.886774,
+    "longitude": 120.6971
+  },
+  {
+    "name": "Bani",
+    "latitude": 16.211348,
+    "longitude": 119.856682
+  },
+  {
+    "name": "Basista",
+    "latitude": 15.866251,
+    "longitude": 120.39995
+  },
+  {
+    "name": "Bautista",
+    "latitude": 15.801691,
+    "longitude": 120.513808
+  },
+  {
+    "name": "Bayambang",
+    "latitude": 15.787693,
+    "longitude": 120.461537
+  },
+  {
+    "name": "Binalonan",
+    "latitude": 16.058295,
+    "longitude": 120.594348
+  },
+  {
+    "name": "Binmaley",
+    "latitude": 16.008434,
+    "longitude": 120.287882
+  },
+  {
+    "name": "Bolinao",
+    "latitude": 16.33843,
+    "longitude": 119.871589
+  },
+  {
+    "name": "Bugallon",
+    "latitude": 15.915003,
+    "longitude": 120.180875
+  },
+  {
+    "name": "Burgos",
+    "latitude": 16.028842,
+    "longitude": 119.832471
+  },
+  {
+    "name": "Calasiao",
+    "latitude": 15.994702,
+    "longitude": 120.358919
+  },
+  {
+    "name": "Alaminos City",
+    "latitude": 16.150242,
+    "longitude": 119.991937
+  },
+  {
+    "name": "City of Urdaneta",
+    "latitude": 15.975004,
+    "longitude": 120.560939
+  },
+  {
+    "name": "Dagupan City",
+    "latitude": 16.060977,
+    "longitude": 120.346934
+  },
+  {
+    "name": "Dasol",
+    "latitude": 15.948429,
+    "longitude": 119.884762
+  },
+  {
+    "name": "Infanta",
+    "latitude": 15.86648,
+    "longitude": 119.992997
+  },
+  {
+    "name": "Labrador",
+    "latitude": 15.994914,
+    "longitude": 120.11508
+  },
+  {
+    "name": "Laoac",
+    "latitude": 16.042478,
+    "longitude": 120.541784
+  },
+  {
+    "name": "Lingayen",
+    "latitude": 15.991716,
+    "longitude": 120.216871
+  },
+  {
+    "name": "Mabini",
+    "latitude": 16.020156,
+    "longitude": 119.98383
+  },
+  {
+    "name": "Malasiqui",
+    "latitude": 15.90561,
+    "longitude": 120.456067
+  },
+  {
+    "name": "Manaoag",
+    "latitude": 16.032658,
+    "longitude": 120.504418
+  },
+  {
+    "name": "Mangaldan",
+    "latitude": 16.063433,
+    "longitude": 120.401124
+  },
+  {
+    "name": "Mangatarem",
+    "latitude": 15.738229,
+    "longitude": 120.28323
+  },
+  {
+    "name": "Mapandan",
+    "latitude": 16.017246,
+    "longitude": 120.453272
+  },
+  {
+    "name": "Natividad",
+    "latitude": 16.055353,
+    "longitude": 120.836837
+  },
+  {
+    "name": "Pozorrubio",
+    "latitude": 16.1141,
+    "longitude": 120.53197
+  },
+  {
+    "name": "Rosales",
+    "latitude": 15.873794,
+    "longitude": 120.637928
+  },
+  {
+    "name": "San Carlos City",
+    "latitude": 15.901084,
+    "longitude": 120.321091
+  },
+  {
+    "name": "San Fabian",
+    "latitude": 16.147895,
+    "longitude": 120.428188
+  },
+  {
+    "name": "San Jacinto",
+    "latitude": 16.092233,
+    "longitude": 120.456155
+  },
+  {
+    "name": "San Manuel",
+    "latitude": 16.107785,
+    "longitude": 120.668181
+  },
+  {
+    "name": "San Nicolas",
+    "latitude": 16.119613,
+    "longitude": 120.77797
+  },
+  {
+    "name": "San Quintin",
+    "latitude": 15.98172,
+    "longitude": 120.813702
+  },
+  {
+    "name": "Santa Barbara",
+    "latitude": 15.98883,
+    "longitude": 120.434853
+  },
+  {
+    "name": "Santa Maria",
+    "latitude": 15.959756,
+    "longitude": 120.698652
+  },
+  {
+    "name": "Santo Tomas",
+    "latitude": 15.864081,
+    "longitude": 120.576714
+  },
+  {
+    "name": "Sison",
+    "latitude": 16.162042,
+    "longitude": 120.553246
+  },
+  {
+    "name": "Sual",
+    "latitude": 16.090782,
+    "longitude": 120.060286
+  },
+  {
+    "name": "Tayug",
+    "latitude": 16.010209,
+    "longitude": 120.743381
+  },
+  {
+    "name": "Umingan",
+    "latitude": 15.894306,
+    "longitude": 120.816223
+  },
+  {
+    "name": "Urbiztondo",
+    "latitude": 15.823191,
+    "longitude": 120.348775
+  },
+  {
+    "name": "Villasis",
+    "latitude": 15.900485,
+    "longitude": 120.574244
+  }
+]

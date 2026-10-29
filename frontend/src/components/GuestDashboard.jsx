@@ -15,6 +15,7 @@ import KpiGrid from './ui/KpiGrid';
 import KpiCard from './ui/KpiCard';
 import { loadPublicDashboardData } from '../services/dataService';
 import { SkeletonCards, SkeletonChart } from './Skeleton';
+import useMunicipalityDirectory from '../hooks/useMunicipalityDirectory';
 
 // WHAT: Kalkulahin ang headline numbers para sa KPI strip.
 // WHY: naka-derive lang sa parehong JSON (walang bagong data); null kapag wala pang data
@@ -43,6 +44,7 @@ export default function GuestDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { activeNames } = useMunicipalityDirectory();
 
   useEffect(() => {
     loadPublicDashboardData()
@@ -70,7 +72,7 @@ export default function GuestDashboard() {
         className="ui-pageheader--dashboard"
         title="Pangasinan Salt Industry Dashboard"
         subtitle="Source-labeled municipality production data and salt-industry demand benchmarks for Pangasinan."
-        art={<MunicipalityMapArt mode="province" />}
+        art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       >
         <span className="ui-pageheader-chip">
           <ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />

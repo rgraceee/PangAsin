@@ -8,11 +8,13 @@ import { Pencil, Power } from 'lucide-react';
 import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
+import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 
 const USER_ROLES = ['admin', 'encoder'];
 
 export default function UsersManagement() {
   const { toastSuccess, toastError } = useToast();
+  const { activeNames } = useMunicipalityDirectory();
   const [users, setUsers] = useState([]);
   const [munis, setMunis] = useState([]);
   const [filters, setFilters] = useState({ role: '', status: '', municipality_id: '' });
@@ -119,7 +121,7 @@ export default function UsersManagement() {
         className="ui-pageheader--admin"
         title="User Management"
         subtitle="Manage admin and encoder accounts, roles, and access."
-        art={<MunicipalityMapArt mode="province" />}
+        art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       >
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="um-role">Role</label>

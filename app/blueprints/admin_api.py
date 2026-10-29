@@ -3,6 +3,7 @@
 # WHY: Lahat ng admin actions ay nasa isang lugar, may iisang _admin_only guard.
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
+import os
 from app.models.production_record import ProductionRecord
 from app.models.environment_report import EnvironmentReport
 from app.models.producer_report import ProducerReport, ProducerReportEntry
@@ -12,11 +13,20 @@ from app.models.municipality import Municipality
 from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.models.user import User
 from app.models.demand_benchmark import DemandBenchmark
+from app.models.audit_log import AuditLog
 from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from app.services.data_quality import build_data_quality, DATA_QUALITY_RANGES
 from app.services.aggregates import _last_month_with_data
+from app.services import municipality_service
+from app.services import geojson_service
+from app.services.audit import log_action
+from app.services.municipality_service import (
+    MunicipalityConflictError,
+    MunicipalityValidationError,
+)
+from app.services.municipalities import active_municipality_ids_subquery
 from app.constants import AGE_BUCKET_FIELDS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
 from app.status_constants import ALLOWED_STATUSES
 from app.utils import _admin_only
@@ -88,6 +98,7 @@ def me():
         "role": current_user.role,
         "municipality_id": current_user.municipality_id,
         "municipality_name": current_user.municipality.name if current_user.municipality else None,
+        "must_change_password": current_user.must_change_password,
     })
 
 
@@ -97,31 +108,253 @@ def list_municipalities():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
 
-    munis = Municipality.query.order_by(Municipality.name).all()
-    encoder_counts = dict(
-        db.session.query(User.municipality_id, func.count(User.id))
-        .filter(User.role == "encoder")
-        .group_by(User.municipality_id)
-        .all()
+    return jsonify({
+        "municipalities": municipality_service.list_municipalities_with_summaries(),
+    })
+
+
+@admin_api_bp.route("/municipalities", methods=["POST"])
+@login_required
+def create_municipality():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    data = request.get_json(silent=True) or {}
+    try:
+        municipality, encoder_result = municipality_service.create_municipality(data)
+    except MunicipalityValidationError as exc:
+        return jsonify({"errors": exc.errors}), exc.status_code
+    except MunicipalityConflictError as exc:
+        return jsonify({"error": str(exc)}), exc.status_code
+
+    return jsonify({
+        "municipality": municipality_service.serialize_municipality(municipality),
+        "encoder": encoder_result,
+    }), 201
+
+
+@admin_api_bp.route("/municipalities/<int:municipality_id>", methods=["PATCH"])
+@login_required
+def update_municipality(municipality_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    municipality = db.session.get(Municipality, municipality_id)
+    if not municipality:
+        return jsonify({"error": "Municipality not found."}), 404
+
+    data = request.get_json(silent=True) or {}
+    try:
+        municipality, deactivated = municipality_service.update_municipality(
+            municipality, data
+        )
+    except MunicipalityValidationError as exc:
+        return jsonify({"errors": exc.errors}), exc.status_code
+    except MunicipalityConflictError as exc:
+        return jsonify({"error": str(exc)}), exc.status_code
+
+    return jsonify({
+        "municipality": municipality_service.serialize_municipality(municipality),
+        "deactivated_encoder_count": deactivated,
+    })
+
+
+@admin_api_bp.route("/municipalities/seed", methods=["POST"])
+@login_required
+def seed_municipalities():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    data = request.get_json(silent=True) or {}
+    try:
+        result = municipality_service.seed_municipalities(
+            dry_run=bool(data.get("dry_run"))
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return jsonify({"error": f"Could not seed municipalities: {exc}"}), 500
+    return jsonify(result)
+
+
+@admin_api_bp.route("/municipalities/<int:municipality_id>", methods=["DELETE"])
+@login_required
+def delete_municipality(municipality_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    municipality = db.session.get(Municipality, municipality_id)
+    if not municipality:
+        return jsonify({"error": "Municipality not found."}), 404
+
+    data = request.get_json(silent=True) or {}
+    confirm_name = str(data.get("confirm_name") or "").strip()
+    if confirm_name.lower() != municipality.name.lower():
+        return jsonify({
+            "error": "Type the municipality name exactly to confirm deletion."
+        }), 400
+
+    try:
+        counts = municipality_service.delete_municipality(
+            municipality, force=bool(data.get("force"))
+        )
+    except MunicipalityConflictError as exc:
+        return jsonify({"error": str(exc), "code": "municipality_has_data"}), exc.status_code
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return jsonify({"error": f"Could not delete the municipality: {exc}"}), 500
+
+    return jsonify({"ok": True, "deleted": counts})
+
+
+@admin_api_bp.route("/municipalities/<int:municipality_id>/geojson", methods=["POST"])
+@login_required
+def upload_municipality_geojson(municipality_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    municipality = db.session.get(Municipality, municipality_id)
+    if not municipality:
+        return jsonify({"error": "Municipality not found."}), 404
+
+    file_storage = request.files.get("file")
+    try:
+        geojson_ref, feature_count = geojson_service.save_municipality_geojson(
+            municipality, file_storage
+        )
+    except MunicipalityValidationError as exc:
+        return jsonify({"errors": exc.errors}), exc.status_code
+
+    municipality.geojson_ref = geojson_ref
+    log_action(
+        "municipality.geojson.upload",
+        "municipality",
+        municipality.id,
+        summary=f"Uploaded a boundary for {municipality.name}.",
+        details={"geojson_ref": geojson_ref, "feature_count": feature_count},
     )
-    record_counts = dict(
-        db.session.query(ProductionRecord.municipality_id, func.count(ProductionRecord.id))
-        .group_by(ProductionRecord.municipality_id)
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return jsonify({"error": f"Could not save the boundary: {exc}"}), 500
+
+    return jsonify({
+        "municipality": municipality_service.serialize_municipality(municipality),
+        "feature_count": feature_count,
+    })
+
+
+@admin_api_bp.route("/municipalities/<int:municipality_id>/geojson", methods=["DELETE"])
+@login_required
+def delete_municipality_geojson(municipality_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    municipality = db.session.get(Municipality, municipality_id)
+    if not municipality:
+        return jsonify({"error": "Municipality not found."}), 404
+
+    ref = municipality.geojson_ref
+    removed = False
+    if ref and ref.startswith("geojson/"):
+        path = geojson_service.geojson_path(ref)
+        if os.path.isfile(path):
+            try:
+                os.remove(path)
+                removed = True
+            except OSError as exc:
+                return jsonify({"error": f"Could not remove the file: {exc}"}), 500
+    municipality.geojson_ref = None
+    log_action(
+        "municipality.geojson.delete",
+        "municipality",
+        municipality.id,
+        summary=f"Removed the uploaded boundary for {municipality.name}.",
+        details={"geojson_ref": ref, "file_removed": removed},
+    )
+    db.session.commit()
+    return jsonify({
+        "ok": True,
+        "file_removed": removed,
+        "municipality": municipality_service.serialize_municipality(municipality),
+    })
+
+
+@admin_api_bp.route("/barangays/<int:barangay_id>", methods=["PATCH"])
+@login_required
+def rename_barangay(barangay_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    barangay = db.session.get(Barangay, barangay_id)
+    if not barangay:
+        return jsonify({"error": "Barangay not found."}), 404
+
+    data = request.get_json(silent=True) or {}
+    try:
+        barangay = municipality_service.rename_barangay(barangay, data.get("name"))
+    except MunicipalityValidationError as exc:
+        return jsonify({"errors": exc.errors}), exc.status_code
+    except MunicipalityConflictError as exc:
+        return jsonify({"error": str(exc)}), exc.status_code
+
+    return jsonify({"barangay": municipality_service.serialize_barangay(barangay)})
+
+
+@admin_api_bp.route("/barangays/<int:barangay_id>", methods=["DELETE"])
+@login_required
+def delete_barangay(barangay_id):
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    barangay = db.session.get(Barangay, barangay_id)
+    if not barangay:
+        return jsonify({"error": "Barangay not found."}), 404
+
+    try:
+        municipality_service.delete_barangay(barangay)
+    except MunicipalityConflictError as exc:
+        return jsonify({"error": str(exc), "code": "barangay_in_use"}), exc.status_code
+
+    return jsonify({"ok": True})
+
+
+@admin_api_bp.route("/audit-logs", methods=["GET"])
+@login_required
+def list_audit_logs():
+    if _admin_only():
+        return jsonify({"error": "Admin access only."}), 403
+
+    page = max(1, request.args.get("page", 1, type=int) or 1)
+    per_page = min(200, max(1, request.args.get("per_page", 50, type=int) or 50))
+    query = AuditLog.query
+
+    action = (request.args.get("action") or "").strip()
+    entity_type = (request.args.get("entity_type") or "").strip()
+    actor_email = (request.args.get("actor_email") or "").strip().lower()
+    entity_id = request.args.get("entity_id", type=int)
+    if action:
+        query = query.filter(AuditLog.action == action)
+    if entity_type:
+        query = query.filter(AuditLog.entity_type == entity_type)
+    if actor_email:
+        query = query.filter(func.lower(AuditLog.actor_email).like(f"%{actor_email}%"))
+    if entity_id:
+        query = query.filter(AuditLog.entity_id == entity_id)
+
+    total = query.count()
+    logs = (
+        query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
     return jsonify({
-        "municipalities": [
-            {
-                "id": m.id,
-                "name": m.name,
-                "status": m.status,
-                "latitude": float(m.latitude) if m.latitude is not None else None,
-                "longitude": float(m.longitude) if m.longitude is not None else None,
-                "encoder_count": encoder_counts.get(m.id, 0),
-                "record_count": record_counts.get(m.id, 0),
-            }
-            for m in munis
-        ]
+        "logs": [entry.serialize() for entry in logs],
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "pages": (total + per_page - 1) // per_page if per_page else 0,
     })
 
 
@@ -134,7 +367,12 @@ def list_barangays():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
 
-    barangays = Barangay.query.order_by(Barangay.name).all()
+    barangays = (
+        Barangay.query
+        .filter(Barangay.municipality_id.in_(active_municipality_ids_subquery()))
+        .order_by(Barangay.name)
+        .all()
+    )
     return jsonify({
         "barangays": [
             {
@@ -174,6 +412,7 @@ def list_users():
                 "municipality_id": u.municipality_id,
                 "municipality_name": u.municipality.name if u.municipality else None,
                 "status": u.status,
+                "must_change_password": u.must_change_password,
                 "last_login": u.last_login.isoformat() if u.last_login else None,
             }
             for u in users
@@ -198,12 +437,19 @@ def create_user():
 def update_user(user_id):
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({"error": "User not found."}), 404
 
     data = request.get_json(silent=True) or {}
     errors = []
+    before = {
+        "name": user.name,
+        "municipality_id": user.municipality_id,
+        "status": user.status,
+        "role": user.role,
+    }
+    password_changed = False
 
     if "name" in data:
         name = (data.get("name") or "").strip()
@@ -236,9 +482,33 @@ def update_user(user_id):
             errors.append("password must be at least 6 chars.")
         else:
             user.set_password(data["password"])
+            password_changed = True
 
     if errors:
         return jsonify({"errors": errors}), 400
+
+    after = {
+        "name": user.name,
+        "municipality_id": user.municipality_id,
+        "status": user.status,
+        "role": user.role,
+    }
+    changed = {
+        key: {"from": before[key], "to": after[key]}
+        for key in before
+        if before[key] != after[key]
+    }
+    if changed or password_changed:
+        log_action(
+            "user.update",
+            "user",
+            user.id,
+            summary=f"Updated account {user.email}.",
+            details={
+                "changes": changed,
+                "password_changed": password_changed,
+            },
+        )
 
     try:
         db.session.commit()
@@ -254,6 +524,7 @@ def update_user(user_id):
         "municipality_id": user.municipality_id,
         "municipality_name": user.municipality.name if user.municipality else None,
         "status": user.status,
+        "must_change_password": user.must_change_password,
     })
 
 
@@ -528,6 +799,33 @@ def review_producer_submission(report_id):
     return jsonify(_serialize_producer_submission(report))
 
 
+def _resolve_active_municipality():
+    """Resolve the optional ``municipality`` query param to an active row.
+
+    WHAT: The dashboard selector sends the slug used by the encoder account
+          (e.g. ``bolinao``, ``alaminos``), never a display name.
+    WHY: A slug is stable and URL-safe; validating it against the active
+         directory here keeps inactive or unknown municipalities out of the
+         dashboard data instead of silently returning an empty province.
+    """
+    raw_slug = (request.args.get("municipality") or "").strip().lower()
+    if not raw_slug:
+        return None, None
+    municipality = next(
+        (
+            row for row in Municipality.query.filter_by(status="active").all()
+            if municipality_service.slugify(row.name) == raw_slug
+        ),
+        None,
+    )
+    if municipality is None:
+        return None, (
+            jsonify({"error": "municipality must be an active municipality slug."}),
+            400,
+        )
+    return municipality, None
+
+
 @admin_api_bp.route("/stats", methods=["GET"])
 @login_required
 def stats():
@@ -538,6 +836,19 @@ def stats():
         return jsonify({
             "error": "source must be approved_records or municipality_production."
         }), 400
+
+    selected_municipality, municipality_error = _resolve_active_municipality()
+    if municipality_error:
+        return municipality_error
+    selected_municipality_id = (
+        selected_municipality.id if selected_municipality is not None else None
+    )
+
+    def scope_conditions(column):
+        """Empty list = province-wide; one condition = selected municipality."""
+        if selected_municipality_id is None:
+            return []
+        return [column == selected_municipality_id]
 
     by_municipality = (
         db.session.query(
@@ -553,6 +864,8 @@ def stats():
         )
         .join(Municipality, Municipality.id == ProductionRecord.municipality_id)
         .filter(ProductionRecord.status == "approved")
+        .filter(Municipality.status == "active")
+        .filter(*scope_conditions(ProductionRecord.municipality_id))
         .group_by(ProductionRecord.municipality_id, Municipality.name)
         .all()
     )
@@ -569,6 +882,10 @@ def stats():
         )
         .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
         .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
+        .filter(*scope_conditions(ProductionRecord.municipality_id))
         .group_by(ProductionRecord.municipality_id, ProductionRecord.barangay_id, Barangay.name)
         .all()
     )
@@ -592,6 +909,10 @@ def stats():
         )
         .join(ProducerReportEntry, ProducerReportEntry.report_id == ProducerReport.id)
         .filter(ProducerReport.status == "approved")
+        .filter(
+            ProducerReport.municipality_id.in_(active_municipality_ids_subquery())
+        )
+        .filter(*scope_conditions(ProducerReport.municipality_id))
         .group_by(ProducerReport.municipality_id, ProducerReportEntry.barangay_id, ProducerReportEntry.sex)
         .all()
     )
@@ -634,7 +955,11 @@ def stats():
             "total_registered_producers": totals["registered"],
         })
 
-    approved_production = ProductionRecord.query.filter_by(status="approved")
+    approved_production = (
+        ProductionRecord.query.filter_by(status="approved")
+        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*scope_conditions(ProductionRecord.municipality_id))
+    )
     total_volume = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
     total_area = approved_production.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)).scalar() or 0
     total_records = approved_production.count()
@@ -643,13 +968,27 @@ def stats():
     standalone_registered = sum(totals["registered"] for totals in producer_totals_by_muni.values())
     total_registered = int(legacy_registered or 0) + standalone_registered
     pending_validation_count = (
-        ProductionRecord.query.filter_by(status="pending").count()
-        + EnvironmentReport.query.filter_by(status="pending").count()
-        + ProducerReport.query.filter_by(status="pending").count()
+        ProductionRecord.query.filter_by(status="pending")
+        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*scope_conditions(ProductionRecord.municipality_id))
+        .count()
+        + EnvironmentReport.query.filter_by(status="pending")
+        .filter(EnvironmentReport.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*scope_conditions(EnvironmentReport.municipality_id))
+        .count()
+        + ProducerReport.query.filter_by(status="pending")
+        .filter(ProducerReport.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*scope_conditions(ProducerReport.municipality_id))
+        .count()
     )
 
     environment_by_muni = {}
-    for report in EnvironmentReport.query.filter_by(status="approved").all():
+    for report in (
+        EnvironmentReport.query.filter_by(status="approved")
+        .filter(EnvironmentReport.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*scope_conditions(EnvironmentReport.municipality_id))
+        .all()
+    ):
         name = report.barangay.municipality.name if report.barangay and report.barangay.municipality else "Unknown"
         row = environment_by_muni.setdefault(report.municipality_id, {
             "municipality_id": report.municipality_id,
@@ -709,6 +1048,8 @@ def stats():
     master_rows = (
         db.session.query(Barangay.municipality_id, Producer.age, Producer.sex)
         .join(Producer, Producer.barangay_id == Barangay.id)
+        .filter(Barangay.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*scope_conditions(Barangay.municipality_id))
         .all()
     )
     for municipality_id, age, sex in master_rows:
@@ -755,6 +1096,10 @@ def stats():
             func.sum(ProductionRecord.production_volume_mt).label("mt"),
         )
         .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
+        .filter(*scope_conditions(ProductionRecord.municipality_id))
         .group_by(ProductionRecord.municipality_id, ProductionRecord.production_method)
         .all()
     )
@@ -864,6 +1209,12 @@ def stats():
             )
         production_rows = (
             production_query
+            .filter(
+                MunicipalityMonthlyProduction.municipality_id.in_(
+                    active_municipality_ids_subquery()
+                )
+            )
+            .filter(*scope_conditions(MunicipalityMonthlyProduction.municipality_id))
             .group_by(MunicipalityMonthlyProduction.municipality_id)
             .all()
         )
@@ -873,7 +1224,12 @@ def stats():
         municipality_stats_by_id = {
             row["municipality_id"]: row for row in municipality_stats
         }
-        for municipality in Municipality.query.filter_by(status="active").all():
+        scoped_municipalities = (
+            Municipality.query.filter_by(status="active")
+            .filter(*scope_conditions(Municipality.id))
+            .all()
+        )
+        for municipality in scoped_municipalities:
             row = production_by_municipality.get(municipality.id)
             municipality_stat = municipality_stats_by_id.get(municipality.id)
             if municipality_stat is None:
@@ -972,13 +1328,31 @@ def insight():
     if _admin_only():
         return jsonify({"error": "Admin access only."}), 403
 
-    total_volume = db.session.query(func.sum(ProductionRecord.production_volume_mt)).scalar() or 0
-    pending = ProductionRecord.query.filter_by(status="pending").count()
-    approved = ProductionRecord.query.filter_by(status="approved").count()
-    rejected = ProductionRecord.query.filter_by(status="rejected").count()
+    total_volume = (
+        db.session.query(func.sum(ProductionRecord.production_volume_mt))
+        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
+        .scalar()
+        or 0
+    )
+    pending = (
+        ProductionRecord.query.filter_by(status="pending")
+        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
+        .count()
+    )
+    approved = (
+        ProductionRecord.query.filter_by(status="approved")
+        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
+        .count()
+    )
+    rejected = (
+        ProductionRecord.query.filter_by(status="rejected")
+        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
+        .count()
+    )
     top_muni = (
         db.session.query(Municipality.name, func.sum(ProductionRecord.production_volume_mt).label("v"))
         .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
+        .filter(Municipality.status == "active")
         .group_by(Municipality.name)
         .order_by(func.sum(ProductionRecord.production_volume_mt).desc())
         .first()
@@ -1030,6 +1404,10 @@ def supply_demand():
                 MunicipalityMonthlyProduction.is_synthetic.is_(True),
                 MunicipalityMonthlyProduction.production_year >= start_year,
                 MunicipalityMonthlyProduction.production_year <= end_year,
+            ).filter(
+                MunicipalityMonthlyProduction.municipality_id.in_(
+                    active_municipality_ids_subquery()
+                )
             ).all()
         }
         local_supply_period = {
@@ -1077,6 +1455,11 @@ def admin_months():
                 MunicipalityMonthlyProduction.production_month,
             )
             .distinct()
+            .filter(
+                MunicipalityMonthlyProduction.municipality_id.in_(
+                    active_municipality_ids_subquery()
+                )
+            )
             .order_by(
                 MunicipalityMonthlyProduction.production_year,
                 MunicipalityMonthlyProduction.production_month,
@@ -1098,6 +1481,9 @@ def admin_months():
             func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
         )
         .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
         .distinct()
         .order_by(func.to_char(ProductionRecord.record_date, "YYYY-MM"))
         .all()
@@ -1159,6 +1545,9 @@ def _approved_month_totals(months, production_method=None):
             func.sum(ProductionRecord.production_volume_mt).label("v"),
         )
         .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
         .filter(ProductionRecord.record_date >= start)
         .filter(ProductionRecord.record_date <= end)
     )
@@ -1185,7 +1574,15 @@ def _production_month_totals(months):
     requested = set(months)
     per_municipality = {}
     province = {}
-    for row in MunicipalityMonthlyProduction.query.all():
+    for row in (
+        MunicipalityMonthlyProduction.query
+        .filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
+        .all()
+    ):
         label = f"{row.production_year:04d}-{row.production_month:02d}"
         if label not in requested:
             continue
@@ -1208,7 +1605,7 @@ def trends():
     A municipality is reported as "incomplete" when any month in either block
     has no approved record; no percentage is returned for it, because the
     missing month cannot be assumed to be zero production. Every active
-    municipality is always returned, so the caller can show all seven.
+    municipality is always returned, so the caller can show the full active list.
 
     Query: month (optional 'YYYY-MM' anchor for the current block),
            production_method (optional solar|cooked|hybrid filter).

@@ -12,6 +12,7 @@ from app.models.municipality_production import (
     MunicipalityMonthlyProduction,
     MunicipalitySaltBedData,
 )
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Municipality",
@@ -28,4 +29,5 @@ __all__ = [
     "Producer",
     "MunicipalityMonthlyProduction",
     "MunicipalitySaltBedData",
+    "AuditLog",
 ]

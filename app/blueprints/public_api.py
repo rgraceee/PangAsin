@@ -19,6 +19,12 @@ from app.models.municipality_production import (
     MunicipalitySaltBedData,
 )
 from app.services.forecast_service import _monthly_aggregates
+from app.services.municipalities import (
+    active_municipalities,
+    active_municipality_ids_subquery,
+    normalized_name,
+)
+from app.services.municipality_service import slugify as municipality_slug
 
 public_api_bp = Blueprint("public_api", __name__, url_prefix="/api/public")
 
@@ -35,10 +41,19 @@ PRODUCTION_SOURCE_LABEL = "Adjusted_Estimates.xlsx"
 
 
 def _latest_production_month():
-    latest = MunicipalityMonthlyProduction.query.order_by(
-        MunicipalityMonthlyProduction.production_year.desc(),
-        MunicipalityMonthlyProduction.production_month.desc(),
-    ).first()
+    latest = (
+        MunicipalityMonthlyProduction.query
+        .filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
+        .order_by(
+            MunicipalityMonthlyProduction.production_year.desc(),
+            MunicipalityMonthlyProduction.production_month.desc(),
+        )
+        .first()
+    )
     if latest is None:
         return None
     return date(latest.production_year, latest.production_month, 1)
@@ -79,7 +94,15 @@ def _municipality_summary():
 
     current_totals = {}
     previous_totals = {}
-    for production in MunicipalityMonthlyProduction.query.all():
+    for production in (
+        MunicipalityMonthlyProduction.query
+        .filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
+        .all()
+    ):
         month_index = production.production_year * 12 + production.production_month - 1
         target = (
             current_totals
@@ -134,6 +157,9 @@ def _demographics():
             *(func.sum(func.coalesce(getattr(ProductionRecord, f), 0)).label(f) for f in AGE_FIELDS),
         )
         .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
         .group_by(ProductionRecord.municipality_id)
         .all()
     )
@@ -172,6 +198,9 @@ def _demographics():
         )
         .join(ProducerReportEntry, ProducerReportEntry.report_id == ProducerReport.id)
         .filter(ProducerReport.status == "approved")
+        .filter(
+            ProducerReport.municipality_id.in_(active_municipality_ids_subquery())
+        )
         .group_by(ProducerReport.municipality_id, ProducerReportEntry.age, ProducerReportEntry.age_bracket, ProducerReportEntry.sex)
         .all()
     )
@@ -219,10 +248,19 @@ def _demographics():
 
 
 def _production():
-    monthly_production = MunicipalityMonthlyProduction.query.order_by(
-        MunicipalityMonthlyProduction.production_year,
-        MunicipalityMonthlyProduction.production_month,
-    ).all()
+    monthly_production = (
+        MunicipalityMonthlyProduction.query
+        .filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
+        .order_by(
+            MunicipalityMonthlyProduction.production_year,
+            MunicipalityMonthlyProduction.production_month,
+        )
+        .all()
+    )
     if not monthly_production:
         return {
             "provinceTotalMT": 0.0,
@@ -259,6 +297,10 @@ def _production():
     #      so created_at is the best available timestamp for this dataset.
     last_updated_at = db.session.query(
         func.max(MunicipalityMonthlyProduction.created_at)
+    ).filter(
+        MunicipalityMonthlyProduction.municipality_id.in_(
+            active_municipality_ids_subquery()
+        )
     ).scalar()
 
     return {
@@ -333,14 +375,17 @@ def _supply_demand():
     }
 
 
+# WHAT: Short public insight per municipality, keyed by normalized name.
+# WHY: Municipality ids are database-managed (and can be recreated), so a name
+#      key stays correct; an unknown name simply has no snippet.
 INSIGHTS = {
-    3: "Alaminos City's coastal brine flats support sustained solar output; forecast readiness depends on the depth of its record history.",
-    2: "Anda enjoys steady coastal brine access and extended dry-season periods that support consistent solar evaporation.",
-    4: "Bani relies more heavily on cooked production where open evaporation area is limited and labor is readily available.",
-    1: "Bolinao's large coastal tracts and strong north-easterly winds reduce drying time, sustaining high solar output.",
-    6: "Dasol shows substantial recorded output, making it a key contributor to provincial salt volumes.",
-    7: "Infanta blends solar and cooked methods; hybrid adoption is increasing to improve grade consistency.",
-    5: "San Fabian's cooked salt remains the mainstay given limited tidal access and indoor processing reliance.",
+    "alaminos city": "Alaminos City's coastal brine flats support sustained solar output; forecast readiness depends on the depth of its record history.",
+    "anda": "Anda enjoys steady coastal brine access and extended dry-season periods that support consistent solar evaporation.",
+    "bani": "Bani relies more heavily on cooked production where open evaporation area is limited and labor is readily available.",
+    "bolinao": "Bolinao's large coastal tracts and strong north-easterly winds reduce drying time, sustaining high solar output.",
+    "dasol": "Dasol shows substantial recorded output, making it a key contributor to provincial salt volumes.",
+    "infanta": "Infanta blends solar and cooked methods; hybrid adoption is increasing to improve grade consistency.",
+    "san fabian": "San Fabian's cooked salt remains the mainstay given limited tidal access and indoor processing reliance.",
 }
 
 
@@ -387,7 +432,7 @@ def _build_municipalities(rows, method_by_muni, window):
             "solarProductionMT": solar,
             "cookedProductionMT": cooked,
             "hybridProductionMT": hybrid,
-            "insightSnippet": INSIGHTS.get(muni_id),
+            "insightSnippet": INSIGHTS.get(normalized_name(r.name)),
             "geojsonRef": r.geojson_ref,
             "historicalProduction": _historical(muni_id),
             "dataSource": "municipality_production",
@@ -429,4 +474,28 @@ def dashboard():
         "supplyDemand": _supply_demand(),
         "dataSource": "municipality_production",
         "dataSourceLabel": PRODUCTION_SOURCE_LABEL,
+    })
+
+
+@public_api_bp.route("/municipalities", methods=["GET"])
+def municipalities():
+    """Active municipality directory for filters and map highlighting.
+
+    Public on purpose: the guest dashboard and the admin filter bar both read
+    the same database-managed list, so labels and counts can never drift.
+    """
+    rows = active_municipalities()
+    return jsonify({
+        "municipalities": [
+            {
+                "id": m.id,
+                "name": m.name,
+                "slug": municipality_slug(m.name),
+                "latitude": float(m.latitude),
+                "longitude": float(m.longitude),
+                "geojsonRef": m.geojson_ref,
+            }
+            for m in rows
+        ],
+        "count": len(rows),
     })

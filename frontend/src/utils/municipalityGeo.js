@@ -11,6 +11,33 @@ import saltMunicipalities from '../data/pangasinan_municipalities.json';
 const VIEW_W = 420;
 const PAD = 10;
 
+// WHAT: Bounds ng bundled na Pangasinan GeoJSON (48 municipalities).
+// WHY: Gamit ito para malaman kung ang pinicked na coordinate ay malamang
+//      nasa Pangasinan pa; warning lang ito, hindi hard validation.
+export const PANGASINAN_BOUNDS = {
+  minLat: 15.617769571,
+  maxLat: 16.443564698,
+  minLng: 119.749719464,
+  maxLng: 120.920529407,
+};
+
+export const PANGASINAN_CENTER = [
+  (PANGASINAN_BOUNDS.minLat + PANGASINAN_BOUNDS.maxLat) / 2,
+  (PANGASINAN_BOUNDS.minLng + PANGASINAN_BOUNDS.maxLng) / 2,
+];
+
+export function isWithinPangasinan(latitude, longitude) {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  return (
+    lat >= PANGASINAN_BOUNDS.minLat
+    && lat <= PANGASINAN_BOUNDS.maxLat
+    && lng >= PANGASINAN_BOUNDS.minLng
+    && lng <= PANGASINAN_BOUNDS.maxLng
+  );
+}
+
 export function normalizeMunicipalityName(name) {
   return String(name || '')
     .toLowerCase()
@@ -20,7 +47,7 @@ export function normalizeMunicipalityName(name) {
     .trim();
 }
 
-// WHAT: Normalized names ng 7 salt-producing municipalities.
+// WHAT: Normalized names ng active municipalities (fallback list).
 // WHY: Para malaman kung alin sa buong Pangasinan ang neutral (may produksyon) vs pinakamaga.
 export const SALT_MUNICIPALITY_NAMES = new Set(
   (saltMunicipalities.features || []).map((f) => normalizeMunicipalityName(f.properties?.name || '')),
@@ -113,6 +140,15 @@ export function buildMunicipalityArt() {
 
   cached = { viewBox: `0 0 ${VIEW_W} ${VIEW_H}`, width: VIEW_W, height: VIEW_H, shapes, centroids, bounds };
   return cached;
+}
+
+// WHAT: May bundled shape ba ang pangalang ito?
+// WHY: Iba ang "uploaded boundary" (has_boundary mula sa API) sa bundled
+//      fallback; dapat hindi pagkamalan na uploaded ang reserved geojson_ref.
+export function hasBundledBoundary(name) {
+  const key = normalizeMunicipalityName(name);
+  if (!key) return false;
+  return Boolean(buildMunicipalityArt().bounds[key]);
 }
 
 // WHAT: Pantay na focus width para sa lahat ng encoder (base sa pinakamalaking salt muni).

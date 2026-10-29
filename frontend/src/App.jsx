@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, BrowserRouter, useLocation } from 'react-router-dom';
 import GuestDashboard from './components/GuestDashboard';
 import Login from './components/Login';
+import ChangePassword from './components/ChangePassword';
 import EncoderLayout from './components/encoder/EncoderLayout';
 import EncoderDashboard from './components/encoder/EncoderDashboard';
 import ProductionRecordsPage from './components/encoder/ProductionRecordsPage';
@@ -10,6 +11,8 @@ import RequireAdmin from './components/admin/RequireAdmin';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminPage from './components/admin/AdminPage';
 import UsersManagement from './components/admin/UsersManagement';
+import Municipalities from './components/admin/Municipalities';
+import AuditLogs from './components/admin/AuditLogs';
 import ForecastDashboard from './components/admin/ForecastDashboard';
 // NOTE: the old Target Evaluation page (components/admin/DecisionSupport.jsx)
 // is kept on disk for rollback, but the route now uses the new page.
@@ -28,6 +31,9 @@ const ROUTE_TITLES = {
   '/encoder': 'Encoder Dashboard',
   '/admin': 'Executive Dashboard',
   '/admin/users': 'User Management',
+  '/admin/municipalities': 'Municipality Management',
+  '/admin/audit-logs': 'Audit Log',
+  '/change-password': 'Change Password',
   '/admin/master-list': 'Salt Farmer Master List',
   '/encoder/master-list': 'Salt Farmer Master List',
   '/encoder/production-records': 'Production Records',
@@ -51,6 +57,22 @@ function RequireAuth({ user, isLoading, children }) {
   }
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+  if (user.must_change_password) {
+    return <Navigate to="/change-password" replace />;
+  }
+  return children;
+}
+
+function RequirePasswordChange({ user, isLoading, children }) {
+  if (isLoading) {
+    return <div className="auth-skeleton-wrap"><SkeletonPage /></div>;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!user.must_change_password) {
+    return <Navigate to={user.role === 'admin' ? '/admin' : '/encoder'} replace />;
   }
   return children;
 }
@@ -93,6 +115,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<GuestDashboard />} />
         <Route path="/login" element={<Login onLogin={setUser} />} />
+        <Route
+          path="/change-password"
+          element={(
+            <RequirePasswordChange user={user} isLoading={loading}>
+              <ChangePassword user={user} setUser={setUser} />
+            </RequirePasswordChange>
+          )}
+        />
         <Route path="/encoder/login" element={<Navigate to="/login" replace />} />
         <Route
           path="/encoder"
@@ -117,6 +147,8 @@ export default function App() {
         >
           <Route index element={<AdminPage user={user} />} />
           <Route path="users" element={<UsersManagement />} />
+          <Route path="municipalities" element={<Municipalities />} />
+          <Route path="audit-logs" element={<AuditLogs />} />
           <Route path="master-list" element={<ProducerMasterList user={user} isAdmin />} />
           <Route path="validation" element={<ValidationQueue />} />
           <Route path="data-quality" element={<DataQualityDashboard />} />

@@ -11,7 +11,7 @@ const REASON_LABEL = {
   nodata: 'Not enough data',
 };
 
-export default function ForecastNeedsAttention({ items }) {
+export default function ForecastNeedsAttention({ items, total = 0 }) {
   return (
     <Card className="fc-card fc-attention-card">
       <Card.Header className="fc-card-head">
@@ -24,7 +24,7 @@ export default function ForecastNeedsAttention({ items }) {
         </div>
         <div className="fc-card-head-right">
           <span className="fc-chip fc-chip--meta">
-            {items.length} of 7 municipalities
+            {total > 0 ? `${items.length} of ${total} municipalities` : `${items.length} municipalities`}
           </span>
         </div>
       </Card.Header>

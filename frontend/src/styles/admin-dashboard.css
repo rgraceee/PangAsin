@@ -264,3 +264,1061 @@
     height: 720px;
   }
 }
+/* ============================================================
+   Municipality Management (Add Municipality)
+   ============================================================ */
+.admin-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.muni-boundary-preview {
+  max-width: 360px;
+  margin: 0 auto 16px;
+}
+
+/* WHAT: Compact na preview lang ito sa loob ng modal.
+   WHY: Ang header map ay pwedeng lumaki; dito kailangan hindi sakupin ang buong form. */
+.muni-boundary-preview .munimap {
+  height: 200px;
+}
+
+.muni-boundary-preview .munimap-svg {
+  overflow: hidden;
+}
+
+.muni-barangay-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 9px;
+  max-height: 130px;
+  overflow-y: auto;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.muni-barangay-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(21, 101, 200, 0.08);
+  color: #0d4fa0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.muni-barangay-chip--editable {
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.muni-barangay-chip__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #1565c8;
+}
+
+.muni-barangay-chip__action:hover {
+  background: rgba(21, 101, 200, 0.15);
+}
+
+.muni-barangay-chip__action--danger {
+  color: #c62828;
+}
+
+.muni-barangay-chip__action--danger:hover {
+  background: rgba(198, 40, 40, 0.12);
+}
+
+.muni-boundary-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+/* WHAT: Ang code ay nasa loob ng status column, hindi direktang flex child.
+   WHY: Kapag na-inherit ang flex-basis, nagiging 220px ang taas ng box
+        at nag-iiwan ng malaking blangkong espasyo. */
+.muni-boundary-file code {
+  flex: 0 0 auto;
+  word-break: break-all;
+}
+
+.muni-seed-list {
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.admin-location-picker {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.admin-location-picker .leaflet-container {
+  width: 100%;
+  font-family: inherit;
+}
+
+.admin-location-picker__hint {
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  color: #6b7280;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+}
+
+.admin-location-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-location-marker span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #1565c8;
+  box-shadow: 0 0 0 2px rgba(21, 101, 200, 0.35);
+}
+
+.muni-encoder-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.muni-encoder-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.muni-credentials-box {
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.muni-credentials-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.muni-credentials-value {
+  font-weight: 600;
+  color: #111827;
+  word-break: break-all;
+}
+
+.muni-credentials-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
+   Municipality Management — summary, table, and form polish
+   ============================================================ */
+.muni-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.muni-summary__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #4b5563;
+  font-size: 0.78rem;
+}
+
+.muni-summary__item strong {
+  color: #111827;
+  font-size: 0.9rem;
+}
+
+.muni-summary__item--active {
+  border-color: rgba(16, 150, 80, 0.25);
+  background: rgba(16, 150, 80, 0.08);
+  color: #0f6b3d;
+}
+
+.muni-summary__spacer {
+  flex: 1 1 auto;
+}
+
+.muni-map-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(21, 101, 200, 0.2);
+  border-radius: 10px;
+  background: rgba(21, 101, 200, 0.05);
+}
+
+.muni-map-selection__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0d4fa0;
+  font-size: 0.85rem;
+}
+
+.muni-map-selection__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #4b5563;
+}
+
+.muni-map-selection__clear:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.muni-empty-state {
+  padding: 28px 16px;
+  text-align: center;
+  color: #6b7280;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.muni-empty-state svg {
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.muni-row--selected > td {
+  background: rgba(21, 101, 200, 0.06) !important;
+}
+
+.muni-row--selected > td:first-child {
+  box-shadow: inset 3px 0 0 #1565c8;
+}
+
+.muni-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  line-height: 1.5;
+}
+
+.muni-status-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.muni-status-badge--active {
+  color: #0f6b3d;
+  background: rgba(16, 150, 80, 0.1);
+}
+
+.muni-status-badge--inactive {
+  color: #9a3412;
+  background: rgba(154, 52, 18, 0.1);
+}
+
+.muni-boundary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.muni-boundary-chip--uploaded {
+  color: #0f6b3d;
+  background: rgba(16, 150, 80, 0.1);
+}
+
+.muni-boundary-chip--bundled {
+  color: #0d4fa0;
+  background: rgba(21, 101, 200, 0.09);
+}
+
+.muni-boundary-chip--none {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+.muni-boundary-ref {
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.muni-coord {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.muni-form-section {
+  padding: 14px 0;
+  border-top: 1px solid #eef1f5;
+}
+
+/* WHAT: Ang <Form> ay intermediate child ng .modal-content.
+   WHY: Kapag scrollable ang modal, kailangan ding flex column ang form para
+        umiksi ang .modal-body at hindi lumampas sa viewport. */
+.muni-modal-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.muni-modal-form .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.muni-form-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.muni-form-section__head {
+  margin-bottom: 10px;
+}
+
+.muni-form-section__title {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.muni-form-section__hint {
+  margin: 3px 0 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.muni-email-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+  margin-top: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.muni-email-preview__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.muni-email-preview code {
+  color: #0d4fa0;
+  word-break: break-all;
+}
+
+.muni-email-preview__hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.muni-email-preview--empty code {
+  color: #9ca3af;
+  font-family: inherit;
+}
+
+.muni-tag-input {
+  padding: 6px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.muni-tag-input:focus-within {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.muni-tag-input.is-invalid {
+  border-color: #dc3545;
+}
+
+.muni-tag-input__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.muni-tag-input__chips input {
+  flex: 1 1 150px;
+  min-width: 120px;
+  padding: 3px 2px;
+  border: 0;
+  outline: 0;
+  font-size: 0.9rem;
+  background: transparent;
+}
+
+.muni-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  border-radius: 999px;
+  background: rgba(21, 101, 200, 0.08);
+  color: #0d4fa0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.muni-tag__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #1565c8;
+}
+
+.muni-tag__remove:hover {
+  background: rgba(21, 101, 200, 0.16);
+}
+
+.muni-tag-input__hint {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.muni-tag-input__notice {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #9a6700;
+}
+
+.muni-form-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: #9a6700;
+}
+
+.muni-boundary-file__status {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* ============================================================
+   Location picker — geolocation, offline notice, and coords
+   ============================================================ */
+.admin-location-picker__map {
+  position: relative;
+}
+
+.admin-location-picker__tools {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 500;
+  display: flex;
+  gap: 6px;
+}
+
+.admin-location-picker__tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #111827;
+  font-size: 0.76rem;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.admin-location-picker__tool:hover:not(:disabled) {
+  background: #fff;
+  border-color: #9ca3af;
+}
+
+.admin-location-picker__tool:disabled {
+  opacity: 0.65;
+}
+
+.admin-location-picker__tool--icon {
+  padding: 5px 7px;
+}
+
+.admin-location-picker__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+  color: #4b5563;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+}
+
+.admin-location-picker__notice--warning {
+  color: #9a6700;
+  background: #fffbeb;
+  border-top-color: #fde68a;
+}
+
+.admin-location-picker__notice--error {
+  color: #b42318;
+  background: #fef3f2;
+  border-top-color: #fecdca;
+}
+
+.admin-location-picker__coords {
+  display: block;
+  margin-top: 2px;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}
+
+/* WHAT: Hindi dapat mag-overlap ang tools sa Leaflet zoom controls.
+   WHY: Nasa top-right ang tools at top-left ang zoom; ang flex-wrap at
+        max-width ang pumipigil sa overlap kapag makitid ang modal. */
+.admin-location-picker__tools {
+  max-width: calc(100% - 60px);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-location-picker__tool-label {
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .admin-location-picker__tool {
+    padding: 6px;
+  }
+
+  .admin-location-picker__tool-label {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Municipality header toolbar — one row
+   ============================================================ */
+/* WHAT: Isang horizontal toolbar ang Seed, Add, Status, at Refresh.
+   WHY: dating hati sa dalawang row (actions + controls); ngayon isang
+        linya lang para malinaw at hindi nag-stack. */
+.muni-header-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.muni-header-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.muni-header-actions .admin-page-hero-control {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.muni-header-actions .admin-page-hero-field {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-text-muted);
+}
+
+.muni-header-actions .admin-page-hero-select {
+  height: 38px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+}
+
+.muni-header-actions .admin-page-hero-select:focus {
+  outline: none;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+@media (max-width: 767.98px) {
+  /* WHAT: Sa mobile, isang row pa rin pero swipeable pakanan.
+     WHY: hindi kasya ang apat na labeled controls sa 390px; horizontal
+          scroll ang pinaka-preserving na solusyon kaysa mag-wrap. */
+  .muni-header-actions {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* WHAT: Panatilihin ang natural na lapad ng Status control sa loob ng
+     nowrap toolbar; kung hindi, pinipiga ito ng mobile 50% rule sa 0px. */
+  .ui-pageheader--admin .ui-pageheader-controls .muni-header-actions .admin-page-hero-control {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 150px;
+    max-width: none;
+  }
+}
+
+/* ============================================================
+   Municipality row actions — 36px intent buttons
+   ============================================================ */
+.muni-admin-table td {
+  vertical-align: middle;
+}
+
+.muni-actions-cell {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* WHAT: Sticky actions column kapag horizontal ang scroll ng table.
+   WHY: Sa mobile/narrow widths, hindi na kailangang i-scroll pakanan para
+        maabot ang edit/power/delete; laging kita ang row actions. */
+@media (max-width: 1199.98px) {
+  .muni-admin-table th:last-child,
+  .muni-admin-table td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background-color: var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-bg, #fff)));
+    box-shadow: -10px 0 12px -12px rgba(15, 23, 42, 0.45);
+  }
+
+  .muni-admin-table thead th:last-child {
+    background-color: var(--bs-table-bg, #fff);
+    z-index: 3;
+  }
+}
+
+.muni-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.muni-row-actions__sep {
+  width: 1px;
+  height: 22px;
+  margin: 0 2px;
+  background: #e5e7eb;
+}
+
+.muni-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #1565c8;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
+}
+
+.muni-action-btn:hover:not(:disabled) {
+  background: #f3f7fd;
+  border-color: #b9cde8;
+}
+
+.muni-action-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.muni-action-btn:focus-visible {
+  outline: 2px solid #1565c8;
+  outline-offset: 2px;
+}
+
+.muni-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.muni-action-btn--edit {
+  color: #1565c8;
+}
+
+.muni-action-btn--deactivate {
+  color: #9a6700;
+  border-color: #f1d9a6;
+  background: #fffaf0;
+}
+
+.muni-action-btn--deactivate:hover:not(:disabled) {
+  background: #fff4d6;
+  border-color: #e7c47c;
+}
+
+.muni-action-btn--activate {
+  color: #0f6b3d;
+  border-color: #bfe3cd;
+  background: #f4fbf7;
+}
+
+.muni-action-btn--activate:hover:not(:disabled) {
+  background: #e8f7ee;
+  border-color: #9fd4b4;
+}
+
+.muni-action-btn--delete {
+  color: #b42318;
+  border-color: #f3c6c2;
+  background: #fff;
+}
+
+.muni-action-btn--delete:hover:not(:disabled) {
+  background: #fef3f2;
+  border-color: #e9a7a1;
+}
+
+.muni-spin {
+  animation: muni-spin 0.8s linear infinite;
+}
+
+@keyframes muni-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   Add/Edit Municipality modal — header, sections, sticky footer
+   ============================================================ */
+.muni-modal .modal-content {
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+}
+
+.muni-modal .modal-header {
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.muni-modal__heading {
+  min-width: 0;
+}
+
+.muni-modal__title {
+  margin: 0;
+  color: #111827;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.muni-modal__subtitle {
+  margin: 4px 0 0;
+  max-width: 62ch;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.muni-modal .modal-header .btn-close {
+  flex: 0 0 auto;
+  margin: 2px 0 0 auto;
+}
+
+.muni-modal .modal-body {
+  padding: 6px 22px 10px;
+}
+
+.muni-modal .form-label {
+  color: #374151;
+  font-weight: 600;
+}
+
+.muni-modal .form-text {
+  font-size: 0.76rem;
+}
+
+.muni-modal__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 22px;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+}
+
+.muni-modal__footer-note {
+  margin-right: auto;
+  color: #6b7280;
+  font-size: 0.76rem;
+}
+
+.muni-modal__footer-note.is-ready {
+  color: #0f6b3d;
+}
+
+.muni-modal__footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.muni-required {
+  color: #b42318;
+  font-weight: 700;
+}
+
+.muni-field-error {
+  margin-top: 4px;
+  color: #b42318;
+  font-size: 0.78rem;
+}
+
+/* WHAT: Segmented Active/Inactive toggle.
+   WHY: Dalawa lang ang status; mas malinaw ang pressed state kaysa select. */
+.muni-segmented {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.muni-segmented__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #4b5563;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.muni-segmented__option:hover:not(:disabled) {
+  background: rgba(21, 101, 200, 0.06);
+}
+
+.muni-segmented__option.is-selected {
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.muni-segmented__option--active.is-selected {
+  color: #0f6b3d;
+}
+
+.muni-segmented__option--inactive.is-selected {
+  color: #9a3412;
+}
+
+.muni-segmented__option:focus-visible {
+  outline: 2px solid #1565c8;
+  outline-offset: 1px;
+}
+
+.muni-segmented__option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.muni-segmented__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+@media (max-width: 767.98px) {
+  .muni-row-actions {
+    gap: 5px;
+  }
+
+  .muni-action-btn {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  /* WHAT: Sa maliit na screen, Municipality + Status + Actions lang ang
+     ipakita; ang ibang detalye ay nasa edit modal at desktop table pa rin. */
+  .muni-admin-table .muni-col-secondary {
+    display: none;
+  }
+
+  .muni-admin-table th:first-child,
+  .muni-admin-table td:first-child {
+    max-width: 120px;
+    overflow-wrap: anywhere;
+  }
+
+  .muni-admin-table th:nth-child(2),
+  .muni-admin-table td:nth-child(2) {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .admin-content .muni-admin-table th:last-child,
+  .admin-content .muni-admin-table td:last-child {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .muni-row-actions {
+    gap: 4px;
+  }
+
+  .muni-row-actions__sep {
+    margin: 0 1px;
+  }
+
+  .muni-action-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .muni-modal .modal-header {
+    padding: 16px 16px 12px;
+  }
+
+  .muni-modal .modal-body {
+    padding: 4px 16px 8px;
+  }
+
+  .muni-modal__footer {
+    padding: 12px 16px;
+  }
+
+  .muni-modal__footer-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .muni-segmented {
+    width: 100%;
+  }
+
+  .muni-segmented__option {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+}
+

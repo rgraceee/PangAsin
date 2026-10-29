@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Form } from 'react-bootstrap';
 import { Filter, RotateCcw, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { SkeletonBlock } from '../../Skeleton';
+import { scopeAllLabel } from '../../../constants/labels';
 
 const PERIODS = [
   { value: '6', label: '6 months' },
@@ -52,7 +53,7 @@ export default function ForecastFilters({
   selectedMuni, municipalities, onSelectedMuni,
   province, onProvince,
   onReset, onRefresh, refreshing, lastUpdated,
-  summary, disabled = false,
+  summary, disabled = false, municipalityCount = 0,
 }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -111,7 +112,7 @@ export default function ForecastFilters({
           <div className="fc-filterbar-field">
             <label className="fc-filterbar-label" htmlFor="fc-municipality">Municipality</label>
             <Form.Select id="fc-municipality" value={selectedMuni} disabled={disabled} onChange={(e) => onSelectedMuni(e.target.value)}>
-              <option value="all">All 7 municipalities</option>
+              <option value="all">{scopeAllLabel(municipalityCount || municipalities.length)}</option>
               {municipalities.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </Form.Select>
           </div>

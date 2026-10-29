@@ -12,7 +12,9 @@ def _serve_react():
     return send_from_directory(REACT_BUILD_DIR, "index.html")
 
 
-@public_dashboard_react_bp.route("/")
+# WHAT: `/` belongs to monitoring_bp (the branded splash), so this blueprint
+#       only owns the SPA entry points. Registering `/` here too made routing
+#       depend on blueprint registration order.
 @public_dashboard_react_bp.route("/admin")
 @public_dashboard_react_bp.route("/encoder")
 @public_dashboard_react_bp.route("/login")
@@ -21,7 +23,6 @@ def dashboard():
     return _serve_react()
 
 
-@public_dashboard_react_bp.route("/", defaults={"path": ""})
 @public_dashboard_react_bp.route("/<path:path>")
 def catch_all(path):
     if path.startswith("api/") or path == "api":

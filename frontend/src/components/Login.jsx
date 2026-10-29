@@ -214,7 +214,7 @@ export default function Login({ onLogin }) {
       }
       onLogin(user);
       toastSuccess('Log in successful.', 'Welcome back');
-      navigate(user.role === 'admin' ? '/admin' : '/encoder');
+      navigate(user.must_change_password ? '/change-password' : (user.role === 'admin' ? '/admin' : '/encoder'));
     } catch (err) {
       const message = err.message || 'Login failed.';
       // WHAT: Pagbubukas ng isang bagong error, ipapatay ang shake animation.

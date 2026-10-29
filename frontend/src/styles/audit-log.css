@@ -1,0 +1,575 @@
+/* ============================================================
+   WHAT: Audit Log page — slim header, read-only table, details.
+   WHY: The admin header defaults to a 200px hero with art; this page has no
+        art, so the empty space is removed and the trail gets the room.
+   ============================================================ */
+.ui-pageheader--admin.ui-pageheader--audit {
+  min-height: 0;
+  padding: 18px 24px;
+}
+
+.ui-pageheader--admin.ui-pageheader--audit .ui-pageheader-main {
+  max-width: 100%;
+}
+
+.ui-pageheader--admin.ui-pageheader--audit .ui-pageheader-sub {
+  max-width: 100%;
+}
+
+.audit-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.audit-summary__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #4b5563;
+  font-size: 0.78rem;
+}
+
+.audit-summary__item strong {
+  color: #111827;
+  font-size: 0.9rem;
+}
+
+.audit-summary__item svg {
+  align-self: center;
+}
+
+.audit-summary__item--filtered {
+  border-color: rgba(21, 101, 200, 0.25);
+  background: rgba(21, 101, 200, 0.07);
+  color: #0d4fa0;
+}
+
+/* ---------- Filters ---------- */
+.audit-filters {
+  padding-bottom: 14px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.audit-filters .form-label {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.audit-filters__hint {
+  margin: 8px 0 0;
+  font-size: 0.76rem;
+  color: #6b7280;
+}
+
+.audit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.audit-meta__right {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Table ---------- */
+.audit-table {
+  min-width: 980px;
+}
+
+.audit-card .audit-table tbody td {
+  padding: 0.55rem 0.75rem;
+}
+
+.audit-table thead th {
+  white-space: nowrap;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.audit-card.is-loading .audit-table {
+  opacity: 0.55;
+}
+
+.audit-row--open > td {
+  background: #f8fafc;
+}
+
+.audit-cell-time {
+  min-width: 160px;
+}
+
+.audit-cell-time time {
+  display: block;
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.audit-cell-time__exact {
+  display: block;
+  color: #9ca3af;
+  font-size: 0.7rem;
+}
+
+.audit-cell-actor {
+  min-width: 180px;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.audit-cell-entity {
+  min-width: 0;
+}
+
+.audit-cell-summary {
+  min-width: 200px;
+  font-size: 0.82rem;
+}
+
+.audit-cell-ip {
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.audit-cell-toggle {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  width: 38px;
+  background: #fff;
+  text-align: right;
+  box-shadow: -6px 0 8px -8px rgba(15, 23, 42, 0.35);
+}
+
+.audit-row--open > .audit-cell-toggle {
+  background: #f8fafc;
+}
+
+.admin-content .audit-table tbody tr:hover .audit-cell-toggle {
+  background: #f4f8fd;
+}
+
+.audit-table thead .audit-cell-toggle {
+  background: #f3f7fc;
+}
+
+.audit-toggle {
+  padding: 2px;
+  color: #4b5563;
+  line-height: 1;
+}
+
+.audit-toggle:hover {
+  color: #111827;
+}
+
+/* ---------- Action chips ---------- */
+.audit-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.audit-action--create,
+.audit-action--boundary {
+  color: #0f6b3d;
+  background: rgba(16, 150, 80, 0.1);
+}
+
+.audit-action--update,
+.audit-action--auth {
+  color: #0d4fa0;
+  background: rgba(21, 101, 200, 0.09);
+}
+
+.audit-action--delete {
+  color: #b42318;
+  background: rgba(180, 35, 24, 0.09);
+}
+
+.audit-action--account {
+  color: #5b21b6;
+  background: rgba(91, 33, 182, 0.08);
+}
+
+.audit-action--security {
+  color: #9a3412;
+  background: rgba(154, 52, 18, 0.1);
+}
+
+.audit-action--neutral {
+  color: #4b5563;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+.audit-action-code {
+  display: block;
+  margin-top: 2px;
+  color: #9ca3af;
+  font-size: 0.68rem;
+}
+
+/* ---------- Entity cell ---------- */
+.audit-entity-type {
+  display: block;
+  color: #9ca3af;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.audit-entity-link,
+.audit-entity-name {
+  display: block;
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.audit-entity-link {
+  color: #0d4fa0;
+  text-decoration: none;
+}
+
+.audit-entity-link:hover {
+  text-decoration: underline;
+}
+
+.audit-entity-sub {
+  display: block;
+  color: #6b7280;
+  font-size: 0.72rem;
+}
+
+.audit-entity-flag {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(154, 52, 18, 0.1);
+  color: #9a3412;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+/* ---------- Expanded details ---------- */
+.audit-details-row > td {
+  padding: 0 !important;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+}
+
+.audit-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 18px;
+  padding: 14px 16px 16px;
+}
+
+.audit-details__body {
+  min-width: 0;
+}
+
+.audit-details__block + .audit-details__block {
+  margin-top: 12px;
+}
+
+.audit-details__block h4 {
+  margin: 0 0 6px;
+  color: #6b7280;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.audit-changes {
+  margin: 0;
+}
+
+.audit-change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 0;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.audit-change:first-child {
+  border-top: 0;
+}
+
+.audit-change dt {
+  min-width: 110px;
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.audit-change dd {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.audit-change__from {
+  color: #9a3412;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.audit-change__to {
+  color: #0f6b3d;
+  font-weight: 600;
+}
+
+.audit-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.audit-fact dt {
+  color: #6b7280;
+  font-size: 0.7rem;
+}
+
+.audit-fact dd {
+  margin: 0;
+  color: #111827;
+  font-size: 0.8rem;
+  word-break: break-word;
+}
+
+.audit-details__meta {
+  margin: 0;
+  padding-left: 16px;
+  border-left: 1px solid #e5e7eb;
+}
+
+.audit-details__meta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 0.74rem;
+}
+
+.audit-details__meta dt {
+  margin: 0;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.audit-details__meta dd {
+  margin: 0;
+  color: #111827;
+  text-align: right;
+  word-break: break-all;
+}
+
+.audit-details__empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+/* ---------- Empty state, pagination, footnote ---------- */
+.audit-empty {
+  padding: 28px 16px;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #6b7280;
+  text-align: center;
+}
+
+.audit-empty svg {
+  margin-bottom: 6px;
+  color: #9ca3af;
+}
+
+.audit-empty p {
+  margin: 0 0 10px;
+}
+
+.audit-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.audit-pagination__status {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.audit-footnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 991.98px) {
+  .audit-details {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-details__meta {
+    padding-top: 10px;
+    padding-left: 0;
+    border-top: 1px solid #e5e7eb;
+    border-left: 0;
+  }
+}
+
+/* WHAT: Sa maliit na screen, card ang bawat audit entry.
+   WHY: Pitong column ay hindi mababasa sa 390px; ang horizontal scroll ay
+        nagtatago ng action/entity/summary. */
+@media (max-width: 767.98px) {
+  .audit-table {
+    min-width: 0;
+  }
+
+  .audit-table thead {
+    display: none;
+  }
+
+  .audit-table tbody,
+  .audit-table tr,
+  .audit-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .audit-table tbody tr {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 10px 42px 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .admin-content .audit-table tbody td {
+    padding: 0;
+    border: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .audit-table tbody td + td {
+    margin-top: 6px;
+  }
+
+  .audit-cell-time,
+  .audit-cell-actor,
+  .audit-cell-entity,
+  .audit-cell-summary {
+    min-width: 0;
+  }
+
+  .audit-table tbody td.audit-cell-ip {
+    display: none;
+  }
+
+  .audit-cell-toggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: auto;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .audit-cell-actor::before,
+  .audit-cell-summary::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 1px;
+    color: #9ca3af;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .audit-row--open {
+    margin-bottom: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .audit-details-row {
+    margin: 0 0 10px;
+    padding: 0;
+    border: 1px solid #e5e7eb;
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: #fff;
+  }
+
+  .audit-details-row > td {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .audit-details {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .audit-change dt {
+    min-width: 84px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .ui-pageheader--admin.ui-pageheader--audit {
+    padding: 18px;
+  }
+
+  .audit-summary {
+    margin-top: 10px;
+  }
+}

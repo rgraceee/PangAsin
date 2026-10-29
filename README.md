@@ -49,6 +49,33 @@ User accounts live in the database. They follow the pattern `admin@pangasin.gov.
 | Encoder (Alaminos) | alaminos.encoder@pangasin.gov.ph | encoder123 |
 | Encoder (Bolinao) | bolinao.encoder@pangasin.gov.ph | encoder123 |
 
+## Municipality Management (Admin)
+
+Admins add and maintain municipalities from **Admin → Municipalities**. The database is the source of truth; the app no longer assumes a fixed list of seven municipalities.
+
+- **Add Municipality** requires a name, latitude, and longitude. Barangays are optional (up to 100 per municipality), so a municipality can be created with zero barangays and no production data. Coordinates can be typed or picked on the embedded map.
+- An encoder account is created automatically:
+  - Email: `{slug}.encoder@pangasin.gov.ph`.
+  - Display name: `Encoder - {Municipality Name}`.
+  - Slug rules: lowercase, drop a leading `City of ` and a trailing ` City`, then remove non-alphanumeric characters (`Alaminos City` → `alaminos`, `San Fabian` → `sanfabian`).
+  - If an active encoder already exists for the municipality, no second account is created.
+  - If the email is already in use, the request fails with `409`; accounts are never auto-suffixed.
+- The generated temporary password is shown **once** in the admin UI. The encoder must replace it on first sign-in; every other API stays blocked until `must_change_password` is cleared.
+- Municipality names and user emails are unique case-insensitively. Barangays are unique per municipality, also case-insensitively.
+- **Seed Pangasinan** adds every Pangasinan municipality that is still missing from the database. Seeded municipalities have no barangays or production records but receive the usual encoder account and one-time password.
+- Barangays can be added, renamed, and deleted from the edit dialog. Deletion is blocked while production records, environment reports, producers, producer-report entries, or generated reports still reference the barangay.
+- Renaming a municipality does not change the encoder email or display name. Deactivating a municipality hides it from public, analytics, forecast, and data-quality views and deactivates its active encoder accounts. Reactivating does not automatically reactivate encoders.
+- **Boundary upload:** admins can upload a GeoJSON `Polygon`/`MultiPolygon` (up to 5 MB) for a municipality. Files are validated and stored as `app/static/geojson/{slug}.json`; the edit dialog can also remove the uploaded file. Municipalities without an uploaded or bundled match fall back to a latitude/longitude marker.
+- **Hard delete:** deleting a municipality requires typing its name. If production data exists, a second explicit confirmation is required; the delete then removes the municipality, its barangays, encoder accounts, production records, reports, forecasts, producers, and related rows.
+- **Audit log:** every municipality, barangay, account, boundary, and sign-in change is recorded under **Admin → Audit Log**. The trail stores the actor, action, entity, summary, IP address, and timestamp.
+- **Rate limiting:** sign-in attempts are limited per IP + email and admin write requests per user. Exceeding a limit returns `429` with a `Retry-After` header. Limits are configurable with `LOGIN_RATE_LIMIT`, `LOGIN_RATE_WINDOW`, `ADMIN_WRITE_RATE_LIMIT`, and `ADMIN_WRITE_RATE_WINDOW`; set `RATE_LIMIT_ENABLED=0` to disable the limiter.
+
+Apply the migration before using the page:
+
+```bash
+flask db upgrade
+```
+
 ## Project Structure
 
 ```
@@ -83,6 +110,15 @@ npm run build
 
 `npm run build` outputs fresh assets to `app/static/react/`, which Flask serves automatically. No dev server is required to view the app.
 
+## Tests
+
+The backend tests use an isolated SQLite database, so they never touch your configured database:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
 ## Notes
 
 - Python 3.11+ is recommended. The frontend was built with Node 18+ if you need to rebuild it.
@@ -103,7 +139,7 @@ One term = one meaning, everywhere (UI, API fields, code). Definitions live in
 | Local production (benchmark) | `local_production_mt` / `localProductionMt` | MT | Benchmark figure for local salt production from the demand benchmark table. |
 | Salt demand | `demand_mt` / `demandMt` | MT | Annual salt demand benchmark from the provincial demand benchmark. |
 | Demand shortfall | `demand_shortfall_mt` / `demandShortfallMt` | MT | Forecast production minus salt demand (negative = surplus). |
-| Recorded coverage | `recorded_coverage_pct` / `recordedCoveragePct` | % | Approved recorded production / salt demand (7 salt-producing municipalities only). |
+| Recorded coverage | `recorded_coverage_pct` / `recordedCoveragePct` | % | Approved recorded production / salt demand (active municipalities with recorded data). |
 | Share of local production | `recorded_share_of_local_pct` / `recordedShareOfLocalPct` | % | Recorded production / local production benchmark. |
 | Import share of demand | `import_share_pct` / `importSharePct` | % | Import volume / salt demand. |
 | Production target | `production_target_mt` / `productionTargetMt` | MT | Monthly or annual production goal set by the user. |
@@ -125,7 +161,7 @@ One term = one meaning, everywhere (UI, API fields, code). Definitions live in
 | Reporting completeness | `reporting_grid` / `reportingGrid` | — | Which months each municipality reported, over the last 36 months. |
 | Coverage | `coverage_pct` / `coveragePct` | % | Demand coverage only; not month reporting. |
 
-Scope label for all municipalities: `all_municipalities` → "All 7 municipalities" (never "province-wide" or "Pangasinan total").
+Scope label for all municipalities: `all_municipalities` follows the active municipality list from the database. Use `scope_all_label(count)` in Python and `scopeAllLabel(count)` in React; never hardcode a number (and never use "province-wide" or "Pangasinan total").
 
 Forecast method display names: `linear_regression` = Linear Regression, `random_forest` = Random Forest, `arima` = ARIMA, `sarimax` = SARIMAX, `seasonal_anchor` = Seasonal baseline (last complete year), `none` = Not forecast (insufficient data).
 

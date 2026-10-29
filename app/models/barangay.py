@@ -14,7 +14,12 @@ class Barangay(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     __table_args__ = (
-        db.UniqueConstraint("municipality_id", "name", name="uq_barangays_municipality_name"),
+        db.Index(
+            "uq_barangays_municipality_name_lower",
+            municipality_id,
+            db.func.lower(name),
+            unique=True,
+        ),
     )
 
     def __repr__(self):
