@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { Alert, Badge, Card, OverlayTrigger, Spinner, Table, Tooltip } from 'react-bootstrap';
 import { CalendarDays, Clock, Pencil, Plus, Search, Trash2, Users, ContactRound } from 'lucide-react';
 import { createProducer, deleteProducer, getEncoderProducerReports, getProducers, updateProducer } from '../services/dataService';
@@ -199,21 +199,16 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   };
 
   const removeWorker = async (worker) => {
-    const confirmed = await confirmDelete({
+    await confirmDelete({
       title: 'Delete this salt farmer?',
       text: `Remove <strong>${worker.name}</strong> from the master list? Salt farmer report history will remain unchanged.`,
       confirmText: 'Delete salt farmer',
+      onConfirm: async () => {
+        await deleteProducer(worker.id);
+        toastSuccess(`${worker.name} was removed from the master list.`, 'Salt farmer deleted');
+        load();
+      },
     });
-    if (!confirmed) return;
-    try {
-      await deleteProducer(worker.id);
-      toastSuccess(`${worker.name} was removed from the master list.`, 'Salt farmer deleted');
-      load();
-    } catch (err) {
-      const message = err.message || 'Could not delete this salt farmer.';
-      setError(message);
-      toastError(message, 'Could not delete salt farmer');
-    }
   };
 
   const updateFilter = (event) => {
@@ -271,7 +266,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
             <div className="ui-search">
               <Search size={16} className="ui-search-icon" aria-hidden="true" />
-              <input id="master-search" type="search" className="form-control admin-page-hero-input" name="q" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} placeholder="Search by name" />
+              <input id="master-search" type="search" className="form-control admin-page-hero-input" name="q" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} placeholder="Search" />
             </div>
           </div>
         )}
@@ -581,6 +576,12 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
               aria-describedby={error ? 'worker-form-error' : undefined}
             />
           </ReportField>
+          <p className="support-consent">
+            This farmer’s details are stored in the PangAsin master list and processed
+            under our{' '}
+            <Link to="/privacy" target="_blank" rel="noreferrer">Privacy Policy</Link>.
+            Please make sure the farmer knows this and agrees.
+          </p>
         </form>
        </ReportModal>
        )}

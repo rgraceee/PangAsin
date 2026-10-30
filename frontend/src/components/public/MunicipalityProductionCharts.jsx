@@ -15,6 +15,7 @@ import {
   FC_TOKENS, fmtCompact, fmtNumber, fmtPct, niceCeil,
 } from './publicChartTheme';
 import MuniShareDonut from '../admin/municipality/MuniShareDonut';
+import { MUNICIPALITY_COLORS, municipalityBarFill } from '../../theme/colors';
 
 /* WHAT: Shared hover card for both charts.
    WHY: Same white card, label row and value rows as the public supply-demand
@@ -180,13 +181,18 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                           radius={[0, 6, 6, 0]}
                           onMouseEnter={(_, index) => setActiveName(rows[index]?.name ?? null)}
                         >
-                          {rows.map((row, index) => (
-                            <Cell
-                              key={row.id}
-                              fill={index === 0 ? FC_TOKENS.navy : FC_TOKENS.ocean}
-                              fillOpacity={activeName === null || activeName === row.name ? 1 : 0.45}
-                            />
-                          ))}
+                          {rows.map((row) => {
+                            const { fill, stroke, strokeWidth } = municipalityBarFill(row.name);
+                            return (
+                              <Cell
+                                key={row.id}
+                                fill={fill}
+                                stroke={stroke}
+                                strokeWidth={strokeWidth}
+                                fillOpacity={activeName === null || activeName === row.name ? 1 : 0.45}
+                              />
+                            );
+                          })}
                           <LabelList dataKey="value" content={<BarValueLabel />} />
                         </Bar>
                       </BarChart>
@@ -246,6 +252,7 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                     activeName={activeName}
                     onActiveChange={setActiveName}
                     tooltip={MunicipalityTooltip}
+                    colorMap={MUNICIPALITY_COLORS}
                   />
 
                   <p className="fc-chart-caption">

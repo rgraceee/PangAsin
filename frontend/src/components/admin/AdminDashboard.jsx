@@ -7,7 +7,7 @@ import {
 } from '../../services/dataService';
 import { BRAND, greenScale, GREEN_LIGHT, GREEN_DARK } from '../../theme/colors';
 import { buildProvinceMaskRings, addProvinceMask, addLightBasemap, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../../utils/mapLayers';
-import { buildMapDetailCard, clampMapDetailTooltip, protectMapDetailCard } from '../../utils/mapDetailCard';
+import { buildMapDetailCard, createMapDetailPopup, openMapDetailPopup } from '../../utils/mapDetailCard';
 import geojson from '../../data/pangasinan_municipalities.json';
 import geojsonAll from '../../data/pangasinan_municipalities_all.json';
 import KpiCard from '../ui/KpiCard';
@@ -337,41 +337,19 @@ function MunicipalityMap({ muniData, selectedName }) {
       fillOpacity: 1,
     });
 
-    const detailAnchor = L.marker([0, 0], {
-      icon: L.divIcon({ className: 'detail-anchor', html: '', iconSize: [0, 0] }),
-      interactive: false,
-    }).addTo(map);
-
-    detailAnchor.bindTooltip('', {
-      direction: 'right',
-      sticky: false,
-      interactive: true,
-      className: 'admin-map-detail',
-      opacity: 1,
-      offset: [14, 30],
+    /* WHAT: Native popup na may auto-pan at malaking close button.
+       WHY: Hindi na kailangang i-clamp ang tooltip; buo ang card kahit
+            malapit ito sa gilid ng mapa, public man o admin. */
+    const detailPopup = createMapDetailPopup({
+      onClose: () => {
+        detailOpenRef.current = false;
+      },
     });
-
     map.on('click', (e) => {
       const target = e.originalEvent && e.originalEvent.target;
       if (target && target.classList && target.classList.contains('leaflet-interactive')) return;
-      detailOpenRef.current = false;
-      if (detailAnchor.isTooltipOpen()) detailAnchor.closeTooltip();
+      if (detailPopup.isOpen()) detailPopup.close();
     });
-
-    map.on('moveend zoomend', () => {
-      if (detailAnchor.isTooltipOpen()) {
-        window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
-      }
-    });
-
-    /* WHAT: Huwag na payag ang mapa na "mapatay" ang detail card.
-       WHY: ang card ay isang interactive Leaflet tooltip sa zero-size anchor
-            marker; paglabas ng mouse sa card, ang mouseout ay bumabalik sa
-            mapa at nagsasara ng tooltip (nawawala ang card pagkatapos ng
-            pan + zoom). Hinahawakan dito ang 'mouseover mouseout' sa mismong
-            tooltip element para hindi ito maisabog sa mapa.
-            Ang helper ay shared sa public map (frontend/src/utils/mapDetailCard.js). */
-    protectMapDetailCard(detailAnchor, { onClose: () => { detailOpenRef.current = false; } });
 
     const contextFeatures = geojsonAll.features.filter(
       (f) => !producingNames.has(normName(f.properties.shapeName || f.properties.name || '')),
@@ -470,10 +448,7 @@ function MunicipalityMap({ muniData, selectedName }) {
               b.getCenter().lng + (b.getEast() - b.getCenter().lng) * 0.6,
             );
 
-            detailAnchor.setLatLng(anchor);
-            detailAnchor.setTooltipContent(html);
-            detailAnchor.openTooltip();
-            window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
+            openMapDetailPopup(map, detailPopup, { latlng: anchor, html });
           },
         });
 
@@ -550,7 +525,7 @@ function MunicipalityMap({ muniData, selectedName }) {
     <Card className="encoder-card h-100 admin-map-section">
       <Card.Header>
         <div className="admin-card-head">
-          <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><MapPin size={16} strokeWidth={2} /></span>
+          <span className="admin-card-head-icon admin-card-head-icon--soft"><MapPin size={16} strokeWidth={2} /></span>
           <div>
             <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
             <span className="admin-card-head-sub">

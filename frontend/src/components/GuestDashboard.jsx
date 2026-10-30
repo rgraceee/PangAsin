@@ -2,6 +2,7 @@
 // WHY: Ipinapakita ang aggregated provincial data (KPIs, supply-demand + mapa) mula sa
 //      loadPublicDashboardData, para hindi kailangan ng account para makita.
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Alert } from 'react-bootstrap';
 import { Boxes, Factory, Scale, Ship, ShieldCheck } from 'lucide-react';
 import PageHeader from './admin/PageHeader';
@@ -174,6 +175,17 @@ export default function GuestDashboard() {
           </Reveal>
         </>
       )}
+
+      <footer className="public-footer">
+        <div className="public-footer-inner">
+          <p className="public-footer-copy">© 2026 ASIN Center, Pangasinan State University</p>
+          <nav className="public-footer-links" aria-label="Support and access">
+            <Link to="/privacy">Privacy Policy</Link>
+            <Link to="/help">Help Center</Link>
+            <Link to="/login">Sign in</Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }

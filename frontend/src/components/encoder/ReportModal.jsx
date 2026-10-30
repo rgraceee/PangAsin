@@ -1,6 +1,7 @@
 import React, { useId } from 'react';
 import { Modal } from 'react-bootstrap';
 import { X } from 'lucide-react';
+import { confirmAction } from '../../services/feedback';
 import ReportStepper from './ReportStepper';
 
 // WHAT: Shared shell ng tatlong encoder report forms (Production/Producer/Environment).
@@ -21,13 +22,20 @@ export default function ReportModal({
 }) {
   const headingId = useId();
 
-  const requestClose = () => {
+  const requestClose = async () => {
     if (busy) return;
     // WHAT: Mag-confirm muna kung may unsaved input bago isara.
     // WHY: Hindi aksidenteng mawawala ang tinype ng encoder (Escape o X).
-    if (dirty && typeof window !== 'undefined'
-      && !window.confirm('You have unsaved changes. Close this form anyway?')) {
-      return;
+    if (dirty) {
+      const discard = await confirmAction({
+        title: 'Discard your unsaved changes?',
+        text: 'Closing this form will lose everything you have typed so far.',
+        confirmText: 'Discard changes',
+        cancelText: 'Keep editing',
+        danger: true,
+        icon: 'warning',
+      });
+      if (!discard) return;
     }
     onClose();
   };

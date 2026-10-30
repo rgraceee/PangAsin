@@ -1,7 +1,7 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from flask_login import current_user, logout_user
 from app.config import Config
-from app.extensions import db, migrate, login_manager
+from app.extensions import db, migrate, login_manager, mail
 
 
 def create_app(config_class=Config):
@@ -10,6 +10,7 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    mail.init_app(app)
     login_manager.init_app(app)
 
     @login_manager.unauthorized_handler
@@ -67,6 +68,25 @@ def create_app(config_class=Config):
                 app.config.get("LOGIN_RATE_LIMIT", 10),
                 app.config.get("LOGIN_RATE_WINDOW", 60),
             )
+        elif (
+            request.path == "/api/auth/password-reset-request"
+            and request.method == "POST"
+        ):
+            # WHAT: Limitahan ang reset requests per email at per IP.
+            # WHY: Public endpoint ito; kailangan protektado ang inbox ng user
+            #      at ang server mula sa paulit-ulit na email sends.
+            payload = request.get_json(silent=True) or {}
+            email = str(payload.get("email") or "").strip().lower()
+            limit = app.config.get("PASSWORD_RESET_RATE_LIMIT", 5)
+            window = app.config.get("PASSWORD_RESET_RATE_WINDOW", 3600)
+            email_allowed, email_retry = limiter.hit(
+                f"password-reset:email:{email}", limit, window
+            )
+            ip_allowed, ip_retry = limiter.hit(
+                f"password-reset:ip:{request.remote_addr}", limit, window
+            )
+            allowed = email_allowed and ip_allowed
+            retry_after = max(email_retry, ip_retry)
         elif request.path.startswith("/api/admin/") and request.method in (
             "POST",
             "PUT",
@@ -102,6 +122,12 @@ def create_app(config_class=Config):
     #      access immediately (not only at the next login).
     @app.before_request
     def enforce_account_state():
+        # WHAT: Public ang password-reset endpoints kahit may lumang session.
+        # WHY: Kapag na-invalidate na ang session, kailangan pa ring makapasok
+        #      sa reset link at makapag-set ng bagong password.
+        if request.path.startswith("/api/auth/password-reset"):
+            return None
+
         if not current_user.is_authenticated:
             return None
 
@@ -127,6 +153,16 @@ def create_app(config_class=Config):
             return jsonify({
                 "error": "This municipality is inactive. Contact administrator."
             }), 403
+
+        # WHAT: Ihambing ang session marker sa account version.
+        # WHY: Kapag nag-reset ng password, ini-increment ang version para
+        #      mawalan ng bisa ang lahat ng existing signed-in sessions.
+        if session.get("auth_version") != current_user.session_version:
+            logout_user()
+            return jsonify({
+                "error": "Your session has expired. Please sign in again.",
+                "code": "session_expired",
+            }), 401
 
         if current_user.must_change_password:
             allowed_paths = {

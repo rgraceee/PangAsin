@@ -1,0 +1,337 @@
+/* WHAT: Isang shared na design layer para sa buttons, tables, cards, forms, at modals.
+   WHY: Dati iba-iba ang itsura ng Bootstrap controls sa bawat page; dito lang
+        naka-define ang shape, spacing, at focus state para pantay ang buong system. */
+
+:root {
+  --ds-control-height: 40px;
+  --ds-control-height-sm: 36px;
+  --ds-control-padding: 0 18px;
+  --ds-control-padding-sm: 0 14px;
+  --ds-control-radius: var(--ui-radius-input, 10px);
+  --ds-card-radius: var(--ui-radius-card, 16px);
+  --ds-card-border: var(--ui-border, #eef0f3);
+  --ds-card-shadow: var(--ui-shadow, 0 1px 2px rgba(16, 24, 40, 0.04));
+  --ds-row-border: #f1f3f5;
+  --ds-focus-ring: 0 0 0 3px rgba(41, 176, 57, 0.22);
+  --ds-control-bg: var(--ui-surface, #ffffff);
+  --ds-control-text: var(--ui-text, #111827);
+  --ds-control-muted: var(--ui-text-2, #6b7280);
+  --ds-control-guide: var(--ui-guide, #e5e7eb);
+  --ds-accent: var(--ui-accent, #29b039);
+  --ds-accent-dark: var(--ui-accent-dark, #146b1f);
+  --ds-danger: var(--ui-danger, #dc2626);
+}
+
+/* ===== Buttons ===== */
+/* WHAT: Parehong height, padding, radius, at transition sa lahat ng button variants.
+   WHY: Kapag magkatabi ang primary/outline/ghost, pantay ang linya at hit area. */
+.ui-btn-primary,
+.ui-btn-outline,
+.ui-btn-danger,
+.ui-btn-ghost,
+.ui-btn-text,
+.btn {
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: var(--ds-control-radius);
+  transition:
+    background-color var(--ui-t-fast, 150ms ease),
+    border-color var(--ui-t-fast, 150ms ease),
+    color var(--ui-t-fast, 150ms ease),
+    box-shadow var(--ui-t-fast, 150ms ease),
+    transform var(--ui-t-fast, 150ms ease);
+}
+
+.ui-btn-primary,
+.ui-btn-outline,
+.ui-btn-danger,
+.ui-btn-ghost,
+.ui-btn-text {
+  min-height: var(--ds-control-height);
+}
+
+.ui-btn--sm,
+.ui-btn-primary--sm,
+.btn-sm {
+  min-height: var(--ds-control-height-sm);
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: var(--ds-control-padding);
+  border-width: 1px;
+  border-style: solid;
+  font-size: 14px;
+}
+
+.btn:focus-visible,
+.ui-btn-primary:focus-visible,
+.ui-btn-outline:focus-visible,
+.ui-btn-danger:focus-visible,
+.ui-btn-ghost:focus-visible,
+.ui-btn-text:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-focus-ring);
+}
+
+.btn-primary {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+  color: var(--ds-control-text);
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-primary:focus-visible:not(:disabled) {
+  border-color: var(--ds-accent-dark);
+  background: var(--ds-accent-dark);
+  color: #ffffff;
+}
+
+.btn-outline-secondary,
+.btn-outline-primary,
+.btn-outline-danger {
+  background: var(--ds-control-bg);
+  color: var(--ds-control-text);
+}
+
+.btn-outline-secondary {
+  border-color: var(--ds-control-guide);
+}
+
+.btn-outline-secondary:hover:not(:disabled),
+.btn-outline-primary:hover:not(:disabled) {
+  border-color: var(--ds-accent);
+  background: var(--ui-accent-tint, #ebf7ec);
+  color: var(--ds-accent-dark);
+}
+
+.btn-outline-danger {
+  border-color: rgba(220, 38, 38, 0.35);
+  color: var(--ds-danger);
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+  border-color: var(--ds-danger);
+  background: var(--ui-danger-tint, #fdecec);
+  color: var(--ds-danger);
+}
+
+.btn:disabled,
+.btn.disabled {
+  border-color: var(--ui-active-bg, #f3f4f6);
+  background: var(--ui-active-bg, #f3f4f6);
+  color: var(--ui-text-muted, #9ca3af);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* ===== Cards ===== */
+/* WHAT: Isang card surface para sa lahat ng dashboard at modal cards.
+   WHY: Pare-pareho ang border, radius, at shadow kahit ibang component ang gumawa. */
+.card,
+.encoder-card,
+.admin-card,
+.fc-card,
+.change-password-card,
+.modal-content {
+  border: 1px solid var(--ds-card-border);
+  border-radius: var(--ds-card-radius);
+  background: var(--ds-control-bg);
+  box-shadow: var(--ds-card-shadow);
+}
+
+.card-header,
+.encoder-card .card-header,
+.admin-card .card-header,
+.fc-card .card-header,
+.modal-header,
+.modal-footer {
+  border-color: var(--ds-card-border);
+  background: var(--ds-control-bg);
+}
+
+.card-header,
+.encoder-card .card-header,
+.admin-card .card-header,
+.fc-card .card-header {
+  padding: 14px 18px;
+  font-weight: 700;
+}
+
+.card-body,
+.modal-body {
+  padding: 18px 20px;
+}
+
+.modal-header,
+.modal-footer {
+  padding: 14px 20px;
+}
+
+.modal-footer {
+  gap: 8px;
+}
+
+.modal-content {
+  box-shadow: var(--ui-shadow-modal, 0 24px 60px -20px rgba(16, 24, 40, 0.35));
+}
+
+/* ===== Tables ===== */
+/* WHAT: Parehong header, cell padding, row border, at hover ang lahat ng data tables.
+   WHY: May tables na walang encoder-table/admin-table class; dito sila pumapasok
+        sa parehong visual system kahit plain Bootstrap <Table> lang. */
+.table {
+  color: var(--ds-control-text);
+  font-size: 13px;
+  border-color: var(--ds-row-border);
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.72rem 0.9rem;
+}
+
+.table thead th,
+.admin-content .encoder-table thead th,
+.admin-content .admin-table thead th {
+  border-bottom: 1px solid var(--ds-row-border);
+  background: var(--ui-hover-bg, #f9fafb);
+  color: var(--ds-control-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table tbody td,
+.admin-content .encoder-table tbody td,
+.admin-content .admin-table tbody td {
+  border-bottom: 1px solid var(--ds-row-border);
+  background: var(--ds-control-bg);
+  color: var(--ds-control-text);
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.table tbody tr:last-child td,
+.admin-content .encoder-table tbody tr:last-child td,
+.admin-content .admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-hover > tbody > tr:hover > *,
+.admin-content .encoder-table tbody tr:hover td,
+.admin-content .admin-table tbody tr:hover td {
+  --bs-table-accent-bg: transparent;
+  background-color: var(--ui-hover-bg, #f9fafb);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-accent-bg: transparent;
+  background-color: #fafbfc;
+}
+
+.table-bordered > :not(caption) > * > * {
+  border-color: var(--ds-row-border);
+}
+
+/* ===== Forms ===== */
+/* WHAT: Isang control shape, border, at focus ring para sa inputs, selects, at labels.
+   WHY: Ang login inputs ay may sariling custom skin; hindi sila kasama sa override. */
+.form-label:not(.encoder-login-field-label) {
+  margin-bottom: 6px;
+  color: var(--ds-control-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.form-control:not(.encoder-login-input),
+.form-select {
+  min-height: var(--ds-control-height);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ds-control-guide);
+  border-radius: var(--ds-control-radius);
+  background-color: var(--ds-control-bg);
+  color: var(--ds-control-text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.form-control:not(.encoder-login-input)::placeholder {
+  color: var(--ui-text-muted, #9ca3af);
+}
+
+.form-control:not(.encoder-login-input):focus,
+.form-select:focus {
+  border-color: var(--ds-accent);
+  background-color: var(--ds-control-bg);
+  color: var(--ds-control-text);
+  outline: none;
+  box-shadow: var(--ds-focus-ring);
+}
+
+.form-control:not(.encoder-login-input):disabled,
+.form-control:not(.encoder-login-input)[readonly],
+.form-select:disabled {
+  background-color: #f9fafb;
+  color: var(--ds-control-muted);
+  opacity: 1;
+}
+
+.form-control-sm:not(.encoder-login-input) {
+  min-height: var(--ds-control-height-sm);
+  padding: 0.35rem 0.65rem;
+  font-size: 13px;
+}
+
+.form-text {
+  color: var(--ds-control-muted);
+  font-size: 12px;
+}
+
+.form-check-input {
+  border-color: var(--ds-control-guide);
+}
+
+.form-check-input:checked {
+  border-color: var(--ds-accent);
+  background-color: var(--ds-accent);
+}
+
+.form-check-input:focus {
+  border-color: var(--ds-accent);
+  outline: none;
+  box-shadow: var(--ds-focus-ring);
+}
+
+/* WHAT: Input group text at search add-ons dapat parehas sa form-control height.
+   WHY: Hindi nagmumukhang putol ang icon/label sa tabi ng input. */
+.input-group-text {
+  border-color: var(--ds-control-guide);
+  background: var(--ui-hover-bg, #f9fafb);
+  color: var(--ds-control-muted);
+  font-size: 13px;
+}
+
+/* WHAT: Ibalik ang custom na gold Sign In button ng login page.
+   WHY: Ang global `.btn` rules sa itaas ay may sariling padding/border at
+        mala-flatten nito kung hindi i-exclude ang login CTA. */
+.btn.encoder-login-btn {
+  padding: 0.8rem 1rem;
+  border: none;
+  border-radius: 14px;
+  font-size: 1rem;
+}
+
+.btn.encoder-login-btn:disabled {
+  border: none;
+  background: linear-gradient(135deg, var(--harvest-gold), #ffd58a);
+  color: var(--p-brown);
+  opacity: 0.7;
+}

@@ -99,7 +99,7 @@ export default function MuniProductionCard({
     <Card className="encoder-card h-100 admin-prod-card">
       <Card.Header className="d-flex flex-wrap justify-content-between align-items-start gap-3">
         <div className="admin-card-head" style={{ minWidth: 0 }}>
-          <span className="admin-card-head-icon admin-kpi-accent-oceanbg">
+          <span className="admin-card-head-icon admin-card-head-icon--soft">
             <BarChart2 size={16} strokeWidth={2} />
           </span>
           <div>

@@ -14,53 +14,85 @@ export function buildMapDetailCard({ name, rows }) {
 
   return `
     <div class="map-popup-card">
-      <div class="map-popup-header">${name}</div>
+      <div class="map-popup-header">
+        <span class="map-popup-title">${name}</span>
+      </div>
       ${rowsHtml}
       <div class="map-popup-foot">Administrative summary</div>
     </div>
   `;
 }
 
-export function clampMapDetailTooltip(map, anchor, containerEl) {
-  const tooltipEl = anchor.getTooltip().getElement();
-  if (!tooltipEl) return;
-  const w = tooltipEl.offsetWidth;
-  const h = tooltipEl.offsetHeight;
-  const cRect = containerEl.getBoundingClientRect();
-  const eRect = tooltipEl.getBoundingClientRect();
-  const margin = 6;
-  const cW = cRect.width;
-  const cH = cRect.height;
-  const left = eRect.left - cRect.left;
-  const top = eRect.top - cRect.top;
-  const targetX = Math.min(Math.max(left, margin), Math.max(margin, cW - w - margin));
-  const targetY = Math.min(Math.max(top, margin), Math.max(margin, cH - h - margin));
-  const dx = targetX - left;
-  const dy = targetY - top;
-  if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-  const p = map.latLngToContainerPoint(anchor.getLatLng());
-  anchor.setLatLng(map.containerPointToLatLng(L.point(p.x + dx, p.y + dy)));
-  window.requestAnimationFrame(() => {
-    if (anchor.isTooltipOpen()) anchor.openTooltip();
+/* WHAT: Shared Leaflet popup na may auto-fit, pan, at close button.
+   WHY: Tooltip-based card ay lumalabas sa gilid ng mapa kapag malapit sa
+        boundary; ang popup fit/pan ang gumagarantiya na buo itong makikita. */
+export function createMapDetailPopup({ onClose } = {}) {
+  const popup = L.popup({
+    className: 'admin-map-popup',
+    autoPan: false,
+    closeButton: true,
+    closeOnClick: true,
+    closeOnEscapeKey: true,
+    maxWidth: 420,
   });
+  if (typeof onClose === 'function') popup.on('remove', onClose);
+  return popup;
 }
 
-/* WHAT: Huwag na payag ang mapa na "mapatay" ang detail card.
-   WHY: ang card ay isang interactive Leaflet tooltip sa zero-size anchor
-        marker; paglabas ng mouse sa card, ang mouseout ay bumabalik sa
-        mapa at nagsasara ng tooltip (nawawala ang card pagkatapos ng
-        pan + zoom). Hinahawakan dito ang 'mouseover mouseout' sa mismong
-        tooltip element para hindi ito maisabog sa mapa.
-   onClose: tinatawag kapag nakatuwa ang card, para ma-sync ang hover state
-        (para hindi maiwanang naka-stuck ang hover tooltip suppression). */
-export function protectMapDetailCard(anchor, { onClose } = {}) {
-  anchor.on('tooltipopen', () => {
-    const tip = anchor.getTooltip();
-    const el = tip && tip.getElement();
-    if (el && !el.dataset.pangAsinTooltipGuard) {
-      el.dataset.pangAsinTooltipGuard = '1';
-      L.DomEvent.on(el, 'mouseover mouseout', L.DomEvent.stopPropagation);
-    }
-  });
-  if (typeof onClose === 'function') anchor.on('tooltipclose', onClose);
+/* WHAT: Itakda ang lapad base sa aktwal na map bago buksan ang popup.
+   WHY: Sa mobile, mas maliit ang map kaysa viewport dahil sa page padding;
+        kung viewport width ang gagamitin, lalampas ang card sa gilid ng mapa. */
+function getPopupOverflow(map, popup, margin) {
+  const root = popup.getElement();
+  const card = root && root.querySelector('.leaflet-popup-content-wrapper');
+  if (!card) return null;
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  return {
+    x: cardRect.right + margin > mapRect.right
+      ? cardRect.right + margin - mapRect.right
+      : Math.min(0, cardRect.left - mapRect.left - margin),
+    y: cardRect.bottom + margin > mapRect.bottom
+      ? cardRect.bottom + margin - mapRect.bottom
+      : Math.min(0, cardRect.top - mapRect.top - margin),
+  };
+}
+
+/* WHAT: I-pan muna ang mapa, tapos i-shift ang popup kung kulang pa.
+   WHY: May maxBounds ang mapa kaya hindi laging kayang i-pan papalabas ng
+        gilid; ang fallback shift ay siguradong buo pa rin ang card. */
+function fitPopupInMap(map, popup, margin = 10) {
+  if (!popup.isOpen()) return;
+  const first = getPopupOverflow(map, popup, margin);
+  if (!first || (!first.x && !first.y)) return;
+
+  map.panBy([first.x, first.y], { animate: false });
+
+  /* WHAT: I-settle agad ang maxBounds bago mag-measure.
+     WHY: Ang panBy ay nag-trigger ng async bounds correction; kung hindi ito
+          hihintayin, babalik ang mapa at mananatiling clipped ang popup. */
+  map.stop();
+  if (map.options.maxBounds) {
+    map.panInsideBounds(map.options.maxBounds, { animate: false });
+  }
+
+  const remaining = getPopupOverflow(map, popup, margin);
+  if (!remaining || (!remaining.x && !remaining.y)) return;
+
+  const current = map.latLngToContainerPoint(popup.getLatLng());
+  const shifted = map.containerPointToLatLng(
+    L.point(current.x - remaining.x, current.y - remaining.y)
+  );
+  popup.setLatLng(shifted);
+}
+
+export function openMapDetailPopup(map, popup, { latlng, html }) {
+  const size = map.getSize();
+  const detailWidth = Math.min(420, Math.max(160, size.x - 32));
+  const detailMaxHeight = Math.min(560, Math.max(160, size.y - 22));
+  const container = map.getContainer();
+  container.style.setProperty('--map-detail-width', `${detailWidth}px`);
+  container.style.setProperty('--map-detail-max-height', `${detailMaxHeight}px`);
+  popup.setLatLng(latlng).setContent(html).openOn(map);
+  fitPopupInMap(map, popup);
 }

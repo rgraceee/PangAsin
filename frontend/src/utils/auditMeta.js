@@ -29,6 +29,8 @@ export const AUDIT_ACTION_META = {
   'auth.login.failed': { label: 'Failed sign in', tone: 'security', icon: ShieldAlert },
   'auth.login.blocked': { label: 'Blocked sign in', tone: 'security', icon: ShieldX },
   'auth.password.change': { label: 'Password changed', tone: 'account', icon: KeyRound },
+  'auth.password.reset_request': { label: 'Password reset requested', tone: 'security', icon: KeyRound },
+  'auth.password.reset_complete': { label: 'Password reset completed', tone: 'security', icon: KeyRound },
 };
 
 export const AUDIT_ACTIONS = Object.keys(AUDIT_ACTION_META);
@@ -71,6 +73,7 @@ const DETAIL_LABELS = {
   email: 'Email',
   name: 'Name',
   status: 'Status',
+  message: 'Message',
 };
 
 export function detailLabel(key) {

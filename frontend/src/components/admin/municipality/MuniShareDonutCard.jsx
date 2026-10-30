@@ -36,7 +36,7 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
     <Card className="encoder-card h-100 admin-share-card">
       <Card.Header>
         <div className="admin-card-head">
-          <span className="admin-card-head-icon admin-kpi-accent-oceanbg">
+          <span className="admin-card-head-icon admin-card-head-icon--soft">
             <PieGlyph size={16} strokeWidth={2} />
           </span>
           <div>

@@ -6,7 +6,7 @@ import geojson from '../data/pangasinan_municipalities.json';
 import geojsonAll from '../data/pangasinan_municipalities_all.json';
 import { getMunicipalityProduction, getDemographicsByMunicipality } from '../services/dataService';
 import { greenScale, GREEN_LIGHT, GREEN_DARK, BRAND } from '../theme/colors';
-import { buildMapDetailCard, clampMapDetailTooltip, protectMapDetailCard } from '../utils/mapDetailCard';
+import { buildMapDetailCard, createMapDetailPopup, openMapDetailPopup } from '../utils/mapDetailCard';
 import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
 
 const normName = (name) =>
@@ -65,29 +65,15 @@ export default function MunicipalityMapSection() {
 
     const demographics = getDemographicsByMunicipality();
 
-    const detailAnchor = L.marker([0, 0], {
-      icon: L.divIcon({ className: 'detail-anchor', html: '', iconSize: [0, 0] }),
-      interactive: false,
-    }).addTo(map);
-    detailAnchor.bindTooltip('', {
-      direction: 'right',
-      sticky: false,
-      interactive: true,
-      className: 'admin-map-detail',
-      opacity: 1,
-      offset: [14, 30],
+    const detailPopup = createMapDetailPopup({
+      onClose: () => {
+        detailOpenRef.current = false;
+      },
     });
-    protectMapDetailCard(detailAnchor, { onClose: () => { detailOpenRef.current = false; } });
     map.on('click', (e) => {
       const target = e.originalEvent && e.originalEvent.target;
       if (target && target.classList && target.classList.contains('leaflet-interactive')) return;
-      detailOpenRef.current = false;
-      if (detailAnchor.isTooltipOpen()) detailAnchor.closeTooltip();
-    });
-    map.on('moveend zoomend', () => {
-      if (detailAnchor.isTooltipOpen()) {
-        window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
-      }
+      if (detailPopup.isOpen()) detailPopup.close();
     });
 
     const contextFeatures = geojsonAll.features.filter(
@@ -186,10 +172,7 @@ export default function MunicipalityMapSection() {
               b.getCenter().lat,
               b.getCenter().lng + (b.getEast() - b.getCenter().lng) * 0.6
             );
-            detailAnchor.setLatLng(anchor);
-            detailAnchor.setTooltipContent(html);
-            detailAnchor.openTooltip();
-            window.requestAnimationFrame(() => clampMapDetailTooltip(map, detailAnchor, mapRef.current));
+            openMapDetailPopup(map, detailPopup, { latlng: anchor, html });
           },
         });
         if (m) {

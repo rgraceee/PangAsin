@@ -721,7 +721,7 @@ export default function Municipalities() {
     const encoderCopy = encoderCount
       ? ` Its ${encoderCount} linked encoder account${encoderCount === 1 ? '' : 's'} will also be deactivated.`
       : '';
-    const confirmed = await confirmAction({
+    await confirmAction({
       title: deactivating
         ? `Deactivate ${municipality.name}?`
         : `Activate ${municipality.name}?`,
@@ -730,28 +730,24 @@ export default function Municipalities() {
         : `<strong>${municipality.name}</strong> will be visible again. Linked encoder accounts are <strong>not</strong> reactivated automatically; re-enable them in User Management.`,
       confirmText: deactivating ? 'Deactivate' : 'Activate',
       danger: deactivating,
+      onConfirm: async () => {
+        setRowBusy({ id: municipality.id, action: nextStatus });
+        try {
+          const response = await updateAdminMunicipality(municipality.id, { status: nextStatus });
+          await load();
+          await refreshDirectory();
+          const deactivated = response.deactivated_encoder_count || 0;
+          toastSuccess(
+            deactivating
+              ? `${municipality.name} is now inactive.${deactivated ? ` ${deactivated} encoder account${deactivated === 1 ? '' : 's'} deactivated.` : ''}`
+              : `${municipality.name} is now active. Linked encoder accounts were not reactivated.`,
+            deactivating ? 'Municipality deactivated' : 'Municipality activated',
+          );
+        } finally {
+          setRowBusy(null);
+        }
+      },
     });
-    if (!confirmed) return;
-
-    setRowBusy({ id: municipality.id, action: nextStatus });
-    try {
-      const response = await updateAdminMunicipality(municipality.id, { status: nextStatus });
-      await load();
-      await refreshDirectory();
-      const deactivated = response.deactivated_encoder_count || 0;
-      toastSuccess(
-        deactivating
-          ? `${municipality.name} is now inactive.${deactivated ? ` ${deactivated} encoder account${deactivated === 1 ? '' : 's'} deactivated.` : ''}`
-          : `${municipality.name} is now active. Linked encoder accounts were not reactivated.`,
-        deactivating ? 'Municipality deactivated' : 'Municipality activated',
-      );
-    } catch (err) {
-      const message = err.message || 'Could not update the municipality.';
-      setError(message);
-      toastError(message);
-    } finally {
-      setRowBusy(null);
-    }
   };
 
   const renameBarangay = async (barangay) => {
@@ -780,50 +776,42 @@ export default function Municipalities() {
 
   const removeBarangay = async (barangay) => {
     if (!editing) return;
-    const confirmed = await confirmAction({
+    await confirmAction({
       title: `Delete ${barangay.name}?`,
       text: 'This removes the barangay permanently. Barangays that already have production records, reports, or producers cannot be deleted.',
       confirmText: 'Delete barangay',
       danger: true,
       icon: 'trash',
+      onConfirm: async () => {
+        await deleteAdminBarangay(barangay.id);
+        setEditing((prev) => (prev ? {
+          ...prev,
+          barangays: prev.barangays.filter((item) => item.id !== barangay.id),
+        } : prev));
+        await load();
+        toastSuccess(`${barangay.name} was deleted.`, 'Barangay deleted');
+      },
     });
-    if (!confirmed) return;
-
-    try {
-      await deleteAdminBarangay(barangay.id);
-      setEditing((prev) => (prev ? {
-        ...prev,
-        barangays: prev.barangays.filter((item) => item.id !== barangay.id),
-      } : prev));
-      await load();
-      toastSuccess(`${barangay.name} was deleted.`, 'Barangay deleted');
-    } catch (err) {
-      toastError(err.message || 'Could not delete the barangay.');
-    }
   };
 
   const removeBoundary = async () => {
     if (!editing) return;
-    const confirmed = await confirmAction({
+    await confirmAction({
       title: 'Remove the uploaded boundary?',
       text: 'The stored GeoJSON file will be deleted. You can upload a new one at any time.',
       confirmText: 'Remove boundary',
       danger: true,
       icon: 'trash',
+      onConfirm: async () => {
+        const response = await deleteAdminMunicipalityGeojson(editing.id);
+        const updated = response?.municipality;
+        setEditing((prev) => (prev
+          ? (updated || { ...prev, geojson_ref: null, has_boundary: false })
+          : prev));
+        await load();
+        toastSuccess('The uploaded boundary was removed.', 'Boundary removed');
+      },
     });
-    if (!confirmed) return;
-
-    try {
-      const response = await deleteAdminMunicipalityGeojson(editing.id);
-      const updated = response?.municipality;
-      setEditing((prev) => (prev
-        ? (updated || { ...prev, geojson_ref: null, has_boundary: false })
-        : prev));
-      await load();
-      toastSuccess('The uploaded boundary was removed.', 'Boundary removed');
-    } catch (err) {
-      toastError(err.message || 'Could not remove the boundary.');
-    }
   };
 
   const deleteMunicipality = async (municipality) => {

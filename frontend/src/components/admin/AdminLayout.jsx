@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutAPI } from '../../services/dataService';
+import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
 import AppShell from '../shell/AppShell';
 import AdminSidebar from './AdminSidebar';
@@ -24,14 +25,21 @@ export default function AdminLayout({ user, setUser }) {
   }, [location.state, location.pathname, navigate]);
 
   const handleLogout = async () => {
-    try {
-      await logoutAPI();
-    } catch (e) {
-      // ignore
-    }
-    if (setUser) setUser(null);
-    toastInfo('You have been signed out.', 'Signed out');
-    navigate('/login');
+    await confirmAction({
+      title: 'Log out of PangAsin?',
+      text: 'You will need to sign in again to manage data.',
+      confirmText: 'Log out',
+      onConfirm: async () => {
+        try {
+          await logoutAPI();
+        } catch (e) {
+          // The session may already be gone; sign out locally anyway.
+        }
+        if (setUser) setUser(null);
+        toastInfo('You have been signed out.', 'Signed out');
+        navigate('/login');
+      },
+    });
   };
 
   return (

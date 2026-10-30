@@ -49,6 +49,40 @@ User accounts live in the database. They follow the pattern `admin@pangasin.gov.
 | Encoder (Alaminos) | alaminos.encoder@pangasin.gov.ph | encoder123 |
 | Encoder (Bolinao) | bolinao.encoder@pangasin.gov.ph | encoder123 |
 
+## Password Reset Setup
+
+Password reset emails are sent through Gmail SMTP. Use a Google **App Password**;
+never put the normal Gmail password in `.env`.
+
+1. Turn on **2-Step Verification** for the Gmail account.
+2. Open **Google Account > Security > App passwords** and create one for
+   "PangAsin SMTP". Copy the 16-character password.
+3. Add these values to `.env` and restart Flask:
+
+   ```env
+   MAIL_SERVER=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USE_TLS=true
+   MAIL_USERNAME=your-project-account@gmail.com
+   MAIL_PASSWORD=your-16-character-google-app-password
+   MAIL_DEFAULT_SENDER=PangAsin <your-project-account@gmail.com>
+   FRONTEND_URL=http://localhost:5000
+   ```
+
+   Remove spaces from the app password. Use `http://localhost:5173` for
+   `FRONTEND_URL` only when testing through the Vite dev server.
+
+4. Test the flow:
+   - Open `/forgot-password` from the login page.
+   - Submit the email of an active admin or encoder account.
+   - Check the inbox and spam folder, then open the link within 30 minutes.
+   - Set a password of at least 6 characters and confirm that old sessions are
+     signed out.
+   - Reopen the same link and confirm that it is rejected as already used.
+
+The public request response is always generic, whether or not the email exists.
+SMTP failures are written to the Flask log without exposing provider details.
+
 ## Municipality Management (Admin)
 
 Admins add and maintain municipalities from **Admin → Municipalities**. The database is the source of truth; the app no longer assumes a fixed list of seven municipalities.

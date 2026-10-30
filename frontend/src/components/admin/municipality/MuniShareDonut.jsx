@@ -68,7 +68,7 @@ export default function MuniShareDonut({
       share: sum > 0 ? (row.value / sum) * 100 : 0,
       color: colorMap?.[row.name] ?? DONUT_COLORS[index % DONUT_COLORS.length],
     }));
-  }, [data]);
+  }, [data, colorMap]);
 
   const total = list.reduce((sum, row) => sum + row.value, 0);
   const slices = list.filter((row) => row.value > 0);

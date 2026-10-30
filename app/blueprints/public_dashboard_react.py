@@ -18,6 +18,8 @@ def _serve_react():
 @public_dashboard_react_bp.route("/admin")
 @public_dashboard_react_bp.route("/encoder")
 @public_dashboard_react_bp.route("/login")
+@public_dashboard_react_bp.route("/forgot-password")
+@public_dashboard_react_bp.route("/reset-password")
 @public_dashboard_react_bp.route("/public-dashboard")
 def dashboard():
     return _serve_react()

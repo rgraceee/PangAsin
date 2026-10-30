@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, ContactRound, Users, Map,
-  ScrollText,
+  ScrollText, BookOpen, ShieldCheck,
 } from 'lucide-react';
 import { getAdminStats } from '../../services/dataService';
 import {
@@ -36,6 +36,8 @@ const MANAGE_ITEMS = [
 /* WHAT: I-map ang kasalukuyang URL papunta sa active nav id.
    WHY: pathname lang ang basehan, kaya simple at walang IntersectionObserver. */
 function activeIdFromPath(pathname) {
+  if (pathname === '/help') return 'help';
+  if (pathname === '/privacy') return 'privacy';
   if (pathname === '/admin/validation') return 'validation';
   if (pathname === '/admin/data-quality') return 'data-quality';
   if (pathname === '/admin/forecast/target') return 'forecast-target';
@@ -125,6 +127,22 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
         </nav>
 
         <div className="p-bottom">
+          <div className="p-sidebar-support">
+            <NavItem
+              icon={BookOpen}
+              label="User Manual"
+              active={activeId === 'help'}
+              collapsed={collapsed}
+              onClick={go('/help')}
+            />
+            <NavItem
+              icon={ShieldCheck}
+              label="Privacy Policy"
+              active={activeId === 'privacy'}
+              collapsed={collapsed}
+              onClick={go('/privacy')}
+            />
+          </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
           <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />
         </div>

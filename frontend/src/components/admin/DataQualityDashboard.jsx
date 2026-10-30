@@ -188,7 +188,7 @@ export default function DataQualityDashboard() {
         <Card className="encoder-card mb-3">
           <Card.Header>
             <div className="admin-card-head">
-              <span className="admin-card-head-icon admin-kpi-accent-oceanbg">
+              <span className="admin-card-head-icon admin-card-head-icon--soft">
                 <ClipboardList size={16} strokeWidth={2} />
               </span>
               <div className="d-flex align-items-center gap-2">

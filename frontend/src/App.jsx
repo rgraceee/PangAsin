@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, BrowserRouter, useLocation } from 'react-router-dom';
 import GuestDashboard from './components/GuestDashboard';
 import Login from './components/Login';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 import ChangePassword from './components/ChangePassword';
 import EncoderLayout from './components/encoder/EncoderLayout';
 import EncoderDashboard from './components/encoder/EncoderDashboard';
@@ -21,6 +23,8 @@ import GenerateReports from './components/admin/GenerateReports';
 import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import ProducerMasterList from './components/ProducerMasterList';
+import PrivacyPolicy from './components/support/PrivacyPolicy';
+import HelpManual from './components/support/HelpManual';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import usePageTitle from './hooks/usePageTitle';
@@ -28,6 +32,10 @@ import usePageTitle from './hooks/usePageTitle';
 const ROUTE_TITLES = {
   '/': 'Public Dashboard',
   '/login': 'Sign In',
+  '/forgot-password': 'Forgot Password',
+  '/reset-password': 'Reset Password',
+  '/privacy': 'Privacy Policy',
+  '/help': 'User Manual',
   '/encoder': 'Encoder Dashboard',
   '/admin': 'Executive Dashboard',
   '/admin/users': 'User Management',
@@ -115,6 +123,17 @@ export default function App() {
       <Routes>
         <Route path="/" element={<GuestDashboard />} />
         <Route path="/login" element={<Login onLogin={setUser} />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privacy" element={<PrivacyPolicy user={user} />} />
+        <Route
+          path="/help"
+          element={(
+            <RequireAuth user={user} isLoading={loading}>
+              <HelpManual user={user} />
+            </RequireAuth>
+          )}
+        />
         <Route
           path="/change-password"
           element={(

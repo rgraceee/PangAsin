@@ -90,22 +90,17 @@ export default function RecordsTable({
 
   const handleDelete = async (id, status, label) => {
     if (status === 'approved') return;
-    const confirmed = await confirmDelete({
+    setActionError(null);
+    await confirmDelete({
       title: 'Delete this record?',
       text: `This will permanently remove the record for <strong>${label || `record #${id}`}</strong>. This cannot be undone.`,
       confirmText: 'Delete',
+      onConfirm: async () => {
+        await deleteRecord(id);
+        onRefresh?.();
+        toastSuccess('The production record has been deleted.', 'Record deleted');
+      },
     });
-    if (!confirmed) return;
-    setActionError(null);
-    try {
-      await deleteRecord(id);
-      onRefresh?.();
-      toastSuccess('The production record has been deleted.', 'Record deleted');
-    } catch (err) {
-      const message = err.message || 'Could not delete this record.';
-      setActionError(message);
-      toastError(message);
-    }
   };
 
   // WHAT: Preview lang — validation + soft warning bago pa mag-import.

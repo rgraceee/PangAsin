@@ -67,9 +67,18 @@ export default function UsersManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError(null);
+    if (!editing) return;
+    if (form.password) {
+      const confirmed = await confirmAction({
+        title: 'Reset this password?',
+        text: `<strong>${form.name}</strong> will need to sign in with the new password. The old password stops working immediately.`,
+        confirmText: 'Reset password',
+        danger: true,
+      });
+      if (!confirmed) return;
+    }
     setSaving(true);
     try {
-      if (!editing) return;
       const payload = {
         name: form.name,
         status: form.status,
@@ -92,25 +101,20 @@ export default function UsersManagement() {
   const toggleStatus = async (u) => {
     const newStatus = u.status === 'active' ? 'inactive' : 'active';
     const isActivate = newStatus === 'active';
-    const confirmed = await confirmAction({
+    await confirmAction({
       title: isActivate ? 'Activate this account?' : 'Deactivate this account?',
       text: `You are about to <strong>${isActivate ? 'activate' : 'deactivate'}</strong> <strong>${u.name}</strong> (${u.email}). ${isActivate ? 'The account can sign in again immediately.' : 'The account will no longer be able to sign in until it is reactivated.'}`,
       confirmText: isActivate ? 'Activate' : 'Deactivate',
       danger: !isActivate,
+      onConfirm: async () => {
+        await updateAdminUser(u.id, { status: newStatus });
+        load(filters);
+        toastSuccess(
+          isActivate ? `${u.name} can now sign in.` : `${u.name} has been deactivated.`,
+          isActivate ? 'Account activated' : 'Account deactivated',
+        );
+      },
     });
-    if (!confirmed) return;
-    try {
-      await updateAdminUser(u.id, { status: newStatus });
-      load(filters);
-      toastSuccess(
-        isActivate ? `${u.name} can now sign in.` : `${u.name} has been deactivated.`,
-        isActivate ? 'Account activated' : 'Account deactivated',
-      );
-    } catch (err) {
-      const message = err.message || 'Could not update this account.';
-      setError(message);
-      toastError(message);
-    }
   };
 
   const hasFilter = Boolean(filters.role || filters.status || filters.municipality_id);

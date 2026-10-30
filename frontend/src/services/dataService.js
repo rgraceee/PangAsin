@@ -89,6 +89,33 @@ export function loginAPI(email, password) {
   return api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
 }
 
+/* WHAT: Humihingi ng password reset link sa email.
+   WHY: Generic ang response ng backend para hindi malaman kung registered
+        ang email; dito lang din dumadaan ang validate at confirm steps. */
+export function requestPasswordReset(email) {
+  return apiNoAuth('/api/auth/password-reset-request', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function validatePasswordResetToken(token) {
+  return apiNoAuth(
+    `/api/auth/password-reset/validate?token=${encodeURIComponent(token)}`,
+  );
+}
+
+export function resetPassword(token, newPassword, confirmPassword) {
+  return apiNoAuth('/api/auth/password-reset/confirm', {
+    method: 'POST',
+    body: JSON.stringify({
+      token,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
+  });
+}
+
 export function logoutAPI() {
   return api('/auth/logout', { method: 'POST' });
 }

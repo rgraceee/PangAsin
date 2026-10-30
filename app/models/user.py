@@ -16,6 +16,10 @@ class User(db.Model, UserMixin):
     municipality_id = db.Column(db.Integer, db.ForeignKey("municipalities.id"), nullable=True)
     status = db.Column(db.Enum("active", "inactive", name="user_status_enum"), default="active", nullable=False)
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
+    # WHAT: Version marker na naka-store din sa Flask session.
+    # WHY: Password reset increments this para ma-invalidate ang lahat ng
+    #      existing sessions ng account nang hindi kailangan ng server-side store.
+    session_version = db.Column(db.Integer, default=0, server_default="0", nullable=False)
     last_login = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

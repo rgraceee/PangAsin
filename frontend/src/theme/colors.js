@@ -44,6 +44,19 @@ export const MUNICIPALITY_COLORS = {
   'San Fabian': BRAND_TINTS.greenLight,
 };
 
+/* WHAT: Solid bar fill for a municipality, plus a white outline on light fills.
+   WHY: color must follow the municipality everywhere (never its rank), and the
+        two lightest brand tints need an outline so they stay visible on white. */
+export function municipalityBarFill(name) {
+  const fill = MUNICIPALITY_COLORS[name] ?? BRAND.ocean;
+  const c = fill.slice(1);
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  const light = (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55;
+  return { fill, stroke: light ? '#FFFFFF' : 'none', strokeWidth: light ? 1 : 0 };
+}
+
 export const STATUS = {
   ready: '#29B039',
   not_ready: '#E53935',

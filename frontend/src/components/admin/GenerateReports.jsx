@@ -421,26 +421,20 @@ export default function GenerateReports() {
     const label = r.barangay_name
       ? ` for ${r.barangay_name}`
       : r.municipality_name ? ` for ${r.municipality_name}` : '';
-    const confirmed = await confirmDelete({
+    await confirmDelete({
       title: 'Delete this report?',
       text: `This will permanently remove the <strong>${reportTypeLabel(r)}</strong> report${label} and its file. This cannot be undone.`,
       confirmText: 'Delete',
-    });
-    if (!confirmed) return;
-    deleteReport(r.id)
-      .then(() => {
+      onConfirm: async () => {
+        await deleteReport(r.id);
         if (currentReport && currentReport.id === r.id) {
           setCurrentReport(null);
           setPreviewData(null);
         }
         loadReports();
         toastSuccess('The report has been deleted.', 'Report deleted');
-      })
-      .catch((err) => {
-        const message = err.message || 'Could not delete this report.';
-        setError(message);
-        toastError(message);
-      });
+      },
+    });
   };
 
   const previewTables = useMemo(() => {

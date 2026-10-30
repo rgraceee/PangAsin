@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ContactRound, ClipboardList, LayoutDashboard, Leaf } from 'lucide-react';
+import { BookOpen, ContactRound, ClipboardList, LayoutDashboard, Leaf, ShieldCheck } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import {
   CollapseControl, Divider, NavItem, SectionLabel, SidebarLogo, UserBlock,
@@ -73,6 +73,22 @@ export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, cl
         </nav>
 
         <div className="p-bottom">
+          <div className="p-sidebar-support">
+            <NavItem
+              icon={BookOpen}
+              label="User Manual"
+              active={pathname === '/help'}
+              collapsed={collapsed}
+              onClick={() => handleItem({ path: '/help' })}
+            />
+            <NavItem
+              icon={ShieldCheck}
+              label="Privacy Policy"
+              active={pathname === '/privacy'}
+              collapsed={collapsed}
+              onClick={() => handleItem({ path: '/privacy' })}
+            />
+          </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
           <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />
         </div>

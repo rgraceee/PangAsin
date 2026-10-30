@@ -1,0 +1,235 @@
+/* WHAT: Shared layout para sa Forgot Password at Reset Password pages.
+   WHY: Pareho ang visual treatment ng dalawang hakbang at hindi kailangang
+        kopyahin ang card styles sa bawat component. */
+.auth-recovery-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(21, 101, 200, 0.1), transparent 42%),
+    radial-gradient(circle at 85% 80%, rgba(22, 163, 74, 0.1), transparent 42%),
+    #f4f7fb;
+}
+
+.auth-recovery-card {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+}
+
+.auth-recovery-card .card-body {
+  padding: 30px 32px 28px;
+}
+
+.auth-recovery-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 22px;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-recovery-back:hover {
+  color: #0c2340;
+  text-decoration: underline;
+}
+
+.auth-recovery-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  color: #1f7a3a;
+  background: rgba(31, 122, 58, 0.1);
+}
+
+.auth-recovery-icon.is-success {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.auth-recovery-icon.is-error {
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.auth-recovery-title {
+  margin: 0 0 8px;
+  color: #0c2340;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.auth-recovery-sub {
+  margin: 0 0 20px;
+  color: #5b6472;
+  font-size: 0.925rem;
+  line-height: 1.6;
+}
+
+.auth-recovery-alert {
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auth-recovery-submit {
+  width: 100%;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.auth-recovery-submit:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.auth-recovery-links {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.auth-recovery-text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 4px;
+  background: transparent;
+  color: #0c2340;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-recovery-text-link:hover {
+  color: #1f7a3a;
+  text-decoration: underline;
+}
+
+.auth-recovery-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(80, 64, 32, 0.12);
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #504020;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.auth-recovery-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.auth-recovery-state {
+  text-align: left;
+}
+
+.auth-recovery-password-wrap {
+  position: relative;
+}
+
+.auth-recovery-password-wrap .form-control {
+  padding-right: 46px;
+}
+
+.auth-recovery-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+}
+
+.auth-recovery-password-toggle:hover {
+  background: #f1f5f9;
+  color: #0c2340;
+}
+
+.auth-recovery-password-toggle:focus-visible {
+  outline: 2px solid #1f7a3a;
+  outline-offset: 2px;
+}
+
+.auth-recovery-strength {
+  margin-top: 8px;
+}
+
+.auth-recovery-strength-bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.auth-recovery-strength-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #dc2626;
+  transition: width 160ms ease, background-color 160ms ease;
+}
+
+.auth-recovery-strength p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.auth-recovery-strength.is-fair .auth-recovery-strength-bar span {
+  background: #d97706;
+}
+
+.auth-recovery-strength.is-good .auth-recovery-strength-bar span {
+  background: #65a30d;
+}
+
+.auth-recovery-strength.is-strong .auth-recovery-strength-bar span {
+  background: #1f7a3a;
+}
+
+.auth-recovery-strength.is-strong p {
+  color: #166534;
+}
+
+@media (max-width: 420px) {
+  .auth-recovery-page {
+    padding: 16px 12px;
+  }
+
+  .auth-recovery-card .card-body {
+    padding: 24px 20px 22px;
+  }
+
+  .auth-recovery-title {
+    font-size: 1.3rem;
+  }
+}

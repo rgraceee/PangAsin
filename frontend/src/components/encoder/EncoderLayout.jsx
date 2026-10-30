@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutAPI } from '../../services/dataService';
+import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
 import AppShell from '../shell/AppShell';
 import EncoderSidebar from './EncoderSidebar';
@@ -24,13 +25,20 @@ export default function EncoderLayout({ user }) {
   }, [location.state, location.pathname, navigate]);
 
   const handleLogout = async () => {
-    try {
-      await logoutAPI();
-    } catch (e) {
-      // ignore
-    }
-    toastInfo('You have been signed out.', 'Signed out');
-    navigate('/login');
+    await confirmAction({
+      title: 'Log out of PangAsin?',
+      text: 'You will need to sign in again to file production reports.',
+      confirmText: 'Log out',
+      onConfirm: async () => {
+        try {
+          await logoutAPI();
+        } catch (e) {
+          // The session may already be gone; sign out locally anyway.
+        }
+        toastInfo('You have been signed out.', 'Signed out');
+        navigate('/login');
+      },
+    });
   };
 
   return (

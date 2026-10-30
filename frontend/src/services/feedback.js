@@ -21,6 +21,7 @@ export function confirmDelete({
   confirmText = 'Delete',
   danger = true,
   titleHtml,
+  onConfirm,
 }) {
   return Swal.fire({
     title: titleHtml || title,
@@ -35,6 +36,10 @@ export function confirmDelete({
     reverseButtons: true,
     showCloseButton: true,
     buttonsStyling: false,
+    showLoaderOnConfirm: Boolean(onConfirm),
+    allowOutsideClick: () => !Swal.isLoading(),
+    allowEscapeKey: () => !Swal.isLoading(),
+    preConfirm: onConfirm ? runConfirm(onConfirm) : undefined,
     customClass: {
       popup: `pangasin-swal-dialog pangasin-swal-dialog--${danger ? 'danger' : 'confirm'}`,
       icon: 'pangasin-swal-dialog-icon',
@@ -47,6 +52,21 @@ export function confirmDelete({
   }).then((res) => res.isConfirmed);
 }
 
+/* WHAT: Runs the action inside the open dialog.
+   WHY: the dialog stays open with a spinner while the request runs; a failure
+        is shown inside the dialog and the user can retry or cancel. */
+export function runConfirm(onConfirm) {
+  return async () => {
+    try {
+      await onConfirm();
+      return true;
+    } catch (err) {
+      Swal.showValidationMessage(err?.message || 'Something went wrong. Please try again.');
+      return false;
+    }
+  };
+}
+
 export function confirmAction({
   title = 'Please confirm',
   text = '',
@@ -54,6 +74,7 @@ export function confirmAction({
   cancelText = 'Cancel',
   icon = 'question',
   danger = false,
+  onConfirm,
 }) {
   return Swal.fire({
     title,
@@ -68,6 +89,10 @@ export function confirmAction({
     reverseButtons: true,
     showCloseButton: true,
     buttonsStyling: false,
+    showLoaderOnConfirm: Boolean(onConfirm),
+    allowOutsideClick: () => !Swal.isLoading(),
+    allowEscapeKey: () => !Swal.isLoading(),
+    preConfirm: onConfirm ? runConfirm(onConfirm) : undefined,
     customClass: {
       popup: `pangasin-swal-dialog pangasin-swal-dialog--${danger ? 'danger' : 'confirm'}`,
       icon: 'pangasin-swal-dialog-icon',

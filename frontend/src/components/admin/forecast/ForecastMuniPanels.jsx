@@ -9,8 +9,8 @@ import ForecastMuniPanel from './ForecastMuniPanel';
 import { MUNI_COLORS, MUNI_EDGES, MUNI_LABELS } from './forecastColors';
 
 const METRICS = [
-  { key: 'change', label: 'Forecast', title: 'Forecast change by municipality', sub: 'Each bar is one municipality; bars to the right show a stronger forecast change.', unit: 'Forecast vs recent average (%)', source: 'Source: expected_change_pct of each municipality\'s latest forecast run.' },
-  { key: 'yoy', label: 'Recorded', title: 'Recorded change by municipality', sub: 'Each bar is one municipality; bars to the right show stronger 12-month growth.', unit: 'Recorded year-over-year change (%)', source: 'Source: municipality production data, two complete 12-month calendar blocks.' },
+  { key: 'change', label: 'Forecast vs recent average', title: 'Forecast change by municipality', sub: 'Each bar is one municipality; bars to the right show a stronger forecast change.', unit: 'Forecast vs recent average (%)', source: 'Source: expected_change_pct of each municipality\'s latest forecast run.' },
+  { key: 'yoy', label: 'Year-over-year', title: 'Recorded change by municipality', sub: 'Each bar is one municipality; bars to the right show stronger 12-month growth.', unit: 'Recorded year-over-year change (%)', source: 'Source: municipality production data, two complete 12-month calendar blocks.' },
 ];
 
 export default function ForecastMuniPanels({ rows, height = 320 }) {
@@ -35,7 +35,6 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
           <span className="fc-card-head-icon"><Building2 size={16} strokeWidth={1.75} /></span>
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">Municipality Outlook</h5>
-            <p className="fc-card-sub">{m.sub}</p>
             <div className="fc-muni-toggles" role="group" aria-label="Municipality outlook metric">
               {METRICS.map((x) => (
                 <button
@@ -49,6 +48,7 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
                 </button>
               ))}
             </div>
+            <p className="fc-card-sub">{m.sub}</p>
           </div>
         </div>
         <div className="fc-card-head-right">

@@ -13,6 +13,7 @@ from app.models.municipality_production import (
     MunicipalitySaltBedData,
 )
 from app.models.audit_log import AuditLog
+from app.models.password_reset_token import PasswordResetToken
 
 __all__ = [
     "Municipality",
@@ -30,4 +31,5 @@ __all__ = [
     "MunicipalityMonthlyProduction",
     "MunicipalitySaltBedData",
     "AuditLog",
+    "PasswordResetToken",
 ]

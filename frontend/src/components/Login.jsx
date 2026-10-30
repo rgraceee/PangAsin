@@ -6,8 +6,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row } from 'react-bootstrap';
-import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Phone, Scale, ShieldCheck, Trophy } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, MapPin, Phone, Scale, ShieldCheck, Trophy } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Reveal from './Reveal';
 import { SkeletonBlock } from './Skeleton';
 import { loadPublicDashboardData, loginAPI, getMunicipalityProduction } from '../services/dataService';
@@ -106,6 +106,8 @@ export default function Login({ onLogin }) {
   const [errorKey, setErrorKey] = useState(0);
   const [heroReady, setHeroReady] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const resetSuccess = Boolean(location.state?.resetSuccess);
   const { toastSuccess } = useToast();
 
   const heroRef = useRef(null);
@@ -272,6 +274,13 @@ export default function Login({ onLogin }) {
               Sign in with your encoder or admin account to continue.
             </p>
 
+            {resetSuccess && (
+              <Alert variant="success" className="login-form-success">
+                <ShieldCheck size={16} aria-hidden="true" className="login-form-error-icon" />
+                <span>Password reset complete. Sign in with your new password.</span>
+              </Alert>
+            )}
+
             {error && (
               <Alert
                 variant="danger"
@@ -306,7 +315,7 @@ export default function Login({ onLogin }) {
                   />
                 </div>
               </Form.Group>
-              <Form.Group className="mb-4" controlId="loginPassword">
+              <Form.Group className="mb-3" controlId="loginPassword">
                 <Form.Label className="encoder-login-field-label" htmlFor="loginPassword">
                   Password
                 </Form.Label>
@@ -333,6 +342,16 @@ export default function Login({ onLogin }) {
                   </button>
                 </div>
               </Form.Group>
+              <div className="login-forgot-row">
+                <Link
+                  to="/forgot-password"
+                  state={{ email }}
+                  className="login-forgot-link"
+                >
+                  <KeyRound size={14} aria-hidden="true" />
+                  Forgot password?
+                </Link>
+              </div>
               <Button
                 type="submit"
                 className="w-100 encoder-login-btn"
@@ -508,11 +527,16 @@ export default function Login({ onLogin }) {
               <span className="login-footer-copyright">
                 © 2026 ASIN Center, Pangasinan State University
               </span>
-              <span className="login-footer-policy">RA 11985</span>
+              <span className="login-footer-policy">
+                <Link to="/privacy" className="login-footer-contact-link">Privacy Policy</Link>
+                {' · '}
+                RA 11985
+              </span>
             </div>
           </div>
         </Container>
       </footer>
+
     </div>
   );
 }
