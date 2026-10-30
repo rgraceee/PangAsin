@@ -236,7 +236,7 @@ export default function MunicipalityMapSection() {
             </span>
             <div className="fc-card-head-text">
               <h5 className="fc-card-title">Salt Production Across Pangasinan</h5>
-              <p className="fc-card-sub">Workbook-derived production data by municipality</p>
+              <p className="fc-card-sub">Darker municipalities produce more salt; hover a municipality for details.</p>
             </div>
           </div>
         </Card.Header>

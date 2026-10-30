@@ -110,7 +110,7 @@ export default function MuniRegisteredChart({ rows, total, bare = false, animate
   if (bare) return chart;
 
   return (
-    <MuniCard icon={Users} title="Registered Salt Farmers by Municipality" sub="Distinct salt farmers in the master list, ranked" chips={<><MuniChip label="Master list" meta /><MuniChip label={`${fmtInt(total)} salt farmers`} meta /></>} caption="The master list holds the registered salt farmers. Production reports log the same people again each month, so they are not counted here.">
+    <MuniCard icon={Users} title="Registered Salt Farmers by Municipality" sub="Distinct salt farmers in the master list, ranked" chips={<><MuniChip label={`${fmtInt(total)} salt farmers`} meta /></>} caption="The master list holds the registered salt farmers. Production reports log the same people again each month, so they are not counted here.">
       {chart}
     </MuniCard>
   );

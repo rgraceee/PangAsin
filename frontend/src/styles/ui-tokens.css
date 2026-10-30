@@ -26,6 +26,7 @@
   --ui-brown-tint: #F3EBE2;
   --ui-brown: #7A5230;
   --ui-brown-border: #E8DCCD;
+  --toggle-active-bg: var(--ui-brown);
 
   /* WHAT: KPI semantic tones. WHY: warning/danger lang ang hindi default green. */
   --ui-warning: #F59E0B;

@@ -22,7 +22,7 @@ export default function ForecastKpis({
         value={recordedMT === null ? null : fmtMT(recordedMT)}
         unit="Metric Tons (MT)"
         supporting={`Municipality production data, ${recordedPeriodLabel}${recordedThrough ? ` through ${recordedThrough}` : ''}.`}
-        info={definition('recordedMt') + ' Source: Adjusted_Estimates.xlsx; approved submissions are separate.'}
+        info={definition('recordedMt')}
         loading={loading}
       />
 

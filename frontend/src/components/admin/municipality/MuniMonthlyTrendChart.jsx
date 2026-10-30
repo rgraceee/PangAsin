@@ -2,7 +2,7 @@
 // WHY: the page had no month-by-month view. The line uses the same municipality
 //      production dataset as the rest of Municipality Analytics, and the hover
 //      card adds the month-over-month change without changing any number.
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
@@ -20,7 +20,6 @@ const RANGES = [
   { key: 'all', label: 'All' },
   { key: '6', label: '6 months' },
   { key: '12', label: '12 months' },
-  { key: '24', label: '24 months' },
 ];
 
 function labelMonth(key) {
@@ -29,8 +28,28 @@ function labelMonth(key) {
 }
 
 export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) {
-  const [range, setRange] = useState('24');
+  const [range, setRange] = useState('all');
   const [state, setState] = useState({ loading: true, error: null, data: [] });
+  const thumbRef = useRef(null);
+  const optionRefs = useRef({});
+
+  const positionThumb = useCallback(() => {
+    const thumb = thumbRef.current;
+    const option = optionRefs.current[range];
+    if (!thumb || !option) return;
+    thumb.style.left = `${option.offsetLeft}px`;
+    thumb.style.width = `${option.offsetWidth}px`;
+  }, [range]);
+
+  useEffect(() => {
+    positionThumb();
+    window.addEventListener('resize', positionThumb);
+    return () => window.removeEventListener('resize', positionThumb);
+  }, [positionThumb]);
+
+  useEffect(() => {
+    requestAnimationFrame(positionThumb);
+  }, [positionThumb, range]);
 
   useEffect(() => {
     let alive = true;
@@ -88,18 +107,22 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
       chips={<MuniChip label={rangeLabel} meta />}
       caption="Each point is a month in the municipality production dataset. Month-over-month compares with the previous month in view."
     >
-      <div className="muni-tabs muni-tabs--filters" role="group" aria-label="Production trend range">
-        {RANGES.map((r) => (
-          <button
-            key={r.key}
-            type="button"
-            className={`muni-tab${range === r.key ? ' is-active' : ''}`}
-            aria-pressed={range === r.key}
-            onClick={() => setRange(r.key)}
-          >
-            {r.label}
-          </button>
-        ))}
+      <div className="admin-prod-view" role="group" aria-label="Production trend range">
+        <div className={`te-segmented te-segmented--three te-segmented--${range}`}>
+          <span className="te-segmented__thumb" ref={thumbRef} aria-hidden="true" />
+          {RANGES.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              ref={(el) => { optionRefs.current[r.key] = el; }}
+              className={`te-segmented__option${range === r.key ? ' is-active' : ''}`}
+              aria-pressed={range === r.key}
+              onClick={() => setRange(r.key)}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {state.loading ? (

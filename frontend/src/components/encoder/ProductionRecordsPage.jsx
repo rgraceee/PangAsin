@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-bootstrap';
 import { useOutletContext } from 'react-router-dom';
 import { Boxes, CheckCircle, ClipboardList, Clock } from 'lucide-react';
@@ -17,17 +17,25 @@ import ProductionRecordForm from './ProductionRecordForm';
 import { formatMT } from '../../utils/volumeFormat';
 import { STATUS_OPTIONS } from '../../constants/labels';
 
+const DEFAULT_PER_PAGE = 10;
+
 export default function ProductionRecordsPage() {
   const { user } = useOutletContext();
   const [months, setMonths] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const [records, setRecords] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(0);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE);
   const [filters, setFilters] = useState({ barangay_id: '', status: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const requestRef = useRef(0);
 
   const period = usePeriodFilters(months);
   const { range, rangeError } = period;
@@ -41,28 +49,65 @@ export default function ProductionRecordsPage() {
       .catch(() => {});
   }, []);
 
+  /* WHAT: Bagong filter = balik sa unang page.
+     WHY: kapag nasa page 12 ang reader at pinaliit ang filter, walang
+          laman ang page na iyon. */
+  useEffect(() => {
+    setPage(1);
+  }, [filters.barangay_id, filters.status, range.start, range.end]);
+
   const load = useCallback(() => {
+    const request = requestRef.current + 1;
+    requestRef.current = request;
     setLoading(true);
     setError(null);
-    const params = {};
+    const params = { page, per_page: perPage };
     if (filters.barangay_id) params.barangay_id = filters.barangay_id;
     if (filters.status) params.status = filters.status;
     if (range.start) params.start = range.start;
     if (range.end) params.end = range.end;
     getRecords(params)
-      .then((res) => { setRecords(res.records || []); })
-      .catch((err) => { setError(err.message || 'Could not load production records.'); })
-      .finally(() => setLoading(false));
-  }, [filters.barangay_id, filters.status, range.start, range.end, refreshKey]);
+      .then((res) => {
+        /* WHAT: Only the newest request may update the table.
+           WHY: a slow page-N response must not overwrite page 1 after a filter
+                change or a quick sequence of page clicks. */
+        if (request !== requestRef.current) return;
+        const nextPages = res.pages || 0;
+        setRecords(res.records || []);
+        setSummary(res.summary || null);
+        setTotal(res.total || 0);
+        setPages(nextPages);
+        /* WHAT: If deleting shrank the list below the current page, step back.
+           WHY: an empty page with no pager would trap the reader. */
+        if (nextPages > 0 && page > nextPages) setPage(nextPages);
+      })
+      .catch((err) => {
+        if (request === requestRef.current) setError(err.message || 'Could not load production records.');
+      })
+      .finally(() => {
+        if (request === requestRef.current) setLoading(false);
+      });
+  }, [filters.barangay_id, filters.status, range.start, range.end, page, perPage, refreshKey]);
 
   useEffect(() => { load(); }, [load]);
 
+  /* WHAT: Ang KPI cards ay galing sa server summary ng buong filter.
+     WHY: hindi dapat bumaba ang "Records" at "Total Production" kapag
+          lumipat ng page. */
   const totals = useMemo(() => {
+    if (summary) {
+      return {
+        count: summary.count || 0,
+        pending: summary.pending || 0,
+        approved: summary.approved || 0,
+        volume: summary.volume_mt || 0,
+      };
+    }
     const pending = records.filter((r) => r.status === 'pending').length;
     const approved = records.filter((r) => r.status === 'approved').length;
     const volume = records.reduce((sum, r) => sum + (Number(r.production_volume_mt) || 0), 0);
     return { count: records.length, pending, approved, volume };
-  }, [records]);
+  }, [summary, records]);
 
   const municipalityName = user?.municipality_name || 'your municipality';
   const hasFilter = Boolean(filters.barangay_id || filters.status || period.activePreset !== 'all');
@@ -169,6 +214,12 @@ export default function ProductionRecordsPage() {
         loading={loading}
         error={error}
         hasFilter={hasFilter}
+        total={total}
+        page={page}
+        pages={pages}
+        perPage={perPage}
+        onPageChange={setPage}
+        onPerPageChange={(next) => { setPage(1); setPerPage(next); }}
         onClearFilters={clearFilters}
         onAdd={openAdd}
         onEdit={openEdit}

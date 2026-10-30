@@ -11,6 +11,7 @@ import SupplyDemandSection from './SupplyDemandSection';
 import MunicipalityMapArt from './encoder/MunicipalityMapArt';
 import PublicIntro from './public/PublicIntro';
 import PublicAbout from './public/PublicAbout';
+import MunicipalityProductionCharts from './public/MunicipalityProductionCharts';
 import KpiGrid from './ui/KpiGrid';
 import KpiCard from './ui/KpiCard';
 import { loadPublicDashboardData } from '../services/dataService';
@@ -72,7 +73,7 @@ export default function GuestDashboard() {
         className="ui-pageheader--dashboard"
         title="Pangasinan Salt Industry Dashboard"
         subtitle="Source-labeled municipality production data and salt-industry demand benchmarks for Pangasinan."
-        art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
+        art={<MunicipalityMapArt mode="province" activeNames={activeNames} activeLegendLabel="Salt producing municipality" />}
       >
         <span className="ui-pageheader-chip">
           <ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />
@@ -166,6 +167,10 @@ export default function GuestDashboard() {
 
           <Reveal>
             <MunicipalityMapSection />
+          </Reveal>
+
+          <Reveal>
+            <MunicipalityProductionCharts municipalities={data.municipalities || []} />
           </Reveal>
         </>
       )}

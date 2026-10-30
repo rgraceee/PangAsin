@@ -88,23 +88,21 @@ export function ContributionTooltip({ active, payload }) {
   );
 }
 
-/* The value at the end of a municipality bar, plus its coverage note. */
-export function ContributionLabel({ rows, index, x, y, width, height }) {
+/* The value sits in a fixed right-hand column, clear of the bar and the
+   target-share marker. */
+export function ContributionLabel({ rows, index, x, y, width, height, chartWidth = 0 }) {
   const row = rows[index];
   if (!row || !row.hasForecast) return null;
   const valueText = fmtMT(row.forecast);
   const partial = row.monthsLabel && row.monthsLabel !== '12 of 12 months';
-  // Long bars carry the value inside so it never collides with the
-  // target-share marker just past the bar.
-  const textW = valueText.length * 7;
-  const inside = width > textW + 34;
-  const labelX = inside ? x + width - 8 : x + width + 10;
+  const labelX = chartWidth > 0 ? chartWidth - 100 : x + width + 10;
+  const midY = y + height / 2;
   return (
     <g>
       <text
         x={labelX}
-        y={y + height / 2}
-        textAnchor={inside ? 'end' : 'start'}
+        y={partial ? midY - 7 : midY}
+        textAnchor="start"
         dominantBaseline="central"
         fontSize={12.5}
         fontWeight={700}
@@ -112,13 +110,13 @@ export function ContributionLabel({ rows, index, x, y, width, height }) {
       >
         {valueText}
       </text>
-      {partial && !inside && (
+      {partial && (
         <text
-          x={labelX + textW + 8}
-          y={y + height / 2}
+          x={labelX}
+          y={midY + 8}
           textAnchor="start"
           dominantBaseline="central"
-          fontSize={11.5}
+          fontSize={11}
           fill="var(--te-muted)"
         >
           {row.monthsLabel}

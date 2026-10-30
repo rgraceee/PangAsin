@@ -145,7 +145,7 @@
   transition: background-color 150ms ease, color 150ms ease;
 }
 
-.te-toggle-btn.is-active { color: #fff; background: var(--te-navy); }
+.te-toggle-btn.is-active { color: #fff; background: var(--toggle-active-bg); }
 
 .te-submit {
   display: inline-flex;
@@ -166,7 +166,135 @@
 .te-submit:hover:not(:disabled) { background: #0d47a1; border-color: #0d47a1; }
 .te-submit:disabled { opacity: 0.55; cursor: not-allowed; }
 
-.te-form-hint { margin: 10px 0 0; font-size: 12px; color: var(--te-muted); line-height: 1.45; }
+/* WHAT: Hero controls use the dashboard tokens, not the old form card.
+   WHY: the target inputs must line up with the other admin page heroes. */
+/* WHAT: Walang mapa ang Target hero, kaya buong lapad ang title at controls.
+   WHY: otherwise the admin header caps them at 68% to leave room for the art. */
+.te-page .ui-pageheader--admin.ui-pageheader--no-map {
+  padding: 24px 28px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-shell);
+  background:
+    radial-gradient(70% 130% at 66% 46%, var(--ui-accent-tint) 0%, transparent 68%),
+    linear-gradient(90deg, var(--ui-surface) 30%, var(--ui-accent-tint) 64%);
+  box-shadow: var(--ui-shadow);
+}
+
+.te-page .ui-pageheader--admin .ui-pageheader-main,
+.te-page .ui-pageheader--admin .ui-pageheader-controls {
+  max-width: 100%;
+}
+
+.te-hero-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+@media (min-width: 992px) {
+  .te-page .ui-pageheader-controls .te-hero-row {
+    flex-wrap: nowrap;
+  }
+
+  .te-page .ui-pageheader-controls .te-hero-row > .admin-page-hero-control:nth-child(-n+3) {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    max-width: 220px;
+  }
+
+  .te-page .ui-pageheader-controls .te-hero-row > .admin-page-hero-control:nth-child(4) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .te-page .ui-pageheader-controls .te-form-submit {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 991px) {
+  .te-hero-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* WHAT: Segmented Seasonal | Even toggle with a sliding thumb.
+   WHY: a proper two-state switch, still a native keyboard-focusable button group. */
+.te-segmented {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  height: 38px;
+  padding: 3px;
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-surface);
+}
+
+.te-segmented__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: calc(var(--ui-radius-input) - 2px);
+  background: var(--toggle-active-bg);
+  transition: transform 180ms ease;
+}
+
+.te-segmented--equal .te-segmented__thumb {
+  transform: translateX(100%);
+}
+
+/* WHAT: Right-hand option for other two-state toggles (e.g. PDF | Word).
+   WHY: same sliding segmented control without borrowing the "equal" name. */
+.te-segmented--word .te-segmented__thumb {
+  transform: translateX(100%);
+}
+
+.te-segmented__option {
+  position: relative;
+  z-index: 1;
+  min-width: 70px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: calc(var(--ui-radius-input) - 2px);
+  background: transparent;
+  color: var(--ui-text-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.te-segmented__option.is-active {
+  color: #fff;
+}
+
+.te-segmented__option:focus-visible {
+  outline: 2px solid var(--ui-accent-dark);
+  outline-offset: 2px;
+}
+
+.te-form-submit { height: 38px; }
+
+/* WHAT: Foot line sa ilalim ng controls row, hindi katabi ng toggle.
+   WHY: status at split explanation ay dapat nasa ibaba ng form. */
+.te-form-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--te-muted);
+  line-height: 1.45;
+}
 
 /* ===== Summary strip ===== */
 
@@ -327,6 +455,37 @@
 .te-empty-text { margin: 0 auto; max-width: 560px; font-size: 13px; line-height: 1.55; color: var(--te-muted); }
 
 .te-muni-legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+/* WHAT: Tallies above the contribution chart.
+   WHY: the bars answer "who", these three numbers answer "how many". */
+.te-muni-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.te-muni-summary__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--te-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--te-text-2);
+  font-size: 12px;
+}
+
+.te-muni-summary__item strong {
+  font-size: 13px;
+  color: var(--te-text);
+}
+
+.te-muni-summary__item--above { border-color: var(--te-green-edge); background: var(--te-soft-green); }
+.te-muni-summary__item--below { border-color: var(--te-red-edge); background: var(--te-soft-red); }
+.te-muni-summary__item--nodata { border-color: var(--te-nodata-edge); background: var(--te-soft-slate); }
+
 
 /* ===== Responsive ===== */
 

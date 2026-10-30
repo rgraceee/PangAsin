@@ -31,7 +31,7 @@ export default function ForecastTrendChart({
     <ForecastChartCard
       icon={ChartLine}
       title="Municipality Production and Forecast"
-      subtitle={`${scopeLabel} · metric tons (MT) per month`}
+      subtitle={`${scopeLabel} · each point is a month in metric tons (MT); the dashed line is the forecast.`}
       height={height}
       chips={(
         <>

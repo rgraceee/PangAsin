@@ -19,7 +19,7 @@ const SALT_LIST = ['Alaminos City', 'Anda', 'Bani', 'Bolinao', 'Dasol', 'Infanta
    WHY: default ay 'single' pa rin — ang AdminDashboard lang ang nagpasa ng explicit
         mode="province"; kung 'province' ang default ay nagbago ang /encoder at
         ProducerMasterList na walang mode mula sa pag-focus sa sariling bayan. */
-export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, selectedName = '', productionByName = null, activeNames = null, onSelect = null, selectableNames = null }) {
+export default function MunicipalityMapArt({ highlightName, mode = 'single', className = '', showLabel = true, selectedName = '', productionByName = null, activeNames = null, onSelect = null, selectableNames = null, activeLegendLabel = 'Salt producing' }) {
   const rawId = useId();
   const uid = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
   /* WHAT: buildMunicipalityArt is module-level cached and never null, but guard anyway
@@ -269,7 +269,7 @@ const volume = productionByName ? (productionByName[s.name] ?? productionByName[
             <>
               <span className="munimap-legend__item">
                 <span className="munimap-legend__dot munimap-legend__dot--salt" aria-hidden="true" />
-                Active municipality
+                {activeLegendLabel}
               </span>
               <span className="munimap-legend__item">
                 <span className="munimap-legend__dot munimap-legend__dot--other" aria-hidden="true" />

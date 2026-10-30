@@ -9,8 +9,8 @@ import ForecastMuniPanel from './ForecastMuniPanel';
 import { MUNI_COLORS, MUNI_EDGES, MUNI_LABELS } from './forecastColors';
 
 const METRICS = [
-  { key: 'change', label: 'Forecast vs recent average', title: 'Forecast vs recent average', sub: 'Model forecast compared with the recent historical average.', unit: 'Forecast vs recent average', source: 'Source: expected_change_pct of each municipality\'s latest forecast run.' },
-  { key: 'yoy', label: 'Year-over-year change', title: 'Year-over-year production', sub: 'Last 12 complete months compared with the previous 12 complete months.', unit: 'Year-over-year change', source: 'Source: municipality production data, two complete 12-month calendar blocks.' },
+  { key: 'change', label: 'Forecast', title: 'Forecast change by municipality', sub: 'Each bar is one municipality; bars to the right show a stronger forecast change.', unit: 'Forecast vs recent average (%)', source: 'Source: expected_change_pct of each municipality\'s latest forecast run.' },
+  { key: 'yoy', label: 'Recorded', title: 'Recorded change by municipality', sub: 'Each bar is one municipality; bars to the right show stronger 12-month growth.', unit: 'Recorded year-over-year change (%)', source: 'Source: municipality production data, two complete 12-month calendar blocks.' },
 ];
 
 export default function ForecastMuniPanels({ rows, height = 320 }) {
@@ -36,21 +36,22 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">Municipality Outlook</h5>
             <p className="fc-card-sub">{m.sub}</p>
+            <div className="fc-muni-toggles" role="group" aria-label="Municipality outlook metric">
+              {METRICS.map((x) => (
+                <button
+                  key={x.key}
+                  type="button"
+                  className={`ui-btn-outline fc-muni-toggle${metric === x.key ? ' is-active' : ''}`}
+                  aria-pressed={metric === x.key}
+                  onClick={() => setMetric(x.key)}
+                >
+                  {x.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="fc-card-head-right">
-          <div className="btn-group btn-group-sm" role="group">
-            {METRICS.map((x) => (
-              <button
-                key={x.key}
-                type="button"
-                className={`btn btn-outline-secondary${metric === x.key ? ' active' : ''}`}
-                onClick={() => setMetric(x.key)}
-              >
-                {x.label}
-              </button>
-            ))}
-          </div>
           {chips}
         </div>
       </Card.Header>

@@ -9,6 +9,8 @@ import {
 } from '../../services/dataService';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
+import TablePagination from '../ui/TablePagination';
+import usePagination from '../../hooks/usePagination';
 import { SkeletonList } from '../Skeleton';
 import PageHeader from '../admin/PageHeader';
 import MunicipalityMapArt from './MunicipalityMapArt';
@@ -103,6 +105,16 @@ export default function EnvironmentRecordsPage() {
 
   const hasFilter = Boolean(filters.barangay_id || filters.status || period.activePreset !== 'all');
   const municipalityName = user?.municipality_name || 'your municipality';
+
+  /* WHAT: The page slices the filtered list it already holds.
+     WHY: the month picker and the "latest report per barangay" KPI need the
+          whole list, so this table paginates in the browser and no number
+          changes when the reader moves to another page. */
+  const pager = usePagination({
+    total: filtered.length,
+    resetKey: `${filters.barangay_id}|${filters.status}|${range.start}|${range.end}`,
+  });
+  const pagedReports = filtered.slice(pager.pageStart, pager.pageStart + pager.perPage);
 
   const clearFilters = () => {
     setFilters({ barangay_id: '', status: '' });
@@ -236,7 +248,7 @@ export default function EnvironmentRecordsPage() {
         <Card.Header className="master-toolbar">
           <h2 className="h6 mb-0"><Leaf size={16} className="me-2" />Environment Records</h2>
           <div className="master-toolbar__actions">
-            <Badge bg="light" text="dark">{filtered.length.toLocaleString()} shown</Badge>
+            <Badge bg="light" text="dark">{filtered.length.toLocaleString()} total</Badge>
             {hasFilter && (
               <button type="button" className="ui-btn-text" onClick={clearFilters}>Clear filters</button>
             )}
@@ -261,24 +273,37 @@ export default function EnvironmentRecordsPage() {
                 : 'No environment records yet. Use “Add Environment Record” to submit one.'}
             </div>
           ) : (
-            <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
-              <thead>
-                <tr><th>Report Type</th><th>Barangay</th><th className="text-end">Salt Beds</th><th>Methods</th><th className="text-end">Area</th><th>Status</th><th>Submitted</th></tr>
-              </thead>
-              <tbody>
-                {filtered.map((report) => (
-                  <tr key={report.id}>
-                    <td><span className="ui-type-pill">Environment</span></td>
-                    <td>{report.barangay}</td>
-                    <td className="text-end">{Number(report.num_salt_beds).toLocaleString()}</td>
-                    <td>{(report.production_methods || []).map((method) => method[0].toUpperCase() + method.slice(1)).join(', ')}</td>
-                    <td className="text-end">{Number(report.production_area_size).toLocaleString()} m²</td>
-                    <td><Badge bg={STATUS_VARIANTS[report.status] || 'secondary'}>{STATUS_LABELS[report.status]?.label || report.status}</Badge></td>
-                    <td>{report.created_at ? new Date(report.created_at).toLocaleDateString() : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+            <>
+              <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
+                <thead>
+                  <tr><th>Report Type</th><th>Barangay</th><th className="text-end">Salt Beds</th><th>Methods</th><th className="text-end">Area</th><th>Status</th><th>Submitted</th></tr>
+                </thead>
+                <tbody>
+                  {pagedReports.map((report) => (
+                    <tr key={report.id}>
+                      <td><span className="ui-type-pill">Environment</span></td>
+                      <td>{report.barangay}</td>
+                      <td className="text-end">{Number(report.num_salt_beds).toLocaleString()}</td>
+                      <td>{(report.production_methods || []).map((method) => method[0].toUpperCase() + method.slice(1)).join(', ')}</td>
+                      <td className="text-end">{Number(report.production_area_size).toLocaleString()} m²</td>
+                      <td><Badge bg={STATUS_VARIANTS[report.status] || 'secondary'}>{STATUS_LABELS[report.status]?.label || report.status}</Badge></td>
+                      <td>{report.created_at ? new Date(report.created_at).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              <div className="px-3 pb-3">
+                <TablePagination
+                  page={pager.page}
+                  pages={pager.pages}
+                  total={filtered.length}
+                  perPage={pager.perPage}
+                  onPageChange={pager.goToPage}
+                  onPerPageChange={pager.changePerPage}
+                  itemLabel="environment records"
+                />
+              </div>
+            </>
           )}
         </Card.Body>
       </Card>

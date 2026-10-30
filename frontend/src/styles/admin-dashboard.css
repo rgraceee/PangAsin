@@ -243,6 +243,64 @@
 }
 
 /* ============================================================
+   Production by Municipality card (admin dashboard)
+   ============================================================ */
+/* WHAT: Sliding thumb for the "Municipality | Method" view toggle (two equal
+   options). The thumb width is half the control; its left offset is set by JS
+   from the active option's offsetLeft/offsetWidth so it always sits exactly
+   under the active option, including after resize. WHY: fixed translateX
+   offsets break when the card width changes, displacing the thumb off the
+   toggle. */
+.te-segmented--two .te-segmented__thumb {
+  width: calc(50% - 3px);
+  transform: none !important;
+}
+
+.te-segmented--share .te-segmented__thumb {
+  transform: translateX(100%);
+}
+
+.te-segmented__option.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: not-allowed;
+  color: var(--ui-text-muted, #9CA3AF) !important;
+}
+
+/* WHAT: Empty state that mirrors the bar chart's empty state but uses the
+   globally available tokens so it renders on the Admin Dashboard too.
+   WHY: same rounded, soft empty state; no dashed or square borders. */
+.admin-prod-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  font-size: 13px;
+  color: var(--ui-text-2);
+  text-align: center;
+}
+
+.admin-prod-empty-chip {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-text-2);
+  background: var(--ui-active-bg, #EBF7EC);
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+}
+
+.admin-prod-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ui-text-2);
+}
+
+/* ============================================================
    Full-width map (wala nang side panels sa dashboard)
    ============================================================ */
 /* WHAT: Mas matangkad na mapa ngayong puno na ito sa lapad ng row.
@@ -267,14 +325,6 @@
 /* ============================================================
    Municipality Management (Add Municipality)
    ============================================================ */
-.admin-primary-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  font-weight: 600;
-}
-
 .muni-boundary-preview {
   max-width: 360px;
   margin: 0 auto 16px;

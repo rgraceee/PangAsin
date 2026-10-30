@@ -274,7 +274,7 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Supply and Demand</h5>
-                  <p className="fc-card-sub">Compare salt demand with production and imports (Metric Tons (MT))</p>
+                  <p className="fc-card-sub">Each bar compares national demand with domestic supply and imports in Metric Tons (MT).</p>
                 </div>
               </div>
               {/* WHAT: Segmented scope switcher (Philippines / Pangasinan).
@@ -380,7 +380,7 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Demand by Sector</h5>
-                  <p className="fc-card-sub">National breakdown by end use (Metric Tons (MT))</p>
+                  <p className="fc-card-sub">Each slice is an end-use sector’s share of national salt demand.</p>
                 </div>
               </div>
               <div className="fc-card-head-right">

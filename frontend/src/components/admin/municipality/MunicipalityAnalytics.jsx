@@ -12,9 +12,9 @@ import PageHeader from '../PageHeader';
 import { useDashboardFilters } from '../DashboardFilters';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../../Skeleton';
 import MuniRegisteredChart from './MuniRegisteredChart';
-import MuniMethodChart from './MuniMethodChart';
 import MuniProfileChart from './MuniProfileChart';
-import MuniProductionChart from './MuniProductionChart';
+import MuniProductionCard from './MuniProductionCard';
+import MuniShareDonutCard from './MuniShareDonutCard';
 import MuniMonthlyTrendChart from './MuniMonthlyTrendChart';
 
 import MuniDetailsTable from './MuniDetailsTable';
@@ -143,7 +143,6 @@ export default function MunicipalityAnalytics() {
           title="Gender Distribution"
           value={`${fmtInt(gender.male || 0)} / ${fmtInt(gender.female || 0)}`}
           unit="Male / Female"
-          supporting={gender.other > 0 ? `Other: ${fmtInt(gender.other)}` : undefined}
           info="Registered salt farmers by sex — male / female."
         />
       </KpiGrid>
@@ -154,12 +153,16 @@ export default function MunicipalityAnalytics() {
         </Col>
       </Row>
 
-      <Row className="g-3 mb-3">
+      <Row className="align-items-stretch g-3 mb-3">
         <Col lg={7} md={12}>
-          <MuniProductionChart rows={view.scope} />
+          <MuniProductionCard
+            rows={view.scope}
+            methodRows={view.method.rows}
+            methodTotal={view.method.total}
+          />
         </Col>
         <Col lg={5} md={12}>
-          <MuniMethodChart rows={view.method.rows} total={view.method.total} />
+          <MuniShareDonutCard rows={view.scope} selectedMuni={selectedMuni} />
         </Col>
       </Row>
 

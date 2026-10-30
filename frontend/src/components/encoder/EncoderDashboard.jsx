@@ -1,19 +1,25 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Row, Col, Alert, Card } from 'react-bootstrap';
+import { Row, Col, Alert } from 'react-bootstrap';
 import { useOutletContext } from 'react-router-dom';
 import {
-  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Boxes, LayoutGrid, Users } from 'lucide-react';
-import { getStats, getEncoderMonths, getEncoderBarangays } from '../../services/dataService';
+import { Activity, Boxes, LayoutGrid, PieChart as PieGlyph, Users } from 'lucide-react';
+import { getStats, getEncoderMonths, getEncoderBarangays, getProducers } from '../../services/dataService';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from '../admin/PageHeader';
 import MunicipalityMapArt from './MunicipalityMapArt';
+import EncoderProfileCharts from './EncoderProfileCharts';
 import { formatMT } from '../../utils/volumeFormat';
 import PeriodFilters, { usePeriodFilters } from './PeriodFilters';
+import MuniCard, { MuniChip } from '../admin/municipality/MuniCard';
+import MuniDonut from '../admin/municipality/MuniDonut';
+import { fmtMT, fmtPct } from '../admin/municipality/muniData';
+import {
+  AXIS_TICK_FONT, CHART_GRID, compactNumberFormatter, useChartMotion,
+} from '../ui/chartTheme';
 
 const BRAND_PALETTE = [
   '#0D2B4B',
@@ -34,34 +40,46 @@ function colorFor(name, names) {
   return BRAND_PALETTE[idx % BRAND_PALETTE.length];
 }
 
-function formatPct(value) {
-  if (!Number.isFinite(value)) return '';
-  return ` (${value.toFixed(1)}%)`;
-}
-
-function ChartTooltip({ active, payload, label }) {
-  if (!active || !payload || !payload.length) return null;
+/* WHAT: White hover card for the multi-line production trend.
+   WHY: Same label + value rows as the Admin municipality charts; every barangay
+        series in the month is listed with its own colour. */
+function TrendLineTooltip({ active, payload, label }) {
+  if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="admin-chart-tooltip">
-      {label != null && <div className="ct-label">{label}</div>}
-      {payload.map((entry, i) => (
-        <div key={entry.dataKey || i}>
-          <div className="ct-value">{Number(entry.value).toLocaleString()} Metric Tons (MT)</div>
-          <div className="ct-sub">{entry.name}</div>
+    <div className="muni-tooltip">
+      <div className="muni-tooltip-label">{label || '—'}</div>
+      {payload.map((entry) => (
+        <div key={entry.dataKey || entry.name} className="muni-tooltip-row">
+          <span>
+            <span
+              className="muni-legend-swatch"
+              style={{ display: 'inline-block', marginRight: 6, background: entry.stroke || entry.color }}
+              aria-hidden="true"
+            />
+            {entry.name}
+          </span>
+          <b>{fmtMT(entry.value, 1)} MT</b>
         </div>
       ))}
+      <div className="muni-tooltip-source">Approved production records in the selected period.</div>
     </div>
   );
 }
 
-function PieTooltip({ active, payload, total }) {
-  if (!active || !payload || !payload.length) return null;
-  const p = payload[0];
-  const share = total > 0 ? (p.value / total) * 100 : 0;
+/* WHAT: White hover card for the barangay share donut. */
+function ShareTooltip({ active, payload }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const row = payload[0].payload || {};
   return (
-    <div className="admin-chart-tooltip">
-      <div className="ct-label">{p.name}</div>
-      <div className="ct-value">{p.value.toLocaleString()} Metric Tons (MT){formatPct(share)}</div>
+    <div className="muni-tooltip">
+      <div className="muni-tooltip-label">{row.name || '—'}</div>
+      <div className="muni-tooltip-row">
+        <span>Production</span><b>{fmtMT(row.value, 1)} MT</b>
+      </div>
+      <div className="muni-tooltip-row">
+        <span>Share</span><b>{fmtPct(row.pct)}</b>
+      </div>
+      <div className="muni-tooltip-source">Approved production records in the selected period.</div>
     </div>
   );
 }
@@ -75,6 +93,9 @@ export default function EncoderDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [producerStats, setProducerStats] = useState(null);
+  const [producerLoading, setProducerLoading] = useState(true);
+  const [producerError, setProducerError] = useState(null);
 
   useEffect(() => {
     getEncoderMonths()
@@ -85,8 +106,33 @@ export default function EncoderDashboard() {
       .catch(() => {});
   }, []);
 
+  /* WHAT: Master list statistics for the Gender and Age cards.
+     WHY: The producer master list has no period dimension, so this request only
+          follows the Barangay filter. The cards state that in their caption. */
+  useEffect(() => {
+    let alive = true;
+    setProducerLoading(true);
+    const params = {};
+    if (barangayId) params.barangay_id = barangayId;
+    getProducers(params)
+      .then((res) => {
+        if (!alive) return;
+        setProducerStats(res.statistics || null);
+        setProducerError(null);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setProducerError(err.message || 'Failed to load the salt farmer profile.');
+      })
+      .finally(() => {
+        if (alive) setProducerLoading(false);
+      });
+    return () => { alive = false; };
+  }, [barangayId]);
+
   const period = usePeriodFilters(months);
   const { range, rangeError } = period;
+  const lineMotion = useChartMotion('encoder-production-trend');
 
   const loadStats = useCallback(() => {
     setLoading(true);
@@ -142,6 +188,19 @@ export default function EncoderDashboard() {
     [stats, pieData],
   );
 
+  /* WHAT: Donut rows carry the same shape the Admin MuniDonut expects.
+     WHY: name, value, colour and share in one place — no second calculation in
+          the chart or the legend. */
+  const pieRows = useMemo(
+    () => pieData.map((entry) => ({
+      ...entry,
+      key: entry.name,
+      color: entry.name === 'Other barangays' ? '#C3CEDD' : colorFor(entry.name, barangayOrder),
+      pct: pieTotal > 0 ? (entry.value / pieTotal) * 100 : 0,
+    })),
+    [pieData, pieTotal, barangayOrder],
+  );
+
   const lineData = useMemo(() => {
     if (!stats) return [];
     return (stats.by_month || []).map((row) => {
@@ -174,7 +233,7 @@ export default function EncoderDashboard() {
   const municipalityName = user?.municipality_name || stats?.municipality_name || 'your municipality';
 
   return (
-    <div>
+    <div className="encoder-dashboard">
       <PageHeader
         id="encoder-overview"
         variant="clean"
@@ -227,29 +286,47 @@ export default function EncoderDashboard() {
 
       <Row className="g-3 mb-4">
         <Col lg={7}>
-          <Card className="encoder-card h-100">
-            <Card.Header>
-              <div className="admin-card-head">
-                <h5 className="admin-card-head-title">
-                  {selectedName ? `Production Trend · ${selectedName}` : 'Production by Barangay'}
-                </h5>
+          <MuniCard
+            icon={Activity}
+            title={selectedName ? `Production Trend · ${selectedName}` : 'Production by Barangay'}
+            sub={selectedName
+              ? 'Each point is one month; the line shows how volume moves over time.'
+              : 'Each line is one barangay; higher points mean more volume that month.'}
+            chips={<MuniChip label="Metric Tons (MT)" meta />}
+            caption="Approved production records in the selected period and barangay."
+          >
+            {lineData.length === 0 ? (
+              <div className="muni-empty">
+                <span className="muni-empty-chip">No data</span>
+                No records in this period.
               </div>
-            </Card.Header>
-            <Card.Body>
-              {lineData.length === 0 ? (
-                <div className="chart-empty">
-                  <span className="chart-empty-chip">No data</span>
-                  No records in this period.
-                </div>
-              ) : (
-                <div style={{ height: 280 }}>
+            ) : (
+              <>
+                <div className="muni-chart muni-chart--trend">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={lineData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip content={<ChartTooltip />} />
-                      <Legend />
+                    <LineChart data={lineData} margin={{ top: 8, right: 18, bottom: 4, left: 0 }}>
+                      <CartesianGrid
+                        strokeDasharray={CHART_GRID.strokeDasharray}
+                        vertical={false}
+                        stroke="var(--muni-grid)"
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fontSize: AXIS_TICK_FONT, fill: 'var(--muni-axis)' }}
+                        tickLine={false}
+                        axisLine={{ stroke: 'var(--muni-border)' }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: AXIS_TICK_FONT, fill: 'var(--muni-axis)' }}
+                        tickFormatter={compactNumberFormatter}
+                        tickLine={false}
+                        axisLine={false}
+                        width={48}
+                      />
+                      <Tooltip
+                        content={<TrendLineTooltip />}
+                        cursor={{ stroke: 'var(--muni-border)' }}
+                      />
                       {barangayOrder.map((b) => (
                         <Line
                           key={b}
@@ -258,71 +335,72 @@ export default function EncoderDashboard() {
                           name={b}
                           stroke={colorFor(b, barangayOrder)}
                           strokeWidth={2}
-                          dot={{ r: 3 }}
+                          dot={{ r: 2.5, strokeWidth: 0 }}
                           activeDot={{ r: 5 }}
+                          {...lineMotion}
                         />
                       ))}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              )}
-            </Card.Body>
-          </Card>
+
+                <div className="muni-chips">
+                  {barangayOrder.map((b) => (
+                    <MuniChip key={b} label={b} color={colorFor(b, barangayOrder)} />
+                  ))}
+                </div>
+              </>
+            )}
+          </MuniCard>
         </Col>
         <Col lg={5}>
-          <Card className="encoder-card h-100">
-            <Card.Header>
-              <div className="admin-card-head">
-                <h5 className="admin-card-head-title">
-                  {selectedName ? `Share of Municipality · ${selectedName}` : 'Barangay Total Summary'}
-                </h5>
+          <MuniCard
+            icon={PieGlyph}
+            title={selectedName ? `Share of Municipality · ${selectedName}` : 'Barangay Total Summary'}
+            sub={selectedName
+              ? 'The selected barangay against the rest of the municipality.'
+              : 'Each slice is one barangay\u2019s share of total production.'}
+            chips={<MuniChip label={`${fmtMT(pieTotal, 1)} MT`} meta />}
+            caption="Approved production records in the selected period."
+          >
+            {pieRows.length === 0 ? (
+              <div className="muni-empty">
+                <span className="muni-empty-chip">No data</span>
+                No production in this period.
               </div>
-            </Card.Header>
-            <Card.Body>
-              {pieData.length === 0 ? (
-                <div className="chart-empty">
-                  <span className="chart-empty-chip">No data</span>
-                  No production in this period.
-                </div>
-              ) : (
-                <div style={{ height: 280 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                      >
-                        {pieData.map((entry) => (
-                          <Cell
-                            key={entry.name}
-                            fill={entry.name === 'Other barangays'
-                              ? '#C3CEDD'
-                              : colorFor(entry.name, barangayOrder)}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<PieTooltip total={pieTotal} />} />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={36}
-                        formatter={(value) => {
-                          const slice = pieData.find((d) => d.name === value);
-                          const share = pieTotal > 0 && slice ? (slice.value / pieTotal) * 100 : 0;
-                          return `${value} (${share.toFixed(1)}%)`;
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Card.Body>
-          </Card>
+            ) : (
+              <div className="muni-method">
+                <MuniDonut
+                  rows={pieRows}
+                  total={pieTotal}
+                  unit="MT"
+                  label="Total"
+                  tooltip={<ShareTooltip />}
+                  chartKey="encoder-barangay-share"
+                  ariaLabel={`Share of production by barangay for the selected period`}
+                />
+                <ul className="muni-legend" role="list">
+                  {pieRows.map((row) => (
+                    <li key={row.key} className="muni-legend-item">
+                      <span className="muni-legend-swatch" style={{ background: row.color }} />
+                      <span className="muni-legend-name">{row.name}</span>
+                      <span className="muni-legend-value">{fmtMT(row.value, 1)}</span>
+                      <span className="muni-legend-pct">{fmtPct(row.pct)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </MuniCard>
         </Col>
       </Row>
+
+      <EncoderProfileCharts
+        statistics={producerStats}
+        barangayName={selectedName}
+        loading={producerLoading}
+        error={producerError}
+      />
     </div>
   );
 }

@@ -1,10 +1,9 @@
 // WHAT: The /admin/forecast page - one clean, scrolling page.
-// WHY: no tabs. Header, filters, five KPIs, the production trajectory, the
-//      seasonal curve and the municipality outlook, in that order, reading
-//      the same numbers.
+// WHY: no tabs. Header, filters, the KPIs, the production trajectory and the
+//      municipality outlook, in that order, reading the same numbers.
 import { useMemo, useState } from 'react';
-import { Alert, Col, Row } from 'react-bootstrap';
-import { CalendarDays, TrendingUp, ChartLine, Building2, CalendarRange, Info } from 'lucide-react';
+import { Alert } from 'react-bootstrap';
+import { TrendingUp, CalendarRange, Info } from 'lucide-react';
 import ErrorBoundary from '../ErrorBoundary';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import PageHeader from './PageHeader';
@@ -56,10 +55,9 @@ function InnerForecastDashboard() {
     forecastPoints, forecastTotal, historyRows, timeline, recordedTotal,
     booting, error, reload,
   } = useForecastData(filters);
-
   /* Keeps the page current: refresh when the admin comes back to the tab and
      once a week as a safety net, plus the manual button in the filter bar. */
-  const { lastUpdated, refreshing, refresh } = useAutoRefresh(reload);
+  const { lastUpdated } = useAutoRefresh(reload);
 
   const scopeName = useMemo(() => {
     if (filters.selectedMuni === 'all') {
@@ -76,7 +74,6 @@ function InnerForecastDashboard() {
   }, [municipalities, activeNames]);
 
   const horizon = forecastPoints.length;
-  const hasForecast = horizon > 0;
 
   const muniRows = useMemo(() => buildMunicipalityRows(outlook, trends), [outlook, trends]);
   const attentionItems = useMemo(() => buildNeedsAttention(muniRows), [muniRows]);
@@ -116,14 +113,22 @@ function InnerForecastDashboard() {
       className="ui-pageheader--admin"
       title="Forecasting"
       subtitle="Future production estimates and decision support for the salt industry."
-      actions={(
-        <span className="ui-pageheader-chip">
-          <CalendarDays size={14} strokeWidth={1.5} aria-hidden="true" />
-          Data as of {latestRecordMonth ? monthLong(latestRecordMonth) : 'No data yet'}
-        </span>
-      )}
       art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
-    />
+    >
+      <ForecastFilters
+        recordedWindow={filters.recordedWindow}
+        onRecordedWindow={set('recordedWindow')}
+        forecastHorizon={filters.forecastHorizon}
+        onForecastHorizon={set('forecastHorizon')}
+        selectedMuni={filters.selectedMuni}
+        municipalities={municipalityOptions}
+        municipalityCount={activeNames.length || municipalityOptions.length}
+        onSelectedMuni={set('selectedMuni')}
+        onReset={() => setFilters(DEFAULT_FILTERS)}
+        lastUpdated={lastUpdated}
+        summary={filterSummary}
+      />
+    </PageHeader>
   );
 
   if (booting) {
@@ -154,30 +159,7 @@ function InnerForecastDashboard() {
     <div className="admin-single-page forecast-page">
       {header}
 
-      <ForecastFilters
-        recordedWindow={filters.recordedWindow}
-        onRecordedWindow={set('recordedWindow')}
-        forecastHorizon={filters.forecastHorizon}
-        onForecastHorizon={set('forecastHorizon')}
-        selectedMuni={filters.selectedMuni}
-        municipalities={municipalityOptions}
-        municipalityCount={activeNames.length || municipalityOptions.length}
-        onSelectedMuni={set('selectedMuni')}
-        province={filters.province}
-        onProvince={set('province')}
-        onReset={() => setFilters(DEFAULT_FILTERS)}
-        onRefresh={refresh}
-        refreshing={refreshing}
-        lastUpdated={lastUpdated}
-        summary={filterSummary}
-      />
-
       <ForecastDataNotice notice={notice} scopeKey={filters.selectedMuni} />
-
-      <Alert variant="info" className="mt-3">
-        Forecasts use municipality production estimates from Adjusted_Estimates.xlsx,
-        not approved barangay submissions. Model outputs are future projections.
-      </Alert>
 
       <section className="fc-section" id="fc-overview">
         <SectionHead
@@ -198,13 +180,6 @@ function InnerForecastDashboard() {
       </section>
 
       <section className="fc-section" id="fc-trajectory">
-        <SectionHead
-          icon={ChartLine}
-          title="Production Trajectory"
-          subtitle={hasForecast
-            ? `Municipality production data and the model projection for ${scopeName}.`
-            : `Municipality production data for ${scopeName}. No forecast run is available for this scope yet.`}
-        />
         <ForecastTrendChart
           data={timeline}
           forecastStartLabel={forecastPoints.length ? forecastPoints[0].period_label : null}
@@ -214,33 +189,17 @@ function InnerForecastDashboard() {
       </section>
 
       <section className="fc-section" id="fc-seasonality">
-        <SectionHead
-          icon={CalendarRange}
-          title="Seasonality"
-          subtitle={`When production peaks and troughs across the year for ${scopeName}.`}
-        />
         <ForecastSeasonalityChart
           series={seasonalSeries}
-          reportingMonth={monthNumber(latestRecordMonth)}
+          reportingMonth={latestRecordMonth ? monthNumber(latestRecordMonth) : null}
           scopeLabel={scopeName}
           height={320}
         />
       </section>
 
-      <section className="fc-section" id="fc-municipalities">
-        <SectionHead
-          icon={Building2}
-          title="Municipalities"
-          subtitle="Every active municipality, in one order, with the places that need a decision first."
-        />
-        <Row className="g-3">
-          <Col lg={12} className="d-flex">
-            <ForecastMuniPanels rows={muniRows} height={320} />
-          </Col>
-          <Col lg={12} className="d-flex">
-            <ForecastNeedsAttention items={attentionItems} total={muniRows.length} />
-          </Col>
-        </Row>
+      <section className="fc-section fc-outlook" id="fc-municipalities">
+        <ForecastMuniPanels rows={muniRows} height={320} />
+        <ForecastNeedsAttention items={attentionItems} total={muniRows.length} />
       </section>
 
       <footer className="fc-footer-note">

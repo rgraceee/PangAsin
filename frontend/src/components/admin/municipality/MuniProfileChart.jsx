@@ -38,7 +38,6 @@ export default function MuniProfileChart({ profile, registeredRows, registeredTo
       chips={(
         <>
           <MuniChip label={`${fmtInt(total)} salt farmers`} meta />
-          <MuniChip label="Master list" meta />
         </>
       )}
     >

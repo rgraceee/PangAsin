@@ -57,8 +57,8 @@ export default function ForecastSeasonalityChart({ series, reportingMonth, scope
   return (
     <ForecastChartCard
       icon={CalendarDays}
-      title="Seasonal Pattern"
-      subtitle={`${scopeLabel} \u00b7 dry and wet months across the year \u00b7 metric tons (MT) per month, averaged over complete years`}
+      title="Seasonal pattern"
+      subtitle="Each point is a month averaged over complete years; shaded areas are the dry and wet seasons."
       height={height}
       chips={(
         <>

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Modal, Row, Table } from 'react-bootstrap';
+import { Alert, Card, Col, Form, Modal, Row, Table } from 'react-bootstrap';
 import { useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, Building2, Copy, KeyRound, Loader2, MapPin, Pencil, Plus, Power,
-  RefreshCw, Sprout, Tag, Trash2, X,
+  Tag, Trash2, X,
 } from 'lucide-react';
 import {
   createAdminMunicipality,
@@ -12,7 +12,6 @@ import {
   deleteAdminMunicipalityGeojson,
   getAdminMunicipalities,
   renameAdminBarangay,
-  seedAdminMunicipalities,
   updateAdminMunicipality,
   uploadAdminMunicipalityGeojson,
 } from '../../services/dataService';
@@ -23,6 +22,8 @@ import PageHeader from './PageHeader';
 import LocationPicker from './LocationPicker';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
+import usePagination from '../../hooks/usePagination';
+import TablePagination from '../ui/TablePagination';
 import {
   hasBundledBoundary,
   isWithinPangasinan,
@@ -402,10 +403,6 @@ export default function Municipalities() {
   const [credentials, setCredentials] = useState(null);
   const [copied, setCopied] = useState(false);
 
-  const [seeding, setSeeding] = useState(false);
-  const [seedResult, setSeedResult] = useState(null);
-  const [showSeed, setShowSeed] = useState(false);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -423,6 +420,21 @@ export default function Municipalities() {
     load();
   }, [load]);
 
+  const visible = useMemo(
+    () => municipalities.filter((m) => !statusFilter || m.status === statusFilter),
+    [municipalities, statusFilter],
+  );
+
+  /* WHAT: The municipality list pages in the browser.
+     WHY: the page already loads every municipality for the map and the
+          summary; slicing only changes how many rows are drawn. */
+  const pager = usePagination({
+    total: visible.length,
+    resetKey: `${statusFilter}|${municipalities.length}`,
+  });
+  const pagedMunicipalities = visible.slice(pager.pageStart, pager.pageStart + pager.perPage);
+  const { goToPage, perPage } = pager;
+
   // WHAT: Sinusuportahan ang /admin/municipalities?highlight=<id> mula sa Audit Log.
   // WHY: Direktang mapupunta ang admin sa tamang row at map highlight; hindi
   //      nag-iiwan ng dead link kapag wala na ang municipality.
@@ -439,22 +451,21 @@ export default function Municipalities() {
     if (match) {
       setSelectedMapName(match.name);
       if (statusFilter && match.status !== statusFilter) setStatusFilter('');
+      /* WHAT: Jump to the page that holds the linked municipality.
+         WHY: the audit-log link must still land on the row after pagination. */
+      const index = visible.findIndex((municipality) => municipality.id === match.id);
+      if (index >= 0) goToPage(Math.floor(index / perPage) + 1);
       window.setTimeout(() => {
         document.getElementById(`muni-row-${match.id}`)?.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
         });
-      }, 0);
+      }, 120);
     }
     const next = new URLSearchParams(searchParams);
     next.delete('highlight');
     setSearchParams(next, { replace: true });
-  }, [loading, municipalities, searchParams, setSearchParams, statusFilter]);
-
-  const visible = useMemo(
-    () => municipalities.filter((m) => !statusFilter || m.status === statusFilter),
-    [municipalities, statusFilter],
-  );
+  }, [loading, municipalities, searchParams, setSearchParams, statusFilter, visible, goToPage, perPage]);
 
   const selectedMapMatch = useMemo(() => {
     const key = normalizeMunicipalityName(selectedMapName);
@@ -867,49 +878,6 @@ export default function Municipalities() {
     }
   };
 
-  const handleSeed = async () => {
-    const confirmed = await confirmAction({
-      title: 'Seed missing Pangasinan municipalities?',
-      text: 'Adds every Pangasinan municipality that is not in the database yet. Each new municipality starts with no barangays and no production records, but gets an encoder account with a one-time temporary password.',
-      confirmText: 'Seed municipalities',
-    });
-    if (!confirmed) return;
-
-    setSeeding(true);
-    try {
-      const result = await seedAdminMunicipalities({});
-      await load();
-      await refreshDirectory();
-      setSeedResult(result);
-      setShowSeed(true);
-      toastSuccess(
-        `${result.created_count || 0} ${result.created_count === 1 ? 'municipality' : 'municipalities'} added.`,
-        'Seeding complete',
-      );
-    } catch (err) {
-      toastError(err.message || 'Could not seed municipalities.');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  const copySeedCredentials = async () => {
-    const rows = (seedResult?.created || [])
-      .map((item) => {
-        const encoder = item.encoder?.encoder;
-        if (!encoder || !item.encoder?.temporary_password) return null;
-        return `${item.name}\t${encoder.email}\t${item.encoder.temporary_password}`;
-      })
-      .filter(Boolean);
-    if (!rows.length) return;
-    try {
-      await navigator.clipboard.writeText(rows.join('\n'));
-      toastSuccess('Created account credentials copied.', 'Copied');
-    } catch (err) {
-      toastError('Could not copy automatically. Select and copy the rows manually.');
-    }
-  };
-
   const credentialsEncoder = credentials?.encoder;
   const createdAccount = credentialsEncoder?.created
     ? credentialsEncoder.encoder
@@ -962,22 +930,10 @@ export default function Municipalities() {
               <option value="inactive">Inactive</option>
             </select>
           </div>
-          <Button className="admin-primary-btn" onClick={openCreate}>
+          <button type="button" className="ui-btn-primary" onClick={openCreate}>
             <Plus size={16} aria-hidden="true" />
             Add Municipality
-          </Button>
-          <Button
-            variant="outline-secondary"
-            onClick={handleSeed}
-            disabled={seeding || saving}
-          >
-            <Sprout size={16} aria-hidden="true" />
-            {seeding ? 'Seeding…' : 'Seed Pangasinan'}
-          </Button>
-          <Button variant="outline-secondary" onClick={load} disabled={loading}>
-            <RefreshCw size={15} aria-hidden="true" />
-            Refresh
-          </Button>
+          </button>
         </div>
       </PageHeader>
 
@@ -1006,14 +962,14 @@ export default function Municipalities() {
                 Selected on map: <strong>{selectedMapName}</strong>
               </span>
               {selectedMapMatch ? (
-                <Button
-                  size="sm"
-                  variant="outline-primary"
+                <button
+                  type="button"
+                  className="ui-btn-outline ui-btn--sm"
                   onClick={() => openEdit(selectedMapMatch)}
                 >
                   <Pencil size={13} aria-hidden="true" />
                   Edit
-                </Button>
+                </button>
               ) : (
                 <span className="text-muted small">
                   Not in the database yet. Use Add Municipality to create it.
@@ -1043,14 +999,14 @@ export default function Municipalities() {
               </p>
               <div className="d-flex gap-2 justify-content-center">
                 {statusFilter && (
-                  <Button size="sm" variant="outline-secondary" onClick={() => setStatusFilter('')}>
+                  <button type="button" className="ui-btn-outline ui-btn--sm" onClick={() => setStatusFilter('')}>
                     Clear filter
-                  </Button>
+                  </button>
                 )}
-                <Button size="sm" className="admin-primary-btn" onClick={openCreate}>
+                <button type="button" className="ui-btn-primary ui-btn--sm" onClick={openCreate}>
                   <Plus size={14} aria-hidden="true" />
                   Add Municipality
-                </Button>
+                </button>
               </div>
             </div>
           )}
@@ -1068,7 +1024,7 @@ export default function Municipalities() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((municipality) => {
+                {pagedMunicipalities.map((municipality) => {
                   const activeEncoders = (municipality.encoders || []).filter((user) => user.status === 'active');
                   const pendingPassword = (municipality.encoders || []).some((user) => user.must_change_password);
                   const isMapSelected = Boolean(selectedMapName)
@@ -1158,6 +1114,19 @@ export default function Municipalities() {
                 })}
               </tbody>
             </Table>
+          )}
+          {!loading && visible.length > 0 && (
+            <div className="px-3 pb-3">
+              <TablePagination
+                page={pager.page}
+                pages={pager.pages}
+                total={visible.length}
+                perPage={pager.perPage}
+                onPageChange={pager.goToPage}
+                onPerPageChange={pager.changePerPage}
+                itemLabel="municipalities"
+              />
+            </div>
           )}
         </Card.Body>
       </Card>
@@ -1353,10 +1322,10 @@ export default function Municipalities() {
                 : 'Complete the required fields to enable saving.'}
             </span>
             <div className="muni-modal__footer-actions">
-              <Button variant="secondary" onClick={closeCreate} disabled={saving}>Cancel</Button>
-              <Button
+              <button type="button" className="ui-btn-outline" onClick={closeCreate} disabled={saving}>Cancel</button>
+              <button
                 type="submit"
-                className="admin-primary-btn"
+                className="ui-btn-primary"
                 disabled={saving || !createValid}
               >
                 {saving ? (
@@ -1370,7 +1339,7 @@ export default function Municipalities() {
                     Add Municipality
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </Modal.Footer>
         </Form>
@@ -1601,10 +1570,10 @@ export default function Municipalities() {
                   </code>
                 </div>
                 {editing?.has_boundary && (
-                  <Button type="button" size="sm" variant="outline-danger" onClick={removeBoundary}>
+                  <button type="button" className="ui-btn-outline ui-btn--sm" onClick={removeBoundary}>
                     <Trash2 size={13} aria-hidden="true" />
                     Remove
-                  </Button>
+                  </button>
                 )}
               </div>
 
@@ -1648,10 +1617,10 @@ export default function Municipalities() {
                 : 'Fix the highlighted fields to enable saving.'}
             </span>
             <div className="muni-modal__footer-actions">
-              <Button variant="secondary" onClick={closeEdit} disabled={saving}>Cancel</Button>
-              <Button
+              <button type="button" className="ui-btn-outline" onClick={closeEdit} disabled={saving}>Cancel</button>
+              <button
                 type="submit"
-                className="admin-primary-btn"
+                className="ui-btn-primary"
                 disabled={saving || !editValid}
               >
                 {saving ? (
@@ -1662,7 +1631,7 @@ export default function Municipalities() {
                 ) : (
                   'Save Changes'
                 )}
-              </Button>
+              </button>
             </div>
           </Modal.Footer>
         </Form>
@@ -1696,10 +1665,10 @@ export default function Municipalities() {
                 <div className="muni-credentials-value muni-credentials-code">
                   {credentialsEncoder.temporary_password}
                 </div>
-                <Button variant="outline-primary" size="sm" className="mt-2" onClick={copyCredentials}>
+                <button type="button" className="ui-btn-outline ui-btn--sm mt-2" onClick={copyCredentials}>
                   <Copy size={14} aria-hidden="true" />
                   {copied ? 'Copied' : 'Copy credentials'}
-                </Button>
+                </button>
               </div>
             </>
           ) : (
@@ -1720,75 +1689,8 @@ export default function Municipalities() {
             Store the password in a secure place before closing.
           </span>
           <div className="muni-modal__footer-actions">
-            <Button variant="primary" onClick={() => setShowCredentials(false)}>Done</Button>
+            <button type="button" className="ui-btn-primary" onClick={() => setShowCredentials(false)}>Done</button>
           </div>
-        </Modal.Footer>
-      </Modal>
-
-      <Modal show={showSeed} onHide={() => setShowSeed(false)} centered size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Seeding results</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="mb-2">
-            <strong>{seedResult?.created_count || 0}</strong>{' '}
-            {seedResult?.created_count === 1 ? 'municipality' : 'municipalities'} created with no
-            production data.
-            {seedResult?.skipped_count ? ` ${seedResult.skipped_count} skipped.` : ''}
-          </p>
-
-          {seedResult?.created?.length > 0 && (
-            <>
-              <Alert variant="warning">
-                Temporary passwords are shown <strong>once</strong>. Copy the list now; encoders must
-                replace their password on first sign-in.
-              </Alert>
-              <div className="muni-seed-list">
-                <Table responsive striped size="sm" className="mb-0">
-                  <thead>
-                    <tr>
-                      <th>Municipality</th>
-                      <th>Encoder email</th>
-                      <th>Temporary password</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {seedResult.created.map((item) => {
-                      const encoder = item.encoder?.encoder;
-                      return (
-                        <tr key={item.id}>
-                          <td>{item.name}</td>
-                          <td>{encoder?.email || '—'}</td>
-                          <td className="muni-credentials-code">{item.encoder?.temporary_password || '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
-              </div>
-              <Button variant="outline-primary" size="sm" className="mt-2" onClick={copySeedCredentials}>
-                <Copy size={14} aria-hidden="true" />
-                Copy all credentials
-              </Button>
-            </>
-          )}
-
-          {seedResult?.skipped?.length > 0 && (
-            <div className="mt-3">
-              <Form.Label className="mb-1">Skipped</Form.Label>
-              <ul className="muni-encoder-list">
-                {seedResult.skipped.map((item) => (
-                  <li key={item.name}>
-                    <span>{item.name}</span>
-                    <span className="text-muted small">{item.reason}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowSeed(false)}>Done</Button>
         </Modal.Footer>
       </Modal>
     </>

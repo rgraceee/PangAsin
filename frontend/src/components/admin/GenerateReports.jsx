@@ -9,23 +9,19 @@ import {
   ArrowUp,
   ArrowUpDown,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   Download,
   Eye,
   EyeOff,
-  FilePlus2,
+  FileDown,
   FileText,
   Info,
   Search,
   SearchX,
-  Sparkles,
   Trash2,
 } from 'lucide-react';
 import PageHeader from './PageHeader';
-import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
-import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
+import TablePagination from '../ui/TablePagination';
 import { displayHeader } from '../../constants/labels';
 
 const CONTENT_TYPES = [
@@ -47,9 +43,9 @@ const REPORT_TYPES = [
 const TYPE_LABEL = Object.fromEntries(REPORT_TYPES.map((t) => [t.id, t.label]));
 
 const SCOPE_LEVELS = [
-  { id: 'province', label: 'Province-wide / All barangays' },
-  { id: 'municipality', label: 'Municipality / its barangays' },
-  { id: 'barangay', label: 'Single barangay' },
+  { id: 'province', label: 'Province-wide' },
+  { id: 'municipality', label: 'Municipality' },
+  { id: 'barangay', label: 'Barangay' },
 ];
 
 const TIME_MODES = [
@@ -263,7 +259,6 @@ export default function GenerateReports() {
   const [sortKey, setSortKey] = useState('created_at');
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage] = useState(1);
-  const { activeNames } = useMunicipalityDirectory();
   const previewRef = React.useRef(null);
 
   const invalidRange = Boolean(startDate && endDate && startDate > endDate);
@@ -503,14 +498,6 @@ export default function GenerateReports() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const pageNumbers = useMemo(() => {
-    const first = Math.max(1, Math.min(safePage - 2, totalPages - 4));
-    const last = Math.min(totalPages, first + 4);
-    const numbers = [];
-    for (let i = first; i <= last; i += 1) numbers.push(i);
-    return numbers;
-  }, [safePage, totalPages]);
-
   const toggleSort = (key) => {
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -525,58 +512,49 @@ export default function GenerateReports() {
     setReportFormatFilter('');
   };
 
-  const filterRowClass = timeMode === 'range'
-    ? 'report-filter-row report-filter-row--range'
-    : timeMode === 'year'
-      ? 'report-filter-row report-filter-row--year'
-      : 'report-filter-row report-filter-row--preset';
-
   return (
-    <div>
+    <div className="rg-page">
       <PageHeader
         id="admin-reports"
         variant="clean"
-        className="ui-pageheader--admin report-hero"
+        className="ui-pageheader--admin ui-pageheader--no-map"
         title="Generate Reports"
         subtitle="Create summary reports for export based on the production records."
-        art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
-      />
-
-      <Card className="encoder-card report-card">
-        <Card.Header>
-          <div className="admin-card-head">
-            <span className="report-card-icon report-card-icon--create" aria-hidden="true">
-              <FilePlus2 size={19} strokeWidth={2} />
-            </span>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h5 className="admin-card-head-title">Create a New Report</h5>
-            </div>
-          </div>
-        </Card.Header>
-        <Card.Body>
-          <div className={`report-form ${filterRowClass}`}>
-            <div className="report-filter-field">
-              <label className="report-form-label" htmlFor="report-content">Content</label>
-              <Form.Select id="report-content" value={content} onChange={(e) => setContent(e.target.value)}>
+      >
+        <div className="rg-hero-row">
+            <div className="report-filter-field admin-page-hero-control">
+              <label className="admin-page-hero-field" htmlFor="report-content">Content</label>
+              <Form.Select
+                id="report-content"
+                className="admin-page-hero-select"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              >
                 {CONTENT_TYPES.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </Form.Select>
             </div>
 
-            <div className="report-filter-field report-filter-field--scope">
-              <label className="report-form-label" htmlFor="report-scope">Scope</label>
-              <Form.Select id="report-scope" value={scope} onChange={(e) => setScope(e.target.value)}>
+            <div className="report-filter-field report-filter-field--scope admin-page-hero-control">
+              <label className="admin-page-hero-field" htmlFor="report-scope">Scope</label>
+              <Form.Select
+                id="report-scope"
+                className="admin-page-hero-select"
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+              >
                 {SCOPE_LEVELS.map((s) => (
                   <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </Form.Select>
             </div>
 
-            <div className="report-filter-field report-filter-field--time">
-              <label className="report-form-label" htmlFor="report-time-mode">Time</label>
+            <div className="report-filter-field report-filter-field--time admin-page-hero-control">
+              <label className="admin-page-hero-field" htmlFor="report-time-mode">Time</label>
               <Form.Select
                 id="report-time-mode"
+                className="admin-page-hero-select"
                 value={timeMode}
                 onChange={(e) => setTimeMode(e.target.value)}
               >
@@ -588,10 +566,11 @@ export default function GenerateReports() {
 
             {timeMode === 'range' && (
               <>
-                <div className="report-filter-field report-filter-field--date">
-                  <label className="report-form-label" htmlFor="report-start-date">From date</label>
+                <div className="report-filter-field report-filter-field--date admin-page-hero-control">
+                  <label className="admin-page-hero-field" htmlFor="report-start-date">From date</label>
                   <Form.Control
                     id="report-start-date"
+                    className="admin-page-hero-input"
                     type="date"
                     value={startDate}
                     max={endDate || undefined}
@@ -600,10 +579,11 @@ export default function GenerateReports() {
                     aria-describedby={invalidRange ? 'report-date-error' : undefined}
                   />
                 </div>
-                <div className="report-filter-field report-filter-field--date">
-                  <label className="report-form-label" htmlFor="report-end-date">To date</label>
+                <div className="report-filter-field report-filter-field--date admin-page-hero-control">
+                  <label className="admin-page-hero-field" htmlFor="report-end-date">To date</label>
                   <Form.Control
                     id="report-end-date"
+                    className="admin-page-hero-input"
                     type="date"
                     value={endDate}
                     min={startDate || undefined}
@@ -616,10 +596,11 @@ export default function GenerateReports() {
             )}
 
             {timeMode === 'year' && (
-              <div className="report-filter-field report-filter-field--year">
-                <label className="report-form-label" htmlFor="report-year">Year</label>
+              <div className="report-filter-field report-filter-field--year admin-page-hero-control">
+                <label className="admin-page-hero-field" htmlFor="report-year">Year</label>
                 <Form.Select
                   id="report-year"
+                  className="admin-page-hero-select"
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
                 >
@@ -632,21 +613,22 @@ export default function GenerateReports() {
             )}
 
             <div className="report-generate-group">
-              <div className="report-format-seg" role="group" aria-label="Export format">
+              <div
+                className={`te-segmented te-segmented--${format === 'pdf' ? 'pdf' : 'word'}`}
+                role="group"
+                aria-label="Export format"
+              >
+                <span className="te-segmented__thumb" aria-hidden="true" />
                 {FORMAT_OPTIONS.map((option) => (
-                  <label
+                  <button
                     key={option.id}
-                    className={`report-format-option${format === option.id ? ' is-active' : ''}`}
+                    type="button"
+                    className={`te-segmented__option${format === option.id ? ' is-active' : ''}`}
+                    aria-pressed={format === option.id}
+                    onClick={() => setFormat(option.id)}
                   >
-                    <input
-                      type="radio"
-                      name="report-format"
-                      value={option.id}
-                      checked={format === option.id}
-                      onChange={() => setFormat(option.id)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
+                    {option.label}
+                  </button>
                 ))}
               </div>
               <button
@@ -656,11 +638,11 @@ export default function GenerateReports() {
                 disabled={creating}
                 aria-busy={creating}
               >
-                {creating ? (
-                  <><Spinner as="span" animation="border" size="sm" aria-hidden="true" />Generating&hellip;</>
-                ) : (
-                  <><Sparkles size={16} strokeWidth={2.2} aria-hidden="true" />Generate report</>
-                )}
+                  {creating ? (
+                    <><Spinner as="span" animation="border" size="sm" aria-hidden="true" />Generating&hellip;</>
+                  ) : (
+                    <><FileDown size={16} strokeWidth={2} aria-hidden="true" />Generate report</>
+                  )}
               </button>
             </div>
           </div>
@@ -673,9 +655,14 @@ export default function GenerateReports() {
 
           {scope !== 'province' && (
             <div className="report-form report-scope-fields">
-              <div className="report-filter-field">
-                <label className="report-form-label" htmlFor="report-municipality">Municipality</label>
-                <Form.Select id="report-municipality" value={municipalityId} onChange={(e) => setMunicipalityId(e.target.value)}>
+              <div className="report-filter-field admin-page-hero-control">
+                <label className="admin-page-hero-field" htmlFor="report-municipality">Municipality</label>
+                <Form.Select
+                  id="report-municipality"
+                  className="admin-page-hero-select"
+                  value={municipalityId}
+                  onChange={(e) => setMunicipalityId(e.target.value)}
+                >
                   <option value="">Select municipality&hellip;</option>
                   {municipalities.map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
@@ -683,9 +670,15 @@ export default function GenerateReports() {
                 </Form.Select>
               </div>
               {scope === 'barangay' && (
-                <div className="report-filter-field">
-                  <label className="report-form-label" htmlFor="report-barangay">Barangay</label>
-                  <Form.Select id="report-barangay" value={barangayId} onChange={(e) => setBarangayId(e.target.value)} disabled={!municipalityId}>
+                <div className="report-filter-field admin-page-hero-control">
+                  <label className="admin-page-hero-field" htmlFor="report-barangay">Barangay</label>
+                  <Form.Select
+                    id="report-barangay"
+                    className="admin-page-hero-select"
+                    value={barangayId}
+                    onChange={(e) => setBarangayId(e.target.value)}
+                    disabled={!municipalityId}
+                  >
                     <option value="">{municipalityId ? 'Select barangay\u2026' : 'Select a municipality first'}</option>
                     {visibleBarangays.map((b) => (
                       <option key={b.barangay_id} value={b.barangay_id}>{b.barangay}</option>
@@ -706,8 +699,7 @@ export default function GenerateReports() {
           <p className="visually-hidden" role="status" aria-live="polite">
             {creating ? 'Generating report\u2026' : generateStatus}
           </p>
-        </Card.Body>
-      </Card>
+      </PageHeader>
 
       {previewError && (
         <Alert variant="danger" className="report-card">
@@ -720,7 +712,7 @@ export default function GenerateReports() {
           <Card.Header>
             <div className="admin-card-head">
               <span className="report-card-icon report-card-icon--preview" aria-hidden="true">
-                <Eye size={19} strokeWidth={2} />
+                <Eye size={16} strokeWidth={2} />
               </span>
               <div className="d-flex align-items-center gap-2 flex-wrap">
                 <h5 className="admin-card-head-title">Report Preview</h5>
@@ -793,13 +785,16 @@ export default function GenerateReports() {
         <Card.Header className="report-list-head">
           <div className="admin-card-head">
             <span className="report-card-icon report-card-icon--list" aria-hidden="true">
-              <ClipboardList size={19} strokeWidth={2} />
+              <ClipboardList size={16} strokeWidth={2} />
             </span>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h5 className="admin-card-head-title">Generated Reports</h5>
-              {!loading && reports.length > 0 && (
-                <span className="badge text-bg-light">{reports.length}</span>
-              )}
+            <div className="report-card-head-text">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <h5 className="admin-card-head-title">Generated Reports</h5>
+                {!loading && reports.length > 0 && (
+                  <span className="badge text-bg-light rounded-pill">{reports.length}</span>
+                )}
+              </div>
+              <p className="admin-card-head-sub">Browse, download, or delete previously generated reports.</p>
             </div>
           </div>
           <button
@@ -810,7 +805,7 @@ export default function GenerateReports() {
             aria-controls="generated-reports-body"
           >
             {showReports ? 'Hide Reports' : 'View Reports'}
-            <ChevronDown size={16} strokeWidth={2.2} className="report-view-chev" aria-hidden="true" />
+            <ChevronDown size={16} strokeWidth={2} className="report-view-chev" aria-hidden="true" />
           </button>
         </Card.Header>
         <Card.Body id="generated-reports-body">
@@ -871,128 +866,101 @@ export default function GenerateReports() {
                 </div>
               ) : (
                 <>
-                  <Table responsive hover className="mb-0 report-list-table admin-table">
-                    <thead>
-                      <tr>
-                        <SortableTh label="Report" column="report" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                        <SortableTh label="Scope" column="scope" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                        <SortableTh label="Period" column="period" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                        <SortableTh label="Format" column="format" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                        <SortableTh label="Generated by" column="requester" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                        <SortableTh label="Date" column="created_at" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
-                        <th className="report-actions-head">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pagedReports.map((r) => {
-                        const generated = r.status === 'generated';
-                        return (
-                          <tr key={r.id}>
-                            <td>
-                              <div className="report-cell-name">
-                                <button
-                                  type="button"
-                                  className="report-name-btn"
-                                  onClick={() => openPreview(r)}
-                                  disabled={!generated}
-                                  title={generated ? 'Preview report' : 'Preview unavailable'}
-                                >
-                                  {reportTypeLabel(r)}
-                                </button>
-                                <span className={`report-status-badge report-status-badge--${r.status}`}>
-                                  {r.status}
+                  <div className="report-table-wrap">
+                    <Table responsive hover className="mb-0 report-list-table encoder-table admin-table">
+                      <thead>
+                        <tr>
+                          <SortableTh label="Report" column="report" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                          <SortableTh label="Scope" column="scope" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                          <SortableTh label="Period" column="period" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                          <SortableTh label="Format" column="format" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                          <SortableTh label="Generated by" column="requester" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                          <SortableTh label="Date" column="created_at" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                          <th className="report-actions-head">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagedReports.map((r) => {
+                          const generated = r.status === 'generated';
+                          return (
+                            <tr key={r.id}>
+                              <td>
+                                <div className="report-cell-name">
+                                  <button
+                                    type="button"
+                                    className="report-name-btn"
+                                    onClick={() => openPreview(r)}
+                                    disabled={!generated}
+                                    title={generated ? 'Preview report' : 'Preview unavailable'}
+                                  >
+                                    {reportTypeLabel(r)}
+                                  </button>
+                                  <span className={`report-status-badge report-status-badge--${r.status}`}>
+                                    {r.status}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>{reportScopeLabel(r)}</td>
+                              <td className="report-period-cell">{formatDateRange(r.date_range_start, r.date_range_end)}</td>
+                              <td>
+                                <span className={`report-format-badge ${formatBadgeClass(r.format)}`}>
+                                  {formatLabel(r.format)}
                                 </span>
-                              </div>
-                            </td>
-                            <td>{reportScopeLabel(r)}</td>
-                            <td className="report-period-cell">{formatDateRange(r.date_range_start, r.date_range_end)}</td>
-                            <td>
-                              <span className={`report-format-badge ${formatBadgeClass(r.format)}`}>
-                                {formatLabel(r.format)}
-                              </span>
-                            </td>
-                            <td>{r.requester_name || '\u2014'}</td>
-                            <td className="report-date-cell">{formatDateTime(r.created_at)}</td>
-                            <td className="report-actions-cell">
-                              <div className="report-row-actions">
-                                <a
-                                  className={`report-row-action report-row-action--pdf${generated ? '' : ' is-disabled'}`}
-                                  href={generated ? getReportDownloadUrl(r.id, 'pdf') : undefined}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  aria-label={`Download PDF for ${reportTypeLabel(r)} report`}
-                                  aria-disabled={!generated}
-                                  tabIndex={generated ? undefined : -1}
-                                  onClick={(e) => { if (!generated) e.preventDefault(); }}
-                                >
-                                  <Download size={14} strokeWidth={2.2} aria-hidden="true" />PDF
-                                </a>
-                                <a
-                                  className={`report-row-action report-row-action--docx${generated ? '' : ' is-disabled'}`}
-                                  href={generated ? getReportDownloadUrl(r.id, 'docx') : undefined}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  aria-label={`Download Word for ${reportTypeLabel(r)} report`}
-                                  aria-disabled={!generated}
-                                  tabIndex={generated ? undefined : -1}
-                                  onClick={(e) => { if (!generated) e.preventDefault(); }}
-                                >
-                                  <Download size={14} strokeWidth={2.2} aria-hidden="true" />Word
-                                </a>
-                                <button
-                                  type="button"
-                                  className="report-row-action report-row-action--delete"
-                                  onClick={() => handleDelete(r)}
-                                  aria-label={`Delete ${reportTypeLabel(r)} report`}
-                                  title="Delete report"
-                                >
-                                  <Trash2 size={14} strokeWidth={2.2} aria-hidden="true" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </Table>
-
-                  <div className="report-pagination">
-                    <span className="report-pagination-info">
-                      Showing {pageStart + 1}&ndash;{Math.min(pageStart + PAGE_SIZE, sortedReports.length)} of {sortedReports.length}
-                    </span>
-                    <div className="report-pagination-btns">
-                      <button
-                        type="button"
-                        className="report-page-btn"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={safePage === 1}
-                        aria-label="Previous page"
-                      >
-                        <ChevronLeft size={15} aria-hidden="true" />
-                      </button>
-                      {pageNumbers.map((n) => (
-                        <button
-                          key={n}
-                          type="button"
-                          className={`report-page-btn${n === safePage ? ' is-active' : ''}`}
-                          onClick={() => setPage(n)}
-                          aria-label={`Page ${n}`}
-                          aria-current={n === safePage ? 'page' : undefined}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="report-page-btn"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={safePage === totalPages}
-                        aria-label="Next page"
-                      >
-                        <ChevronRight size={15} aria-hidden="true" />
-                      </button>
-                    </div>
+                              </td>
+                              <td>{r.requester_name || '\u2014'}</td>
+                              <td className="report-date-cell">{formatDateTime(r.created_at)}</td>
+                              <td className="report-actions-cell">
+                                <div className="report-row-actions">
+                                  <a
+                                    className={`ui-btn-outline ui-btn--sm report-row-btn${generated ? '' : ' is-disabled'}`}
+                                    href={generated ? getReportDownloadUrl(r.id, 'pdf') : undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={`Download PDF for ${reportTypeLabel(r)} report`}
+                                    aria-disabled={!generated}
+                                    tabIndex={generated ? undefined : -1}
+                                    onClick={(e) => { if (!generated) e.preventDefault(); }}
+                                  >
+                                    <Download size={14} strokeWidth={2.2} aria-hidden="true" />PDF
+                                  </a>
+                                  <a
+                                    className={`ui-btn-outline ui-btn--sm report-row-btn${generated ? '' : ' is-disabled'}`}
+                                    href={generated ? getReportDownloadUrl(r.id, 'docx') : undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={`Download Word for ${reportTypeLabel(r)} report`}
+                                    aria-disabled={!generated}
+                                    tabIndex={generated ? undefined : -1}
+                                    onClick={(e) => { if (!generated) e.preventDefault(); }}
+                                  >
+                                    <Download size={14} strokeWidth={2.2} aria-hidden="true" />Word
+                                  </a>
+                                  <button
+                                    type="button"
+                                    className="ui-btn-danger ui-btn--sm report-row-btn"
+                                    onClick={() => handleDelete(r)}
+                                    aria-label={`Delete ${reportTypeLabel(r)} report`}
+                                    title="Delete report"
+                                  >
+                                    <Trash2 size={14} strokeWidth={2.2} aria-hidden="true" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
                   </div>
+
+                  <TablePagination
+                    page={safePage}
+                    pages={totalPages}
+                    total={sortedReports.length}
+                    perPage={PAGE_SIZE}
+                    onPageChange={setPage}
+                    itemLabel="reports"
+                  />
                 </>
               )}
             </>

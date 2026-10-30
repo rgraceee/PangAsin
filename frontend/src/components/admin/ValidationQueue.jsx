@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Table, Alert, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import {
   getAdminRecords, getAdminRecord, getAdminMunicipalities, getAdminBarangays, reviewAdminRecord,
   getAdminEnvironmentReports, reviewAdminEnvironmentReport,
@@ -14,7 +14,10 @@ import { formatMT } from '../../utils/volumeFormat';
 import PageHeader from './PageHeader';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
+import TablePagination from '../ui/TablePagination';
 import { STATUS_OPTIONS } from '../../constants/labels';
+
+const DEFAULT_PER_PAGE = 10;
 
 const REPORT_TYPE_LABELS = {
   production: 'Production',
@@ -59,25 +62,43 @@ export default function ValidationQueue() {
   const [bulkSkipped, setBulkSkipped] = useState(0);
   const [bulkRemaining, setBulkRemaining] = useState(0);
   const [bulkStopping, setBulkStopping] = useState(false);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(0);
+  const [selectableIds, setSelectableIds] = useState([]);
   const headerCheckRef = useRef(null);
   const bulkCancelRef = useRef(false);
 
   const load = useCallback((f, type) => {
     setLoading(true);
     setError(null);
-    const params = {};
+    const params = { page, per_page: perPage, ids: 1 };
     if (f.status) params.status = f.status;
     if (f.municipality_id) params.municipality_id = f.municipality_id;
     if (f.barangay_id) params.barangay_id = f.barangay_id;
     const request = type === 'environment'
-      ? getAdminEnvironmentReports(params).then((r) => r.reports || [])
+      ? getAdminEnvironmentReports(params).then((r) => ({ rows: r.reports || [], meta: r }))
       : type === 'producer'
-        ? getAdminProducerReports(params).then((r) => r.reports || [])
-        : getAdminRecords(params).then((r) => r.records || []);
+        ? getAdminProducerReports(params).then((r) => ({ rows: r.reports || [], meta: r }))
+        : getAdminRecords(params).then((r) => ({ rows: r.records || [], meta: r }));
     request
-      .then((rows) => { setRecords(rows); setLoading(false); })
+      .then(({ rows, meta }) => {
+        const nextPages = meta.pages || 0;
+        if (nextPages > 0 && page > nextPages) {
+          /* WHAT: Bumalik sa huling valid page kapag naubos ang page sa review.
+             WHY: bawal magpakita ng bakanteng page pagkatapos ng bulk action. */
+          setPage(nextPages);
+          return;
+        }
+        setRecords(rows);
+        setTotal(meta.total || 0);
+        setPages(nextPages);
+        setSelectableIds(meta.selectable_ids || []);
+        setLoading(false);
+      })
       .catch((err) => { setError(err.message); setLoading(false); });
-  }, []);
+  }, [page, perPage]);
 
   useEffect(() => {
     getAdminMunicipalities().then((res) => setMunis(res.municipalities || [])).catch(() => {});
@@ -90,8 +111,10 @@ export default function ValidationQueue() {
      status with a 409, so the checkboxes must match that rule. */
   const pendingRows = records.filter((r) => r.status === 'pending');
   const selectedSet = new Set(selectedIds);
-  const allSelected = pendingRows.length > 0 && pendingRows.every((r) => selectedSet.has(r.id));
-  const someSelected = pendingRows.some((r) => selectedSet.has(r.id));
+  /* WHAT: The header checkbox reflects every selectable row in the filter.
+     WHY: "Select all" must mean the whole filtered queue, not this page. */
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
+  const someSelected = selectableIds.some((id) => selectedSet.has(id));
 
   /* WHAT: A tab or filter change clears the selection.
      WHY: a hidden row must never be approved by a bulk action. */
@@ -102,13 +125,11 @@ export default function ValidationQueue() {
     setBulkRemaining(0);
   }, [reportType, filters]);
 
-  /* WHAT: Drop ids that are no longer in the queue or no longer pending.
+  /* WHAT: Drop ids that are no longer selectable in this filter.
      WHY: keeps the count and the bulk action in sync after a reload. */
   useEffect(() => {
-    setSelectedIds((prev) => prev.filter(
-      (id) => records.some((r) => r.id === id && r.status === 'pending'),
-    ));
-  }, [records]);
+    setSelectedIds((prev) => prev.filter((id) => selectableIds.includes(id)));
+  }, [selectableIds]);
 
   useEffect(() => {
     if (headerCheckRef.current) {
@@ -127,6 +148,9 @@ export default function ValidationQueue() {
 
   const handleFilter = (e) => {
     const { name, value } = e.target;
+    /* WHAT: Bagong filter = balik sa unang page.
+       WHY: page 5 ng lumang filter ay wala nang katumbas sa bago. */
+    setPage(1);
     setFilters((prev) => ({
       ...prev,
       [name]: value,
@@ -140,6 +164,7 @@ export default function ValidationQueue() {
   const handleTabChange = (type) => {
     if (type === reportType) return;
     setReportType(type);
+    setPage(1);
     setFilters((prev) => {
       const next = { ...prev };
       if (next.municipality_id && !munis.some((m) => String(m.id) === String(next.municipality_id))) {
@@ -158,16 +183,17 @@ export default function ValidationQueue() {
     });
   };
 
-  const handleClear = () => setFilters({
-    municipality_id: '', barangay_id: '', status: 'pending',
-  });
+  const handleClear = () => {
+    setPage(1);
+    setFilters({ municipality_id: '', barangay_id: '', status: 'pending' });
+  };
 
   const toggleRow = (id) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const toggleAll = () => {
-    setSelectedIds(allSelected ? [] : pendingRows.map((r) => r.id));
+    setSelectedIds(allSelected ? [] : [...selectableIds]);
   };
 
   const clearSelection = () => {
@@ -361,7 +387,7 @@ export default function ValidationQueue() {
         aria-label="Select all pending records"
         checked={allSelected}
         onChange={toggleAll}
-        disabled={pendingRows.length === 0}
+        disabled={selectableIds.length === 0}
       />
     </th>
   );
@@ -426,21 +452,30 @@ export default function ValidationQueue() {
       <Card className="encoder-card admin-card">
         <Card.Body>
           <div className="d-flex justify-content-between align-items-center mb-2">
-            <span className="text-muted small">{records.length} record{records.length === 1 ? '' : 's'}</span>
-            {hasFilter && <Button variant="link" size="sm" onClick={handleClear}>Clear filters</Button>}
+            <span className="text-muted small">{total.toLocaleString()} record{total === 1 ? '' : 's'}</span>
+            {hasFilter && (
+              <button type="button" className="ui-btn-outline vq-clear-btn" onClick={handleClear}>
+                Clear filters
+              </button>
+            )}
           </div>
 
           {selectedIds.length > 0 && (
             <div className="vq-bulk-bar" role="region" aria-label="Batch actions">
               <span className="vq-bulk-count">{selectedIds.length} selected</span>
+              {selectedIds.length > pendingRows.length && (
+                <span className="text-muted small">
+                  Selection covers every page of this filter.
+                </span>
+              )}
               <div className="vq-bulk-actions">
-                <Button size="sm" variant="success" onClick={() => openBulk('approved')}>
+                <button type="button" className="ui-btn-primary ui-btn--sm" onClick={() => openBulk('approved')}>
                   <Check size={15} /> Approve selected
-                </Button>
-                <Button size="sm" variant="danger" onClick={() => openBulk('rejected')}>
+                </button>
+                <button type="button" className="ui-btn-danger ui-btn--sm" onClick={() => openBulk('rejected')}>
                   <X size={15} /> Reject selected
-                </Button>
-                <Button size="sm" variant="link" onClick={clearSelection}>Clear</Button>
+                </button>
+                <button type="button" className="ui-btn-text ui-btn--sm" onClick={clearSelection}>Clear</button>
               </div>
             </div>
           )}
@@ -473,8 +508,9 @@ export default function ValidationQueue() {
           <Alert variant="info">No records match the current filters.</Alert>
         )}
         {!loading && records.length > 0 && (
-          <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
-            <thead>
+          <>
+            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+              <thead>
               {reportType === 'production' ? <tr>
                 {selectAllCell}
                 <th>Municipality</th>
@@ -551,6 +587,17 @@ export default function ValidationQueue() {
               ))}
             </tbody>
           </Table>
+            <TablePagination
+              page={page}
+              pages={pages}
+              total={total}
+              perPage={perPage}
+              onPageChange={setPage}
+              onPerPageChange={(next) => { setPage(1); setPerPage(next); }}
+              itemLabel={`${reportTypeLabel.toLowerCase()} records`}
+              disabled={loading}
+            />
+          </>
         )}
       </Card.Body>
 
@@ -618,8 +665,8 @@ export default function ValidationQueue() {
 
               {detail.status === 'pending' && !reviewAction && (
                 <div className="d-flex gap-2 mt-3">
-                  <Button variant="success" onClick={() => openReview('approved')}><Check size={16} /> Approve</Button>
-                  <Button variant="danger" onClick={() => openReview('rejected')}><X size={16} /> Reject</Button>
+                  <button type="button" className="ui-btn-primary ui-btn--sm" onClick={() => openReview('approved')}><Check size={16} /> Approve</button>
+                  <button type="button" className="ui-btn-danger ui-btn--sm" onClick={() => openReview('rejected')}><X size={16} /> Reject</button>
                 </div>
               )}
 
@@ -638,14 +685,15 @@ export default function ValidationQueue() {
                     />
                   </Form.Group>
                   <div className="d-flex gap-2">
-                    <Button
-                      variant={reviewAction === 'approved' ? 'success' : 'danger'}
+                    <button
+                      type="button"
+                      className={`ui-btn--sm ${reviewAction === 'approved' ? 'ui-btn-primary' : 'ui-btn-danger'}`}
                       onClick={submitReview}
                       disabled={submitting}
                     >
                       {submitting ? 'Saving…' : `Confirm ${reviewAction === 'approved' ? 'Approve' : 'Reject'}`}
-                    </Button>
-                    <Button variant="secondary" onClick={() => setReviewAction(null)} disabled={submitting}>Cancel</Button>
+                    </button>
+                    <button type="button" className="ui-btn-outline ui-btn--sm" onClick={() => setReviewAction(null)} disabled={submitting}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -653,7 +701,7 @@ export default function ValidationQueue() {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDetail(false)}>Close</Button>
+          <button type="button" className="ui-btn-outline" onClick={() => setShowDetail(false)}>Close</button>
         </Modal.Footer>
       </Modal>
 
@@ -709,22 +757,24 @@ export default function ValidationQueue() {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="secondary"
+          <button
+            type="button"
+            className="ui-btn-outline"
             onClick={bulkSubmitting ? requestBulkCancel : () => setBulkAction(null)}
             disabled={bulkSubmitting && bulkStopping}
           >
             {bulkSubmitting ? (bulkStopping ? 'Stopping…' : 'Cancel') : 'Cancel'}
-          </Button>
-          <Button
-            variant={bulkAction === 'approved' ? 'success' : 'danger'}
+          </button>
+          <button
+            type="button"
+            className={bulkAction === 'approved' ? 'ui-btn-primary' : 'ui-btn-danger'}
             onClick={submitBulk}
             disabled={bulkSubmitting || (bulkAction === 'rejected' && !bulkComment.trim())}
           >
             {bulkSubmitting
               ? `Saving… (${bulkProgress.done}/${bulkProgress.total})`
               : `Confirm ${bulkAction === 'approved' ? 'Approve' : 'Reject'}`}
-          </Button>
+          </button>
         </Modal.Footer>
       </Modal>
     </Card>

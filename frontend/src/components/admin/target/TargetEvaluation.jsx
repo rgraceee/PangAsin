@@ -1,12 +1,10 @@
 // WHAT: The Target Evaluation page - "will we reach this target, and if not,
-//       where and when do we fall short?"
-// WHY: one clear answer first (the summary strip), then the pace, then the
-//      month-by-month picture, then who has to carry it.
+//       where do we fall short?"
+// WHY: one clear answer first (the summary strip), then the charts, then who
+//      has to carry it.
 import { Alert, Card } from 'react-bootstrap';
-import { CalendarDays, TrendingUp, Lightbulb } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import PageHeader from '../PageHeader';
-import MunicipalityMapArt from '../../encoder/MunicipalityMapArt';
-import useMunicipalityDirectory from '../../../hooks/useMunicipalityDirectory';
 import { SkeletonBlock, SkeletonChart } from '../../Skeleton';
 import TargetForm from './TargetForm';
 import TargetSummary from './TargetSummary';
@@ -14,42 +12,34 @@ import TargetPaceChart from './TargetPaceChart';
 import TargetMonthlyChart from './TargetMonthlyChart';
 import TargetMunicipalityChart from './TargetMunicipalityChart';
 import useTargetEvaluation from './useTargetEvaluation';
-import { fmtMT, fmtPct } from './targetData';
 
 export default function TargetEvaluation() {
   const t = useTargetEvaluation();
-  const { activeNames } = useMunicipalityDirectory();
+  const evaluationYear = t.results?.evaluation_year || new Date().getFullYear();
 
   return (
     <div className="admin-single-page te-page">
       <PageHeader
         id="admin-target-header"
         variant="clean"
-        className="ui-pageheader--admin"
+        className="ui-pageheader--admin ui-pageheader--no-map"
         title="Target Evaluation"
-        subtitle={`Will ${t.scopeName} reach its annual target, and where does it fall short?`}
-        actions={(
-          <span className="ui-pageheader-chip">
-            <CalendarDays size={14} strokeWidth={1.5} aria-hidden="true" />
-            {t.results ? `Evaluation year ${t.results.evaluation_year}` : 'Runs on the fly - nothing is saved'}
-          </span>
-        )}
-        art={<MunicipalityMapArt mode="province" selectedName={t.selectedMuni} activeNames={activeNames} />}
-      />
-
-      <TargetForm
-        selectedMuni={t.selectedMuni}
-        onSelectedMuni={t.setSelectedMuni}
-        municipalities={t.municipalities}
-        annualTarget={t.annualTarget}
-        onAnnualTarget={t.setAnnualTarget}
-        forecastHorizon={t.forecastHorizon}
-        onForecastHorizon={t.setForecastHorizon}
-        splitMethod={t.splitMethod}
-        onSplitMethod={t.setSplitMethod}
-        onSubmit={t.runEvaluation}
-        loading={t.loading}
-      />
+        subtitle={`Will ${t.scopeName} reach its annual target, and where does it fall short? Evaluation year ${evaluationYear}.`}
+      >
+        <TargetForm
+          selectedMuni={t.selectedMuni}
+          onSelectedMuni={t.setSelectedMuni}
+          municipalities={t.municipalities}
+          annualTarget={t.annualTarget}
+          onAnnualTarget={t.setAnnualTarget}
+          forecastHorizon={t.forecastHorizon}
+          onForecastHorizon={t.setForecastHorizon}
+          splitMethod={t.splitMethod}
+          onSplitMethod={t.setSplitMethod}
+          onSubmit={t.runEvaluation}
+          loading={t.loading}
+        />
+      </PageHeader>
 
       {t.error && <Alert variant="danger" className="mb-3">{t.error}</Alert>}
 
@@ -70,17 +60,6 @@ export default function TargetEvaluation() {
             partial={t.partial}
             sanity={t.sanity}
           />
-
-          <div className="te-section-head">
-            <span className="te-section-chip"><TrendingUp size={16} strokeWidth={1.75} /></span>
-            <div>
-              <h2 className="te-section-title">Pace and monthly picture</h2>
-              <p className="te-section-sub">
-                {t.summary.status.label} - {fmtPct(t.summary.pct)} of the {fmtMT(t.results.annual_target)} Metric Tons (MT) target
-                {t.summary.reachedMonth ? `, target reached in ${t.summary.reachedMonth}` : ''}.
-              </p>
-            </div>
-          </div>
 
           <TargetPaceChart
             rows={t.paced}

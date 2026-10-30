@@ -553,7 +553,9 @@ function MunicipalityMap({ muniData, selectedName }) {
           <span className="admin-card-head-icon admin-kpi-accent-oceanbg"><MapPin size={16} strokeWidth={2} /></span>
           <div>
             <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
-            <span className="fw-normal text-muted small ms-1">Hover for summary · click for full details</span>
+            <span className="admin-card-head-sub">
+              Darker municipalities produce more salt; hover for a summary or click for full details.
+            </span>
           </div>
         </div>
       </Card.Header>

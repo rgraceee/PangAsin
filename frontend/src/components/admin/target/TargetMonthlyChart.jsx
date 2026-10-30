@@ -35,8 +35,8 @@ export default function TargetMonthlyChart({ rows, paceNote }) {
   return (
     <TargetCard
       icon={ChartColumnBig}
-      title="Monthly vs Target"
-      sub="Each month against its share of the annual target, by season"
+      title="Monthly target vs forecast"
+      sub="Each bar is one month against its target; the line marks the required pace."
       chips={(
         <>
           <span className="te-chip"><span className="te-chip-swatch" style={{ background: ABOVE, borderColor: ABOVE_EDGE }} />At or above target</span>
@@ -136,6 +136,7 @@ export default function TargetMonthlyChart({ rows, paceNote }) {
           </ResponsiveContainer>
         </div>
         {paceNote && <div className="te-note"><strong>Required pace:</strong> {paceNote}</div>}
+        {!paceNote && <div className="te-note">No forecast months are available to compare with the monthly target.</div>}
     </TargetCard>
   );
 }

@@ -1607,6 +1607,18 @@ body {
   line-height: 1.2;
 }
 
+/* WHAT: One-line description under a card title, matching the Municipality
+   Contribution subtitle.
+   WHY: every chart in the system should explain itself the same way. */
+.admin-card-head-sub {
+  display: block;
+  margin: 3px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--gray-600);
+  line-height: 1.4;
+}
+
 /* ---- Custom chart tooltip ---- */
 .admin-chart-tooltip {
   background: var(--white);
@@ -2967,6 +2979,44 @@ body {
   cursor: not-allowed;
 }
 
+/* WHAT: Destructive action button (reject, delete). WHY: same shape as primary pero red. */
+.ui-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-danger);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.ui-btn-danger:disabled {
+  background: var(--ui-active-bg);
+  color: var(--ui-text-muted);
+  cursor: not-allowed;
+}
+
+.ui-btn-danger:focus-visible {
+  outline: 2px solid var(--ui-danger);
+  outline-offset: 2px;
+}
+
+/* WHAT: 36px na bersyon para sa table toolbar at modal footer.
+   WHY: siksik na rows/footers pero parehong itsura ng ui-btn-* variants. */
+.ui-btn--sm {
+  height: 36px;
+  padding: 0 14px;
+}
+
 .ui-btn-text {
   display: inline-flex;
   align-items: center;
@@ -3215,11 +3265,15 @@ body {
 }
 
 .report-card .card-header {
-  padding: 18px 24px;
+  padding: 16px;
 }
 
 .report-card .card-body {
-  padding: 24px;
+  padding: 16px;
+}
+
+.report-card-head-text {
+  min-width: 0;
 }
 
 /* WHAT: Plain line icons sa report card headers.
@@ -3247,17 +3301,25 @@ body {
 }
 
 /* Create-report form: same label/control language as the header filters */
-.report-form-label {
-  display: block;
-  margin-bottom: 6px;
+.report-form .admin-page-hero-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.report-form .admin-page-hero-field {
+  margin: 0;
   font-size: 13px;
   font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
   color: var(--ui-text-muted);
 }
 
-.report-form .form-select,
-.report-form .form-control {
-  height: 48px;
+.report-form .admin-page-hero-select,
+.report-form .admin-page-hero-input {
+  height: 38px;
   padding: 0 12px;
   font-size: 13px;
   color: var(--ui-text);
@@ -3267,19 +3329,19 @@ body {
   transition: border-color var(--ui-t-fast), box-shadow var(--ui-t-fast);
 }
 
-.report-form .form-select {
+.report-form .admin-page-hero-select {
   padding-right: 30px;
 }
 
-.report-form .form-select:focus,
-.report-form .form-control:focus {
+.report-form .admin-page-hero-select:focus,
+.report-form .admin-page-hero-input:focus {
   border-color: var(--ui-accent);
   box-shadow: 0 0 0 3px var(--ui-accent-tint);
 }
 
 /* WHAT: Sapat na lapad para buo ang dd/mm/yyyy at may espasyo sa icon. */
-.report-form input[type="date"].form-control {
-  min-width: 150px;
+.report-form input[type="date"].admin-page-hero-input {
+  min-width: 0;
   padding-right: 10px;
   font-variant-numeric: tabular-nums;
 }
@@ -3293,8 +3355,8 @@ body {
   opacity: 1;
 }
 
-.report-form .form-control[aria-invalid="true"],
-.report-form .form-control[aria-invalid="true"]:focus {
+.report-form .admin-page-hero-input[aria-invalid="true"],
+.report-form .admin-page-hero-input[aria-invalid="true"]:focus {
   border-color: var(--ui-danger);
   box-shadow: 0 0 0 3px var(--ui-danger-tint);
 }
@@ -3305,33 +3367,34 @@ body {
 .report-filter-row {
   display: grid;
   grid-template-columns:
-    minmax(116px, 1.2fr)
-    minmax(210px, 1.6fr)
-    minmax(116px, 1fr)
-    minmax(150px, 1fr)
-    minmax(150px, 1fr)
+    minmax(120px, 1fr)
+    minmax(180px, 1.5fr)
+    minmax(120px, 1fr)
+    minmax(130px, 1fr)
+    minmax(130px, 1fr)
     auto;
   align-items: end;
-  gap: 8px;
+  gap: 12px;
+  margin-top: 0;
 }
 
 /* Kapag preset ang Time, wala ang From/To — reflow sa 4 columns. */
 .report-filter-row--preset {
   grid-template-columns:
-    minmax(116px, 1.2fr)
-    minmax(210px, 1.6fr)
-    minmax(116px, 1fr)
+    minmax(120px, 1fr)
+    minmax(180px, 1.5fr)
+    minmax(120px, 1fr)
     auto;
 }
 
 /* Kapag Year, isang Year field na sumasakop sa dalawang date columns. */
 .report-filter-row--year {
   grid-template-columns:
-    minmax(116px, 1.2fr)
-    minmax(210px, 1.6fr)
-    minmax(116px, 1fr)
-    minmax(150px, 1fr)
-    minmax(150px, 1fr)
+    minmax(120px, 1fr)
+    minmax(180px, 1.5fr)
+    minmax(120px, 1fr)
+    minmax(130px, 1fr)
+    minmax(130px, 1fr)
     auto;
 }
 
@@ -3339,89 +3402,27 @@ body {
   min-width: 0;
 }
 
-.report-filter-field .report-form-label {
-  display: block;
-  margin-bottom: 6px;
-}
-
 .report-filter-field--year {
   grid-column: 4 / 6;
-}
-
-.report-filter-field--scope .form-select {
-  font-size: 12px;
-  padding-left: 8px;
-  padding-right: 24px;
-  background-position: right 6px center;
-}
-
-.report-filter-field--time .form-select {
-  font-size: 12.5px;
 }
 
 /* WHAT: PDF/Word segmented control sa tabi ng Generate button. */
 .report-generate-group {
   display: flex;
-  align-items: stretch;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 12px;
   flex: 0 0 auto;
   min-width: 0;
 }
 
-.report-format-seg {
-  display: inline-flex;
-  align-items: stretch;
-  gap: 2px;
-  height: 48px;
-  padding: 3px;
-  border: 1px solid var(--ui-guide);
-  border-radius: var(--ui-radius-input);
-  background: var(--ui-hover-bg);
-}
-
-.report-format-option {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  padding: 0 7px;
-  border-radius: 7px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ui-text-2);
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--ui-t-fast), color var(--ui-t-fast), box-shadow var(--ui-t-fast);
-}
-
-.report-format-option input {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.report-format-option:hover {
-  color: var(--ui-text);
-}
-
-.report-format-option.is-active {
-  background: var(--ui-surface);
-  color: var(--ui-text);
-  box-shadow: var(--ui-shadow);
-}
-
-.report-format-option:has(input:focus-visible) {
-  outline: 2px solid var(--ui-accent);
-  outline-offset: 1px;
+.report-generate-group .te-segmented {
+  flex: 0 0 auto;
 }
 
 .report-generate-btn {
   flex: 0 0 auto;
-  height: 48px;
-  padding: 0 12px;
+  height: 38px;
+  padding: 0 14px;
   font-size: 13px;
   white-space: nowrap;
   transition: background-color var(--ui-t-fast), transform var(--ui-t-fast), box-shadow var(--ui-t-fast);
@@ -3483,7 +3484,7 @@ body {
 
 /* WHAT: Sa mas makitid na screen, 2 columns ang filters at full-width
    ang Generate group. WHY: hindi kasya ang 6 controls nang maayos. */
-@media (max-width: 1399.98px) {
+@media (max-width: 1365.98px) {
   .report-filter-row,
   .report-filter-row--range,
   .report-filter-row--preset,
@@ -3493,11 +3494,6 @@ body {
 
   .report-filter-field--year {
     grid-column: auto;
-  }
-
-  .report-filter-row--range .report-filter-field--time,
-  .report-filter-row--preset .report-filter-field--time {
-    grid-column: 1 / -1;
   }
 
   .report-generate-group {
@@ -3525,11 +3521,11 @@ body {
     align-items: stretch;
   }
 
-  .report-format-seg {
+  .report-generate-group .te-segmented {
     width: 100%;
   }
 
-  .report-format-option {
+  .report-generate-group .te-segmented__option {
     flex: 1 1 0;
   }
 
@@ -3579,11 +3575,11 @@ body {
   align-items: center;
   gap: 6px;
   text-align: center;
-  padding: 32px 20px;
+  padding: 28px 16px;
   color: var(--ui-text-2);
   background: var(--ui-hover-bg);
-  border: 1px dashed var(--ui-guide);
-  border-radius: var(--ui-radius-row);
+  border: 0;
+  border-radius: 16px;
 }
 
 .report-empty-icon {
@@ -3682,6 +3678,13 @@ body {
 
 .report-list-table {
   font-size: 13px;
+}
+
+.report-table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
 }
 
 .report-list-table thead th {
@@ -3857,6 +3860,18 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.report-row-actions .report-row-btn {
+  height: 30px;
+  padding: 0 9px;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.report-row-actions .report-row-btn.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .report-row-action {
@@ -4671,6 +4686,15 @@ body {
 /* WHAT: The selection strip above the queue table.
    WHY: the count and the bulk buttons sit on one neutral bar, so a large
         selection never looks like a floating toolbar. */
+/* WHAT: The clear-filters action beside the queue count.
+   WHY: it uses the same outline button as the admin dashboard, just shorter
+        so the count line stays one row. */
+.vq-clear-btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+
 .vq-bulk-bar {
   display: flex;
   flex-wrap: wrap;

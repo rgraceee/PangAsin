@@ -1,0 +1,39 @@
+/* ============================================================
+   WHAT: Scoped chart tokens for the Encoder Dashboard master-list cards.
+   WHY: The Gender and Age cards reuse the Admin Salt Farmers components
+        (MuniCard, MuniDonut, MuniAgeChart), whose styles read the --muni-*
+        variables declared only under .muni-page. This wrapper declares the same
+        values locally so the components render identically without applying
+        .muni-page (which would also change the encoder page width and fonts).
+   ============================================================ */
+
+.encoder-dashboard {
+  --muni-navy: #0C2340;
+  --muni-ocean: #1565C8;
+  --muni-gold: #F09A28;
+  --muni-green: #29B039;
+  --muni-soft-slate: #E7ECF2;
+  --muni-nodata-edge: #A9B4C2;
+  --muni-grid: #E9ECEF;
+  --muni-axis: #8A98A8;
+  --muni-text: #111827;
+  --muni-text-2: #4B5563;
+  --muni-muted: #8A94A3;
+  --muni-hover: rgba(12, 35, 64, 0.045);
+  --muni-border: #E7EAEF;
+  --muni-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.encoder-charts {
+  margin-bottom: 1.5rem;
+}
+
+/* WHAT: Keep every chip on this page at content width.
+   WHY: index.css still has the older toggle-chip rule `.muni-chip { width: 100% }`.
+        The Admin card styles (muni.css) never set `width`, so on this page each
+        legend chip and each header chip would otherwise take a full line. */
+.encoder-dashboard .muni-chips .muni-chip,
+.encoder-dashboard .muni-card-head-right .muni-chip {
+  width: auto;
+  justify-content: flex-start;
+}

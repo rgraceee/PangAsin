@@ -9,6 +9,7 @@ import RecordStatusBadge from './RecordStatusBadge';
 import { formatMT } from '../../utils/volumeFormat';
 import ReportImportActions from './ReportImportActions';
 import { prepareProductionRows, rowError } from './reportImportUtils';
+import TablePagination from '../ui/TablePagination';
 
 const PRODUCTION_METHOD_LABELS = {
   solar: 'Solar',
@@ -59,6 +60,12 @@ export default function RecordsTable({
   loading = false,
   error = null,
   hasFilter = false,
+  total = 0,
+  page = 1,
+  pages = 1,
+  perPage = 10,
+  onPageChange,
+  onPerPageChange,
   onClearFilters,
   onAdd,
   onEdit,
@@ -139,7 +146,7 @@ export default function RecordsTable({
       <Card.Header className="master-toolbar">
         <h2 className="h6 mb-0">Production Records</h2>
         <div className="master-toolbar__actions">
-          <Badge bg="light" text="dark">{records.length.toLocaleString()} shown</Badge>
+          <Badge bg="light" text="dark">{(total || records.length).toLocaleString()} total</Badge>
           {hasFilter && (
             <Button variant="link" size="sm" className="p-0" onClick={onClearFilters}>Clear filters</Button>
           )}
@@ -166,21 +173,22 @@ export default function RecordsTable({
           </div>
         )}
         {!loading && records.length > 0 && (
-          <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
-            <thead>
-              <tr>
-                <th>Report Type</th>
-                <th>Barangay</th>
-                <th>Date</th>
-                <th>Method</th>
-                <th className="text-end">Volume (Metric Tons (MT))</th>
-                <th className="text-end">Beds Used</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((r) => {
+          <>
+            <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
+              <thead>
+                <tr>
+                  <th>Report Type</th>
+                  <th>Barangay</th>
+                  <th>Date</th>
+                  <th>Method</th>
+                  <th className="text-end">Volume (Metric Tons (MT))</th>
+                  <th className="text-end">Beds Used</th>
+                  <th>Status</th>
+                  <th className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((r) => {
                 const isApproved = r.status === 'approved';
                 return (
                   <tr key={r.id}>
@@ -225,7 +233,20 @@ export default function RecordsTable({
                 );
               })}
             </tbody>
-          </Table>
+            </Table>
+            <div className="px-3 pb-3">
+              <TablePagination
+                page={page}
+                pages={pages}
+                total={total}
+                perPage={perPage}
+                onPageChange={onPageChange}
+                onPerPageChange={onPerPageChange}
+                itemLabel="production records"
+                disabled={loading}
+              />
+            </div>
+          </>
         )}
       </Card.Body>
 

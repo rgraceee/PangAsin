@@ -49,11 +49,6 @@ export default function TargetSummary({ summary, evaluationYear, partial, sanity
         sub={`${gap >= 0 ? 'Surplus' : 'Shortfall'} ${fmtSignedMT(gap)} Metric Tons (MT) vs target; likely range ${rangeLow === null ? '\u2014' : `${fmtMT(rangeLow, 0)} \u2013 ${fmtMT(rangeHigh, 0)}`} Metric Tons (MT)`}
         tone={gap >= 0 ? 'good' : 'bad'}
       />
-      {sanity && (
-        <div className="te-summary-warn">
-          <strong>Heads up:</strong> {sanity}. Check the target before using this comparison.
-        </div>
-      )}
       {partial && (
         <div className="te-summary-note">
           <strong>Partial:</strong> only {partial.covered} of {partial.remaining} remaining months of {evaluationYear} are

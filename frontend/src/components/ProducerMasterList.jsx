@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Alert, Badge, Card, OverlayTrigger, Spinner, Table, Tooltip } from 'react-bootstrap';
 import { CalendarDays, Clock, Pencil, Plus, Search, Trash2, Users, ContactRound } from 'lucide-react';
@@ -14,6 +14,8 @@ import useMunicipalityDirectory from '../hooks/useMunicipalityDirectory';
 import ReportModal from './encoder/ReportModal';
 import ReportField from './encoder/ReportField';
 import ProducerReportForm from './encoder/ProducerReportForm';
+import TablePagination from './ui/TablePagination';
+import usePagination from '../hooks/usePagination';
 
 const EMPTY_FORM = { name: '', age: '', sex: '', address: '', barangay_id: '' };
 
@@ -64,6 +66,11 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   const [reportOpen, setReportOpen] = useState(false);
   const [pendingReports, setPendingReports] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(!adminView);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(0);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const requestRef = useRef(0);
 
   /* WHAT: Mga salt farmer reports na pending pa lang sa admin.
      WHY: hindi pa sila kasama sa registered table, kaya may sariling list sa
@@ -103,24 +110,51 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   );
 
   const load = () => {
+    const request = requestRef.current + 1;
+    requestRef.current = request;
     setLoading(true);
     setError('');
-    const params = {};
+    const params = { page, per_page: perPage };
     if (adminView && filters.municipality_id) params.municipality_id = filters.municipality_id;
     if (filters.barangay_id) params.barangay_id = filters.barangay_id;
     if (adminView && adminSearch.trim()) params.q = adminSearch.trim();
+    /* WHAT: Sex at Age group ay server-side na.
+       WHY: kapag page lang ang nasa browser, hindi tama ang filter kung
+            i-filter pa ito sa isang page. */
+    if (filters.sex) params.sex = filters.sex;
+    if (filters.age_group) params.age_group = filters.age_group;
     getProducers(params)
       .then((result) => {
+        /* WHAT: Only the newest request may update the table.
+           WHY: a slow page-N response must not overwrite page 1 after a filter
+                change or a quick sequence of page clicks. */
+        if (request !== requestRef.current) return;
         setRows(result.producers || []);
         setStatistics(result.statistics || { total: 0, male: 0, female: 0, other: 0, average_age: null, by_barangay: [] });
         setMunicipalities(result.municipalities || []);
         setBarangays(result.barangays || []);
+        setTotal(result.total || 0);
+        setPages(result.pages || 0);
+        /* WHAT: If deleting shrank the list below the current page, step back.
+           WHY: an empty page with no pager would trap the reader. */
+        if ((result.pages || 0) > 0 && page > result.pages) setPage(result.pages);
       })
-      .catch((err) => setError(err.message || 'Could not load the salt farmer master list.'))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (request === requestRef.current) setError(err.message || 'Could not load the salt farmer master list.');
+      })
+      .finally(() => {
+        if (request === requestRef.current) setLoading(false);
+      });
   };
 
-  useEffect(() => { load(); }, [filters.municipality_id, filters.barangay_id, adminSearch, adminView]);
+  /* WHAT: Bagong filter o search = balik sa unang page. */
+  useEffect(() => {
+    setPage(1);
+  }, [filters.municipality_id, filters.barangay_id, filters.sex, filters.age_group, adminSearch, adminView]);
+
+  useEffect(() => {
+    load();
+  }, [filters.municipality_id, filters.barangay_id, filters.sex, filters.age_group, adminSearch, adminView, page, perPage]);
 
   const handleAdd = async (event) => {
     event.preventDefault();
@@ -187,21 +221,9 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
     setFilters((current) => ({ ...current, [name]: value, ...(name === 'municipality_id' ? { barangay_id: '' } : {}) }));
   };
 
-  const visibleRows = useMemo(() => {
-    return rows.filter((worker) => {
-      if (filters.sex && worker.sex !== filters.sex) return false;
-      if (filters.age_group) {
-        if (worker.age == null) return false;
-        const age = Number(worker.age);
-        if (!Number.isFinite(age)) return false;
-        if (filters.age_group === 'under30' && age >= 30) return false;
-        if (filters.age_group === '30to44' && (age < 30 || age > 44)) return false;
-        if (filters.age_group === '45to59' && (age < 45 || age > 59)) return false;
-        if (filters.age_group === '60plus' && age < 60) return false;
-      }
-      return true;
-    });
-  }, [rows, filters.sex, filters.age_group]);
+  /* WHAT: The server applies Sex and Age group before paging.
+     WHY: filtering the loaded page would hide matches on other pages. */
+  const visibleRows = rows;
 
   const pendingEntries = useMemo(
     () => pendingReports.flatMap((report) => (report.entries || []).map((entry) => ({
@@ -211,6 +233,24 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
       submittedAt: report.submitted_at || report.created_at,
     }))),
     [pendingReports],
+  );
+
+  /* WHAT: The two summary tables page in the browser.
+     WHY: they are small aggregates over the same response, so one page of
+          rows is enough to render them. */
+  const pendingPager = usePagination({
+    total: pendingEntries.length,
+    resetKey: `pending:${pendingEntries.length}`,
+  });
+  const pendingPage = pendingEntries.slice(pendingPager.pageStart, pendingPager.pageStart + pendingPager.perPage);
+
+  const byBarangayPager = usePagination({
+    total: statistics.by_barangay.length,
+    resetKey: `barangays:${statistics.by_barangay.length}:${statistics.total}`,
+  });
+  const byBarangayPage = statistics.by_barangay.slice(
+    byBarangayPager.pageStart,
+    byBarangayPager.pageStart + byBarangayPager.perPage,
   );
 
   return (
@@ -277,14 +317,14 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           icon={Users}
           title="Registered Salt Farmers"
           value={statistics.total}
+          supporting={adminView ? 'Across all municipalities' : 'In your municipality'}
           info="Total registered salt farmers in your municipality."
         />
         <KpiCard
           icon={ContactRound}
           title="Gender Distribution"
           value={`${statistics.male.toLocaleString()} / ${statistics.female.toLocaleString()}`}
-          unit="Male / Female"
-          supporting={statistics.other > 0 ? `Other: ${statistics.other.toLocaleString()}` : undefined}
+          supporting={`Male / Female${statistics.other > 0 ? ` · Other: ${statistics.other.toLocaleString()}` : ''}`}
           info="Registered salt farmers by sex — male / female."
         />
         <KpiCard
@@ -320,7 +360,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             ) : (
               <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
                 <thead><tr><th>Salt Farmer</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Status</th><th>Submitted</th></tr></thead>
-                <tbody>{pendingEntries.map((entry) => (
+                <tbody>{pendingPage.map((entry) => (
                   <tr key={entry.id}>
                     <td className="fw-semibold">{entry.name}</td>
                     <td>{entry.barangay}</td>
@@ -335,6 +375,20 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
               </Table>
             )}
           </Card.Body>
+          {!pendingLoading && pendingEntries.length > 0 && (
+            <Card.Footer className="bg-white">
+              <TablePagination
+                page={pendingPager.page}
+                pages={pendingPager.pages}
+                total={pendingEntries.length}
+                perPage={pendingPager.perPage}
+                onPageChange={pendingPager.goToPage}
+                onPerPageChange={pendingPager.changePerPage}
+                itemLabel="pending salt farmers"
+                className="mt-0"
+              />
+            </Card.Footer>
+          )}
         </Card>
       )}
 
@@ -344,10 +398,8 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           {/* WHAT: Count + Add Worker sa kanang bahagi ng toolbar; full-width ang button sa mobile.
              WHY: inilipat dito mula sa page header para malapit sa data ang action. */}
            <div className="master-toolbar__actions">
-             <Badge bg="light" text="dark">{visibleRows.length.toLocaleString()} shown</Badge>
-             {adminView ? (
-               <span className="small text-muted">New farmers come from encoder submissions and are approved in Validation Queue.</span>
-             ) : (
+             <Badge bg="light" text="dark">{(total || rows.length).toLocaleString()} total</Badge>
+             {!adminView && (
                <button
                  type="button"
                  className="ui-btn-primary ui-btn-primary--sm"
@@ -389,6 +441,20 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             </Table>
           )}
         </Card.Body>
+        {!loading && visibleRows.length > 0 && (
+          <Card.Footer className="bg-white">
+            <TablePagination
+              page={page}
+              pages={pages}
+              total={total}
+              perPage={perPage}
+              onPageChange={setPage}
+              onPerPageChange={(next) => { setPage(1); setPerPage(next); }}
+              itemLabel="salt farmers"
+              className="mt-0"
+            />
+          </Card.Footer>
+        )}
       </Card>
 
       <Card className="encoder-card admin-card mt-4">
@@ -399,7 +465,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           ) : (
             <Table responsive hover size="sm" className="mb-0 encoder-table admin-table">
               <thead><tr>{adminView && <th>Municipality</th>}<th>Barangay</th><th className="text-end">Salt Farmers</th></tr></thead>
-              <tbody>{statistics.by_barangay.map((item) => (
+              <tbody>{byBarangayPage.map((item) => (
                 <tr key={`${item.municipality}-${item.barangay}`}>
                   {adminView && <td>{item.municipality}</td>}
                   <td>{item.barangay}</td>
@@ -409,6 +475,20 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             </Table>
           )}
         </Card.Body>
+        {statistics.by_barangay.length > 0 && (
+          <Card.Footer className="bg-white">
+            <TablePagination
+              page={byBarangayPager.page}
+              pages={byBarangayPager.pages}
+              total={statistics.by_barangay.length}
+              perPage={byBarangayPager.perPage}
+              onPageChange={byBarangayPager.goToPage}
+              onPerPageChange={byBarangayPager.changePerPage}
+              itemLabel="barangays"
+              className="mt-0"
+            />
+          </Card.Footer>
+        )}
       </Card>
 
        {/* WHAT: Parehong shell ng report forms para sa Add/Edit Worker.

@@ -8,7 +8,7 @@ from app.models.environment_report import EnvironmentReport, ENVIRONMENT_METHODS
 from app.models.producer_report import ProducerReport, ProducerReportEntry
 from app.extensions import db
 from datetime import datetime, date, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.exc import IntegrityError
 from app.constants import AGE_BUCKET_FIELDS, MAX_MONTHLY_VOLUME_MT
 from app.status_constants import ALLOWED_STATUSES
@@ -506,8 +506,44 @@ def list_records():
 
     # WHAT: Bagong submit ang nasa taas, kahit backdated ang record_date.
     # WHY: kapag nag-add/edit ang encoder, agad dapat makita sa unang row.
-    records = query.order_by(ProductionRecord.created_at.desc(), ProductionRecord.id.desc()).all()
-    return jsonify({"records": [_serialize(r) for r in records]})
+    ordered = query.order_by(ProductionRecord.created_at.desc(), ProductionRecord.id.desc())
+
+    # WHAT: The KPI cards read this summary, which covers every record that
+    #       matches the filters — not just the page being shown.
+    # WHY: pagination must never change "Total Production", "Pending" or
+    #      "Approved" on the same screen.
+    summary_row = query.with_entities(
+        func.count(ProductionRecord.id),
+        func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0),
+        func.coalesce(func.sum(case((ProductionRecord.status == "pending", 1), else_=0)), 0),
+        func.coalesce(func.sum(case((ProductionRecord.status == "approved", 1), else_=0)), 0),
+    ).one()
+    total = int(summary_row[0] or 0)
+
+    page = request.args.get("page", type=int)
+    per_page = min(100, max(1, request.args.get("per_page", 10, type=int) or 10))
+    if page:
+        page = max(1, page)
+        records = ordered.offset((page - 1) * per_page).limit(per_page).all()
+        pages = (total + per_page - 1) // per_page
+    else:
+        page = 1
+        records = ordered.all()
+        pages = 1 if total else 0
+
+    return jsonify({
+        "records": [_serialize(r) for r in records],
+        "summary": {
+            "count": total,
+            "pending": int(summary_row[2] or 0),
+            "approved": int(summary_row[3] or 0),
+            "volume_mt": float(summary_row[1] or 0),
+        },
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
+    })
 
 
 @encoder_api_bp.route("/records", methods=["POST"])

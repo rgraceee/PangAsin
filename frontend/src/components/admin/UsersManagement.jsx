@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Alert, Button, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Table, Alert, Card, Row, Col, Modal, Form } from 'react-bootstrap';
 import { getAdminUsers, getAdminMunicipalities, updateAdminUser } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
@@ -9,6 +9,8 @@ import IconButton from '../IconButton';
 import PageHeader from './PageHeader';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
+import TablePagination from '../ui/TablePagination';
+import usePagination from '../../hooks/usePagination';
 
 const USER_ROLES = ['admin', 'encoder'];
 
@@ -113,6 +115,15 @@ export default function UsersManagement() {
 
   const hasFilter = Boolean(filters.role || filters.status || filters.municipality_id);
 
+  /* WHAT: Accounts are few, so this table pages in the browser.
+     WHY: the filter already loaded the full list; slicing keeps every count
+          and the edit/activate actions unchanged. */
+  const pager = usePagination({
+    total: users.length,
+    resetKey: `${filters.role}|${filters.status}|${filters.municipality_id}`,
+  });
+  const pagedUsers = users.slice(pager.pageStart, pager.pageStart + pager.perPage);
+
   return (
     <>
       <PageHeader
@@ -151,7 +162,7 @@ export default function UsersManagement() {
         <Card.Body>
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="text-muted small">{users.length} user{users.length === 1 ? '' : 's'}</span>
-            {hasFilter && <Button variant="link" size="sm" onClick={handleClear}>Clear filters</Button>}
+            {hasFilter && <button type="button" className="ui-btn-text ui-btn--sm" onClick={handleClear}>Clear filters</button>}
           </div>
 
         {error && <Alert variant="danger">{error}</Alert>}
@@ -173,7 +184,7 @@ export default function UsersManagement() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {pagedUsers.map((u) => (
                 <tr key={u.id}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
@@ -202,13 +213,35 @@ export default function UsersManagement() {
             </tbody>
           </Table>
         )}
+        {!loading && users.length > 0 && (
+          <TablePagination
+            page={pager.page}
+            pages={pager.pages}
+            total={users.length}
+            perPage={pager.perPage}
+            onPageChange={pager.goToPage}
+            onPerPageChange={pager.changePerPage}
+            itemLabel="user accounts"
+          />
+        )}
       </Card.Body>
 
-      <Modal show={showEdit} onHide={() => setShowEdit(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit User</Modal.Title>
+      <Modal
+        show={showEdit}
+        onHide={() => setShowEdit(false)}
+        centered
+        dialogClassName="muni-modal"
+        aria-labelledby="user-edit-title"
+      >
+        <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header">
+          <div className="muni-modal__heading">
+            <Modal.Title id="user-edit-title" className="muni-modal__title">Edit User</Modal.Title>
+            <p className="muni-modal__subtitle">
+              Update the account details. Leave the password blank to keep the current one.
+            </p>
+          </div>
         </Modal.Header>
-        <Form onSubmit={handleSubmit}>
+        <Form onSubmit={handleSubmit} className="muni-modal-form">
           <Modal.Body>
             {formError && <Alert variant="danger">{formError}</Alert>}
             <Form.Group className="mb-3">
@@ -218,6 +251,9 @@ export default function UsersManagement() {
             <Form.Group className="mb-3">
               <Form.Label>Reset password (optional)</Form.Label>
               <Form.Control type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Leave blank to keep current password" />
+              <Form.Text className="text-muted">
+                The encoder signs in with the new password immediately; the temporary-password screen is skipped.
+              </Form.Text>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>Municipality {editing?.role === 'encoder' && <span className="text-danger">*</span>}</Form.Label>
@@ -236,13 +272,21 @@ export default function UsersManagement() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </Form.Select>
+              <Form.Text className="text-muted">
+                Inactive accounts cannot sign in; existing records stay intact.
+              </Form.Text>
             </Form.Group>
           </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowEdit(false)}>Cancel</Button>
-            <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Save Changes'}
-            </Button>
+          <Modal.Footer className="muni-modal__footer">
+            <span className="muni-modal__footer-note">
+              Changes are written to the audit log.
+            </span>
+            <div className="muni-modal__footer-actions">
+              <button type="button" className="ui-btn-outline" onClick={() => setShowEdit(false)}>Cancel</button>
+              <button type="submit" className="ui-btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
           </Modal.Footer>
         </Form>
       </Modal>

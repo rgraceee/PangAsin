@@ -27,12 +27,19 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, year
     bandLower: r.cumLower ?? null,
     bandUpper: r.cumUpper ?? null,
   }));
+  const gapNote = !rows.length
+    ? 'No production or forecast data is available for this target.'
+    : yearEndGap == null
+      ? 'No projected year-end gap is available for this target.'
+      : yearEndGap >= 0
+        ? `Projected year-end is ${fmtMT(yearEndGap)} Metric Tons (MT) above the ${fmtMT(annualTarget)} Metric Tons (MT) target.`
+        : `Projected year-end is ${fmtMT(Math.abs(yearEndGap))} Metric Tons (MT) below the ${fmtMT(annualTarget)} Metric Tons (MT) target.`;
 
   return (
     <TargetCard
       icon={ChartNoAxesColumnIncreasing}
-      title="Cumulative Pace"
-      sub="Approved records plus the forecast, against the seasonal target path"
+      title="Target path vs production"
+      sub="Recorded production against the seasonal target path; the dashed line is the target."
       chips={(
         <>
           <span className="te-chip"><span className="te-chip-swatch" style={{ background: NAVY }} />Production to date</span>
@@ -103,6 +110,7 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, year
             </ComposedChart>
           </ResponsiveContainer>
         </div>
+        <div className="te-note">{gapNote}</div>
     </TargetCard>
   );
 }

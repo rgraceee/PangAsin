@@ -19,7 +19,7 @@ export default function ForecastNeedsAttention({ items, total = 0 }) {
           <span className="fc-card-head-icon"><Flag size={16} strokeWidth={1.75} /></span>
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">Needs attention</h5>
-            <p className="fc-card-sub">Municipalities with a declining forecast or no data.</p>
+            <p className="fc-card-sub">Each tile names the reason a municipality needs a decision, worst first.</p>
           </div>
         </div>
         <div className="fc-card-head-right">
@@ -41,6 +41,21 @@ export default function ForecastNeedsAttention({ items, total = 0 }) {
                   <span className="fc-attention-name">{item.name}</span>
                   <span className="fc-attention-value">{item.value}</span>
                 </div>
+                {(() => {
+                  const key = ATTENTION_COLOR_KEY[item.reasons[0]?.tone] || 'nodata';
+                  return (
+                    <div className="fc-attention-meter" aria-hidden="true">
+                      <span
+                        className={`fc-attention-meter-fill${key === 'nodata' ? ' is-dashed' : ''}`}
+                        style={{
+                          width: `${item.barPct}%`,
+                          background: MUNI_COLORS[key],
+                          borderColor: MUNI_EDGES[key],
+                        }}
+                      />
+                    </div>
+                  );
+                })()}
                 <div className="fc-attention-reasons">
                   {item.reasons.map((reason) => {
                     const key = ATTENTION_COLOR_KEY[reason.tone] || 'nodata';

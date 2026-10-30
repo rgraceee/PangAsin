@@ -1,0 +1,60 @@
+/* WHAT: Generate Reports page UI — hero, controls, list card, table, empty states.
+   WHY: page-scoped styles only; shared tokens and classes (ui-btn-*,
+        admin-page-hero-*, te-segmented, encoder-table admin-table,
+        TablePagination, admin-card-head) are reused and never touched. */
+
+/* ===== Hero without the map =====
+   Same map-free gradient hero as /admin/forecast/target, same --no-map
+   modifier; title, subtitle and controls use the full width. */
+
+.rg-page .ui-pageheader--admin.ui-pageheader--no-map {
+  padding: 24px 28px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-shell);
+  background:
+    radial-gradient(70% 130% at 66% 46%, var(--ui-accent-tint) 0%, transparent 68%),
+    linear-gradient(90deg, var(--ui-surface) 30%, var(--ui-accent-tint) 64%);
+  box-shadow: var(--ui-shadow);
+}
+
+.rg-page .ui-pageheader--admin.ui-pageheader--no-map .ui-pageheader-main,
+.rg-page .ui-pageheader--admin.ui-pageheader--no-map .ui-pageheader-controls {
+  max-width: 100%;
+}
+
+/* ===== Controls: one row on desktop, wraps cleanly below ===== */
+
+.rg-hero-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 992px) {
+  .rg-page .rg-hero-row {
+    flex-wrap: nowrap;
+  }
+
+  .rg-page .rg-hero-row > .admin-page-hero-control {
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Scope: "Province-wide" must never clip */
+  .rg-page .rg-hero-row > .report-filter-field--scope {
+    min-width: 200px;
+    width: auto;
+  }
+
+  /* Date inputs: only as wide as the ISO date */
+  .rg-page .rg-hero-row .report-filter-field--date .admin-page-hero-input {
+    width: 140px;
+    min-width: 0;
+  }
+
+  .rg-page .rg-hero-row .report-filter-field--year .admin-page-hero-select {
+    width: 170px;
+    min-width: 0;
+  }
+}

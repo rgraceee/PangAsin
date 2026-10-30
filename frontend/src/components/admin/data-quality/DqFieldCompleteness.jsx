@@ -4,7 +4,7 @@
 //      are below the threshold are shown by default; the rest are one click
 //      away. The threshold and the field labels come from the API.
 import React, { useState } from 'react';
-import { Button, Collapse } from 'react-bootstrap';
+import { Collapse } from 'react-bootstrap';
 import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import { toneForPercent } from './dqData';
 
@@ -44,9 +44,9 @@ export default function DqFieldCompleteness({ data, selectedId, onShowProvince }
           <MapPin size={13} strokeWidth={2} aria-hidden="true" /> {scopeLabel}
         </span>
         {selected ? (
-          <Button variant="outline-secondary" size="sm" onClick={onShowProvince}>
+          <button type="button" className="ui-btn-outline ui-btn--sm" onClick={onShowProvince}>
             Show province-wide
-          </Button>
+          </button>
         ) : null}
       </div>
 
@@ -60,16 +60,15 @@ export default function DqFieldCompleteness({ data, selectedId, onShowProvince }
 
       {rest.length > 0 ? (
         <>
-          <Button
-            variant="link"
-            size="sm"
-            className="dq-toggle-btn"
+          <button
+            type="button"
+            className="ui-btn-text ui-btn--sm dq-toggle-btn"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
           >
             {open ? <ChevronUp size={14} strokeWidth={2.2} aria-hidden="true" /> : <ChevronDown size={14} strokeWidth={2.2} aria-hidden="true" />}
             {open ? 'Show fewer fields' : `Show all ${fields.length} fields`}
-          </Button>
+          </button>
           <Collapse in={open}>
             <div>{rest.map(renderRow)}</div>
           </Collapse>

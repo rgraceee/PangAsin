@@ -540,7 +540,7 @@ def list_records():
     barangay_id = request.args.get("barangay_id", type=int)
     q = request.args.get("q")
     page = request.args.get("page", type=int)
-    limit = request.args.get("limit", type=int)
+    limit = request.args.get("per_page", type=int) or request.args.get("limit", type=int)
 
     if status:
         if status not in ALLOWED_STATUSES:
@@ -557,6 +557,22 @@ def list_records():
         )
 
     total = query.count()
+
+    # WHAT: The ids of every pending row in this filter, not only this page.
+    # WHY: Validation Queue "Select all" must select the whole filtered queue;
+    #      a page-only selection would silently approve a different set.
+    selectable_ids = []
+    if request.args.get("ids"):
+        selectable_ids = [
+            row[0]
+            for row in (
+                query.filter(ProductionRecord.status == "pending")
+                .with_entities(ProductionRecord.id)
+                .order_by(ProductionRecord.id)
+                .all()
+            )
+        ]
+
     if page and limit and page > 0 and limit > 0:
         records = (
             query.order_by(ProductionRecord.record_date.desc(), ProductionRecord.id.desc())
@@ -572,6 +588,9 @@ def list_records():
         "total": total,
         "page": page,
         "limit": limit,
+        "per_page": limit,
+        "pages": (total + limit - 1) // limit if page and limit else (1 if total else 0),
+        "selectable_ids": selectable_ids,
     })
 
 
@@ -698,8 +717,41 @@ def list_environment_submissions():
         query = query.filter(EnvironmentReport.municipality_id == municipality_id)
     if barangay_id:
         query = query.filter(EnvironmentReport.barangay_id == barangay_id)
-    reports = query.order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc()).all()
-    return jsonify({"reports": [_serialize_environment_submission(report) for report in reports]})
+
+    total = query.count()
+    pages = 0
+    page = request.args.get("page", type=int)
+    limit = request.args.get("per_page", type=int) or request.args.get("limit", type=int)
+    ordered = query.order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc())
+    if page and limit and page > 0 and limit > 0:
+        reports = ordered.offset((page - 1) * limit).limit(limit).all()
+        pages = (total + limit - 1) // limit
+    else:
+        reports = ordered.all()
+        pages = 1 if total else 0
+
+    # WHAT: Every pending report id in this filter, for "Select all".
+    selectable_ids = []
+    if request.args.get("ids"):
+        selectable_ids = [
+            row[0]
+            for row in (
+                query.filter(EnvironmentReport.status == "pending")
+                .with_entities(EnvironmentReport.id)
+                .order_by(EnvironmentReport.id)
+                .all()
+            )
+        ]
+
+    return jsonify({
+        "reports": [_serialize_environment_submission(report) for report in reports],
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "per_page": limit,
+        "pages": pages,
+        "selectable_ids": selectable_ids,
+    })
 
 
 @admin_api_bp.route("/environment-reports/<int:report_id>/review", methods=["PATCH", "POST"])
@@ -751,8 +803,41 @@ def list_producer_submissions():
             .filter(ProducerReportEntry.barangay_id == barangay_id)
             .distinct()
         )
-    reports = query.order_by(ProducerReport.created_at.desc(), ProducerReport.id.desc()).all()
-    return jsonify({"reports": [_serialize_producer_submission(report) for report in reports]})
+
+    total = query.count()
+    pages = 0
+    page = request.args.get("page", type=int)
+    limit = request.args.get("per_page", type=int) or request.args.get("limit", type=int)
+    ordered = query.order_by(ProducerReport.created_at.desc(), ProducerReport.id.desc())
+    if page and limit and page > 0 and limit > 0:
+        reports = ordered.offset((page - 1) * limit).limit(limit).all()
+        pages = (total + limit - 1) // limit
+    else:
+        reports = ordered.all()
+        pages = 1 if total else 0
+
+    # WHAT: Every pending report id in this filter, for "Select all".
+    selectable_ids = []
+    if request.args.get("ids"):
+        selectable_ids = [
+            row[0]
+            for row in (
+                query.filter(ProducerReport.status == "pending")
+                .with_entities(ProducerReport.id)
+                .order_by(ProducerReport.id)
+                .all()
+            )
+        ]
+
+    return jsonify({
+        "reports": [_serialize_producer_submission(report) for report in reports],
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "per_page": limit,
+        "pages": pages,
+        "selectable_ids": selectable_ids,
+    })
 
 
 @admin_api_bp.route("/producer-reports/<int:report_id>/review", methods=["PATCH", "POST"])

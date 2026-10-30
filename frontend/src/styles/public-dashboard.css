@@ -372,10 +372,10 @@
 }
 
 .public-segmented-btn.is-active {
-  background: var(--fc-ocean);
+  background: var(--toggle-active-bg);
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 4px 12px -8px rgba(21, 101, 200, 0.9);
+  box-shadow: 0 4px 12px -8px rgba(90, 126, 90, 0.9);
 }
 
 /* ---------- Balance strip (buod ng supply vs demand) ---------- */
@@ -411,6 +411,118 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Municipality production charts ---------- */
+/* WHAT: Donut wrapper + the value in the hole.
+   WHY: The centre answers "how much is the province / the hovered municipality"
+        without repeating the legend; the slices stay the only chart marks. */
+.public-donut {
+  position: relative;
+  width: 100%;
+}
+
+.public-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 18%;
+  pointer-events: none;
+  text-align: center;
+}
+
+.public-donut-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--fc-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.public-donut-value em {
+  margin-left: 4px;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--fc-text-muted);
+}
+
+.public-donut-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fc-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-donut-pct {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--fc-ocean);
+  font-variant-numeric: tabular-nums;
+}
+
+/* WHAT: One row per municipality under the donut.
+   WHY: Seven slices cannot carry their own labels without clutter; the legend
+        states the name, the volume and the share in the same reading order. */
+.public-muni-legend {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-muni-legend__row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--fc-text-2);
+  transition: background 120ms ease;
+}
+
+.public-muni-legend__row.is-active {
+  background: #F3F7FC;
+  color: var(--fc-text);
+}
+
+.public-muni-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.public-muni-legend__name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-muni-legend__value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.public-muni-legend__pct {
+  min-width: 44px;
+  font-weight: 700;
+  color: var(--fc-text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
 /* ---------- Chart caption as a callout ---------- */
 /* WHAT: Flex layout para may espasyo ang icon sa tabi ng teksto.
    WHY: dating plain bordered note; ngayon may tone + icon pero backward compatible
@@ -433,7 +545,14 @@
 .public-chart-caption__icon {
   flex-shrink: 0;
   margin-top: 0.05rem;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #EEF3F9;
   color: var(--ocean-blue, #1565c8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .public-chart-caption__text {

@@ -87,22 +87,43 @@ export function buildMunicipalityRows(outlook, trends) {
   return rows;
 }
 
-/* Municipalities that need a decision, with the reason for each. */
+/* Municipalities that need a decision, with the reason for each.
+   WHAT: severity score + proportional bar, sorted worst first.
+   WHY: a flat list hides which place needs the decision now. */
 export function buildNeedsAttention(rows) {
-  return rows
+  const items = rows
     .filter((r) => directionFromPct(r.change) === 'declining' || r.reliability === 'low' || r.change === null)
     .map((r) => {
       const reasons = [];
-      if (directionFromPct(r.change) === 'declining') reasons.push({ label: 'Declining forecast', tone: 'declining' });
-      if (r.reliability === 'low') reasons.push({ label: 'Low confidence', tone: 'low' });
-      if (r.change === null) reasons.push({ label: 'Not enough data', tone: 'nodata' });
+      const declining = directionFromPct(r.change) === 'declining';
+      const low = r.reliability === 'low';
+      const nodata = r.change === null;
+      if (declining) reasons.push({ label: 'Declining forecast', tone: 'declining' });
+      if (low) reasons.push({ label: 'Low confidence', tone: 'low' });
+      if (nodata) reasons.push({ label: 'Not enough data', tone: 'nodata' });
       return {
         id: r.id,
         name: r.name,
+        change: r.change,
         value: r.change === null ? '\u2014' : fmtPctSigned(r.change),
+        severity: (declining ? 3 : 0) + (low ? 2 : 0) + (nodata ? 1 : 0),
         reasons,
       };
     });
+
+  const maxAbs = Math.max(...items.map((i) => Math.abs(Number(i.change) || 0)), 1);
+  items.sort((a, b) => (
+    b.severity - a.severity
+    || (Number(a.change) || 0) - (Number(b.change) || 0)
+    || a.name.localeCompare(b.name)
+  ));
+
+  return items.map((item) => ({
+    ...item,
+    barPct: item.change === null
+      ? 100
+      : Math.max(6, Math.round((Math.abs(Number(item.change)) / maxAbs) * 100)),
+  }));
 }
 
 /* 12 calendar months; months without source rows stay empty. */

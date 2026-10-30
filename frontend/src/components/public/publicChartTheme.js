@@ -70,6 +70,22 @@ export function fmtNumber(value) {
 }
 
 
+/* WHAT: Compact na numero para sa axis tick at bar label (1.2k / 3.4M).
+   WHY: Ang production values ay umaabot sa daan-daang libo; ang buong numero
+        ay sumasagabal sa makitid na axis at sa dulo ng bar. */
+export function fmtCompact(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) {
+    return `${(n / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`;
+  }
+  if (abs >= 1_000) {
+    return `${(n / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}k`;
+  }
+  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
 /* WHAT: Format ng bahagdan (%).
    WHY: iisa na decimal para pareho ang lahat ng percentage sa public page. */
 export function fmtPct(value, digits = 1) {

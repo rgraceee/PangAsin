@@ -51,22 +51,18 @@
   color: #0d4fa0;
 }
 
-/* ---------- Filters ---------- */
-.audit-filters {
-  padding-bottom: 14px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #eef1f5;
-}
-
-.audit-filters .form-label {
-  font-weight: 600;
-  color: #4b5563;
+/* ---------- Header filters ---------- */
+/* WHAT: display:contents para ang bawat control ay direct flex item ng
+   .ui-pageheader-controls, kaya pareho sila ng taas at agwat ng ibang admin page. */
+.audit-header-filters {
+  display: contents;
 }
 
 .audit-filters__hint {
-  margin: 8px 0 0;
+  flex-basis: 100%;
+  margin: 0;
   font-size: 0.76rem;
-  color: #6b7280;
+  color: var(--ui-text-muted);
 }
 
 .audit-meta {
@@ -93,7 +89,7 @@
 }
 
 .audit-card .audit-table tbody td {
-  padding: 0.55rem 0.75rem;
+  padding: 0.72rem 0.9rem;
 }
 
 .audit-table thead th {
@@ -407,7 +403,7 @@
   font-size: 0.8rem;
 }
 
-/* ---------- Empty state, pagination, footnote ---------- */
+/* ---------- Empty state, footnote ---------- */
 .audit-empty {
   padding: 28px 16px;
   border: 1px dashed #d1d5db;
@@ -424,19 +420,6 @@
 
 .audit-empty p {
   margin: 0 0 10px;
-}
-
-.audit-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.audit-pagination__status {
-  color: #6b7280;
-  font-size: 0.8rem;
 }
 
 .audit-footnote {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
+import { Alert, Card, Form, Table } from 'react-bootstrap';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight, ChevronDown, ChevronRight, Info, Lock, RefreshCw,
@@ -8,6 +8,7 @@ import { getAdminAuditLogs, getAdminMunicipalities } from '../../services/dataSe
 import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
 import PageHeader from './PageHeader';
+import TablePagination from '../ui/TablePagination';
 import {
   AUDIT_ACTIONS,
   detailLabel,
@@ -322,85 +323,78 @@ export default function AuditLogs() {
           </div>
         )}
         actions={(
-          <Button
-            variant="outline-secondary"
+          <button
+            type="button"
+            className="ui-btn-outline"
             onClick={() => setReloadToken((value) => value + 1)}
             disabled={loading}
           >
             <RefreshCw size={15} aria-hidden="true" />
             Refresh
-          </Button>
+          </button>
         )}
-      />
+      >
+        <Form onSubmit={applyFilters} className="audit-header-filters">
+          <div className="admin-page-hero-control">
+            <label className="admin-page-hero-field" htmlFor="audit-filter-action">Action</label>
+            <Form.Select
+              id="audit-filter-action"
+              className="admin-page-hero-select"
+              value={draftFilters.action}
+              onChange={(event) => setDraftFilters((prev) => ({ ...prev, action: event.target.value }))}
+            >
+              <option value="">All actions</option>
+              {AUDIT_ACTIONS.map((action) => (
+                <option key={action} value={action}>
+                  {getActionMeta(action).label}
+                </option>
+              ))}
+            </Form.Select>
+          </div>
+          <div className="admin-page-hero-control">
+            <label className="admin-page-hero-field" htmlFor="audit-filter-entity">Entity</label>
+            <Form.Select
+              id="audit-filter-entity"
+              className="admin-page-hero-select"
+              value={draftFilters.entity_type}
+              onChange={(event) => setDraftFilters((prev) => ({ ...prev, entity_type: event.target.value }))}
+            >
+              <option value="">All entities</option>
+              <option value="municipality">Municipality</option>
+              <option value="barangay">Barangay</option>
+              <option value="user">User</option>
+            </Form.Select>
+          </div>
+          <div className="admin-page-hero-control">
+            <label className="admin-page-hero-field" htmlFor="audit-filter-actor">Actor email contains</label>
+            <Form.Control
+              id="audit-filter-actor"
+              className="admin-page-hero-input"
+              type="search"
+              value={draftFilters.actor_email}
+              onChange={(event) => setDraftFilters((prev) => ({ ...prev, actor_email: event.target.value }))}
+              placeholder="admin@pangasin.gov.ph"
+            />
+          </div>
+          <button type="submit" className="ui-btn-primary" disabled={loading}>
+            Apply
+          </button>
+          <button
+            type="button"
+            className="ui-btn-outline"
+            onClick={clearFilters}
+            disabled={loading || (!hasFilters && !draftDirty)}
+          >
+            Clear
+          </button>
+          <p className="audit-filters__hint">
+            Action and entity filters match exactly; actor email matches partially. Newest entries appear first.
+          </p>
+        </Form>
+      </PageHeader>
 
       <Card className={`encoder-card admin-card audit-card${loading && logs.length ? ' is-loading' : ''}`}>
         <Card.Body>
-          <Form onSubmit={applyFilters} className="audit-filters">
-            <Row className="g-2 align-items-end">
-              <Col xs={12} md={6} lg={3}>
-                <Form.Label className="small mb-1" htmlFor="audit-filter-action">Action</Form.Label>
-                <Form.Select
-                  id="audit-filter-action"
-                  size="sm"
-                  value={draftFilters.action}
-                  onChange={(event) => setDraftFilters((prev) => ({ ...prev, action: event.target.value }))}
-                >
-                  <option value="">All actions</option>
-                  {AUDIT_ACTIONS.map((action) => (
-                    <option key={action} value={action}>
-                      {getActionMeta(action).label}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Col>
-              <Col xs={12} md={6} lg={2}>
-                <Form.Label className="small mb-1" htmlFor="audit-filter-entity">Entity</Form.Label>
-                <Form.Select
-                  id="audit-filter-entity"
-                  size="sm"
-                  value={draftFilters.entity_type}
-                  onChange={(event) => setDraftFilters((prev) => ({ ...prev, entity_type: event.target.value }))}
-                >
-                  <option value="">All entities</option>
-                  <option value="municipality">Municipality</option>
-                  <option value="barangay">Barangay</option>
-                  <option value="user">User</option>
-                </Form.Select>
-              </Col>
-              <Col xs={12} md={6} lg={3}>
-                <Form.Label className="small mb-1" htmlFor="audit-filter-actor">Actor email contains</Form.Label>
-                <Form.Control
-                  id="audit-filter-actor"
-                  size="sm"
-                  type="search"
-                  value={draftFilters.actor_email}
-                  onChange={(event) => setDraftFilters((prev) => ({ ...prev, actor_email: event.target.value }))}
-                  placeholder="admin@pangasin.gov.ph"
-                />
-              </Col>
-              <Col xs={6} md={3} lg={2}>
-                <Button type="submit" size="sm" variant="primary" className="w-100" disabled={loading}>
-                  Apply
-                </Button>
-              </Col>
-              <Col xs={6} md={3} lg={2}>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline-secondary"
-                  className="w-100"
-                  onClick={clearFilters}
-                  disabled={loading || (!hasFilters && !draftDirty)}
-                >
-                  Clear
-                </Button>
-              </Col>
-            </Row>
-            <p className="audit-filters__hint">
-              Action and entity filters match exactly; actor email matches partially. Newest entries appear first.
-            </p>
-          </Form>
-
           <div className="audit-meta">
             <span>
               {total} entr{total === 1 ? 'y' : 'ies'}
@@ -408,8 +402,6 @@ export default function AuditLogs() {
             </span>
             <span className="audit-meta__right">
               {loading && logs.length > 0 ? 'Updating…' : `Page ${page}${pages ? ` of ${pages}` : ''}`}
-              <span aria-hidden="true">·</span>
-              50 per page
               <span aria-hidden="true">·</span>
               Newest first
             </span>
@@ -429,9 +421,9 @@ export default function AuditLogs() {
                   : 'No audit entries have been recorded yet.'}
               </p>
               {hasFilters && (
-                <Button size="sm" variant="outline-secondary" onClick={clearFilters}>
+                <button type="button" className="ui-btn-outline" onClick={clearFilters}>
                   Clear filters
-                </Button>
+                </button>
               )}
             </div>
           )}
@@ -509,10 +501,9 @@ export default function AuditLogs() {
                         <td className="audit-cell-summary" data-label="Summary">{entry.summary || '—'}</td>
                         <td className="audit-cell-ip">{entry.ip_address || '—'}</td>
                         <td className="audit-cell-toggle">
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="audit-toggle"
+                          <button
+                            type="button"
+                            className="ui-btn-text ui-btn--sm audit-toggle"
                             onClick={() => toggleDetails(entry.id)}
                             aria-expanded={isOpen}
                             aria-controls={detailsId}
@@ -521,7 +512,7 @@ export default function AuditLogs() {
                             {isOpen
                               ? <ChevronDown size={16} aria-hidden="true" />
                               : <ChevronRight size={16} aria-hidden="true" />}
-                          </Button>
+                          </button>
                         </td>
                       </tr>
                       {isOpen && (
@@ -541,26 +532,17 @@ export default function AuditLogs() {
             </Table>
           )}
 
-          {pages > 1 && (
-            <div className="audit-pagination">
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                disabled={loading || page <= 1}
-                onClick={() => goToPage(page - 1)}
-              >
-                Previous
-              </Button>
-              <span className="audit-pagination__status">Page {page} of {pages}</span>
-              <Button
-                size="sm"
-                variant="outline-secondary"
-                disabled={loading || page >= pages}
-                onClick={() => goToPage(page + 1)}
-              >
-                Next
-              </Button>
-            </div>
+          {pages > 0 && (
+            <TablePagination
+              page={page}
+              pages={pages}
+              total={total}
+              perPage={PER_PAGE}
+              onPageChange={goToPage}
+              itemLabel="audit entries"
+              disabled={loading}
+              className="audit-pagination"
+            />
           )}
 
           <p className="audit-footnote">

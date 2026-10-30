@@ -38,159 +38,9 @@
   padding-bottom: 40px;
 }
 
-/* ===== Filter bar (sticky, one row) ===== */
-
-.fc-filterbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  margin: 4px 0 4px;
-  padding: 10px 14px 8px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--fc-border);
-  border-radius: 14px;
-  transition: box-shadow 180ms ease;
-}
-
-.fc-filterbar--scrolled {
-  box-shadow: 0 6px 18px -12px rgba(12, 35, 64, 0.45);
-}
-
-.fc-filterbar-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.fc-filterbar-fields {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  flex: 1 1 auto;
-}
-
-.fc-filterbar-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.fc-filterbar-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--fc-text-muted);
-  white-space: nowrap;
-}
-
-.fc-filterbar-field .form-select {
-  height: 34px;
-  padding: 0 28px 0 10px;
-  font-size: 13px;
-  color: var(--fc-text);
-  background-color: #fff;
-  border: 1px solid #DFE4EA;
-  border-radius: 9px;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.fc-filterbar-field .form-select:focus {
-  border-color: var(--fc-ocean);
-  box-shadow: 0 0 0 3px rgba(21, 101, 200, 0.12);
-  outline: none;
-}
-
-.fc-filterbar-toggle {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--fc-text-2);
-  background: #fff;
-  border: 1px solid #DFE4EA;
-  border-radius: 9px;
-}
-
-.fc-filterbar-reset {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--fc-text-2);
-  background: #fff;
-  border: 1px solid #DFE4EA;
-  border-radius: 9px;
-  transition: border-color 150ms ease, color 150ms ease;
-}
-
-.fc-filterbar-reset:hover:not(:disabled) {
-  border-color: var(--fc-ocean);
-  color: var(--fc-ocean);
-}
-
-.fc-filterbar-summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--fc-text-muted);
-  line-height: 1.45;
-}
-
-/* Refresh control + "how old is this data" note. */
-.fc-filterbar-refresh {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  padding-left: 4px;
-}
-
-.fc-filterbar-refresh-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  color: var(--fc-text-2);
-  background: #fff;
-  border: 1px solid #DFE4EA;
-  border-radius: 9px;
-  transition: border-color 150ms ease, color 150ms ease;
-}
-
-.fc-filterbar-refresh-btn:hover:not(:disabled) {
-  border-color: var(--fc-ocean);
-  color: var(--fc-ocean);
-}
-
-.fc-filterbar-refresh-btn:disabled {
-  opacity: 0.6;
-}
-
-.fc-filterbar-refresh-btn.is-spinning svg {
-  animation: fc-spin 900ms linear infinite;
-}
-
+/* WHAT: Shared spin animation para sa refresh icons. */
 @keyframes fc-spin {
   to { transform: rotate(360deg); }
-}
-
-.fc-filterbar-updated {
-  font-size: 12px;
-  color: var(--fc-text-muted);
-  white-space: nowrap;
 }
 
 /* ===== Data-quality notice ===== */
@@ -589,6 +439,106 @@
   border-style: dashed;
 }
 
+/* WHAT: Proportional bar showing how big the change is, not just its sign.
+   WHY: the list is sorted worst-first; the bar makes the gap between places
+        readable at a glance. */
+.fc-attention-meter {
+  height: 5px;
+  overflow: hidden;
+  background: #EEF1F5;
+  border-radius: 999px;
+}
+
+.fc-attention-meter-fill {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.fc-attention-meter-fill.is-dashed {
+  border-style: dashed;
+}
+
+/* ===== Header controls (forecast filters) ===== */
+
+/* WHAT: Isang row lang ang filters sa desktop.
+   WHY: flex-basis 100% at nowrap para hindi mag-wrap ang tatlong select at Reset. */
+.fc-hero-filters {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 12px;
+  flex: 1 1 100%;
+}
+
+.fc-hero-filters .admin-page-hero-control {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+}
+
+.fc-hero-reset {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+
+@media (max-width: 991px) {
+  .fc-hero-filters {
+    flex-wrap: wrap;
+  }
+}
+
+/* WHAT: Ang summary ay sariling linya sa ilalim ng filter row.
+   WHY: flex-basis 100% ang nagpapa-wrap dito sa loob ng header controls. */
+.fc-hero-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-basis: 100%;
+  min-width: 0;
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--fc-text-muted);
+}
+
+/* WHAT: Isang linya lang ang summary; ellipsis kapag masyadong mahaba.
+   WHY: hindi dapat mag-wrap at itulak pababa ang charts. */
+.fc-hero-summary-text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Municipality outlook toggles ===== */
+
+.fc-muni-toggles {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fc-muni-toggle {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+
+.fc-muni-toggle.is-active {
+  background: var(--toggle-active-bg);
+  border-color: var(--toggle-active-bg);
+  color: #fff;
+}
+
+/* Cards inside the outlook section stack with the same rhythm as sections. */
+.fc-outlook > .fc-card + .fc-card {
+  margin-top: 18px;
+}
+
+
 /* ===== Footer note ===== */
 
 .fc-footer-note {
@@ -610,20 +560,6 @@
   .forecast-page .ui-kpi-grid[data-cols="5"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-
-  .fc-filterbar-fields {
-    gap: 8px;
-  }
-
-  .fc-filterbar-field .form-select {
-    font-size: 12.5px;
-    padding-left: 8px;
-    padding-right: 24px;
-  }
-
-  .fc-filterbar-reset {
-    padding: 0 10px;
-  }
 }
 
 @media (max-width: 991px) {
@@ -636,35 +572,6 @@
 @media (max-width: 767px) {
   .forecast-page .ui-kpi-grid[data-cols="5"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .fc-filterbar {
-    padding: 10px 12px 8px;
-  }
-
-  .fc-filterbar-toggle {
-    display: inline-flex;
-  }
-
-  .fc-filterbar-fields {
-    display: none;
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding-top: 10px;
-  }
-
-  .fc-filterbar-fields.is-open {
-    display: flex;
-  }
-
-  .fc-filterbar-field .form-select {
-    width: 100%;
-  }
-
-  .fc-filterbar-reset {
-    justify-content: center;
   }
 
   .fc-section {

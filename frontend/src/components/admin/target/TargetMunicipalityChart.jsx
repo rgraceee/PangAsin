@@ -6,6 +6,7 @@
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceDot,
 } from 'recharts';
+import { useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { fmtMT, fmtAxis } from './targetData';
 import { ContributionTooltip, ContributionBar, ContributionLabel } from './targetTooltips';
@@ -20,11 +21,20 @@ const NODATA = 'var(--te-soft-slate)';
 const NODATA_EDGE = 'var(--te-nodata-edge)';
 
 export default function TargetMunicipalityChart({ rows }) {
+  const [width, setWidth] = useState(0);
   const maxValue = Math.max(
     ...rows.map((r) => r.forecast || 0),
     ...rows.map((r) => r.targetShare || 0),
     1,
   );
+  const above = rows.filter((r) => r.hasForecast && r.above).length;
+  const below = rows.filter((r) => r.hasForecast && !r.above).length;
+  const missing = rows.filter((r) => !r.hasForecast).length;
+  const muniNote = !rows.length
+    ? 'No municipality data is available for this target.'
+    : (above + below) === 0
+      ? 'No municipality has a forecast for this target yet.'
+      : `${above} of ${rows.length} municipalities are at or above their target share${missing > 0 ? `; ${missing} have no forecast.` : '.'}`;
 
   return (
     <TargetCard
@@ -40,12 +50,23 @@ export default function TargetMunicipalityChart({ rows }) {
       )}
       caption="The gold marker is each municipality's target share, based on what it delivered in past complete years. A municipality whose newest forecast covers fewer than 12 months is compared only against the share for those same months."
     >
+      <div className="te-muni-summary" role="list">
+        <span className="te-muni-summary__item te-muni-summary__item--above" role="listitem">
+          <strong>{above}</strong> at or above share
+        </span>
+        <span className="te-muni-summary__item te-muni-summary__item--below" role="listitem">
+          <strong>{below}</strong> below share
+        </span>
+        <span className="te-muni-summary__item te-muni-summary__item--nodata" role="listitem">
+          <strong>{missing}</strong> no forecast
+        </span>
+      </div>
       <div className="te-chart" style={{ height: 300 }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>
             <BarChart
               data={rows}
               layout="vertical"
-              margin={{ top: 4, right: 64, bottom: 4, left: 0 }}
+              margin={{ top: 4, right: 112, bottom: 4, left: 0 }}
               barCategoryGap="26%"
             >
               <XAxis
@@ -77,8 +98,8 @@ export default function TargetMunicipalityChart({ rows }) {
                 maxBarSize={16}
                 isAnimationActive={false}
                 shape={<ContributionBar />}
-                label={({ x, y, width, height, index }) => (
-                  <ContributionLabel rows={rows} index={index} x={x} y={y} width={width} height={height} />
+                label={({ x, y, width: barWidth, height, index }) => (
+                  <ContributionLabel rows={rows} index={index} x={x} y={y} width={barWidth} height={height} chartWidth={width} />
                 )}
               >
                 {rows.map((row, i) => (
@@ -107,6 +128,7 @@ export default function TargetMunicipalityChart({ rows }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <div className="te-note">{muniNote}</div>
         <div className="te-muni-legend">
           {rows.filter((r) => r.hasForecast && r.monthsLabel && r.monthsLabel !== '12 of 12 months').map((r) => (
             <span key={r.id} className="te-chip te-chip--muted">{r.name}: {r.monthsLabel} forecast</span>

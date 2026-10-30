@@ -6,7 +6,7 @@
 //      where its numbers come from. The header and the KPI cards follow the
 //      Dashboard's design language so both pages feel like one product.
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card } from 'react-bootstrap';
+import { Alert, Card } from 'react-bootstrap';
 import {
   AlertTriangle, BadgeCheck, CalendarRange, ClipboardCheck, ClipboardList, RefreshCw,
 } from 'lucide-react';
@@ -93,9 +93,9 @@ export default function DataQualityDashboard() {
             {error.message || 'The request failed.'} Please check that the server is running and that
             you are still signed in, then try again.
           </span>
-          <Button size="sm" variant="outline-danger" onClick={() => load(range)}>
+          <button type="button" className="ui-btn-outline ui-btn--sm" onClick={() => load(range)}>
             Try again
-          </Button>
+          </button>
         </Alert>
       </div>
     );
