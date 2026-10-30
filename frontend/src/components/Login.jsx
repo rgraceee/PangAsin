@@ -269,6 +269,10 @@ export default function Login({ onLogin }) {
 
         <div className="login-form-region">
 <div className="login-form-card">
+  <Link to="/" className="auth-recovery-back">
+    <ArrowLeft size={14} aria-hidden="true" />
+    Back to public dashboard
+  </Link>
   <h2 className="encoder-login-title">Welcome back</h2>
             <p className="encoder-login-sub">
               Sign in with your encoder or admin account to continue.
@@ -372,13 +376,6 @@ export default function Login({ onLogin }) {
                 )}
               </Button>
             </Form>
-
-            <div className="encoder-login-footer">
-              <Link to="/">
-                <ArrowLeft size={14} aria-hidden="true" />
-                Back to public dashboard
-              </Link>
-            </div>
           </div>
         </div>
       </section>
@@ -496,10 +493,10 @@ export default function Login({ onLogin }) {
                 <li>
                   <Mail size={18} aria-hidden="true" className="login-footer-icon" />
                   <a
-                    href="mailto:contact@pangasin.gov.ph"
+                    href="mailto:pang.asin26@gmail.com"
                     className="login-footer-contact-link"
                   >
-                    contact@pangasin.gov.ph
+                    pang.asin26@gmail.com
                   </a>
                 </li>
                 <li>

@@ -29,11 +29,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 22px;
-  color: #64748b;
+  width: 100%;
+  margin-bottom: 20px;
+  color: var(--p-navy);
   font-size: 12.5px;
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
+  min-height: 40px;
 }
 
 .auth-recovery-back:hover {
@@ -41,16 +44,30 @@
   text-decoration: underline;
 }
 
+.auth-recovery-back:focus-visible {
+  outline: 2px solid var(--p-navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .auth-recovery-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
-  margin-bottom: 16px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0;
+  border-radius: 12px;
   color: #1f7a3a;
   background: rgba(31, 122, 58, 0.1);
+  flex-shrink: 0;
+}
+
+.auth-recovery-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .auth-recovery-icon.is-success {
@@ -64,7 +81,7 @@
 }
 
 .auth-recovery-title {
-  margin: 0 0 8px;
+  margin: 0;
   color: #0c2340;
   font-size: 1.5rem;
   font-weight: 800;

@@ -431,7 +431,8 @@ body {
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
-  padding: 2rem 1.75rem;
+  min-height: 480px;
+  padding: 1.75rem 1.75rem;
   border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: 24px;
   background: var(--login-card-bg);
@@ -487,7 +488,7 @@ body {
 }
 
 .encoder-login-sub {
-  margin: 0 0 1.75rem;
+  margin: 0 0 1rem;
   color: #334155;
   font-size: 14px;
   font-weight: 500;
@@ -728,32 +729,6 @@ body {
   line-height: 1.45;
 }
 
-.encoder-login-footer {
-  margin-top: 1.5rem;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 13px;
-  text-align: center;
-}
-
-.encoder-login-footer a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--p-navy);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.encoder-login-footer svg {
-  width: 14px;
-  height: 14px;
-}
-
-.encoder-login-footer a:hover {
-  color: var(--p-navy);
-  text-decoration: underline;
-}
-
 /* WHAT: About section — puting background at real data (Phase 2).
    WHY: Reveal.jsx ang nagbibigay ng fade-in kapag napasok na sa viewport. */
 .login-about {
@@ -981,24 +956,14 @@ body {
 /* ---------- Featured (top producing) card ---------- */
 .login-muni-kpi--top {
   text-align: left;
-  border: 0;
-  background:
-    radial-gradient(120% 170% at 100% 0%, rgba(21, 101, 200, 0.5) 0%, rgba(21, 101, 200, 0) 58%),
-    linear-gradient(135deg, #0C2340 0%, #122C4E 55%, #173257 100%);
-  box-shadow: 0 26px 50px -28px rgba(12, 35, 64, 0.75);
-}
-
-.login-muni-kpi--top:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 32px 58px -28px rgba(12, 35, 64, 0.8);
 }
 
 .login-muni-body--top {
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px 32px;
-  padding: 26px 30px;
+  justify-content: center;
+  gap: clamp(32px, 6vw, 80px);
+  padding: 26px 36px;
   text-align: left;
 }
 
@@ -1013,15 +978,13 @@ body {
   width: 84px;
   height: 84px;
   padding: 9px;
-  border: 0;
-  box-shadow: 0 14px 26px -16px rgba(0, 0, 0, 0.7);
 }
 
 .login-muni-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--p-gold);
+  color: #B45309;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.2px;
@@ -1030,15 +993,13 @@ body {
 
 .login-muni-kpi--top .login-muni-name {
   margin-top: 3px;
-  color: var(--white);
   font-size: 24px;
-  font-weight: 800;
   letter-spacing: -0.4px;
 }
 
 .login-muni-stats {
   display: flex;
-  flex: 1 1 300px;
+  flex: 0 1 380px;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
@@ -1051,13 +1012,11 @@ body {
 }
 
 .login-muni-kpi--top .login-muni-value {
-  color: var(--white);
   font-size: clamp(30px, 6vw, 38px);
   white-space: nowrap;
 }
 
 .login-muni-kpi--top .login-muni-unit {
-  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
   font-weight: 600;
 }
@@ -1065,16 +1024,9 @@ body {
 .login-muni-kpi--top .login-muni-bar {
   max-width: 320px;
   margin: 4px 0 0 auto;
-  background: rgba(255, 255, 255, 0.18);
 }
 
-.login-muni-kpi--top .login-muni-bar > span {
-  background: linear-gradient(90deg, var(--p-gold), #FFD08A);
-}
 
-.login-muni-kpi--top .login-muni-share {
-  color: rgba(255, 255, 255, 0.78);
-}
 
 .login-muni-kpi,
 .login-muni-kpi * {
@@ -1086,7 +1038,8 @@ body {
 @media (max-width: 700px) {
   .login-muni-body--top {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     padding: 22px;
   }
   .login-muni-logo-wrap--lg {
@@ -1098,17 +1051,18 @@ body {
   }
   .login-muni-stats {
     width: 100%;
+    max-width: 360px;
     flex: none;
-    align-items: flex-start;
+    align-items: center;
   }
   .login-muni-kpi--top .login-muni-value-row {
-    justify-content: flex-start;
+    justify-content: center;
   }
   .login-muni-kpi--top .login-muni-value {
     font-size: 30px;
   }
   .login-muni-kpi--top .login-muni-bar {
-    margin-left: 0;
+    margin: 4px 0 0;
   }
 }
 

@@ -71,10 +71,12 @@ export default function ForgotPassword() {
             </div>
           ) : (
             <>
-              <span className="auth-recovery-icon" aria-hidden="true">
-                <KeyRound size={26} strokeWidth={2} />
-              </span>
-              <h1 className="auth-recovery-title">Forgot your password?</h1>
+              <div className="auth-recovery-header-row">
+                <span className="auth-recovery-icon" aria-hidden="true">
+                  <KeyRound size={20} strokeWidth={2} />
+                </span>
+                <h1 className="auth-recovery-title">Forgot your password?</h1>
+              </div>
               <p className="auth-recovery-sub">
                 Enter the email registered to your PangAsin account. We will send
                 a secure reset link that expires in 30 minutes.
