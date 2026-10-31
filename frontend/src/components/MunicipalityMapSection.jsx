@@ -152,7 +152,7 @@ export default function MunicipalityMapSection() {
             const changeText = changePct != null ? `${trendSymbol} ${Math.abs(changePct)}%` : '—';
             const methodLabel = m.dominantMethod
               ? `${m.dominantMethod.charAt(0).toUpperCase()}${m.dominantMethod.slice(1)}`
-              : 'Not included in source data';
+              : '—';
             const bedEstimateLabel = m.saltBeds
               ? `${m.saltBeds.toLocaleString()}${m.saltBedsYear ? ` (${m.saltBedsYear} dataset)` : ''}`
               : '—';

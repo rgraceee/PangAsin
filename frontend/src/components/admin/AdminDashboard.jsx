@@ -130,6 +130,17 @@ export default function AdminDashboard({ user }) {
           array, huwag mag-.map sa undefined (dati ay nag-crash sa hero art). */
   const muniData = useMemo(() => {
     if (!stats) return [];
+    const methodsByMuni = {};
+    (stats.production_methods_mt || []).forEach((entry) => {
+      const { solar = 0, cooked = 0, hybrid = 0 } = entry;
+      const dominant =
+        solar >= cooked && solar >= hybrid
+          ? "solar"
+          : cooked >= hybrid
+          ? "cooked"
+          : "hybrid";
+      methodsByMuni[entry.municipality_name] = dominant;
+    });
     return (stats.by_municipality || [])
       .map((m) => ({
         name: m.municipality_name,
@@ -141,6 +152,7 @@ export default function AdminDashboard({ user }) {
         female: m.total_female_producers,
         records: m.production_month_count ?? m.record_count,
         efficiency: m.total_salt_beds > 0 ? Math.round((m.total_volume_mt / m.total_salt_beds) * 1000) / 1000 : 0,
+        dominantMethod: methodsByMuni[m.municipality_name] || null,
       }))
       .sort((a, b) => b.volumeMT - a.volumeMT);
   }, [stats]);
@@ -285,6 +297,9 @@ function MunicipalityMap({ muniData, selectedName }) {
     const genderText = m.registered > 0
       ? `${(m.male || 0).toLocaleString()} / ${(m.female || 0).toLocaleString()}`
       : '—';
+    const methodLabel = m.dominantMethod
+      ? `${m.dominantMethod.charAt(0).toUpperCase()}${m.dominantMethod.slice(1)}`
+      : '—';
 
     return buildMapDetailCard({
       name: m.name,
@@ -293,6 +308,7 @@ function MunicipalityMap({ muniData, selectedName }) {
         ['Record Count', (m.records ?? 0).toLocaleString()],
         ['Salt Beds', (m.beds || 0).toLocaleString()],
         ['Registered Salt Farmers', (m.registered || 0).toLocaleString()],
+        ['Dominant Method', methodLabel],
         ['Male/Female', genderText],
       ],
     });
