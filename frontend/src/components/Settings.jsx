@@ -51,17 +51,33 @@ const FAQS = [
   },
 ];
 
+// WHAT: Halimbawa ng pag-set ng estado para sa buong Settings page — user data,
+//       saving flag, error message, at open FAQ index. Isa lamang ang state
+//       para simple at predictable ang behavior.
+// WHY: centralized state para madaling i-debug kung ano ang nagkakabago sa page.
+// WHAT: Pangunahing component ng Settings page para sa admin at encoder.
+//       Naglalaman ng Account, Security, Help & Support, Legal, at About sections,
+//       kasama ang Help Center FAQ na naka-inline.
+// WHY: Isang settings page lang para sa dalawang role; walang role-specific na
+//      section maliban sa assigned municipality sa Account section.
 export default function Settings({ user }) {
   const navigate = useNavigate();
   const { toastSuccess, toastError } = useToast();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+// WHAT: Isa lamang ang open FAQ index para sa accordion-style Help Center.
+// WHY: Simple at hindi kailangan ng karagdagang library para sa accordion behavior.
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const role = user?.role === 'admin' ? 'admin' : 'encoder';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
 
+// WHAT: Gumagamit ng existing changePassword endpoint mula sa dataService —
+//       parehong logic na ginagamit ng ChangePassword page (forced first-login
+//       password change). Hindi nababago ang backend o endpoint.
+// WHY: Reuse lang ang existing logic; hindi kinakopya o inirerewrite ang
+//      ChangePassword component.
   const handleChangePassword = async (event) => {
     event.preventDefault();
     setError(null);

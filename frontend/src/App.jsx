@@ -142,6 +142,10 @@ export default function App() {
             </RequirePasswordChange>
           )}
         />
+// WHAT: Settings route para sa admin at encoder, kinakasa ng RequireAuth guard.
+//       Kung may must_change_password, ipapayo muna ang user mag-change ng
+//       password bago ma-access ang Settings.
+// WHY: parehong role ang makakapasok; ang guard ang nagpapatupad ng auth rules.
         <Route
           path="/settings"
           element={(
