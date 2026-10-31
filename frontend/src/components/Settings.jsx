@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { changePassword } from '../services/dataService';
 import { useToast } from './Toast';
-import { HELP_CENTER_FAQS } from './support/faqData';
+import { publicFaq, adminFaq, encoderFaq } from './support/faqData';
+import FaqList from './support/FaqList';
 import { useLastNonSettingsLocation } from '../hooks/useLastNonSettingsLocation';
 import { getInitials } from './shell/sidebarUi';
 
@@ -73,7 +74,6 @@ export default function Settings({ user }) {
   const { toastSuccess, toastError } = useToast();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [openFaq, setOpenFaq] = useState(null);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -92,6 +92,7 @@ export default function Settings({ user }) {
   const role = user?.role === 'admin' ? 'admin' : 'encoder';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
+  const roleFaq = role === 'admin' ? adminFaq : encoderFaq;
   const getLastPath = useLastNonSettingsLocation();
 
   const handleBack = () => {
@@ -322,22 +323,6 @@ export default function Settings({ user }) {
                     </a>
                   </li>
                   <li>
-                    <a
-                      href="/help#faq"
-                      className="settings-help-link"
-                      onClick={(e) => { e.preventDefault(); navigate('/help#faq'); }}
-                    >
-                      <span className="settings-link-icon" aria-hidden="true">
-                        <HelpCircle size={14} strokeWidth={1.5} />
-                      </span>
-                      <div>
-                        <div className="settings-link-title">Help Center (FAQ)</div>
-                        <div className="settings-link-desc">Short answers to common questions about using PangAsin.</div>
-                      </div>
-                      <span className="settings-link-chevron" aria-hidden="true">›</span>
-                    </a>
-                  </li>
-                  <li>
                     <a href={`mailto:${CONTACT_EMAIL}`} className="settings-help-link">
                       <span className="settings-link-icon" aria-hidden="true">
                         <Mail size={14} strokeWidth={1.5} />
@@ -353,36 +338,7 @@ export default function Settings({ user }) {
               </Card.Body>
             </Card>
 
-            <div className="settings-faq-section">
-              <h3 className="settings-faq-heading">Help Center</h3>
-              <p className="settings-faq-sub">
-                Short answers to common questions about using PangAsin.
-              </p>
-              <div className="settings-faq-list">
-                {FAQS.map((faq, index) => {
-                  const isOpen = openFaq === index;
-                  return (
-                    <div key={index} className="settings-faq-item">
-                      <button
-                        type="button"
-                        className={`settings-faq-question${isOpen ? ' active' : ''}`}
-                        aria-expanded={isOpen}
-                        aria-controls={`faq-${index}`}
-                        onClick={() => setOpenFaq(isOpen ? null : index)}
-                      >
-                        {faq.q}
-                        <span className="settings-faq-toggle" aria-hidden="true">
-                          {isOpen ? '▸' : '▾'}
-                        </span>
-                      </button>
-                      <div id={`faq-${index}`} className="settings-faq-answer" hidden={!isOpen}>
-                        {faq.a}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <FaqList faqs={roleFaq} />
           </>
         )}
 
