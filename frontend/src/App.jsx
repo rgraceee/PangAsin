@@ -23,10 +23,7 @@ import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import ProducerMasterList from './components/ProducerMasterList';
 import PrivacyPolicy from './components/support/PrivacyPolicy';
 import LegalDoc from './components/support/LegalDoc';
-import HelpManual from './components/support/HelpManual';
-import ReportForm from './components/support/ReportForm';
 import Settings from './components/Settings';
-import HelpCenter from './components/support/HelpCenter';
 import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getMe } from './services/dataService';
@@ -168,9 +165,6 @@ export default function App() {
         <Route path="/reset-password" element={<ErrorBoundary><ResetPassword /></ErrorBoundary>} />
         <Route path="/privacy" element={<ErrorBoundary><PrivacyPolicy /></ErrorBoundary>} />
         <Route path="/terms" element={<ErrorBoundary><LegalDoc docType="terms" /></ErrorBoundary>} />
-        <Route path="/help" element={<ErrorBoundary><HelpCenter /></ErrorBoundary>} />
-        <Route path="/help/manual" element={<ErrorBoundary><HelpManual user={user} /></ErrorBoundary>} />
-        <Route path="/help/report" element={<ErrorBoundary><ReportForm /></ErrorBoundary>} />
         <Route
           path="/change-password"
           element={(
