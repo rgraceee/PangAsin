@@ -61,10 +61,16 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.settings-card:hover {
+  box-shadow: 0 4px 12px -2px rgba(21, 35, 58, 0.08);
+  border-color: var(--ui-guide);
 }
 
 .settings-card-body {
-  padding: 20px;
+  padding: 24px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -194,10 +200,17 @@
   background: var(--ui-surface);
   border: 1px solid var(--ui-guide);
   color: var(--ui-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .settings-form-control::placeholder {
   color: var(--ui-text-muted);
+}
+
+.settings-form-control:focus {
+  outline: none;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
 }
 
 .settings-toggle-visibility {
@@ -239,10 +252,38 @@
 }
 
 .settings-save-btn {
-  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
   font-size: 14px;
   font-weight: 600;
+  color: #fff;
+  background: var(--ui-accent);
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-row);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   align-self: flex-start;
+}
+
+.settings-save-btn:hover:not(:disabled) {
+  background: var(--ui-accent-dark);
+  border-color: var(--ui-accent-dark);
+}
+
+.settings-save-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.settings-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-save-btn:focus {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
 }
 
 .settings-security-note {

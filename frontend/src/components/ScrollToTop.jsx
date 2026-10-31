@@ -1,4 +1,5 @@
-import { useLocation, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 // WHAT: Scrolls the page to the top on every route change, ignoring hash anchors.
 // WHY: Opening Privacy Policy, Help Center, Terms (and any page) must show the
