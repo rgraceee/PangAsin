@@ -78,59 +78,15 @@ export const publicFaq = [
 
 export const adminFaq = [
   {
-    category: 'About PangAsin',
-    items: [
-      {
-        q: 'What can administrators do?',
-        a: 'Administrators view the Executive Dashboard, manage municipalities and user accounts, review the validation queue, check data quality, generate reports, and view forecasts and targets.',
-      },
-    ],
-  },
-  {
-    category: 'Accounts',
-    items: [
-      {
-        q: 'How are encoder accounts created?',
-        a: 'The administrator creates encoder accounts via User Management and assigns each encoder to one municipality. The first login requires a password change before any other page opens.',
-      },
-      {
-        q: 'Forgot password?',
-        a: 'On the sign-in page, select "Forgot password" and enter your email. You will receive a reset link. If none arrives, contact your administrator or the ASIN Center.',
-      },
-    ],
-  },
-  {
     category: 'Validation Queue',
     items: [
       {
-        q: 'What is the validation queue?',
-        a: 'Submitted production reports go here for review. Administrators filter by type, status, municipality, or submitter, then open a report to check its entries.',
+        q: 'How do I review and approve an encoder\'s record?',
+        a: 'Open Validation Queue from the sidebar, filter by municipality or status, open a report to check its entries, then select Approve. Approved reports are included in production totals and dashboards.',
       },
       {
-        q: 'Approve or return a report?',
-        a: 'Select "Approve" or "Reject" on a submitted report. A comment is required when rejecting. Approved reports are included in production totals and dashboards.',
-      },
-    ],
-  },
-  {
-    category: 'Data Quality',
-    items: [
-      {
-        q: 'What is data quality?',
-        a: 'Open Data Quality to find gaps in records before publishing figures. Every dashboard keeps its own period, so check the active filters first if totals look stale.',
-      },
-    ],
-  },
-  {
-    category: 'Forecast + Target Evaluation',
-    items: [
-      {
-        q: 'What is forecasting?',
-        a: 'Open Forecasting to see the production trajectory and municipality outlook. Change the historical period or horizon to update the projection.',
-      },
-      {
-        q: 'What is target evaluation?',
-        a: 'Open Target Evaluation to compare recorded production with the target. Use the notes under each chart when explaining results to stakeholders.',
+        q: 'How do I return a record for correction?',
+        a: 'Open Validation Queue, find the report, select Reject, and enter a comment explaining what to fix. The encoder can then correct and resubmit the report.',
       },
     ],
   },
@@ -138,8 +94,66 @@ export const adminFaq = [
     category: 'Generating reports',
     items: [
       {
-        q: 'How do I generate a report?',
-        a: 'Open Generate Reports, choose the content sections, set the scope (province or municipality) and time period, select PDF or Word, then Generate. Preview before downloading.',
+        q: 'How do I generate and download a report?',
+        a: 'Open Generate Reports from the sidebar, choose the content sections, set the scope (province or municipality) and time period, select PDF or Word, then select Generate. Preview the report before downloading.',
+      },
+    ],
+  },
+  {
+    category: 'Municipality management',
+    items: [
+      {
+        q: 'How do I add or edit a municipality?',
+        a: 'Open Municipality Management from the sidebar. To add, select Add municipality and fill in the name and details. To edit, open an existing municipality and update its barangays, boundary, status, or linked encoder account.',
+      },
+    ],
+  },
+  {
+    category: 'User management',
+    items: [
+      {
+        q: 'How do I create an encoder account?',
+        a: 'Open User Management from the sidebar, select Add user, choose the Encoder role, assign the municipality, and save. The encoder must change their password on first login before opening any other page.',
+      },
+      {
+        q: 'How do I reset an encoder account?',
+        a: 'Open User Management, open the encoder account, and set a new password. The encoder will be prompted to change it again on next login if required.',
+      },
+    ],
+  },
+  {
+    category: 'Forecasting',
+    items: [
+      {
+        q: 'How do I view forecasts for one municipality?',
+        a: 'Open Forecasting from the sidebar, select the municipality from the filter, and view its production trajectory and outlook. Adjust the historical period or horizon to update the projection.',
+      },
+    ],
+  },
+  {
+    category: 'Target Evaluation',
+    items: [
+      {
+        q: 'How do I use Target Evaluation?',
+        a: 'Open Target Evaluation from the sidebar to compare recorded production with the target. Read the notes under each chart when explaining results to stakeholders.',
+      },
+    ],
+  },
+  {
+    category: 'Data Quality',
+    items: [
+      {
+        q: 'How do I check data quality problems?',
+        a: 'Open Data Quality from the sidebar to find gaps in records before publishing figures. Check the active filters first if totals look stale, since each dashboard keeps its own period.',
+      },
+    ],
+  },
+  {
+    category: 'Accounts',
+    items: [
+      {
+        q: 'How do I change my password?',
+        a: 'Go to Settings > Security from the sidebar, enter your current password and a new password (at least 6 characters), then select Update password.',
       },
     ],
   },
@@ -147,28 +161,19 @@ export const adminFaq = [
 
 export const encoderFaq = [
   {
-    category: 'About',
-    items: [
-      {
-        q: 'What can encoders do?',
-        a: 'Encoders submit production records, manage salt farmers in the master list, and file environment records — all scoped to their assigned municipality.',
-      },
-    ],
-  },
-  {
     category: 'Records',
     items: [
       {
         q: 'How do I submit a production record?',
-        a: 'Open Production Records, choose New report, pick the barangay and production month, enter each salt bed’s volume and method, then select Continue to review and Submit. The report goes to the validation queue and is marked pending.',
+        a: 'Open Production Records from the sidebar, choose New report, pick the barangay and production month, enter each salt bed’s volume and method, then select Continue to review and Submit. The report goes to the validation queue and is marked pending.',
       },
       {
-        q: 'What happens after I submit?',
-        a: 'The report enters the validation queue where an administrator reviews it. Approved reports are included in production totals and dashboards; rejected reports need a comment and can be corrected and resubmitted.',
+        q: 'How do I edit or fix a returned record?',
+        a: 'Open Production Records, find the rejected report, read the reviewer comment, correct the entries, and submit it again.',
       },
       {
-        q: 'Can I edit a submitted record?',
-        a: 'If a report is rejected, open Production Records, find the rejected report, read the reviewer comment, correct the entries, and submit it again.',
+        q: 'How do I check if my record was approved?',
+        a: 'Open Production Records and look for reports marked Approved. Approved reports are included in production totals and dashboards.',
       },
     ],
   },
@@ -176,8 +181,8 @@ export const encoderFaq = [
     category: 'Master List',
     items: [
       {
-        q: 'Salt Farmer Master List?',
-        a: 'Open Salt Farmer Master List, select Add salt farmer, and enter the name, age, sex, barangay, and address. Save the record; it appears in the list immediately. Use search and filters to find a farmer before adding a duplicate.',
+        q: 'How do I add or update a salt farmer in the master list?',
+        a: 'Open Salt Farmer Master List from the sidebar, select Add salt farmer, and enter the name, age, sex, barangay, and address. Save the record; it appears in the list immediately. Use search and filters to find a farmer before adding a duplicate.',
       },
     ],
   },
@@ -185,8 +190,25 @@ export const encoderFaq = [
     category: 'Environment',
     items: [
       {
-        q: 'Environment Records?',
-        a: 'Open Environment Records, choose New report, enter the required readings and observations for the period, review the summary, then select Submit Environment Report.',
+        q: 'How do I add environment records?',
+        a: 'Open Environment Records from the sidebar, choose New report, enter the required readings and observations for the period, review the summary, then select Submit Environment Report.',
+      },
+    ],
+  },
+  {
+    category: 'Accounts',
+    items: [
+      {
+        q: 'What do I do on first login?',
+        a: 'If your account was created with a temporary password, you must change it before opening any other page. Go to Settings > Security to set a new password (at least 6 characters).',
+      },
+      {
+        q: 'I forgot my password.',
+        a: 'On the sign-in page, select "Forgot password" and enter your email. You will receive a reset link. If none arrives, contact your administrator or the ASIN Center.',
+      },
+      {
+        q: 'How do I change my password?',
+        a: 'Go to Settings > Security from the sidebar, enter your current password and a new password (at least 6 characters), then select Update password.',
       },
     ],
   },
@@ -200,23 +222,10 @@ export const encoderFaq = [
     ],
   },
   {
-    category: 'Accounts',
-    items: [
-      {
-        q: 'First login?',
-        a: 'If your account was created with a temporary password, you must change it before opening any other page. Go to Settings > Security to set a new password (at least 6 characters).',
-      },
-      {
-        q: 'Forgot password?',
-        a: 'On the sign-in page, select "Forgot password" and enter your email. You will receive a reset link. If none arrives, contact your administrator or the ASIN Center.',
-      },
-    ],
-  },
-  {
     category: 'Feedback',
     items: [
       {
-        q: 'Report a problem?',
+        q: 'How do I report a problem?',
         a: 'Email the ASIN Center via the contact card with your name, municipality, the period in question, and a short description of the problem. Screenshots help us respond faster.',
       },
     ],

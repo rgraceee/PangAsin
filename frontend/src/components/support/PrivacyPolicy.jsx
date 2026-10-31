@@ -4,12 +4,10 @@ import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
 const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 
-export default function PrivacyPolicy({ user }) {
-  // WHAT: Kapag may naka-login na user, piliin ang dashboard base sa role niya.
-  // WHY: Dati naka-hardcode sa "/" kaya napupunta sa public dashboard ang
-  //      encoder kahit naka-login siya. Ginaya ang role logic ng User Manual.
-  const role = user?.role === 'admin' ? 'admin' : 'encoder';
-  const homePath = user ? (role === 'admin' ? '/admin' : '/encoder') : '/';
+export default function PrivacyPolicy() {
+  // WHAT: Public page — back link always goes to the public dashboard (/),
+  //       never to /admin or /encoder, regardless of login status.
+  // WHY: Privacy Policy must stay public for both logged-out and logged-in users.
   return (
     <div className="support-page">
       <div className="support-topbar">

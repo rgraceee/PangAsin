@@ -15,13 +15,11 @@ import {
   Archive,
   Eye,
   EyeOff,
-  ArrowLeft,
 } from 'lucide-react';
 import { changePassword } from '../services/dataService';
 import { useToast } from './Toast';
 import { publicFaq, adminFaq, encoderFaq } from './support/faqData';
 import FaqList from './support/FaqList';
-import { useLastNonSettingsLocation } from '../hooks/useLastNonSettingsLocation';
 import { getInitials } from './shell/sidebarUi';
 
 // WHAT: Halaga ng app version mula sa package.json.
@@ -87,18 +85,8 @@ export default function Settings({ user }) {
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
   const roleFaq = role === 'admin' ? adminFaq : encoderFaq;
-  const getLastPath = useLastNonSettingsLocation();
 
-  const handleBack = () => {
-    const last = getLastPath();
-    if (last) {
-      navigate(last);
-    } else {
-      navigate(homePath, { replace: true });
-    }
-  };
-
-// WHAT: Gumagamit ng existing changePassword endpoint mula sa dataService —
+  // WHAT: Gumagamit ng existing changePassword endpoint mula sa dataService —
 //       parehong logic na ginagamit ng ChangePassword page.
 // WHY: Reuse lang ang existing logic; hindi kinakopya o inirerewrite.
   const handleChangePassword = async (event) => {
@@ -143,19 +131,6 @@ export default function Settings({ user }) {
 
   return (
     <div className="settings-page">
-      {/* ===== Back button (returns to page before Settings) ===== */}
-      <div className="settings-back-row">
-        <button
-          type="button"
-          className="settings-back-btn"
-          onClick={handleBack}
-          aria-label="Back"
-        >
-          <ArrowLeft size={14} strokeWidth={2} aria-hidden="true" />
-          Back
-        </button>
-      </div>
-
       {/* ===== Section panels ===== */}
       <main className="settings-section-panel">
 

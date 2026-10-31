@@ -8,38 +8,7 @@
 .settings-page {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 16px 16px 40px;
-}
-
-/* ---------- Back button ---------- */
-.settings-back-row {
-  margin-bottom: 16px;
-}
-
-.settings-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--ui-radius-row);
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--ui-text-2, #6B7280);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.settings-back-btn:hover {
-  background: var(--ui-hover-bg, #F9FAFB);
-  color: var(--ui-text, #111827);
-  border-color: var(--ui-border, #EEF0F3);
-}
-
-.settings-back-btn:focus {
-  outline: 2px solid var(--ui-accent, #29B039);
-  outline-offset: 2px;
+  padding: 24px 16px 40px;
 }
 
 /* ---------- Section panels ---------- */

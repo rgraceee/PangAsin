@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { logoutAPI } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
-import { useLastNonSettingsLocation } from '../../hooks/useLastNonSettingsLocation';
 import AppShell from '../shell/AppShell';
 import EncoderSidebar from './EncoderSidebar';
 
@@ -12,7 +11,6 @@ export default function EncoderLayout({ user }) {
   const location = useLocation();
   const scrollRef = useRef(null);
   const { toastInfo } = useToast();
-  const getLastPath = useLastNonSettingsLocation();
 
   useEffect(() => {
     const target = location.state?.scrollTo;

@@ -24,6 +24,7 @@ import ProducerMasterList from './components/ProducerMasterList';
 import PrivacyPolicy from './components/support/PrivacyPolicy';
 import Settings from './components/Settings';
 import HelpCenter from './components/support/HelpCenter';
+import ScrollToTop from './components/ScrollToTop';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import { ToastProvider } from './components/Toast';
@@ -142,6 +143,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <TitleSetter />
       <Routes>
         <Route path="/" element={<GuestDashboard />} />
@@ -152,7 +154,7 @@ export default function App() {
         )} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/privacy" element={<PrivacyPolicy user={user} />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/help" element={<HelpCenter />} />
         <Route
           path="/change-password"

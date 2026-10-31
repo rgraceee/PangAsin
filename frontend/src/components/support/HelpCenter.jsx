@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, LogIn } from 'lucide-react';
 import FaqList from './FaqList';
 import { publicFaq } from './faqData';
@@ -11,15 +11,9 @@ const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 //      redirecting to login or /change-password.
 export default function HelpCenter() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleBack = () => {
-    // history.back if there is a previous in-app entry, otherwise go to /
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/', { replace: true });
-    }
+    navigate('/', { replace: true });
   };
 
   return (
