@@ -26,6 +26,8 @@ import HelpManual from './components/support/HelpManual';
 import Settings from './components/Settings';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
+import { ToastProvider } from './components/Toast';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import usePageTitle from './hooks/usePageTitle';
 
 const ROUTE_TITLES = {
@@ -122,7 +124,11 @@ export default function App() {
       <TitleSetter />
       <Routes>
         <Route path="/" element={<GuestDashboard />} />
-        <Route path="/login" element={<Login onLogin={setUser} />} />
+        <Route path="/login" element={(
+          <ToastProvider>
+            <Login onLogin={setUser} />
+          </ToastProvider>
+        )} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privacy" element={<PrivacyPolicy user={user} />} />
@@ -138,7 +144,9 @@ export default function App() {
           path="/change-password"
           element={(
             <RequirePasswordChange user={user} isLoading={loading}>
-              <ChangePassword user={user} setUser={setUser} />
+              <ToastProvider>
+                <ChangePassword user={user} setUser={setUser} />
+              </ToastProvider>
             </RequirePasswordChange>
           )}
         />
@@ -150,7 +158,11 @@ export default function App() {
           path="/settings"
           element={(
             <RequireAuth user={user} isLoading={loading}>
-              <Settings user={user} />
+              <ToastProvider>
+                <ErrorBoundary>
+                  <Settings user={user} />
+                </ErrorBoundary>
+              </ToastProvider>
             </RequireAuth>
           )}
         />

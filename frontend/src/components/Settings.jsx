@@ -67,7 +67,7 @@ export default function Settings({ user }) {
   const [error, setError] = useState(null);
 // WHAT: Isa lamang ang open FAQ index para sa accordion-style Help Center.
 // WHY: Simple at hindi kailangan ng karagdagang library para sa accordion behavior.
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState(null);
 
   const role = user?.role === 'admin' ? 'admin' : 'encoder';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
