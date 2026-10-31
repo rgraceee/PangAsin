@@ -288,12 +288,14 @@ function MunicipalityMap({ muniData, selectedName }) {
 
     return buildMapDetailCard({
       name: m.name,
-      rows: [
+      gridRows: [
         ['Total Volume', `${m.volumeMT.toLocaleString()} Metric Tons (MT)`],
         ['Record Count', (m.records ?? 0).toLocaleString()],
-        ['Production Area', `${(m.area || 0).toLocaleString()} m²`],
         ['Salt Beds', (m.beds || 0).toLocaleString()],
         ['Registered Salt Farmers', (m.registered || 0).toLocaleString()],
+      ],
+      compactRows: [
+        ['Production Area', `${(m.area || 0).toLocaleString()} m²`],
         ['Male / Female', genderText],
       ],
     });

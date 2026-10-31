@@ -1,12 +1,28 @@
 import L from 'leaflet';
 
-export function buildMapDetailCard({ name, rows }) {
-  const rowsHtml = rows
+// WHAT: Lumpukin ang 4 kilalang metrika (Total Volume, Record Count, Salt Beds,
+//       Registered Salt Farmers) sa 2-column grid; patungkol sa ibang hanay
+//       (Production Area, Male/Female) ay maliliit na buong-lapad na row.
+// WHY: Mas mababa at mas mahusay na hugis ang popup para hindi sakupin ang
+//      clicked polygon o map.
+export function buildMapDetailCard({ name, gridRows, compactRows = [] }) {
+  const gridHtml = (gridRows || [])
     .map(
       ([label, value]) => `
-        <div class="map-popup-row">
+        <div class="map-popup-grid-item">
           <span class="map-popup-label">${label}</span>
           <span class="map-popup-value">${value}</span>
+        </div>
+      `
+    )
+    .join('');
+
+  const compactHtml = (compactRows || [])
+    .map(
+      ([label, value]) => `
+        <div class="map-popup-compact-row">
+          <span class="map-popup-compact-label">${label}</span>
+          <span class="map-popup-compact-value">${value}</span>
         </div>
       `
     )
@@ -17,7 +33,8 @@ export function buildMapDetailCard({ name, rows }) {
       <div class="map-popup-header">
         <span class="map-popup-title">${name}</span>
       </div>
-      ${rowsHtml}
+      <div class="map-popup-grid">${gridHtml}</div>
+      ${compactHtml ? `<div class="map-popup-compact">${compactHtml}</div>` : ''}
       <div class="map-popup-foot">Administrative summary</div>
     </div>
   `;
@@ -33,7 +50,7 @@ export function createMapDetailPopup({ onClose } = {}) {
     closeButton: true,
     closeOnClick: true,
     closeOnEscapeKey: true,
-    maxWidth: 420,
+    maxWidth: 300,
   });
   if (typeof onClose === 'function') popup.on('remove', onClose);
   return popup;
