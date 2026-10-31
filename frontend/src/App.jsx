@@ -22,6 +22,9 @@ import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import ProducerMasterList from './components/ProducerMasterList';
 import PrivacyPolicy from './components/support/PrivacyPolicy';
+import LegalDoc from './components/support/LegalDoc';
+import HelpManual from './components/support/HelpManual';
+import ReportForm from './components/support/ReportForm';
 import Settings from './components/Settings';
 import HelpCenter from './components/support/HelpCenter';
 import ScrollToTop from './components/ScrollToTop';
@@ -36,7 +39,10 @@ const ROUTE_TITLES = {
   '/forgot-password': 'Forgot Password',
   '/reset-password': 'Reset Password',
   '/privacy': 'Privacy Policy',
-  '/help': 'User Manual',
+  '/terms': 'Terms & Conditions',
+  '/help': 'Help Center',
+  '/help/manual': 'User Manual',
+  '/help/report': 'Report a Problem',
   '/encoder': 'Encoder Dashboard',
   '/admin': 'Executive Dashboard',
   '/admin/users': 'User Management',
@@ -57,12 +63,16 @@ const ROUTE_TITLES = {
   '/admin/settings/security': 'Security',
   '/admin/settings/help': 'Help & Support',
   '/admin/settings/legal': 'Legal',
+  '/admin/settings/legal/privacy': 'Privacy Policy',
+  '/admin/settings/legal/terms': 'Terms & Conditions',
   '/admin/settings/about': 'About',
   '/encoder/settings': 'Settings',
   '/encoder/settings/account': 'Account',
   '/encoder/settings/security': 'Security',
   '/encoder/settings/help': 'Help & Support',
   '/encoder/settings/legal': 'Legal',
+  '/encoder/settings/legal/privacy': 'Privacy Policy',
+  '/encoder/settings/legal/terms': 'Terms & Conditions',
   '/encoder/settings/about': 'About',
 };
 
@@ -154,7 +164,10 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<LegalDoc docType="terms" />} />
         <Route path="/help" element={<HelpCenter />} />
+        <Route path="/help/manual" element={<HelpManual user={user} />} />
+        <Route path="/help/report" element={<ReportForm />} />
         <Route
           path="/change-password"
           element={(
@@ -205,6 +218,10 @@ export default function App() {
             <Route path="security" element={<Settings user={user} />} />
             <Route path="help" element={<Settings user={user} />} />
             <Route path="legal" element={<Settings user={user} />} />
+            <Route path="legal/*" element={<Settings user={user} />}>
+              <Route path="privacy" element={<LegalDoc docType="privacy" user={user} />} />
+              <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
+            </Route>
             <Route path="about" element={<Settings user={user} />} />
           </Route>
         </Route>
@@ -236,6 +253,10 @@ export default function App() {
             <Route path="security" element={<Settings user={user} />} />
             <Route path="help" element={<Settings user={user} />} />
             <Route path="legal" element={<Settings user={user} />} />
+            <Route path="legal/*" element={<Settings user={user} />}>
+              <Route path="privacy" element={<LegalDoc docType="privacy" user={user} />} />
+              <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
+            </Route>
             <Route path="about" element={<Settings user={user} />} />
           </Route>
         </Route>
