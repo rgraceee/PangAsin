@@ -32,6 +32,7 @@ import {
   formatLabel,
   lastQuarterRange,
   reportScopeLabel,
+  reportTypeLabel,
   thisMonthRange,
 } from '../../utils/reportFormatters';
 
@@ -94,11 +95,6 @@ const SUMMARY_LINES = [
   ['Environment Production Area', 'total_production_area_sqm', (v) => `${v.toLocaleString()} m²`],
   ['Overall Quality Score', 'overall_quality_score', (v) => `${v}%`],
 ];
-
-function reportTypeLabel(report) {
-  if (!report) return '';
-  return TYPE_LABEL[report.report_type] || report.report_type || '\u2014';
-}
 
 function DataTable({ title, rows }) {
   if (!rows || rows.length === 0) return null;
@@ -350,7 +346,7 @@ export default function GenerateReports() {
       : r.municipality_name ? ` for ${r.municipality_name}` : '';
     await confirmDelete({
       title: 'Delete this report?',
-      text: `This will permanently remove the <strong>${reportTypeLabel(r)}</strong> report${label} and its file. This cannot be undone.`,
+      text: `This will permanently remove the <strong>${reportTypeLabel(r, TYPE_LABEL)}</strong> report${label} and its file. This cannot be undone.`,
       confirmText: 'Delete',
       onConfirm: async () => {
         await deleteReport(r.id);
@@ -386,7 +382,7 @@ export default function GenerateReports() {
       if (reportFormatFilter && r.format !== reportFormatFilter) return false;
       if (!term) return true;
       const haystack = [
-        reportTypeLabel(r),
+        reportTypeLabel(r, TYPE_LABEL),
         r.report_type,
         r.municipality_name,
         r.barangay_name,
@@ -649,7 +645,7 @@ export default function GenerateReports() {
             ) : currentReport && (
               <>
                 <div className="report-preview-meta">
-                  <span><strong>Content:</strong> {reportTypeLabel(currentReport)}</span>
+                  <span><strong>Content:</strong> {reportTypeLabel(currentReport, TYPE_LABEL)}</span>
                   <span><strong>Scope:</strong> {previewScopeLabel}</span>
                   <span><strong>Period:</strong> {formatDateRange(currentReport.date_range_start, currentReport.date_range_end)}</span>
                 </div>
@@ -814,7 +810,7 @@ export default function GenerateReports() {
                                     disabled={!generated}
                                     title={generated ? 'Preview report' : 'Preview unavailable'}
                                   >
-                                    {reportTypeLabel(r)}
+                                    {reportTypeLabel(r, TYPE_LABEL)}
                                   </button>
                                   <span className={`report-status-badge report-status-badge--${r.status}`}>
                                     {r.status}
@@ -837,7 +833,7 @@ export default function GenerateReports() {
                                     href={generated ? getReportDownloadUrl(r.id, 'pdf') : undefined}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    aria-label={`Download PDF for ${reportTypeLabel(r)} report`}
+                                    aria-label={`Download PDF for ${reportTypeLabel(r, TYPE_LABEL)} report`}
                                     aria-disabled={!generated}
                                     tabIndex={generated ? undefined : -1}
                                     onClick={(e) => { if (!generated) e.preventDefault(); }}
@@ -849,7 +845,7 @@ export default function GenerateReports() {
                                     href={generated ? getReportDownloadUrl(r.id, 'docx') : undefined}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    aria-label={`Download Word for ${reportTypeLabel(r)} report`}
+                                    aria-label={`Download Word for ${reportTypeLabel(r, TYPE_LABEL)} report`}
                                     aria-disabled={!generated}
                                     tabIndex={generated ? undefined : -1}
                                     onClick={(e) => { if (!generated) e.preventDefault(); }}
@@ -860,7 +856,7 @@ export default function GenerateReports() {
                                     type="button"
                                     className="ui-btn-danger ui-btn--sm report-row-btn"
                                     onClick={() => handleDelete(r)}
-                                    aria-label={`Delete ${reportTypeLabel(r)} report`}
+                                    aria-label={`Delete ${reportTypeLabel(r, TYPE_LABEL)} report`}
                                     title="Delete report"
                                   >
                                     <Trash2 size={14} strokeWidth={2.2} aria-hidden="true" />

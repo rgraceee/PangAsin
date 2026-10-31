@@ -84,3 +84,11 @@ export function dataHasRows(data) {
   const scalarKeys = ['total_production_mt', 'total_registered_producers', 'total_projected'];
   return scalarKeys.some((k) => typeof data[k] === 'number' && data[k] > 0);
 }
+
+/* WHAT: Label ng uri ng report (Production, Salt Farmers, ...).
+   WHY: isa lamang ang mapping para hindi magka-iba ang pagka-label sa listahan
+        at sa preview page. */
+export function reportTypeLabel(report, typeLabels = {}) {
+  if (!report) return '';
+  return typeLabels[report.report_type] || report.report_type || '\u2014';
+}

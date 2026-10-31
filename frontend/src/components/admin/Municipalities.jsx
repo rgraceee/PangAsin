@@ -367,6 +367,50 @@ function BoundaryChip({ municipality }) {
   );
 }
 
+/* WHAT: Nai-encode ang mga email ng encoder sa edit modal.
+   WHY: Ihiwalay ang mahabang ternary para ma-intindihin ang render logic. */
+function encoderEmailList(editing) {
+  const encoders = (editing && editing.encoders) || [];
+  if (encoders.length === 0) return <span className="text-muted small">No encoder account is linked yet.</span>;
+  return <code>{encoders.map((encoder) => encoder.email).join(', ')}</code>;
+}
+
+/* WHAT: Class name ng help text sa status field ng edit form.
+   WHY: Pula kung pag-aalis ang active status, kung hindi muted. */
+function editStatusClassName(editForm, editing) {
+  return editForm.status === 'inactive' && editForm.status !== editing?.status
+    ? 'text-danger d-block mt-1'
+    : 'text-muted d-block mt-1';
+}
+
+/* WHAT: Mensahe ng help text sa status field ng edit form.
+   WHY: Ihiwalay ang mahabang ternary sa JSX. */
+function editStatusMessage(editForm, editing) {
+  if (editForm.status === 'inactive' && editForm.status !== editing?.status) {
+    return "Saving this change deactivates the municipality's active encoder account(s).";
+  }
+  return 'Inactive municipalities are hidden from public views; linked encoders are deactivated.';
+}
+
+/* WHAT: Reference ng uploaded boundary file sa edit form.
+   WHY: Maikli ang JSX sa boundary section. */
+function boundaryFileRef(editing) {
+  if (editing?.has_boundary) return editing.geojson_ref;
+  return 'No uploaded boundary file';
+}
+
+/* WHAT: Laman ng Save button habang nag-save o hindi.
+   WHY: Ihiwalay ang ternary sa Modal Footer. */
+function saveButtonContent(saving) {
+  if (saving) return (
+    <>
+      <Loader2 size={15} className="muni-spin" aria-hidden="true" />
+      Saving…
+    </>
+  );
+  return 'Save Changes';
+}
+
 
 export default function Municipalities() {
   const { toastSuccess, toastError } = useToast();
@@ -1384,11 +1428,7 @@ export default function Municipalities() {
                   <KeyRound size={13} aria-hidden="true" />
                   Linked encoder email{((editing?.encoders || []).length > 1) ? 's' : ''}
                 </span>
-                {(editing?.encoders || []).length > 0 ? (
-                  <code>{(editing.encoders || []).map((encoder) => encoder.email).join(', ')}</code>
-                ) : (
-                  <span className="text-muted small">No encoder account is linked yet.</span>
-                )}
+                {encoderEmailList(editing)}
                 <span className="muni-email-preview__hint">
                   This address is intentionally unchanged when the municipality is renamed.
                 </span>
@@ -1403,13 +1443,9 @@ export default function Municipalities() {
                 />
                 <Form.Text
                   id="muni-edit-status-help"
-                  className={editForm.status === 'inactive' && editForm.status !== editing?.status
-                    ? 'text-danger d-block mt-1'
-                    : 'text-muted d-block mt-1'}
+                  className={editStatusClassName(editForm, editing)}
                 >
-                  {editForm.status === 'inactive' && editForm.status !== editing?.status
-                    ? "Saving this change deactivates the municipality's active encoder account(s)."
-                    : 'Inactive municipalities are hidden from public views; linked encoders are deactivated.'}
+                  {editStatusMessage(editForm, editing)}
                 </Form.Text>
               </Form.Group>
             </FormSection>
@@ -1552,9 +1588,7 @@ export default function Municipalities() {
                 <div className="muni-boundary-file__status">
                   <BoundaryChip municipality={editing || { name: editForm.name }} />
                   <code>
-                    {editing?.has_boundary
-                      ? editing.geojson_ref
-                      : 'No uploaded boundary file'}
+                    {boundaryFileRef(editing)}
                   </code>
                 </div>
                 {editing?.has_boundary && (
@@ -1611,14 +1645,7 @@ export default function Municipalities() {
                 className="ui-btn-primary"
                 disabled={saving || !editValid}
               >
-                {saving ? (
-                  <>
-                    <Loader2 size={15} className="muni-spin" aria-hidden="true" />
-                    Saving…
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
+                {saveButtonContent(saving)}
               </button>
             </div>
           </Modal.Footer>
