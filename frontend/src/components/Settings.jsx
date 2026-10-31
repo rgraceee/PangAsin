@@ -269,6 +269,8 @@ export default function Settings({ user }) {
               contactEmail={CONTACT_EMAIL}
               manualUrl="/help/manual"
               reportUrl="/help/report"
+              showSearch={false}
+              showHero={false}
             />
           </>
         )}

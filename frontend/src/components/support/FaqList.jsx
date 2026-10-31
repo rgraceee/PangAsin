@@ -4,9 +4,9 @@
 //       Help & Support so answers stay consistent.
 // WHY: One component to maintain; answers defined once in faqData.js.
 import React, { useState } from 'react';
-import { Mail } from 'lucide-react';
+import { BookOpen, AlertTriangle, Mail } from 'lucide-react';
 
-export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual', reportUrl = '/help/report' }) {
+export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual', reportUrl = '/help/report', showSearch = true, showHero = true }) {
   const [query, setQuery] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
 
@@ -25,24 +25,28 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
   return (
     <div className="faq-list-wrap">
       {/* ---------- Hero ---------- */}
-      <div className="faq-hero">
-        <h2 className="faq-hero-title">Help Center</h2>
-        <p className="faq-hero-sub">
-          Answers about the PangAsin salt production dashboard.
-        </p>
-      </div>
+      {showHero && (
+        <div className="faq-hero">
+          <h2 className="faq-hero-title">Help Center</h2>
+          <p className="faq-hero-sub">
+            Answers about the PangAsin salt production dashboard.
+          </p>
+        </div>
+      )}
 
       {/* ---------- Search ---------- */}
-      <div className="faq-search-wrap">
-        <input
-          className="faq-search"
-          type="text"
-          placeholder="Search questions and answers…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search FAQ"
-        />
-      </div>
+      {showSearch && (
+        <div className="faq-search-wrap">
+          <input
+            className="faq-search"
+            type="text"
+            placeholder="Search questions and answers…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search FAQ"
+          />
+        </div>
+      )}
 
       {query.length > 0 && !hasResults && (
         <div className="faq-no-results">
@@ -101,18 +105,18 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
           <h3 className="faq-right-heading">Need more help?</h3>
           <div className="faq-help-cards">
             <a href={manualUrl} className="faq-help-card">
-              <span className="faq-card-icon" aria-hidden="true">
-                <span style={{ fontSize: 24 }}>📖</span>
-              </span>
+            <span className="faq-card-icon" aria-hidden="true">
+              <BookOpen size={20} strokeWidth={2} />
+            </span>
               <div>
                 <div className="faq-card-title">User Manual</div>
                 <div className="faq-card-desc">Read the full user manual for the PangAsin dashboard.</div>
               </div>
             </a>
             <a href={reportUrl} className="faq-help-card">
-              <span className="faq-card-icon" aria-hidden="true">
-                <span style={{ fontSize: 24 }}>⚠️</span>
-              </span>
+            <span className="faq-card-icon" aria-hidden="true">
+              <AlertTriangle size={20} strokeWidth={2} />
+            </span>
               <div>
                 <div className="faq-card-title">Report a problem</div>
                 <div className="faq-card-desc">Tell us about a data error, login issue, or bug.</div>
