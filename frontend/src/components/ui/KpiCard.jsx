@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 

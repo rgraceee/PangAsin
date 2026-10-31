@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, Col, Row } from 'react-bootstrap';
 import { Settings as SettingsIcon, User, Mail, ShieldCheck, Lock, Key, AtSign, Building, FileText, HelpCircle, HardHat, Archive } from 'lucide-react';
 import { changePassword } from '../services/dataService';
