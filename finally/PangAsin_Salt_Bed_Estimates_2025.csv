@@ -1,8 +1,0 @@
-﻿municipality,annual_production_used_2025_kg,production_source,estimated_beds_2025_base,sensitivity_low_beds,sensitivity_high_beds,implied_beds_using_2024_output,legacy_310_61_kg_per_bed_count,san_fabian_area_based_literal_count_if_applicable,confidence_and_notes
-Alaminos City,1099260,Primary,7410.000000,7410.000000,7410.000000,3091.829323,3444.000000,,Observed count; Alaminos master-sheet bed census
-Anda,1332211,FOI (secondary),9228.114785,7435.344257,9228.114785,800.751584,4289.018532,,Low-Medium: FOI only; coverage unverified
-Bani,607800,FOI (secondary),4210.180044,3392.257112,4210.180044,4498.339783,1956.796231,,"Low-Medium: FOI basis; master sheet has much higher primary figure, selectable in workbook"
-Bolinao,4461917,FOI (secondary),30907.327921,24902.878705,30907.327921,151.179960,14365.025285,,Low-Medium: FOI only; 2024-25 jump likely reporting expansion
-Dasol,776414,FOI (secondary),5378.155197,4333.326610,5378.155197,4012.534326,2499.644601,,Low: FOI may understate output; larger banigan reported
-Infanta,1436623,FOI (secondary),9951.368024,8018.089156,9951.368024,2479.254361,4625.170239,,Low-Medium: FOI only
-San Fabian,106000,Primary,734.253183,591.607854,734.253183,716.935891,341.264232,16.91,"Annual output uses primary; bed count is a cooked-salt bed-equivalent, not physical count"

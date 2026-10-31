@@ -56,7 +56,7 @@ Frontend:
 
 ## Left untouched (per instructions)
 
-`DevelopmentConfig`/`ProductionConfig` in `app/config.py`; `admin_api.create_user` stub; `/analytics/predictive`; `requirements.txt`; `finally/` CSV copies; frontend slug normalizers; label registries (`app/labels.py`, `frontend/src/constants/labels.js`); `app/static/reports/*`; `app/static/react/assets/index-CazLJ-I9.js`; imports in `app/models/__init__.py`; forgot-password and forced-password-change code.
+`DevelopmentConfig`/`ProductionConfig` in `app/config.py`; `admin_api.create_user` stub; `/analytics/predictive`; `requirements.txt`; frontend slug normalizers; label registries (`app/labels.py`, `frontend/src/constants/labels.js`); `app/static/reports/*`; `app/static/react/assets/index-CazLJ-I9.js`; imports in `app/models/__init__.py`; forgot-password and forced-password-change code.
 
 ## Later (not built now, not made harder)
 
