@@ -1,7 +1,19 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Card, Col, Row } from 'react-bootstrap';
-import { Settings as SettingsIcon, User, Mail, ShieldCheck, Lock, Key, AtSign, Building, FileText, HelpCircle, HardHat, Archive } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Card } from 'react-bootstrap';
+import {
+  Settings as SettingsIcon,
+  User,
+  Mail,
+  ShieldCheck,
+  Lock,
+  Key,
+  AtSign,
+  Building,
+  FileText,
+  HelpCircle,
+  Archive,
+} from 'lucide-react';
 import { changePassword } from '../services/dataService';
 import { useToast } from './Toast';
 
@@ -51,33 +63,46 @@ const FAQS = [
   },
 ];
 
-// WHAT: Halimbawa ng pag-set ng estado para sa buong Settings page — user data,
-//       saving flag, error message, at open FAQ index. Isa lamang ang state
-//       para simple at predictable ang behavior.
-// WHY: centralized state para madaling i-debug kung ano ang nagkakabago sa page.
-// WHAT: Pangunahing component ng Settings page para sa admin at encoder.
-//       Naglalaman ng Account, Security, Help & Support, Legal, at About sections,
-//       kasama ang Help Center FAQ na naka-inline.
-// WHY: Isang settings page lang para sa dalawang role; walang role-specific na
-//      section maliban sa assigned municipality sa Account section.
+// WHAT: Mga section ng Settings page sa order na ipakita sa left nav.
+// WHY: Isa lamang ang listahan para consistent ang left nav at right panel.
+const SECTIONS = [
+  { id: 'account', label: 'Account', Icon: User },
+  { id: 'security', label: 'Security', Icon: ShieldCheck },
+  { id: 'help', label: 'Help & Support', Icon: HelpCircle },
+  { id: 'legal', label: 'Legal', Icon: Archive },
+  { id: 'about', label: 'About', Icon: SettingsIcon },
+];
+
+// WHAT: Pangunahing component ng Settings page — two-pane layout.
+//       Left: vertical section list with icons. Right: one panel at a time.
+// WHY: Standard settings layout na nag-match sa ibang pages ng app.
 export default function Settings({ user }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toastSuccess, toastError } = useToast();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-// WHAT: Isa lamang ang open FAQ index para sa accordion-style Help Center.
-// WHY: Simple at hindi kailangan ng karagdagang library para sa accordion behavior.
   const [openFaq, setOpenFaq] = useState(null);
+
+  // WHAT: Derive ang active section mula sa URL pathname
+  //       (/admin/settings/account -> account).
+  // WHY: Nested routes ang nagsasabi ng section na ipapakita.
+  const [section, setSection] = useState('account');
+  useEffect(() => {
+    const parts = location.pathname.split('/');
+    const last = parts[parts.length - 1];
+    const valid = SECTIONS.map((s) => s.id);
+    setSection(valid.includes(last) ? last : 'account');
+  }, [location.pathname]);
 
   const role = user?.role === 'admin' ? 'admin' : 'encoder';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
+  const settingsBase = role === 'admin' ? '/admin/settings' : '/encoder/settings';
 
 // WHAT: Gumagamit ng existing changePassword endpoint mula sa dataService —
-//       parehong logic na ginagamit ng ChangePassword page (forced first-login
-//       password change). Hindi nababago ang backend o endpoint.
-// WHY: Reuse lang ang existing logic; hindi kinakopya o inirerewrite ang
-//      ChangePassword component.
+//       parehong logic na ginagamit ng ChangePassword page.
+// WHY: Reuse lang ang existing logic; hindi kinakopya o inirerewrite.
   const handleChangePassword = async (event) => {
     event.preventDefault();
     setError(null);
@@ -119,224 +144,220 @@ export default function Settings({ user }) {
   return (
     <div className="settings-page">
       <div className="settings-header">
-        <Link to={homePath} className="settings-back">
-          <span aria-hidden="true">←</span> Back to dashboard
-        </Link>
         <h1 className="settings-title">Settings</h1>
       </div>
 
-      <Row className="g-4">
-        {/* ===== Account ===== */}
-        <Col lg={4}>
-          <Card className="settings-card h-100">
-            <Card.Header className="settings-card-head">
-              <span className="settings-card-icon" aria-hidden="true">
-                <User size={16} strokeWidth={1.75} />
-              </span>
-              <h5 className="settings-card-title">Account</h5>
-              <span className="settings-readonly-badge">Read-only</span>
-            </Card.Header>
-            <Card.Body className="settings-card-body">
-              <dl className="settings-account-list">
-                <dt>Name</dt>
-                <dd>{user?.name || '—'}</dd>
-                <dt>Email</dt>
-                <dd>{user?.email || '—'}</dd>
-                <dt>Role</dt>
-                <dd>{user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : '—'}</dd>
-                {isEncoder && (
-                  <>
-                    <dt>Assigned municipality</dt>
-                    <dd>{user?.municipality_name || 'Not assigned'}</dd>
-                  </>
-                )}
-                {user?.last_login && (
-                  <>
-                    <dt>Last login</dt>
-                    <dd>{user.last_login}</dd>
-                  </>
-                )}
-              </dl>
-              <p className="settings-account-note">
-                Account details cannot be edited here. Contact your administrator to change your name, email, role, or municipality assignment.
-              </p>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        {/* ===== Security ===== */}
-        <Col lg={4}>
-          <Card className="settings-card h-100">
-            <Card.Header className="settings-card-head">
-              <span className="settings-card-icon" aria-hidden="true">
-                <ShieldCheck size={16} strokeWidth={1.75} />
-              </span>
-              <h5 className="settings-card-title">Security</h5>
-            </Card.Header>
-            <Card.Body className="settings-card-body">
-              <form onSubmit={handleChangePassword} className="settings-security-form">
-                {error && <div className="settings-error">{error}</div>}
-                <div className="mb-3">
-                  <label className="form-label">Current password</label>
-                  <input
-                    type="password"
-                    name="current_password"
-                    className="form-control"
-                    autoComplete="current-password"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">New password</label>
-                  <input
-                    type="password"
-                    name="new_password"
-                    className="form-control"
-                    autoComplete="new-password"
-                    minLength="6"
-                    required
-                  />
-                  <div className="form-text">At least 6 characters.</div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Confirm new password</label>
-                  <input
-                    type="password"
-                    name="confirm_password"
-                    className="form-control"
-                    autoComplete="new-password"
-                    minLength="6"
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn btn-primary settings-save-btn" disabled={saving}>
-                  {saving ? 'Saving…' : 'Update password'}
-                </button>
-              </form>
-              <p className="settings-security-note mt-3">
-                This uses the same change-password endpoint as the forced first-login password change. Your session stays active after updating.
-              </p>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        {/* ===== Help & Support ===== */}
-        <Col lg={4}>
-          <Card className="settings-card h-100">
-            <Card.Header className="settings-card-head">
-              <span className="settings-card-icon" aria-hidden="true">
-                <HelpCircle size={16} strokeWidth={1.75} />
-              </span>
-              <h5 className="settings-card-title">Help &amp; Support</h5>
-            </Card.Header>
-            <Card.Body className="settings-card-body">
-              <ul className="settings-help-list">
-                <li>
-                  <Link to="/help" className="settings-help-link">
-                    <FileText size={14} strokeWidth={1.5} aria-hidden="true" /> User Manual
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/help#faq" className="settings-help-link">
-                    <HelpCircle size={14} strokeWidth={1.5} aria-hidden="true" /> Help Center (FAQ)
-                  </Link>
-                </li>
-                <li>
-                  <a href={`mailto:${CONTACT_EMAIL}`} className="settings-help-link">
-                    <Mail size={14} strokeWidth={1.5} aria-hidden="true" /> Report a problem / Contact ASIN Center
-                  </a>
-                </li>
-              </ul>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* ===== Legal ===== */}
-      <Row className="g-4 mt-4">
-        <Col lg={4}>
-          <Card className="settings-card h-100">
-            <Card.Header className="settings-card-head">
-              <span className="settings-card-icon" aria-hidden="true">
-                <Archive size={16} strokeWidth={1.75} />
-              </span>
-              <h5 className="settings-card-title">Legal</h5>
-            </Card.Header>
-            <Card.Body className="settings-card-body">
-              <ul className="settings-legal-list">
-                <li>
-                  <Link to="/privacy" className="settings-legal-link">Privacy Policy</Link>
-                </li>
-                <li>
-                  <Link to="/privacy" className="settings-legal-link">Terms &amp; Conditions</Link>
-                </li>
-              </ul>
-              <p className="settings-legal-note">
-                Terms &amp; Conditions shares the Privacy Policy page until a separate terms page is published.
-              </p>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        {/* ===== About ===== */}
-        <Col lg={4}>
-          <Card className="settings-card h-100">
-            <Card.Header className="settings-card-head">
-              <span className="settings-card-icon" aria-hidden="true">
-                <SettingsIcon size={16} strokeWidth={1.75} />
-              </span>
-              <h5 className="settings-card-title">About</h5>
-            </Card.Header>
-            <Card.Body className="settings-card-body">
-              <dl className="settings-about-list">
-                <dt>App name</dt>
-                <dd>PangAsin</dd>
-                <dt>Version</dt>
-                <dd>{APP_VERSION}</dd>
-                <dt>Data partners</dt>
-                <dd>DOST NICER ASIN Center · BFAR Regional Field Office 1</dd>
-                <dt>Credit</dt>
-                <dd>PangAsin, BS Information Technology, Pangasinan State University - Urdaneta City Campus</dd>
-              </dl>
-              <p className="settings-about-note">
-                Salt production monitoring system for the province of Pangasinan.
-              </p>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* ===== Help Center FAQ (inline accordion) ===== */}
-      <section className="settings-faq-section" id="faq">
-        <h2 className="settings-faq-heading">Help Center</h2>
-        <p className="settings-faq-sub">
-          Short answers to common questions about using PangAsin.
-        </p>
-        <div className="settings-faq-list">
-          {FAQS.map((faq, index) => {
-            const isOpen = openFaq === index;
+      <div className="settings-layout">
+        {/* ===== LEFT: Section list ===== */}
+        <nav className="settings-section-nav" aria-label="Settings sections">
+          {SECTIONS.map((s) => {
+            const Icon = s.Icon;
+            const isActive = section === s.id;
             return (
-              <div key={index} className="settings-faq-item">
-                <button
-                  type="button"
-                  className={`settings-faq-question${isOpen ? ' active' : ''}`}
-                  aria-expanded={isOpen}
-                  aria-controls={`faq-${index}`}
-                  onClick={() => setOpenFaq(isOpen ? null : index)}
-                >
-                  {faq.q}
-                  <span className="settings-faq-toggle" aria-hidden="true">
-                    {isOpen ? '▸' : '▾'}
-                  </span>
-                </button>
-                <div id={`faq-${index}`} className="settings-faq-answer" hidden={!isOpen}>
-                  {faq.a}
-                </div>
-              </div>
+              <Link
+                key={s.id}
+                to={`${settingsBase}/${s.id}`}
+                className={`settings-section-item${isActive ? ' active' : ''}`}
+              >
+                <span className="settings-section-icon" aria-hidden="true">
+                  <Icon size={16} strokeWidth={1.75} />
+                </span>
+                <span className="settings-section-label">{s.label}</span>
+              </Link>
             );
           })}
-        </div>
-      </section>
+        </nav>
+
+        {/* ===== RIGHT: Section panel ===== */}
+        <main className="settings-section-panel">
+          {section === 'account' && (
+            <section className="settings-panel">
+              <h2 className="settings-panel-title">Account</h2>
+              <Card className="settings-card">
+                <Card.Body className="settings-card-body">
+                  <dl className="settings-account-list">
+                    <dt>Name</dt>
+                    <dd>{user?.name || '—'}</dd>
+                    <dt>Email</dt>
+                    <dd>{user?.email || '—'}</dd>
+                    <dt>Role</dt>
+                    <dd>{user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : '—'}</dd>
+                    {isEncoder && (
+                      <>
+                        <dt>Assigned municipality</dt>
+                        <dd>{user?.municipality_name || 'Not assigned'}</dd>
+                      </>
+                    )}
+                    {user?.last_login && (
+                      <>
+                        <dt>Last login</dt>
+                        <dd>{user.last_login}</dd>
+                      </>
+                    )}
+                  </dl>
+                  <p className="settings-account-note">
+                    Account details cannot be edited here. Contact your administrator to change your name, email, role, or municipality assignment.
+                  </p>
+                </Card.Body>
+              </Card>
+            </section>
+          )}
+
+          {section === 'security' && (
+            <section className="settings-panel">
+              <h2 className="settings-panel-title">Security</h2>
+              <Card className="settings-card">
+                <Card.Body className="settings-card-body">
+                  {error && <div className="settings-error">{error}</div>}
+                  <form onSubmit={handleChangePassword} className="settings-security-form">
+                    <div className="mb-3">
+                      <label className="form-label">Current password</label>
+                      <input
+                        type="password"
+                        name="current_password"
+                        className="form-control"
+                        autoComplete="current-password"
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">New password</label>
+                      <input
+                        type="password"
+                        name="new_password"
+                        className="form-control"
+                        autoComplete="new-password"
+                        minLength="6"
+                        required
+                      />
+                      <div className="form-text">At least 6 characters.</div>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Confirm new password</label>
+                      <input
+                        type="password"
+                        name="confirm_password"
+                        className="form-control"
+                        autoComplete="new-password"
+                        minLength="6"
+                        required
+                      />
+                    </div>
+                    <button type="submit" className="btn btn-primary settings-save-btn" disabled={saving}>
+                      {saving ? 'Saving…' : 'Update password'}
+                    </button>
+                  </form>
+                  <p className="settings-security-note mt-3">
+                    This uses the same change-password endpoint as the forced first-login password change. Your session stays active after updating.
+                  </p>
+                </Card.Body>
+              </Card>
+            </section>
+          )}
+
+          {section === 'help' && (
+            <section className="settings-panel">
+              <h2 className="settings-panel-title">Help &amp; Support</h2>
+              <Card className="settings-card">
+                <Card.Body className="settings-card-body">
+                  <ul className="settings-help-list">
+                    <li>
+                      <Link to="/help" className="settings-help-link">
+                        <FileText size={14} strokeWidth={1.5} aria-hidden="true" /> User Manual
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/help#faq" className="settings-help-link">
+                        <HelpCircle size={14} strokeWidth={1.5} aria-hidden="true" /> Help Center (FAQ)
+                      </Link>
+                    </li>
+                    <li>
+                      <a href={`mailto:${CONTACT_EMAIL}`} className="settings-help-link">
+                        <Mail size={14} strokeWidth={1.5} aria-hidden="true" /> Report a problem / Contact ASIN Center
+                      </a>
+                    </li>
+                  </ul>
+                </Card.Body>
+              </Card>
+
+              <div className="settings-faq-section">
+                <h3 className="settings-faq-heading">Help Center</h3>
+                <p className="settings-faq-sub">
+                  Short answers to common questions about using PangAsin.
+                </p>
+                <div className="settings-faq-list">
+                  {FAQS.map((faq, index) => {
+                    const isOpen = openFaq === index;
+                    return (
+                      <div key={index} className="settings-faq-item">
+                        <button
+                          type="button"
+                          className={`settings-faq-question${isOpen ? ' active' : ''}`}
+                          aria-expanded={isOpen}
+                          aria-controls={`faq-${index}`}
+                          onClick={() => setOpenFaq(isOpen ? null : index)}
+                        >
+                          {faq.q}
+                          <span className="settings-faq-toggle" aria-hidden="true">
+                            {isOpen ? '▸' : '▾'}
+                          </span>
+                        </button>
+                        <div id={`faq-${index}`} className="settings-faq-answer" hidden={!isOpen}>
+                          {faq.a}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {section === 'legal' && (
+            <section className="settings-panel">
+              <h2 className="settings-panel-title">Legal</h2>
+              <Card className="settings-card">
+                <Card.Body className="settings-card-body">
+                  <ul className="settings-legal-list">
+                    <li>
+                      <Link to="/privacy" className="settings-legal-link">Privacy Policy</Link>
+                    </li>
+                    <li>
+                      <Link to="/privacy" className="settings-legal-link">Terms &amp; Conditions</Link>
+                    </li>
+                  </ul>
+                  <p className="settings-legal-note">
+                    Terms &amp; Conditions shares the Privacy Policy page until a separate terms page is published.
+                  </p>
+                </Card.Body>
+              </Card>
+            </section>
+          )}
+
+          {section === 'about' && (
+            <section className="settings-panel">
+              <h2 className="settings-panel-title">About</h2>
+              <Card className="settings-card">
+                <Card.Body className="settings-card-body">
+                  <dl className="settings-about-list">
+                    <dt>App name</dt>
+                    <dd>PangAsin</dd>
+                    <dt>Version</dt>
+                    <dd>{APP_VERSION}</dd>
+                    <dt>Data partners</dt>
+                    <dd>DOST NICER ASIN Center · BFAR Regional Field Office 1</dd>
+                    <dt>Credit</dt>
+                    <dd>PangAsin, BS Information Technology, Pangasinan State University - Urdaneta City Campus</dd>
+                  </dl>
+                  <p className="settings-about-note">
+                    Salt production monitoring system for the province of Pangasinan.
+                  </p>
+                </Card.Body>
+              </Card>
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,6 @@
 /* ============================================================
-   WHAT: Settings page styles — card-based layout for admin and encoder.
-   WHY: Isang visual design para sa dalawang role; tokens-only para
-        hindi mag-hardcode ng kulay. Additive lang — walang binabago
-        sa index.css o sa ibang style file.
+   WHAT: Settings page styles — two-pane layout for admin and encoder.
+   WHY: Standard settings layout na nag-match sa ibang pages ng app.
    ============================================================ */
 
 .settings-page {
@@ -12,25 +10,7 @@
 }
 
 .settings-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   margin-bottom: 24px;
-}
-
-.settings-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--ui-text-2, #6B7280);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.settings-back:hover {
-  color: var(--ui-text, #111827);
-  text-decoration: underline;
 }
 
 .settings-title {
@@ -41,57 +21,90 @@
   letter-spacing: -0.02em;
 }
 
-/* ---------- Cards ---------- */
-.settings-card {
-  border: 1px solid var(--ui-border, #E5E7EB);
-  border-radius: var(--ui-radius-card, 12px);
-  background: #fff;
-  height: 100%;
+/* ---------- Two-pane layout ---------- */
+.settings-layout {
   display: flex;
-  flex-direction: column;
+  gap: 24px;
+  align-items: flex-start;
 }
 
-.settings-card-head {
+/* Left: section list */
+.settings-section-nav {
+  flex: 0 0 220px;
+  max-width: 220px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-section-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px;
-  border-bottom: 1px solid var(--ui-border, #E5E7EB);
-  background: #FAFAFA;
-  border-top-left-radius: 11px;
-  border-top-right-radius: 11px;
+  padding: 10px 14px;
+  border-radius: var(--ui-radius-row, 12px);
+  text-decoration: none;
+  color: var(--ui-text-2, #6B7280);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.settings-card-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--ui-brown-tint, #F3E9E2);
-  border: 1px solid var(--ui-brown-border, #D9B38C);
-  color: var(--ui-brown, #8A5A2B);
+.settings-section-item:hover {
+  background: var(--ui-active-bg, #F3F4F6);
+  color: var(--ui-text, #111827);
+}
+
+.settings-section-item.active {
+  background: var(--ui-accent-tint, #EBF7EC);
+  border-color: var(--ui-accent, #29B039);
+  color: var(--ui-accent-dark, #146B1F);
+}
+
+.settings-section-icon {
   flex-shrink: 0;
+  width: 20px;
+  text-align: center;
 }
 
-.settings-card-title {
+.settings-section-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Right: section panel */
+.settings-section-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-panel-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--ui-text, #111827);
 }
 
-.settings-readonly-badge {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #6B7280;
-  background: #F3F4F6;
-  padding: 2px 8px;
-  border-radius: 6px;
+/* ---------- Cards ---------- */
+.settings-card {
+  border: 1px solid var(--ui-border, #EEF0F3);
+  border-radius: var(--ui-radius-card, 16px);
+  background: #fff;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .settings-card-body {
@@ -137,6 +150,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  max-width: 480px;
 }
 
 .settings-security-form .mb-3 {
@@ -168,7 +182,6 @@
 }
 
 .settings-save-btn {
-  margin-top: 8px;
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
@@ -199,8 +212,8 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid var(--ui-border, #E5E7EB);
-  border-radius: 8px;
+  border: 1px solid var(--ui-border, #EEF0F3);
+  border-radius: var(--ui-radius-row, 12px);
   background: #fff;
   color: var(--ui-text-2, #6B7280);
   text-decoration: none;
@@ -211,9 +224,9 @@
 
 .settings-help-link:hover,
 .settings-legal-link:hover {
-  border-color: var(--ui-accent, #1565C8);
-  background: #F0F7FF;
-  color: var(--ui-accent, #1565C8);
+  border-color: var(--ui-accent, #29B039);
+  background: var(--ui-accent-tint, #EBF7EC);
+  color: var(--ui-accent-dark, #146B1F);
   text-decoration: none;
 }
 
@@ -225,7 +238,7 @@
 
 .settings-help-link:hover svg,
 .settings-legal-link:hover svg {
-  color: var(--ui-accent, #1565C8);
+  color: var(--ui-accent-dark, #146B1F);
 }
 
 /* ---------- Legal ---------- */
@@ -269,14 +282,14 @@
 
 /* ---------- Help Center FAQ ---------- */
 .settings-faq-section {
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid var(--ui-border, #E5E7EB);
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ui-border, #EEF0F3);
 }
 
 .settings-faq-heading {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--ui-text, #111827);
 }
@@ -294,8 +307,8 @@
 }
 
 .settings-faq-item {
-  border: 1px solid var(--ui-border, #E5E7EB);
-  border-radius: 8px;
+  border: 1px solid var(--ui-border, #EEF0F3);
+  border-radius: var(--ui-radius-row, 12px);
   overflow: hidden;
 }
 
@@ -320,9 +333,9 @@
 }
 
 .settings-faq-question.active {
-  background: #F0F7FF;
-  color: var(--ui-accent, #1565C8);
-  border-bottom: 1px solid var(--ui-border, #E5E7EB);
+  background: var(--ui-accent-tint, #EBF7EC);
+  color: var(--ui-accent-dark, #146B1F);
+  border-bottom: 1px solid var(--ui-border, #EEF0F3);
 }
 
 .settings-faq-toggle {
@@ -333,7 +346,7 @@
 }
 
 .settings-faq-question.active .settings-faq-toggle {
-  color: var(--ui-accent, #1565C8);
+  color: var(--ui-accent-dark, #146B1F);
 }
 
 .settings-faq-answer {
@@ -350,5 +363,30 @@
   }
   .settings-title {
     font-size: 22px;
+  }
+  .settings-layout {
+    flex-direction: column;
+  }
+  .settings-section-nav {
+    flex: 0 0 auto;
+    max-width: none;
+    min-width: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+  .settings-section-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .settings-section-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .settings-section-panel {
+    gap: 16px;
   }
 }

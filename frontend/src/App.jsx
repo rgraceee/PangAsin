@@ -101,11 +101,10 @@ function RequirePasswordChange({ user, isLoading, children }) {
 // WHAT: Redirect mula sa lumang /settings pat sa role-specific na settings path.
 // WHY: Admin papunta sa /admin/settings, encoder papunta sa /encoder/settings.
 function SettingsRedirect({ user }) {
-  const navigate = useNavigate();
   const path = user.role === 'admin' ? '/admin/settings' : '/encoder/settings';
   useEffect(() => {
-    navigate(path, { replace: true });
-  }, [navigate, path]);
+    window.location.href = path;
+  }, [path]);
   return null;
 }
 
@@ -173,7 +172,7 @@ export default function App() {
           )}
         />
 // WHAT: Lumang /settings route — redirect sa role-specific na settings path
-//       (admin -> /admin/settings, encoder -> /encoder/settings).
+//       (admin to /admin/settings, encoder to /encoder/settings).
 // WHY: Hindi na standalone page; nasa loob na ng admin/encoder shell.
 //      Unauthenticated users pa rin dinadala sa login sa pamamagitan ng RequireAuth.
         <Route
