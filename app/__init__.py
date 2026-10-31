@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, session
 from flask_login import current_user, logout_user
 from app.config import Config
+from app.models.user import User
 from app.extensions import db, migrate, login_manager, mail
 
 
@@ -31,6 +32,7 @@ def create_app(config_class=Config):
     from app.blueprints.forecast_api import forecast_api_bp
     from app.blueprints.reports_api import reports_api_bp
     from app.blueprints.producers_api import producers_api_bp
+    from app.blueprints.superadmin_api import superadmin_api_bp
     from app.services.rate_limit import RateLimiter
 
     app.extensions["rate_limiter"] = RateLimiter()
@@ -41,6 +43,7 @@ def create_app(config_class=Config):
     app.register_blueprint(public_api_bp)
     app.register_blueprint(encoder_api_bp)
     app.register_blueprint(admin_api_bp)
+    app.register_blueprint(superadmin_api_bp)
     app.register_blueprint(analytics_api_bp)
     app.register_blueprint(forecast_api_bp)
     app.register_blueprint(reports_api_bp)
@@ -128,11 +131,24 @@ def create_app(config_class=Config):
         if request.path.startswith("/api/auth/password-reset"):
             return None
 
-        if not current_user.is_authenticated:
+        # WHAT: Gamitin ang session['user_id'] direktso dahil ang
+        #       Flask-Login's login_user ay nag-set ng session["_user_id"]
+        #       (may underscore), habang ang _load_user ay humahambi ng
+        #       session.get('user_id') (walang underscore). Hindi magkakatuon
+        #       ang mga key, kaya hindi makita ng current_user ang user.
+        # WHY: Direct session access ay mas reliable kesa sa pagpaka-current_user
+        #      dahil kay Flask-Login's key mismatch.
+        user_id = session.get('user_id')
+        if user_id is None:
             return None
 
-        if current_user.status != "active":
-            logout_user()
+        user = User.query.get(int(user_id))
+        if user is None:
+            return None
+
+        if user.status != "active":
+            session.pop('user_id', None)
+            session.pop('_user_id', None)
             return jsonify({
                 "error": "Account is inactive. Contact administrator."
             }), 403
@@ -142,14 +158,15 @@ def create_app(config_class=Config):
         # WHY: The municipality is out of scope, so its encoder must not keep
         #      submitting or reading records for it.
         if (
-            current_user.role == "encoder"
-            and current_user.municipality_id is not None
+            user.role == "encoder"
+            and user.municipality_id is not None
             and (
-                current_user.municipality is None
-                or current_user.municipality.status != "active"
+                user.municipality is None
+                or user.municipality.status != "active"
             )
         ):
-            logout_user()
+            session.pop('user_id', None)
+            session.pop('_user_id', None)
             return jsonify({
                 "error": "This municipality is inactive. Contact administrator."
             }), 403
@@ -157,14 +174,15 @@ def create_app(config_class=Config):
         # WHAT: Ihambing ang session marker sa account version.
         # WHY: Kapag nag-reset ng password, ini-increment ang version para
         #      mawalan ng bisa ang lahat ng existing signed-in sessions.
-        if session.get("auth_version") != current_user.session_version:
-            logout_user()
+        if session.get("auth_version") != user.session_version:
+            session.pop('user_id', None)
+            session.pop('_user_id', None)
             return jsonify({
                 "error": "Your session has expired. Please sign in again.",
                 "code": "session_expired",
             }), 401
 
-        if current_user.must_change_password:
+        if user.must_change_password:
             allowed_paths = {
                 "/api/auth/change-password",
                 "/api/auth/logout",
@@ -179,3 +197,8 @@ def create_app(config_class=Config):
         return None
 
     return app
+
+
+def register_cli(app):
+    from scripts.create_superadmin import register_commands
+    register_commands(app)

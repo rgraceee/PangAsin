@@ -2,12 +2,13 @@
 # WHY: Session-based login gamit ang flask_login; dito tinitingnan ang role ng user.
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify, session, current_app, render_template
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.user import User
 from app.models.password_reset_token import PasswordResetToken
+from app.models.login_events import LoginEvent
 from app.constants import MAX_MONTHLY_VOLUME_MT
 from app.extensions import db
 from app.services.audit import log_action
@@ -64,6 +65,9 @@ def login():
         return jsonify({"error": "Email and password are required."}), 400
 
     user = User.query.filter_by(email=data["email"].strip().lower()).first()
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
+    ip = ip.split(",")[0].strip()[:64] if ip else None
+
     if not user or not user.check_password(data["password"]):
         log_action(
             "auth.login.failed",
@@ -73,6 +77,22 @@ def login():
             actor_email=data["email"].strip().lower(),
             details={"email": data["email"].strip().lower()},
         )
+        db.session.add(
+            LoginEvent(
+                user_id=getattr(user, "id", None),
+                email=data["email"].strip().lower(),
+                success=False,
+                ip=ip,
+                user_agent=request.headers.get("User-Agent", "")[:255],
+            )
+        )
+        if user:
+            if user.locked_until is not None and user.locked_until > datetime.utcnow():
+                return jsonify({"error": "Account is locked. Try again later."}), 403
+            failures = user.record_failed_login()
+            db.session.add(user)
+            db.session.commit()
+            return jsonify({"error": "Invalid email or password."}), 401
         db.session.commit()
         return jsonify({"error": "Invalid email or password."}), 401
 
@@ -85,15 +105,53 @@ def login():
             actor=user,
             details={"email": user.email},
         )
+        db.session.add(
+            LoginEvent(
+                user_id=user.id,
+                email=user.email,
+                success=False,
+                ip=ip,
+                user_agent=request.headers.get("User-Agent", "")[:255],
+            )
+        )
         db.session.commit()
         return jsonify({"error": "Account is inactive. Contact administrator."}), 403
 
+    if user.locked_until is not None and user.locked_until > datetime.utcnow():
+        log_action(
+            "auth.login.locked",
+            "user",
+            user.id,
+            summary="Locked account attempted to sign in.",
+            actor=user,
+            details={"email": user.email},
+        )
+        db.session.add(
+            LoginEvent(
+                user_id=user.id,
+                email=user.email,
+                success=False,
+                ip=ip,
+                user_agent=request.headers.get("User-Agent", "")[:255],
+            )
+        )
+        db.session.commit()
+        return jsonify({"error": "Account is locked. Try again later."}), 403
+
     login_user(user)
-    # WHAT: Itala ang account session version sa login session.
-    # WHY: Kapag nag-reset ng password, tataas ang version at lahat ng lumang
-    #      sessions ay awtomatikong mawawalan ng bisa.
+    session["user_id"] = user.id
     session["auth_version"] = user.session_version or 0
-    user.last_login = datetime.utcnow()
+    user.record_successful_login()
+    db.session.add(user)
+    db.session.add(
+        LoginEvent(
+            user_id=user.id,
+            email=user.email,
+            success=True,
+            ip=ip,
+            user_agent=request.headers.get("User-Agent", "")[:255],
+        )
+    )
     log_action(
         "auth.login",
         "user",
