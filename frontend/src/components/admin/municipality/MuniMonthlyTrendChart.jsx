@@ -12,7 +12,7 @@ import {
   AXIS_TICK_FONT, CHART_ANIMATION, CHART_GRID, compactNumberFormatter,
 } from '../../ui/chartTheme';
 import MuniCard, { MuniChip } from './MuniCard';
-import { TrendTooltip } from './muniTooltips';
+import { TrendTooltip } from './municipalityTooltips';
 import { SkeletonChart } from '../../Skeleton';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

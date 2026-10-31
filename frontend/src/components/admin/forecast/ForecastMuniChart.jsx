@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { fmtPctSigned } from './forecastData';
 import { MUNI_COLORS, MUNI_EDGES, colorKeyFor } from './forecastColors';
-import { PlaceholderShape, PanelTooltip, MunicipalityTick } from './forecastMuniBits';
+import { PlaceholderShape, PanelTooltip, MunicipalityTick } from './ForecastMunicipalityTooltip';
 
 export default function ForecastMuniChart({ data, scale, unitLabel, sourceNote }) {
   return (

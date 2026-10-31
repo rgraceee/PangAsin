@@ -4,7 +4,7 @@ import { BookOpen, ContactRound, ClipboardList, LayoutDashboard, Leaf, ShieldChe
 import usePageTitle from '../../hooks/usePageTitle';
 import {
   CollapseControl, Divider, NavItem, SectionLabel, SidebarLogo, UserBlock,
-} from '../shell/sidebarKit';
+} from '../shell/sidebarUi';
 
 /* WHAT: Mga page sa /encoder. Main = Dashboard, Manage = records pages.
    WHY: may sariling route na ang bawat manage page, kaya exact/prefix match

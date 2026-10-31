@@ -7,7 +7,7 @@ import {
 import { getAdminStats } from '../../services/dataService';
 import {
   CollapseControl, Divider, NavGroup, NavItem, SectionLabel, SidebarLogo, UserBlock,
-} from '../shell/sidebarKit';
+} from '../shell/sidebarUi';
 
 const MAIN_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },

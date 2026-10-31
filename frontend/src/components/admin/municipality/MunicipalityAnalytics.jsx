@@ -20,10 +20,10 @@ import MuniMonthlyTrendChart from './MuniMonthlyTrendChart';
 import MuniDetailsTable from './MuniDetailsTable';
 import {
   scopeRows, normaliseProduction, normaliseMasterList, normaliseMethods, fmtInt, fmtMT,
-} from './muniData';
+} from './municipalityData';
 import {
   buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows,
-} from './muniSelectors';
+} from './municipalitySelectors';
 
 export default function MunicipalityAnalytics() {
   const [data, setData] = useState(null);

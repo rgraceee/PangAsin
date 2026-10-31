@@ -19,8 +19,8 @@ import {
 } from 'recharts';
 import { BarChart2, Blend } from 'lucide-react';
 import { BRAND, MUNICIPALITY_COLORS } from '../../../theme/colors';
-import { fmtMT } from './muniData';
-import { ProductionTooltip, MethodTooltip } from './muniTooltips';
+import { fmtMT } from './municipalityData';
+import { ProductionTooltip, MethodTooltip } from './municipalityTooltips';
 import MuniDonut from './MuniDonut';
 
 const CHART_HEIGHT = 340;

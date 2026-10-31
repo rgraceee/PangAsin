@@ -5,7 +5,7 @@
 //      the rows the page already built.
 import { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { fmtInt, fmtPct } from './muniData';
+import { fmtInt, fmtPct } from './municipalityData';
 import { useChartMotion } from '../../ui/chartTheme';
 
 export default function MuniDonut({

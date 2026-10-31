@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import MuniCard, { MuniChip } from './MuniCard';
-import { fmtInt, fmtMT } from './muniData';
+import { fmtInt, fmtMT } from './municipalityData';
 
 const COLUMNS = [
   { key: 'name', label: 'Municipality', align: 'left' },

@@ -7,8 +7,8 @@ import {
 } from 'recharts';
 import { Users } from 'lucide-react';
 import MuniCard, { MuniChip } from './MuniCard';
-import { fmtInt, niceTicks } from './muniData';
-import { BarTooltip } from './muniTooltips';
+import { fmtInt, niceTicks } from './municipalityData';
+import { BarTooltip } from './municipalityTooltips';
 import {
   AXIS_TICK_FONT, BAR_RADIUS, CHART_GRID, VALUE_LABEL_FONT, compactNumberFormatter, useChartMotion,
 } from '../../ui/chartTheme';

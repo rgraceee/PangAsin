@@ -16,7 +16,7 @@ import { formatMT } from '../../utils/volumeFormat';
 import PeriodFilters, { usePeriodFilters } from './PeriodFilters';
 import MuniCard, { MuniChip } from '../admin/municipality/MuniCard';
 import MuniDonut from '../admin/municipality/MuniDonut';
-import { fmtMT, fmtPct } from '../admin/municipality/muniData';
+import { fmtMT, fmtPct } from '../admin/municipality/municipalityData';
 import {
   AXIS_TICK_FONT, CHART_GRID, compactNumberFormatter, useChartMotion,
 } from '../ui/chartTheme';

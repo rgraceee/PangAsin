@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Container } from 'react-bootstrap';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
-import { useSidebarState } from './sidebarKit';
+import { useSidebarState } from './sidebarUi';
 
 /* WHAT: Shared shell para sa admin at encoder (dock, top strip, drawer, content).
    WHY: isang lugar lang ang mobile/focus logic para parehas ang behavior. */

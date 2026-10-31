@@ -22,7 +22,7 @@ import './styles/audit-log.css';
 import './components/admin/forecast/forecast.css';
 import './components/admin/target/target.css';
 import './components/admin/GenerateReports.css';
-import './components/admin/municipality/muni.css';
+import './components/admin/municipality/municipality.css';
 import './styles/design-system.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(

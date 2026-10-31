@@ -5,8 +5,8 @@ import MuniCard, { MuniChip } from './MuniCard';
 import MuniAgeChart from './MuniAgeChart';
 import MuniDonut from './MuniDonut';
 import MuniRegisteredChart from './MuniRegisteredChart';
-import { fmtInt, fmtPct } from './muniData';
-import { GenderTooltip } from './muniTooltips';
+import { fmtInt, fmtPct } from './municipalityData';
+import { GenderTooltip } from './municipalityTooltips';
 
 const TABS = [
   { key: 'registered', label: 'Registered Salt Farmers' },

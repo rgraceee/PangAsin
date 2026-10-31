@@ -5,8 +5,8 @@ import { useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
-import { fmtInt, niceTicks } from './muniData';
-import { AgeTooltip } from './muniTooltips';
+import { fmtInt, niceTicks } from './municipalityData';
+import { AgeTooltip } from './municipalityTooltips';
 import {
   AXIS_TICK_FONT, BAR_RADIUS, CHART_GRID, VALUE_LABEL_FONT, compactNumberFormatter, useChartMotion,
 } from '../../ui/chartTheme';
