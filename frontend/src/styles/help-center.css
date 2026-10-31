@@ -1,0 +1,274 @@
+/* ============================================================
+   WHAT: Public Help Center page styles — no login required.
+   WHY: /help must load for everyone with clean public dashboard
+   styling.
+   ============================================================ */
+
+.help-center-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+/* ---------- Top bar ---------- */
+.help-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.help-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-text-2, #6B7280);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.help-back:hover {
+  color: var(--ui-text, #111827);
+  text-decoration: underline;
+}
+
+.help-signin {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--ui-radius-row);
+  background: var(--ui-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--ui-accent);
+}
+
+.help-signin:hover {
+  background: var(--ui-accent-dark);
+  border-color: var(--ui-accent-dark);
+}
+
+/* ---------- Header card ---------- */
+.help-header-card {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-shell);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.help-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ui-accent-dark);
+}
+
+.help-title {
+  margin: 8px 0 6px;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.help-sub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-text-2);
+}
+
+/* ---------- Search ---------- */
+.help-search-wrap {
+  margin-bottom: 24px;
+}
+
+.help-search {
+  width: 100%;
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: var(--ui-radius-row);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  color: var(--ui-text);
+}
+
+.help-search:focus {
+  outline: none;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-tint);
+}
+
+/* ---------- No results ---------- */
+.help-no-results {
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: var(--ui-radius-row);
+  background: var(--ui-active-bg);
+  color: var(--ui-text);
+}
+
+.help-no-results p {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.help-no-results-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-text-2);
+}
+
+/* ---------- FAQ grouped by category ---------- */
+.help-faq-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.help-category-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ui-text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.help-faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.help-faq-item {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-row);
+  overflow: hidden;
+}
+
+.help-faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #fff;
+  border: 0;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.help-faq-question:hover {
+  background: #F9FAFB;
+}
+
+.help-faq-question.active {
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.help-faq-toggle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9CA3AF;
+  flex-shrink: 0;
+}
+
+.help-faq-answer {
+  padding: 0 16px 14px;
+  font-size: 13.5px;
+  color: #4B5563;
+  line-height: 1.55;
+}
+
+/* ---------- Contact card ---------- */
+.help-contact-card {
+  background: var(--ui-accent-tint);
+  border: 1px solid var(--ui-accent);
+  border-radius: var(--ui-radius-card);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.help-contact-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ui-radius-pill);
+  background: #fff;
+  color: var(--ui-accent-dark);
+  flex-shrink: 0;
+}
+
+.help-contact-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-text);
+  margin: 0 0 4px;
+}
+
+.help-contact-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-text-2);
+}
+
+.help-contact-mailto {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--ui-radius-row);
+  background: var(--ui-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--ui-accent);
+}
+
+.help-contact-mailto:hover {
+  background: var(--ui-accent-dark);
+  border-color: var(--ui-accent-dark);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .help-center-page {
+    padding: 16px 12px 32px;
+  }
+  .help-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .help-signin {
+    margin-left: 0;
+  }
+  .help-contact-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .help-contact-mailto {
+    margin-left: 0;
+  }
+}

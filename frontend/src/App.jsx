@@ -22,8 +22,8 @@ import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import ProducerMasterList from './components/ProducerMasterList';
 import PrivacyPolicy from './components/support/PrivacyPolicy';
-import HelpManual from './components/support/HelpManual';
 import Settings from './components/Settings';
+import HelpCenter from './components/support/HelpCenter';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import { ToastProvider } from './components/Toast';
@@ -153,14 +153,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privacy" element={<PrivacyPolicy user={user} />} />
-        <Route
-          path="/help"
-          element={(
-            <RequireAuth user={user} isLoading={loading}>
-              <HelpManual user={user} />
-            </RequireAuth>
-          )}
-        />
+        <Route path="/help" element={<HelpCenter />} />
         <Route
           path="/change-password"
           element={(

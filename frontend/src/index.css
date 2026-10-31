@@ -2,6 +2,7 @@
 @import './styles/ui-tokens.css';
 @import './styles/support.css';
 @import './styles/settings.css';
+@import './styles/help-center.css';
 
 :root {
   --ocean-blue: #1565C8;

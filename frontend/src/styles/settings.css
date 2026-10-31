@@ -1,6 +1,7 @@
 /* ============================================================
-   WHAT: Settings page styles — two-pane layout for admin and encoder.
-   WHY: Standard settings layout na nag-match sa ibang pages ng app.
+   WHAT: Settings page styles — content-only layout matching Forecasting page.
+   WHY: Navigation lives only in the sidebar; this component shows the selected
+   section panel. Page header card + section head cards + white rounded cards.
    ============================================================ */
 
 .settings-page {
@@ -9,99 +10,83 @@
   padding: 24px 16px 40px;
 }
 
-.settings-header {
+/* ---------- Page header card ---------- */
+.settings-page-header {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-shell);
+  padding: 24px;
   margin-bottom: 24px;
 }
 
-.settings-title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--ui-text, #111827);
-  letter-spacing: -0.02em;
-}
-
-/* ---------- Two-pane layout ---------- */
-.settings-layout {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-/* Left: section list */
-.settings-section-nav {
-  flex: 0 0 220px;
-  max-width: 220px;
-  min-width: 200px;
+.settings-page-header-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
 }
 
-.settings-section-item {
+.settings-page-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ui-text);
+}
+
+.settings-page-sub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ui-text-2);
+}
+
+/* ---------- Section panels ---------- */
+.settings-section-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---------- Section head card ---------- */
+.settings-section-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  border-radius: var(--ui-radius-row, 12px);
-  text-decoration: none;
-  color: var(--ui-text-2, #6B7280);
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  margin-bottom: 4px;
 }
 
-.settings-section-item:hover {
-  background: var(--ui-active-bg, #F3F4F6);
-  color: var(--ui-text, #111827);
-}
-
-.settings-section-item.active {
-  background: var(--ui-accent-tint, #EBF7EC);
-  border-color: var(--ui-accent, #29B039);
-  color: var(--ui-accent-dark, #146B1F);
-}
-
-.settings-section-icon {
+.settings-section-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ui-radius-card);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
   flex-shrink: 0;
-  width: 20px;
-  text-align: center;
 }
 
-.settings-section-label {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-
-/* Right: section panel */
-.settings-section-panel {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.settings-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.settings-panel-title {
+.settings-section-title {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: var(--ui-text, #111827);
+  color: var(--ui-text);
+  letter-spacing: -0.01em;
+}
+
+.settings-section-sub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ui-text-2);
 }
 
 /* ---------- Cards ---------- */
 .settings-card {
-  border: 1px solid var(--ui-border, #EEF0F3);
-  border-radius: var(--ui-radius-card, 16px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-card);
   background: #fff;
+  box-shadow: var(--ui-shadow);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -115,12 +100,70 @@
 }
 
 /* ---------- Account ---------- */
+.settings-account-grid {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.settings-account-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-brown-tint);
+  border: 1px solid var(--ui-brown-border);
+  color: var(--ui-brown);
+  font-size: 20px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.settings-account-avatar .settings-avatar-initials {
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-account-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-account-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.settings-account-email {
+  font-size: 13px;
+  color: var(--ui-text-2);
+}
+
+.settings-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
 .settings-account-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--ui-border);
+  padding-top: 16px;
 }
 
 .settings-account-list dt {
@@ -135,7 +178,7 @@
 .settings-account-list dd {
   margin: 0 0 0;
   font-size: 14px;
-  color: var(--ui-text, #111827);
+  color: var(--ui-text);
 }
 
 .settings-account-note {
@@ -153,22 +196,65 @@
   max-width: 480px;
 }
 
-.settings-security-form .mb-3 {
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text);
   margin-bottom: 0;
 }
 
-.settings-security-form .form-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-text, #111827);
-  margin-bottom: 6px;
-  display: block;
+.settings-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.settings-security-form .form-control {
+.settings-form-control {
+  width: 100%;
   font-size: 14px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 40px 10px 12px;
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-guide);
+  color: var(--ui-text);
+}
+
+.settings-form-control::placeholder {
+  color: var(--ui-text-muted);
+}
+
+.settings-toggle-visibility {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: var(--ui-text-2);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-toggle-visibility:hover {
+  color: var(--ui-accent-dark);
+}
+
+.settings-toggle-visibility:focus {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.settings-field-hint {
+  font-size: 12px;
+  color: var(--ui-text-muted);
 }
 
 .settings-error {
@@ -210,12 +296,12 @@
 .settings-legal-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--ui-border, #EEF0F3);
-  border-radius: var(--ui-radius-row, 12px);
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-row);
   background: #fff;
-  color: var(--ui-text-2, #6B7280);
+  color: var(--ui-text-2);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -224,21 +310,41 @@
 
 .settings-help-link:hover,
 .settings-legal-link:hover {
-  border-color: var(--ui-accent, #29B039);
-  background: var(--ui-accent-tint, #EBF7EC);
-  color: var(--ui-accent-dark, #146B1F);
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
   text-decoration: none;
 }
 
-.settings-help-link svg,
-.settings-legal-link svg {
+.settings-link-icon {
   flex-shrink: 0;
   color: #9CA3AF;
 }
 
-.settings-help-link:hover svg,
-.settings-legal-link:hover svg {
-  color: var(--ui-accent-dark, #146B1F);
+.settings-help-link:hover .settings-link-icon,
+.settings-legal-link:hover .settings-link-icon {
+  color: var(--ui-accent-dark);
+}
+
+.settings-link-title {
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.settings-link-desc {
+  font-size: 12.5px;
+  color: var(--ui-text-2);
+}
+
+.settings-link-chevron {
+  margin-left: auto;
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.settings-help-link:hover .settings-link-chevron,
+.settings-legal-link:hover .settings-link-chevron {
+  color: var(--ui-accent-dark);
 }
 
 /* ---------- Legal ---------- */
@@ -270,7 +376,19 @@
 .settings-about-list dd {
   margin: 0 0 0;
   font-size: 14px;
-  color: var(--ui-text, #111827);
+  color: var(--ui-text);
+}
+
+.settings-version-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .settings-about-note {
@@ -284,14 +402,14 @@
 .settings-faq-section {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid var(--ui-border, #EEF0F3);
+  border-top: 1px solid var(--ui-border);
 }
 
 .settings-faq-heading {
   margin: 0 0 8px;
   font-size: 18px;
   font-weight: 700;
-  color: var(--ui-text, #111827);
+  color: var(--ui-text);
 }
 
 .settings-faq-sub {
@@ -307,8 +425,8 @@
 }
 
 .settings-faq-item {
-  border: 1px solid var(--ui-border, #EEF0F3);
-  border-radius: var(--ui-radius-row, 12px);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-row);
   overflow: hidden;
 }
 
@@ -323,7 +441,7 @@
   text-align: left;
   font-size: 14px;
   font-weight: 600;
-  color: var(--ui-text, #111827);
+  color: var(--ui-text);
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -333,9 +451,9 @@
 }
 
 .settings-faq-question.active {
-  background: var(--ui-accent-tint, #EBF7EC);
-  color: var(--ui-accent-dark, #146B1F);
-  border-bottom: 1px solid var(--ui-border, #EEF0F3);
+  background: var(--ui-accent-tint);
+  color: var(--ui-accent-dark);
+  border-bottom: 1px solid var(--ui-border);
 }
 
 .settings-faq-toggle {
@@ -346,7 +464,7 @@
 }
 
 .settings-faq-question.active .settings-faq-toggle {
-  color: var(--ui-accent-dark, #146B1F);
+  color: var(--ui-accent-dark);
 }
 
 .settings-faq-answer {
@@ -361,32 +479,25 @@
   .settings-page {
     padding: 16px 12px 32px;
   }
-  .settings-title {
-    font-size: 22px;
+  .settings-page-header {
+    padding: 16px;
   }
-  .settings-layout {
+  .settings-page-title {
+    font-size: 20px;
+  }
+  .settings-account-grid {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
-  .settings-section-nav {
-    flex: 0 0 auto;
-    max-width: none;
-    min-width: auto;
-    flex-direction: row;
-    overflow-x: auto;
-    gap: 8px;
-    padding-bottom: 8px;
-    scrollbar-width: none;
+  .settings-role-chip {
+    margin-top: 0;
   }
-  .settings-section-nav::-webkit-scrollbar {
-    display: none;
+  .settings-card-body {
+    padding: 16px;
   }
-  .settings-section-item {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    padding: 8px 12px;
-    font-size: 13px;
-  }
-  .settings-section-panel {
-    gap: 16px;
+  .settings-faq-section {
+    margin-top: 20px;
+    padding-top: 16px;
   }
 }
