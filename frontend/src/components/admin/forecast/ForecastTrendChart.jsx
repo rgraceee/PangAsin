@@ -13,7 +13,7 @@ import ForecastChartCard, { ChartChip } from './ForecastChartCard';
 import { monthShort } from './forecastData';
 import {
   NAVY, GOLD, DividerLabel, TrendTooltip, withGapBridges,
-} from './forecastChartBits';
+} from './ForecastChartCard';
 
 const GRAD_HISTORY = 'url(#fcHistoryGradient)';
 const GRAD_BAND = 'url(#fcBandGradient)';

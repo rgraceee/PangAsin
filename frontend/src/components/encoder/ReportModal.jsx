@@ -2,7 +2,7 @@ import React, { useId } from 'react';
 import { Modal } from 'react-bootstrap';
 import { X } from 'lucide-react';
 import { confirmAction } from '../../services/feedback';
-import ReportStepper from './ReportStepper';
+import { ReportStepper } from './ReportFormParts';
 
 // WHAT: Shared shell ng tatlong encoder report forms (Production/Producer/Environment).
 // WHY: Isang white modal + flat stepper + sticky footer para pantay ang hitsura at

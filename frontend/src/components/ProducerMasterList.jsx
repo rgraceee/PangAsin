@@ -12,7 +12,7 @@ import PageHeader from './admin/PageHeader';
 import MunicipalityMapArt from './encoder/MunicipalityMapArt';
 import useMunicipalityDirectory from '../hooks/useMunicipalityDirectory';
 import ReportModal from './encoder/ReportModal';
-import ReportField from './encoder/ReportField';
+import { ReportField } from './encoder/ReportFormParts';
 import ProducerReportForm from './encoder/ProducerReportForm';
 import TablePagination from './ui/TablePagination';
 import usePagination from '../hooks/usePagination';

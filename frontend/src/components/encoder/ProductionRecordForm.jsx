@@ -4,9 +4,7 @@ import { getEncoderBarangays, getEncoderEnvironmentReports, createRecord, update
 import { useToast } from '../Toast';
 import { SkeletonForm } from '../Skeleton';
 import ReportModal from './ReportModal';
-import ReportSection from './ReportSection';
-import ReportField from './ReportField';
-import ReportSummary from './ReportSummary';
+import { ReportSection, ReportField, ReportSummary } from './ReportFormParts';
 import ReportImportActions from './ReportImportActions';
 import { prepareProductionRows, rowError } from './reportImportUtils';
 import { formatMT } from '../../utils/volumeFormat';

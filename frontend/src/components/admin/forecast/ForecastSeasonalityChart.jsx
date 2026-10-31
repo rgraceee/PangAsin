@@ -10,7 +10,7 @@ import {
 import { CalendarDays, Sun, CloudRain } from 'lucide-react';
 import ForecastChartCard, { ChartChip } from './ForecastChartCard';
 import { fmtMT, seasonalExtremes, MONTH_SHORT } from './forecastData';
-import { NAVY, AXIS, CurrentMonthMarker, SeasonTooltip, SeasonBand } from './forecastChartBits';
+import { NAVY, AXIS, CurrentMonthMarker, SeasonTooltip, SeasonBand } from './ForecastChartCard';
 
 const DRY = 'var(--fc-dry)';
 const DRY_INK = 'var(--fc-dry-ink)';

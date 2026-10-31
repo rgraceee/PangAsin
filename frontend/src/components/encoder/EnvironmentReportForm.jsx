@@ -8,9 +8,7 @@ import {
 } from '../../services/dataService';
 import { useToast } from '../Toast';
 import ReportModal from './ReportModal';
-import ReportSection from './ReportSection';
-import ReportField from './ReportField';
-import ReportSummary from './ReportSummary';
+import { ReportSection, ReportField, ReportSummary } from './ReportFormParts';
 import ReportImportActions from './ReportImportActions';
 import { SkeletonForm } from '../Skeleton';
 
