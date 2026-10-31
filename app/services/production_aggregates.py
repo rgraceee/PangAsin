@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 from app.extensions import db
 from app.models.production_record import ProductionRecord
 from app.models.municipality_production import MunicipalityMonthlyProduction
-from app.services.municipalities import active_municipality_ids_subquery
+from app.services.municipality_directory import active_municipality_ids_subquery
 from app.services.date_math import grid_start_end
 
 # Reference epoch for computing real (non-compressed) month positions.
