@@ -81,10 +81,36 @@ def _month_with_offset(month_start, offset):
     return date(year, month_index + 1, 1)
 
 
+def _method_split_by_municipality():
+    # WHAT: Sum approved production volume per method per municipality.
+    # WHY: Same source as admin's production_methods_mt — one source of truth
+    #      for Dominant Method on both admin and public maps.
+    rows = (
+        db.session.query(
+            ProductionRecord.municipality_id,
+            ProductionRecord.production_method,
+            func.sum(ProductionRecord.production_volume_mt).label("mt"),
+        )
+        .filter(ProductionRecord.status == "approved")
+        .filter(
+            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
+        )
+        .group_by(ProductionRecord.municipality_id, ProductionRecord.production_method)
+        .all()
+    )
+    by_muni = {}
+    for mid, method, mt in rows:
+        bucket = by_muni.setdefault(mid, {"solar": 0.0, "cooked": 0.0, "hybrid": 0.0})
+        if method in bucket:
+            bucket[method] = round(float(mt or 0), 3)
+    return by_muni
+
+
 def _municipality_summary():
     latest = _latest_production_month()
+    method_by_muni = _method_split_by_municipality()
     if latest is None:
-        return [], {}, {}
+        return [], method_by_muni, {}
 
     current_start = _month_with_offset(latest, -11)
     previous_start = _month_with_offset(latest, -23)
@@ -145,7 +171,7 @@ def _municipality_summary():
         ))
 
     end = _month_with_offset(latest, 1) - timedelta(days=1)
-    return rows, {}, (current_start, end)
+    return rows, method_by_muni, (current_start, end)
 
 
 def _demographics():
