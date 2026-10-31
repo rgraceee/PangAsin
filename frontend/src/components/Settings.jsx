@@ -30,8 +30,8 @@ const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 const SECTIONS = [
   { id: 'account', label: 'Account', Icon: User, subtitle: 'Your profile details' },
   { id: 'security', label: 'Security', Icon: ShieldCheck, subtitle: 'Update your password' },
-  { id: 'help', label: 'Help & Support', Icon: HelpCircle, subtitle: 'Quick answers to common tasks.' },
   { id: 'legal', label: 'Legal', Icon: Archive, subtitle: 'Privacy and terms' },
+  { id: 'help', label: 'Help & Support', Icon: HelpCircle, subtitle: 'Quick answers to common tasks.' },
   { id: 'about', label: 'About', Icon: SettingsIcon, subtitle: 'About PangAsin' },
 ];
 

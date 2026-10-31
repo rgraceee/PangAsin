@@ -623,7 +623,7 @@
 .faq-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .faq-item {
@@ -637,7 +637,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 14px 20px;
   background: #fff;
   border: 0;
   text-align: left;
@@ -645,13 +645,11 @@
   font-weight: 600;
   color: var(--ui-text);
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .faq-question:hover {
   background: var(--ui-active-bg);
-  border-color: var(--ui-guide);
-  box-shadow: 0 2px 8px -2px rgba(21, 35, 58, 0.06);
 }
 
 .faq-question:focus-visible {
@@ -661,31 +659,8 @@
 }
 
 .faq-question.active {
-  background: var(--ui-accent-tint);
   color: var(--ui-accent-dark);
-  border-color: var(--ui-accent);
-}
-
-.faq-question .faq-card-icon {
-  flex-shrink: 0;
-  color: #9CA3AF;
-}
-
-.faq-question.active .faq-card-icon {
-  color: var(--ui-accent-dark);
-}
-
-.faq-toggle {
-  font-size: 12px;
   font-weight: 700;
-  color: #9CA3AF;
-  flex-shrink: 0;
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.faq-question.active .faq-toggle {
-  color: var(--ui-accent-dark);
-  transform: rotate(180deg);
 }
 
 .faq-answer {
@@ -700,40 +675,13 @@
   line-height: 1.55;
 }
 
-/* ---------- Answer steps (numbered badges) ---------- */
-.faq-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 6px;
-  padding-top: 10px;
-  border-top: 1px solid var(--ui-border);
-}
-
-.faq-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.faq-step-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--ui-radius-pill);
-  background: var(--ui-accent);
-  color: #fff;
-  font-size: 13px;
+.faq-list-heading {
+  margin: 0 0 12px;
+  font-size: 16px;
   font-weight: 700;
-  flex-shrink: 0;
-}
-
-.faq-step-text {
-  font-size: 13.5px;
-  color: #4B5563;
-  line-height: 1.55;
+  color: var(--ui-text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* ---------- Hero (public /help only) ---------- */
