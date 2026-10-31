@@ -4,9 +4,7 @@ import { Card } from 'react-bootstrap';
 import {
   Settings as SettingsIcon,
   User,
-  Mail,
   ShieldCheck,
-  FileText,
   HelpCircle,
   Archive,
   Eye,
@@ -266,42 +264,12 @@ export default function Settings({ user }) {
         {section === 'help' && (
           <>
             <SectionHead icon={HelpCircle} title="Help &amp; Support" subtitle="Guides, FAQ and contact" />
-            <Card className="settings-card">
-              <Card.Body className="settings-card-body">
-                <ul className="settings-help-list">
-                  <li>
-                    <a
-                      href="/help"
-                      className="settings-help-link"
-                      onClick={(e) => { e.preventDefault(); navigate('/help'); }}
-                    >
-                      <span className="settings-link-icon" aria-hidden="true">
-                        <FileText size={14} strokeWidth={1.5} />
-                      </span>
-                      <div>
-                        <div className="settings-link-title">User Manual</div>
-                        <div className="settings-link-desc">Read the full user manual for the PangAsin dashboard.</div>
-                      </div>
-                      <span className="settings-link-chevron" aria-hidden="true">›</span>
-                    </a>
-                  </li>
-                  <li>
-                    <a href={`mailto:${CONTACT_EMAIL}`} className="settings-help-link">
-                      <span className="settings-link-icon" aria-hidden="true">
-                        <Mail size={14} strokeWidth={1.5} />
-                      </span>
-                      <div>
-                        <div className="settings-link-title">Report a problem / Contact ASIN Center</div>
-                        <div className="settings-link-desc">Email the ASIN Center with your name, municipality, and a short description.</div>
-                      </div>
-                      <span className="settings-link-chevron" aria-hidden="true">›</span>
-                    </a>
-                  </li>
-                </ul>
-              </Card.Body>
-            </Card>
-
-            <FaqList faqs={roleFaq} />
+            <FaqList
+              faqs={roleFaq}
+              contactEmail={CONTACT_EMAIL}
+              manualUrl="/help/manual"
+              reportUrl="/help/report"
+            />
           </>
         )}
 
