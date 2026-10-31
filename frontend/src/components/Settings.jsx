@@ -33,12 +33,6 @@ const APP_VERSION = pkg.version || '0.0.0';
 // WHY: Isang lugar lang ang contact email para madaling i-update.
 const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 
-// WHAT: Mga tanong at sagot sa Help Center — isa lamang ang array, nakakabit
-//      mula sa shared file para pare-pareho ang sagot sa Settings at public
-//      Help Center.
-// WHY: hindi kailangang i-edit ang dalawang file kapag may bagong tanong.
-const FAQS = HELP_CENTER_FAQS;
-
 // WHAT: Mga section ng Settings page sa order na ipakita.
 // WHY: Isa lamang ang listahan para consistent ang sidebar sub-items at content panels.
 const SECTIONS = [
