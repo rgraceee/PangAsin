@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
   return (
     <div className="support-page">
       <div className="support-topbar">
-        <Link to={homePath} className="ui-btn-outline ui-btn--sm">
+        <Link to="/" className="ui-btn-outline ui-btn--sm">
           <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" />
           Back to dashboard
         </Link>

@@ -123,7 +123,7 @@ export default function LocationPicker({ latitude, longitude, onChange, height =
       markerRef.current = null;
     };
     // WHAT: Init once; the sync effect below keeps the marker updated afterwards.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   useEffect(() => {

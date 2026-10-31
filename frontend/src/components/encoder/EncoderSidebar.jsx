@@ -41,7 +41,6 @@ export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, cl
   const isActive = (item) => (
     item.path === '/encoder' ? pathname === '/encoder' : pathname === item.path
   );
-  const isSettingsActive = () => pathname === '/encoder/settings' || pathname.startsWith('/encoder/settings/');
   const settingsActiveId = () => {
     if (pathname.startsWith('/encoder/settings/account')) return 'account';
     if (pathname.startsWith('/encoder/settings/security')) return 'security';

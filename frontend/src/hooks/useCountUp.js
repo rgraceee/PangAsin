@@ -5,8 +5,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const DURATION_MS = 1400;
-
 function easeOutExpo(t) {
   return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }

@@ -11,7 +11,6 @@ import KpiGrid from '../../ui/KpiGrid';
 import PageHeader from '../PageHeader';
 import { useDashboardFilters } from '../DashboardFilters';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../../Skeleton';
-import MuniRegisteredChart from './MuniRegisteredChart';
 import MuniProfileChart from './MuniProfileChart';
 import MuniProductionCard from './MuniProductionCard';
 import MuniShareDonutCard from './MuniShareDonutCard';
@@ -20,10 +19,9 @@ import MuniMonthlyTrendChart from './MuniMonthlyTrendChart';
 import MuniDetailsTable from './MuniDetailsTable';
 import {
   scopeRows, normaliseProduction, normaliseMasterList, normaliseMethods, fmtInt, fmtMT,
-} from './municipalityData';
-import {
-  buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows,
-} from './municipalityData';
+
+  buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows} from './municipalityData';
+
 
 export default function MunicipalityAnalytics() {
   const [data, setData] = useState(null);

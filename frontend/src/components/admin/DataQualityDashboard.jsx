@@ -17,7 +17,6 @@ import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import DqHeatmap from './data-quality/DqHeatmap';
-import DqFieldCompleteness from './data-quality/DqFieldCompleteness';
 import { STATE_LEGEND, formatMonth, formatTimestamp, toneForPercent } from './data-quality/dqData';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 import './data-quality/dataQuality.css';

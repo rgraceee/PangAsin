@@ -58,7 +58,7 @@ export default function ChangePassword({ user, setUser }) {
   const handleLogout = async () => {
     try {
       await logoutAPI();
-    } catch (err) {
+    } catch {
       // The session may already be gone; sign out locally anyway.
     }
     if (setUser) setUser(null);

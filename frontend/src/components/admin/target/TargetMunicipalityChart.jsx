@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { useState } from 'react';
 import { Building2 } from 'lucide-react';
-import { fmtMT, fmtAxis } from './targetData';
+import { fmtAxis } from './targetData';
 import { ContributionTooltip, ContributionBar, ContributionLabel } from './targetTooltips';
 import TargetCard from './TargetCard';
 

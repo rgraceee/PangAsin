@@ -75,7 +75,7 @@ function MunicipalityTick({ x, y, payload }) {
 export default function MunicipalityProductionCharts({ municipalities = [] }) {
   const [activeName, setActiveName] = useState(null);
 
-  const { rows, total, axisMax, slices } = useMemo(() => {
+  const { rows, total, axisMax } = useMemo(() => {
     const list = (Array.isArray(municipalities) ? municipalities : [])
       .map((m) => ({
         id: m.id ?? m.name,
@@ -86,7 +86,7 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
       .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 
     const sum = list.reduce((acc, row) => acc + row.value, 0);
-    const chartRows = list.map((row, index) => ({
+    const chartRows = list.map((row) => ({
       ...row,
       share: sum > 0 ? (row.value / sum) * 100 : 0,
     }));
@@ -256,7 +256,7 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                   />
 
                   <p className="fc-chart-caption">
-                    Percentages are each municipality's share of the {fmtNumber(total)} MT recorded
+                    Percentages are each municipality&apos;s share of the {fmtNumber(total)} MT recorded
                     across the province in the latest 12 months.
                   </p>
                 </>

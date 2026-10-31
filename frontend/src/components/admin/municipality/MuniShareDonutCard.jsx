@@ -42,7 +42,7 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
           <div>
             <h5 className="admin-card-head-title">Share of Provincial Production</h5>
             <p className="admin-card-head-sub">
-              Each slice is a municipality's share of the total production in the selected period.
+              Each slice is a municipality&apos;s share of the total production in the selected period.
             </p>
           </div>
         </div>

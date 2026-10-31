@@ -6,10 +6,6 @@ import {
   User,
   Mail,
   ShieldCheck,
-  Lock,
-  Key,
-  AtSign,
-  Building,
   FileText,
   HelpCircle,
   Archive,
@@ -18,7 +14,7 @@ import {
 } from 'lucide-react';
 import { changePassword } from '../services/dataService';
 import { useToast } from './Toast';
-import { publicFaq, adminFaq, encoderFaq } from './support/faqData';
+import { adminFaq, encoderFaq } from './support/faqData';
 import FaqList from './support/FaqList';
 import { getInitials } from './shell/sidebarUi';
 
@@ -110,8 +106,6 @@ export default function Settings({ user }) {
       setError('The new password must be different from the current password.');
       return;
     }
-
-    const isValid = newPassword.length >= 6 && newPassword === confirmPassword && newPassword !== currentPassword;
 
     setSaving(true);
     try {

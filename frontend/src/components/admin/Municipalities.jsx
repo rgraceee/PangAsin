@@ -925,7 +925,7 @@ export default function Municipalities() {
       await navigator.clipboard.writeText([email, password].filter(Boolean).join('\n'));
       setCopied(true);
       toastSuccess('Email and temporary password copied.', 'Copied');
-    } catch (err) {
+    } catch {
       toastError('Could not copy automatically. Select and copy the password manually.');
     }
   };

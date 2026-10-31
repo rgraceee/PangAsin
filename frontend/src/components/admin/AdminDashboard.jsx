@@ -279,11 +279,6 @@ function MunicipalityMap({ muniData, selectedName }) {
   }, [muniData]);
 
   const tierThresholds = useMemo(() => computeTierThresholds(muniData.map((m) => m.volumeMT)), [muniData]);
-  const sortedVals = useMemo(() => [...muniData.map((m) => m.volumeMT)].filter((v) => v != null).sort((a, b) => a - b), [muniData]);
-  const lowMax = sortedVals[Math.max(0, Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[0];
-  const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
-  const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
-  const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
 
   const municipalityDataRef = useRef({});
   municipalityDataRef.current = Object.fromEntries(

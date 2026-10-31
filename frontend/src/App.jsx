@@ -28,7 +28,6 @@ import ScrollToTop from './components/ScrollToTop';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import { ToastProvider } from './components/Toast';
-import { ErrorBoundary } from './components/ErrorBoundary';
 import usePageTitle from './hooks/usePageTitle';
 
 const ROUTE_TITLES = {

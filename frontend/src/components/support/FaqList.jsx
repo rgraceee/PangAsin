@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
 
 // WHAT: Shared FAQ list with client-side search and accordions grouped by
 //       category. Used by both the public Help Center (/help) and Settings >

@@ -87,12 +87,6 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   useEffect(() => { loadPending(); }, [adminView]);
 
   /* WHAT: Buksan ang Add Worker modal sa fresh form. WHY: inuulit dati sa button markup. */
-  const openAdd = () => {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setError('');
-    setShowAdd(true);
-  };
 
   const closeModal = () => {
     setShowAdd(false);

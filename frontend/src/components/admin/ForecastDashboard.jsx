@@ -52,7 +52,7 @@ function InnerForecastDashboard() {
 
   const {
     municipalities, outlook, trends, descriptive, selectedRun,
-    forecastPoints, forecastTotal, historyRows, timeline, recordedTotal,
+    forecastPoints, forecastTotal, timeline, recordedTotal,
     booting, error, reload,
   } = useForecastData(filters);
   /* Keeps the page current: refresh when the admin comes back to the tab and

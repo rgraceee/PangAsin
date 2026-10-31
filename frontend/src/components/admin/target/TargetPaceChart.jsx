@@ -21,7 +21,6 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, year
   const narrow = width > 0 && width < 560;
   const firstForecast = rows.find((r) => r.isForecast);
   const lastRow = rows[rows.length - 1];
-  const reached = rows.find((r) => r.label === reachedMonth);
   const band = rows.map((r) => ({
     ...r,
     bandLower: r.cumLower ?? null,

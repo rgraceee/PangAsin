@@ -32,7 +32,7 @@ export default function EncoderLayout({ user }) {
       onConfirm: async () => {
         try {
           await logoutAPI();
-        } catch (e) {
+        } catch {
           // The session may already be gone; sign out locally anyway.
         }
         toastInfo('You have been signed out.', 'Signed out');

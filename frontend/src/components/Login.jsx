@@ -4,43 +4,15 @@
 //      login card sa kanan). Naka-scope sa .login-* na mga klase para hindi
 //      epekto sa ibang pages (encoder, admin, at guest dashboard).
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Container, Form } from 'react-bootstrap';
-import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, MapPin, Phone, ShieldCheck, Trophy } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, MapPin, ShieldCheck, Trophy } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Reveal from './Reveal';
 import { loadPublicDashboardData, loginAPI, getMunicipalityProduction } from '../services/dataService';
-import { formatMT, formatMTWithUnit } from '../utils/volumeFormat';
+import { formatMT } from '../utils/volumeFormat';
 import { useToast } from './Toast';
-import AdminKpiCard from './admin/AdminKpiCard';
-import useCountUp from '../hooks/useCountUp';
-
-const POLICY_MANDATE = 'RA 11985';
-
-function formatProductionYears(records) {
-  const years = [...new Set(
-    (records || [])
-      .map((record) => Number(record.year))
-      .filter((year) => Number.isInteger(year)),
-  )].sort((a, b) => a - b);
-
-  if (!years.length) return [];
-
-  const ranges = [];
-  let start = years[0];
-  let previous = years[0];
-
-  years.slice(1).forEach((year) => {
-    if (year === previous + 1) {
-      previous = year;
-      return;
-    }
-    ranges.push(start === previous ? `${start}` : `${start}–${previous}`);
-    start = year;
-  });
-  ranges.push(start === previous ? `${start}` : `${start}–${previous}`);
-  return ranges;
-}
+
 
 /* WHAT: Logo file ng bawat salt-producing municipality.
    WHY: isang beses lang ideklara ang filename/extensions (may .jpeg ang Dasol);
@@ -101,7 +73,6 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [kpiData, setKpiData] = useState(null);
-  const [kpiError, setKpiError] = useState(false);
   const [errorKey, setErrorKey] = useState(0);
   const [heroReady, setHeroReady] = useState(false);
   const navigate = useNavigate();
@@ -130,77 +101,12 @@ export default function Login({ onLogin }) {
         if (active) setKpiData(data || {});
       })
       .catch(() => {
-        if (active) setKpiError(true);
       });
 
     return () => {
       active = false;
     };
   }, []);
-
-  const isLoading = kpiData === null && !kpiError;
-
-  /* WHAT: Numero ang kalkulahin mula sa totoong dashboard data.
-     WHY: Kapag may totoong data, mula ito; kapag walang data o nag-error,
-          hindi inuubos ang random na numero para maiwasan ang makabubulong
-          na data sa UI. */
-  const dashboardNumbers = useMemo(() => {
-    if (kpiError || !kpiData) {
-      return {
-        municipalityCount: null,
-        yearRange: null,
-        totalMT: null,
-        dataAvailable: false,
-      };
-    }
-
-    const municipalities = Array.isArray(kpiData.municipalities) ? kpiData.municipalities : [];
-    const production = kpiData.production || {};
-    const records = Array.isArray(production.records) ? production.records : [];
-    const years = formatProductionYears(records);
-    const totalMT = Number.isFinite(Number(production.provinceTotalMT))
-      ? Number(production.provinceTotalMT)
-      : null;
-
-    let yearRange = null;
-    if (years.length > 0) {
-      const start = years[0].includes('–') ? years[0].split('–')[0] : years[0];
-      const end = years[years.length - 1].includes('–')
-        ? years[years.length - 1].split('–')[1]
-        : years[years.length - 1];
-      yearRange = start === end ? start : `${start}–${end}`;
-    }
-
-    return {
-      municipalityCount: municipalities.length,
-      yearRange,
-      totalMT,
-      dataAvailable: true,
-    };
-  }, [kpiData, kpiError]);
-
-  const municipalityCount = useCountUp(dashboardNumbers.municipalityCount, { containerRef: statsRef });
-  const displayedYearRange = useCountUp(dashboardNumbers.yearRange, { containerRef: statsRef });
-  const animatedTotal = useCountUp(dashboardNumbers.totalMT, { containerRef: statsRef });
-
-  const kpis = useMemo(() => {
-    const notAvailable = !dashboardNumbers.dataAvailable;
-
-    return {
-      municipalities: {
-        value: notAvailable ? 'Data unavailable' : String(municipalityCount),
-        supporting: 'Municipalities represented in the production dataset',
-      },
-      years: {
-        value: notAvailable ? 'Data unavailable' : displayedYearRange,
-        supporting: 'Distinct years represented in the monthly production dataset',
-      },
-      production: {
-        value: notAvailable ? 'Data unavailable' : formatMTWithUnit(animatedTotal),
-        supporting: 'Workbook-derived municipality production data',
-      },
-    };
-  }, [municipalityCount, displayedYearRange, animatedTotal, dashboardNumbers.dataAvailable]);
 
   const municipalityCards = kpiData ? getMunicipalityProduction() : [];
 

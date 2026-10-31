@@ -2,7 +2,6 @@
 // WHY: Para hindi paulit-ulit ang fetch logic sa bawat component, at may cache
 //      ang public dashboard data kaya hindi nagre-request tuwing may render.
 let dashboardCache = { municipalities: [], production: { provinceTotalMT: 0, records: [] }, demographics: { provinceWide: {}, byMunicipality: {} }, supplyDemand: null };
-let dashboardCacheLoaded = false;
 
 async function apiNoAuth(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
@@ -20,7 +19,6 @@ async function apiNoAuth(path, options = {}) {
 export async function loadPublicDashboardData() {
   const data = await apiNoAuth('/api/public/dashboard');
   dashboardCache = data;
-  dashboardCacheLoaded = true;
   return data;
 }
 

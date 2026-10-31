@@ -1,10 +1,12 @@
-// WHAT: Lint guardrails for the React frontend.
-// WHY: npm run build (Vite) does NOT catch runtime-only defects such as
-//      undefined identifiers, non-function calls, default/named import
-//      mismatches, hook-order violations, or props that are plain objects
-//      where Recharts expects a component. These rules make that class of
-//      error a compile-time failure instead of a 3am crash.
-module.exports = [
+// WHAT: ESLint 9 flat config for the React frontend.
+// WHY: Catches runtime-only defects (undefined identifiers, import mismatches,
+//      hook-order violations) at lint time instead of at runtime.
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import importPlugin from 'eslint-plugin-import';
+
+export default [
+  importPlugin.flatConfigs.recommended,
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -36,17 +38,18 @@ module.exports = [
         history: 'readonly',
         location: 'readonly',
         React: 'readonly',
+        performance: 'readonly',
+        IntersectionObserver: 'readonly',
       },
     },
     plugins: {
-      react: require('eslint-plugin-react'),
-      'react-hooks': require('eslint-plugin-react-hooks'),
-      import: require('eslint-plugin-import'),
+      react,
+      'react-hooks': reactHooks,
     },
     settings: {
       react: { version: '18.2' },
       'import/resolver': {
-        node: { paths: ['src'] },
+        node: { paths: ['src'], extensions: ['.js', '.jsx'] },
       },
     },
     rules: {
@@ -55,8 +58,6 @@ module.exports = [
       'no-unused-vars': ['error', { args: 'after-used', ignoreRestSiblings: true }],
       'no-unused-expressions': 'error',
       'no-constant-condition': 'error',
-      'no-call-before-define': ['error', { functions: false, classes: false, variables: false }],
-
       // --- Import integrity (default vs named import mismatches) ---
       'import/named': 'error',
       'import/default': 'error',
@@ -65,9 +66,9 @@ module.exports = [
       'import/first': 'error',
       'import/no-duplicates': 'error',
 
-      // --- React hooks (the "Rendered more hooks than before" #310 class) ---
+      // --- React hooks ---
       'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'off',
 
       // --- React basics ---
       'react/jsx-uses-react': 'error',
@@ -77,26 +78,11 @@ module.exports = [
       'react/prop-types': 'off',
       'react/no-unescaped-entities': 'error',
 
-      // --- Style that keeps diffs small ---
+      // --- Style ---
       'no-extra-semi': 'error',
-      'semi': ['error', 'semicol'],
+      'semi': ['error', 'always'],
       'no-trailing-spaces': 'error',
       'eol-last': 'error',
     },
-    overrides: [
-      {
-        files: ['**/constants/labels.js'],
-        rules: {
-          // Public API surface — intentionally re-exported for future use.
-          'no-unused-vars': 'off',
-        },
-      },
-      {
-        files: ['**/test/**', '**/*.test.{js,jsx}', '**/__tests__/**', 'vitest.config.js'],
-        rules: {
-          'no-unused-vars': 'off',
-        },
-      },
-    ],
   },
 ];

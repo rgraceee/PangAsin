@@ -32,7 +32,7 @@ export default function AdminLayout({ user, setUser }) {
       onConfirm: async () => {
         try {
           await logoutAPI();
-        } catch (e) {
+        } catch {
           // The session may already be gone; sign out locally anyway.
         }
         if (setUser) setUser(null);

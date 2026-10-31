@@ -7,7 +7,7 @@ import geojsonAll from '../data/pangasinan_municipalities_all.json';
 import { getMunicipalityProduction, getDemographicsByMunicipality } from '../services/dataService';
 import { greenScale, GREEN_LIGHT, GREEN_DARK } from '../theme/colors';
 import { buildMapDetailCard, createMapDetailPopup, openMapDetailPopup } from '../utils/mapDetailCard';
-import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, getProductionTier, computeTierThresholds, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
+import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
 
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -26,19 +26,12 @@ export default function MunicipalityMapSection() {
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 0;
   const mid = Math.round((min + max) / 2);
-  const tierThresholds = computeTierThresholds(values);
-  const sortedVals = [...values].filter((v) => v != null).sort((a, b) => a - b);
-  const lowMax = sortedVals[Math.max(0, Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[0];
-  const mediumMin = sortedVals[Math.floor(sortedVals.length / 3)] ?? tierThresholds[0];
-  const mediumMax = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3) - 1)] ?? tierThresholds[1];
-  const highMin = sortedVals[Math.max(0, sortedVals.length - Math.floor(sortedVals.length / 3))] ?? tierThresholds[1];
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     const mapSorted = getMunicipalityProduction();
     const byName = Object.fromEntries(mapSorted.map((m) => [normName(m.name), m]));
-    const tierFor = (value) => getProductionTier(value, tierThresholds);
     const producingNames = new Set(mapSorted.map((m) => normName(m.name)));
 
     const allFeatures = [...geojsonAll.features, ...geojson.features];
@@ -205,8 +198,6 @@ export default function MunicipalityMapSection() {
       }
     }
   }, []);
-
-  const periodLabel = 'All time';
 
   return (
     <section className="public-section">

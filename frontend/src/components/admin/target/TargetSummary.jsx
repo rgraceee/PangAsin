@@ -24,7 +24,7 @@ function Stat({ label, value, unit, sub, badge, tone, info, compact }) {
   );
 }
 
-export default function TargetSummary({ summary, evaluationYear, partial, sanity }) {
+export default function TargetSummary({ summary, evaluationYear, partial }) {
   const { annualTarget, projected, pct, gap, status, rangeLow, rangeHigh, recordedTotal, forecastTotal } = summary;
 
   return (

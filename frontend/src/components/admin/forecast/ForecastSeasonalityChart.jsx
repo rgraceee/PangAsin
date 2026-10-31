@@ -8,9 +8,9 @@ import {
   ComposedChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, CartesianGrid,
 } from 'recharts';
 import { CalendarDays, Sun, CloudRain } from 'lucide-react';
-import ForecastChartCard, { ChartChip } from './ForecastChartCard';
+import ForecastChartCard, { ChartChip , NAVY, AXIS, CurrentMonthMarker, SeasonTooltip, SeasonBand } from './ForecastChartCard';
 import { fmtMT, seasonalExtremes, MONTH_SHORT } from './forecastData';
-import { NAVY, AXIS, CurrentMonthMarker, SeasonTooltip, SeasonBand } from './ForecastChartCard';
+
 
 const DRY = 'var(--fc-dry)';
 const DRY_INK = 'var(--fc-dry-ink)';
@@ -40,7 +40,7 @@ function SeasonDot({ cx, cy, payload, peakMonth, lowestMonth }) {
   return <circle cx={cx} cy={cy} r={3} fill={CURVE} />;
 }
 
-export default function ForecastSeasonalityChart({ series, reportingMonth, scopeLabel, height = 320 }) {
+export default function ForecastSeasonalityChart({ series, reportingMonth, height = 320 }) {
   const [width, setWidth] = useState(0);
   const data = (series || []).map((s) => ({
     month: s.month,

@@ -10,7 +10,7 @@ export const SIDEBAR_COLLAPSE_KEY = 'pangasin.sidebar.collapsed';
 function readCollapsed() {
   try {
     return window.localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1';
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -20,7 +20,7 @@ function readCollapsed() {
 function writeCollapsed(value) {
   try {
     window.localStorage.setItem(SIDEBAR_COLLAPSE_KEY, value ? '1' : '0');
-  } catch (e) {
+  } catch {
     /* swallow - bawal mag-crash kapag walang storage */
   }
 }
@@ -109,7 +109,7 @@ function Tip({ label, disabled, children }) {
   );
 }
 
-export function SidebarLogo({ collapsed, homePath = '/' }) {
+export function SidebarLogo({ homePath = '/' }) {
   /* WHAT: Totoong PangAsin logo (full kapag expanded, mark kapag collapsed).
      WHY: gamitin ang orihinal na file, hindi redrawn icon, at maging home link. */
   return (

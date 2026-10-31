@@ -9,11 +9,11 @@ import {
   CartesianGrid, ReferenceLine,
 } from 'recharts';
 import { ChartLine } from 'lucide-react';
-import ForecastChartCard, { ChartChip } from './ForecastChartCard';
-import { monthShort } from './forecastData';
-import {
+import ForecastChartCard, { ChartChip ,
   NAVY, GOLD, DividerLabel, TrendTooltip, withGapBridges,
 } from './ForecastChartCard';
+import { monthShort } from './forecastData';
+
 
 const GRAD_HISTORY = 'url(#fcHistoryGradient)';
 const GRAD_BAND = 'url(#fcBandGradient)';
