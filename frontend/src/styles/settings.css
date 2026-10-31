@@ -1,43 +1,45 @@
 /* ============================================================
    WHAT: Settings page styles — content-only layout matching Forecasting page.
    WHY: Navigation lives only in the sidebar; this component shows the selected
-   section panel. Page header card + section head cards + white rounded cards.
+   section panel. Page header card removed; back button returns to the page the
+   user was on before entering Settings.
    ============================================================ */
 
 .settings-page {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 24px 16px 40px;
+  padding: 16px 16px 40px;
 }
 
-/* ---------- Page header card ---------- */
-.settings-page-header {
-  background: var(--ui-surface);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-shell);
-  padding: 24px;
-  margin-bottom: 24px;
+/* ---------- Back button ---------- */
+.settings-back-row {
+  margin-bottom: 16px;
 }
 
-.settings-page-header-left {
-  display: flex;
-  flex-direction: column;
+.settings-back-btn {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  min-width: 0;
-}
-
-.settings-page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--ui-text);
-}
-
-.settings-page-sub {
-  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--ui-radius-row);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ui-text-2, #6B7280);
   font-size: 14px;
-  color: var(--ui-text-2);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.settings-back-btn:hover {
+  background: var(--ui-hover-bg, #F9FAFB);
+  color: var(--ui-text, #111827);
+  border-color: var(--ui-border, #EEF0F3);
+}
+
+.settings-back-btn:focus {
+  outline: 2px solid var(--ui-accent, #29B039);
+  outline-offset: 2px;
 }
 
 /* ---------- Section panels ---------- */

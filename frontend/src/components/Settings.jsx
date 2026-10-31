@@ -15,10 +15,12 @@ import {
   Archive,
   Eye,
   EyeOff,
+  ArrowLeft,
 } from 'lucide-react';
 import { changePassword } from '../services/dataService';
 import { useToast } from './Toast';
 import { HELP_CENTER_FAQS } from './support/faqData';
+import { useLastNonSettingsLocation } from '../hooks/useLastNonSettingsLocation';
 import { getInitials } from './shell/sidebarUi';
 
 // WHAT: Halaga ng app version mula sa package.json.
@@ -90,6 +92,16 @@ export default function Settings({ user }) {
   const role = user?.role === 'admin' ? 'admin' : 'encoder';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
+  const getLastPath = useLastNonSettingsLocation();
+
+  const handleBack = () => {
+    const last = getLastPath();
+    if (last) {
+      navigate(last);
+    } else {
+      navigate(homePath, { replace: true });
+    }
+  };
 
 // WHAT: Gumagamit ng existing changePassword endpoint mula sa dataService —
 //       parehong logic na ginagamit ng ChangePassword page.
@@ -136,14 +148,17 @@ export default function Settings({ user }) {
 
   return (
     <div className="settings-page">
-      {/* ===== Page header card ===== */}
-      <div className="settings-page-header">
-        <div className="settings-page-header-left">
-          <h1 className="settings-page-title">Settings</h1>
-          <p className="settings-page-sub">
-            Manage your account, password, and support options for PangAsin.
-          </p>
-        </div>
+      {/* ===== Back button (returns to page before Settings) ===== */}
+      <div className="settings-back-row">
+        <button
+          type="button"
+          className="settings-back-btn"
+          onClick={handleBack}
+          aria-label="Back"
+        >
+          <ArrowLeft size={14} strokeWidth={2} aria-hidden="true" />
+          Back
+        </button>
       </div>
 
       {/* ===== Section panels ===== */}
