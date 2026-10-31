@@ -22,7 +22,6 @@ export function buildMapDetailCard({ name, rows }) {
         <span class="map-popup-title">${name}</span>
       </div>
       ${rowsHtml}
-      <div class="map-popup-foot">Administrative summary</div>
     </div>
   `;
 }
@@ -33,11 +32,14 @@ export function buildMapDetailCard({ name, rows }) {
 export function createMapDetailPopup({ onClose } = {}) {
   const popup = L.popup({
     className: 'admin-map-popup',
-    autoPan: false,
+    autoPan: true,
+    autoPanPaddingTopLeft: [24, 24],
+    autoPanPaddingBottomRight: [24, 24],
+    autoPanPadding: [24, 24],
     closeButton: true,
     closeOnClick: true,
     closeOnEscapeKey: true,
-    maxWidth: 300,
+    maxWidth: 260,
   });
   if (typeof onClose === 'function') popup.on('remove', onClose);
   return popup;
@@ -92,11 +94,10 @@ function fitPopupInMap(map, popup, margin = 10) {
 
 export function openMapDetailPopup(map, popup, { latlng, html }) {
   const size = map.getSize();
-  const detailWidth = Math.min(420, Math.max(160, size.x - 32));
-  const detailMaxHeight = Math.min(560, Math.max(160, size.y - 22));
+  const detailWidth = Math.min(260, Math.max(180, size.x - 40));
   const container = map.getContainer();
   container.style.setProperty('--map-detail-width', `${detailWidth}px`);
-  container.style.setProperty('--map-detail-max-height', `${detailMaxHeight}px`);
+  container.style.setProperty('--map-detail-max-height', `${size.y - 80}px`);
   popup.setLatLng(latlng).setContent(html).openOn(map);
   fitPopupInMap(map, popup);
 }

@@ -2329,10 +2329,10 @@ body {
 .map-popup-card .map-popup-header {
   font-family: "Montserrat", sans-serif;
   font-weight: 700;
-  font-size: 17px;
-  line-height: 1.3;
+  font-size: 14px;
+  line-height: 1.2;
   color: #ffffff;
-  padding: 14px 52px 14px 16px;
+  padding: 8px 40px 8px 14px;
   background: linear-gradient(135deg, var(--ui-accent) 0%, var(--ui-accent-dark) 100%);
 }
 
@@ -2346,10 +2346,10 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 1rem;
-  padding: 8px 16px;
+  gap: 0.75rem;
+  padding: 6px 14px;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.3;
   border-bottom: 1px solid rgba(21, 35, 58, 0.06);
 }
 
@@ -2367,29 +2367,21 @@ body {
 .map-popup-value {
   flex: 0 1 auto;
   min-width: 0;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--gray-800);
   text-align: right;
   font-variant-numeric: tabular-nums;
   overflow-wrap: break-word;
 }
 
-.map-popup-foot {
-  padding: 7px 16px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--gray-500);
-  text-align: center;
-  background: var(--gray-50);
-  border-top: 1px solid rgba(21, 35, 58, 0.06);
+.admin-map-popup .leaflet-popup-content {
+  width: var(--map-detail-width, min(255px, calc(100vw - 48px))) !important;
 }
 
 @media (max-width: 640px) {
   .map-popup-card .map-popup-header {
-    font-size: 16px;
-    padding: 12px 54px 12px 14px;
+    font-size: 14px;
+    padding: 8px 40px 8px 14px;
   }
 
   .leaflet-container .admin-map-popup a.leaflet-popup-close-button {
@@ -2402,29 +2394,19 @@ body {
   }
 
   .map-popup-row {
-    gap: 0.75rem;
-    padding: 7px 12px;
+    gap: 0.6rem;
+    padding: 5px 12px;
     font-size: 12.5px;
   }
-
-  .map-popup-foot {
-    padding: 6px 12px;
-    font-size: 9px;
-  }
 }
 
-.admin-map-popup .leaflet-popup-content {
-  width: var(--map-detail-width, min(290px, calc(100vw - 40px))) !important;
-}
+/* WHAT: Compact single-column map popup rows — label left, value right, one
+   row per field. Removed footer, Production Area row, narrowed width to ~260px,
+   smaller header, autoPan padding so popup is never clipped at map edges.
+   WHY: Compact popup that doesn't cover the clicked municipality or map. */
 
-.map-popup-header {
-  font-size: 15px !important;
-  padding: 10px 44px 10px 14px !important;
-}
-
-/* WHAT: Single-column map popup rows — label left, value right, one row per
-   field. 2-column grid and compact-row CSS removed.
-   WHY: Simpler, easier to read; every field gets its own row at narrow width. */
+/* Removed: .map-popup-foot (footer deleted), wide 418px width, large header,
+   Production Area row CSS no longer referenced. */
 
 .fc-decision-label {
   font-size: 12.5px;
