@@ -323,6 +323,35 @@
   place-items: center;
 }
 
+/* WHAT: Logo avatar ng naka-login na user (circle, contain, white bg, thin border).
+   WHY: Pareho ang hugis at laki ng dating initials avatar, ngunit nagpapakita ng
+   logo ng munisipyo (encoder) o ASIN center (admin). Fallback ay initials. */
+.user-avatar-wrap {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+}
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--ui-radius-pill);
+  background: #ffffff;
+  border: 1px solid var(--ui-border);
+  display: block;
+}
+.user-avatar-initials {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ui-accent-dark);
+  background: var(--ui-accent-tint);
+  border-radius: var(--ui-radius-pill);
+}
+
 .p-user-meta {
   flex: 1 1 auto;
   min-width: 0;

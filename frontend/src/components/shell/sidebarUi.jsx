@@ -70,6 +70,85 @@ export function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/* WHAT: Normalize a municipality name into a logo filename key.
+   WHY: Handle case, spaces, accents and suffixes like "City" so every one of
+   the 7 municipalities with a logo asset resolves to a real file. */
+function normalizeMunicipalityName(name) {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\bcity\b/g, '')
+    .trim()
+    .replace(/\s+/g, '');
+}
+
+/* WHAT: Pampublikong map ng munisipyo pangalan patungo sa logo file.
+   WHY: Isa lamang ang source of truth para sa avatar ng naka-login na user. */
+const MUNICIPALITY_LOGOS = {
+  alaminos: 'alaminos.png',
+  anda: 'anda.png',
+  bani: 'bani.png',
+  bolinao: 'bolinao.png',
+  dasol: 'dasol.png',
+  infanta: 'infanta.png',
+  sanfabian: 'sanfabian.png',
+};
+
+/* WHAT: URL ng logo ng munisipyo, o kung wala ay null. */
+export function municipalityLogoUrl(name) {
+  const file = MUNICIPALITY_LOGOS[normalizeMunicipalityName(name)];
+  return file ? `/static/municipalities_logo/${file}` : null;
+}
+
+/* WHAT: Logo URL para sa avatar ng naka-login na user.
+   WHY: Admin ay nagagamit ang ASIN center logo; encoder ay nagagamit ang
+   logo ng kaniyang munisipyo. Kung walang logo, balik-null para makita ang
+   initials fallback. */
+export function getUserLogoUrl(user) {
+  if (!user) return null;
+  const role = String(user.role || '').toLowerCase();
+  if (role === 'admin') return '/static/brand/asin_center_logo.png';
+  if (role === 'encoder') return municipalityLogoUrl(user.municipality_name);
+  return null;
+}
+
+/* WHAT: Avatar ng user na nagpapakita ng logo, at kung wala ay initials.
+   WHY: Isa lamang ang avatar component para sa sidebar at Settings. */
+export function UserAvatar({ user, size = 36 }) {
+  const [showInitials, setShowInitials] = useState(false);
+  const src = getUserLogoUrl(user);
+  const name = user?.name || 'User';
+  const showLogo = !showInitials && Boolean(src);
+
+  return (
+    <span
+      className="user-avatar-wrap"
+      style={{ width: size, height: size }}
+      aria-label={name}
+    >
+      {showLogo ? (
+        <img
+          src={src}
+          alt={`${name} logo`}
+          className="user-avatar-img"
+          width={size}
+          height={size}
+          loading="eager"
+          decoding="async"
+          onError={() => setShowInitials(true)}
+        />
+      ) : (
+        <span className="user-avatar-initials" aria-hidden="true">
+          {getInitials(name)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /* WHAT: Generic tooltip na naka-portal sa body para hindi maputol ng nav scroll.
    WHY: kailangan lalabas sa hover at keyboard focus kapag collapsed. */
 function Tip({ label, disabled, children }) {
@@ -235,10 +314,10 @@ export function UserBlock({ user, collapsed, onLogout }) {
   const roleLabel = roleRaw ? roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1) : 'Signed in';
 
   return (
-    <div className="p-user">
-      <Tip label={name} disabled={!collapsed}>
-        <div className="p-avatar" aria-hidden="true">{getInitials(name)}</div>
-      </Tip>
+      <div className="p-user">
+        <Tip label={name} disabled={!collapsed}>
+          <UserAvatar user={user} size={36} />
+        </Tip>
       <div className="p-user-meta">
         <div className="p-user-name" title={name}>{name}</div>
         <div className="p-user-role">{roleLabel}</div>

@@ -14,7 +14,7 @@ import { changePassword } from '../services/dataService';
 import { useToast } from './Toast';
 import { adminFaq, encoderFaq } from './support/faqData';
 import FaqList from './support/FaqList';
-import { getInitials } from './shell/sidebarUi';
+import { UserAvatar } from './shell/sidebarUi';
 
 // WHAT: Halaga ng app version mula sa package.json.
 // WHY: Isang lugar lang ang source of truth para sa version na ipakit sa Settings > About.
@@ -134,7 +134,7 @@ export default function Settings({ user }) {
               <Card.Body className="settings-card-body">
                 <div className="settings-account-grid">
                   <div className="settings-account-avatar">
-                    <span className="settings-avatar-initials">{getInitials(user?.name)}</span>
+                    <UserAvatar user={user} size={56} />
                   </div>
                   <div className="settings-account-meta">
                     <div className="settings-account-name">{user?.name || '—'}</div>
