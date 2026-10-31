@@ -36,8 +36,8 @@ The system runs as a **single Flask server** on port **5000**. Flask serves the 
 ## Access the app
 
 - **Public dashboard:** http://localhost:5000/public-dashboard
-- **Encoder login:** http://localhost:5000/public-dashboard#/login
-- **Admin login:** http://localhost:5000/public-dashboard#/login
+- **Encoder login:** http://localhost:5000/login
+- **Admin login:** http://localhost:5000/login
 
 ## Demo Accounts
 
@@ -96,7 +96,6 @@ Admins add and maintain municipalities from **Admin → Municipalities**. The da
   - If the email is already in use, the request fails with `409`; accounts are never auto-suffixed.
 - The generated temporary password is shown **once** in the admin UI. The encoder must replace it on first sign-in; every other API stays blocked until `must_change_password` is cleared.
 - Municipality names and user emails are unique case-insensitively. Barangays are unique per municipality, also case-insensitively.
-- **Seed Pangasinan** adds every Pangasinan municipality that is still missing from the database. Seeded municipalities have no barangays or production records but receive the usual encoder account and one-time password.
 - Barangays can be added, renamed, and deleted from the edit dialog. Deletion is blocked while production records, environment reports, producers, producer-report entries, or generated reports still reference the barangay.
 - Renaming a municipality does not change the encoder email or display name. Deactivating a municipality hides it from public, analytics, forecast, and data-quality views and deactivates its active encoder accounts. Reactivating does not automatically reactivate encoders.
 - **Boundary upload:** admins can upload a GeoJSON `Polygon`/`MultiPolygon` (up to 5 MB) for a municipality. Files are validated and stored as `app/static/geojson/{slug}.json`; the edit dialog can also remove the uploaded file. Municipalities without an uploaded or bundled match fall back to a latitude/longitude marker.
@@ -119,7 +118,6 @@ pangasin/
 │   ├── config.py
 │   ├── extensions.py
 │   ├── models/
-│   ├── forms/
 │   ├── blueprints/
 │   ├── services/
 │   ├── templates/

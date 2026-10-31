@@ -16,8 +16,6 @@ import UsersManagement from './components/admin/UsersManagement';
 import Municipalities from './components/admin/Municipalities';
 import AuditLogs from './components/admin/AuditLogs';
 import ForecastDashboard from './components/admin/ForecastDashboard';
-// NOTE: the old Target Evaluation page (components/admin/DecisionSupport.jsx)
-// is kept on disk for rollback, but the route now uses the new page.
 import TargetEvaluation from './components/admin/target/TargetEvaluation';
 import GenerateReports from './components/admin/GenerateReports';
 import ValidationQueue from './components/admin/ValidationQueue';
