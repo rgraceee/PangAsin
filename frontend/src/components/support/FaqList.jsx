@@ -8,6 +8,15 @@
 import React, { useState } from 'react';
 import { BookOpen, AlertTriangle, Mail } from 'lucide-react';
 
+function stepsToList(answer) {
+  // Detect numbered steps like "1. Do this" or "Step 1: Do this"
+  const stepRegex = /^(?:\d+\.?\s|Step\s+\d+:?\s)/im;
+  const lines = answer.split(/\n+/).filter((l) => l.trim().length > 0);
+  const numbered = lines.filter((l) => stepRegex.test(l.trim()));
+  if (numbered.length > 1) return numbered.map((l) => l.replace(stepRegex, '').trim());
+  return null;
+}
+
 export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual', reportUrl = '/help/report', showSearch = true, showHero = true, grouped = true }) {
   const [query, setQuery] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
@@ -62,7 +71,6 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
       <div className="faq-two-column">
         {/* Left: FAQ accordions */}
         <div className="faq-left-column">
-          {!grouped && <h3 className="faq-list-heading">Frequently Asked Questions</h3>}
           <div className="faq-wrap">
             {grouped ? (
               categories.map((category) => {
@@ -86,7 +94,15 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
                             <span className="faq-toggle" aria-hidden="true">{openFaq === `${category}-${index}` ? '▸' : '▾'}</span>
                           </button>
                           <div id={`faq-${category}-${index}`} className="faq-answer" hidden={openFaq !== `${category}-${index}`}>
-                            {faq.a}
+                            {stepsToList(faq.a) ? (
+                              <ol className="faq-steps">
+                                {stepsToList(faq.a).map((step, i) => (
+                                  <li key={i}>{step}</li>
+                                ))}
+                              </ol>
+                            ) : (
+                              <span className="faq-answer-text">{faq.a}</span>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -110,7 +126,15 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
                       <span className="faq-toggle" aria-hidden="true">{openFaq === index ? '▸' : '▾'}</span>
                     </button>
                     <div id={`faq-${index}`} className="faq-answer" hidden={openFaq !== index}>
-                      {faq.a}
+                      {stepsToList(faq.a) ? (
+                        <ol className="faq-steps">
+                          {stepsToList(faq.a).map((step, i) => (
+                            <li key={i}>{step}</li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <span className="faq-answer-text">{faq.a}</span>
+                      )}
                     </div>
                   </div>
                 ))}

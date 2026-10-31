@@ -81,12 +81,8 @@ export const adminFaq = [
     category: 'Validation Queue',
     items: [
       {
-        q: 'How do I review and approve an encoder\'s record?',
-        a: 'Open Validation Queue from the sidebar, filter by municipality or status, open a report to check its entries, then select Approve. Approved reports are included in production totals and dashboards.',
-      },
-      {
-        q: 'How do I return a record for correction?',
-        a: 'Open Validation Queue, find the report, select Reject, and enter a comment explaining what to fix. The encoder can then correct and resubmit the report.',
+        q: 'How do I review submitted records?',
+        a: 'Open Validation Queue from the sidebar and filter by municipality or status. Open a report to check its entries, then select Approve to include it in production totals, or Reject to return it for correction — a comment explaining what to fix is required when rejecting. The encoder can then correct and resubmit.',
       },
     ],
   },
@@ -103,21 +99,8 @@ export const adminFaq = [
     category: 'Municipality management',
     items: [
       {
-        q: 'How do I add or edit a municipality?',
-        a: 'Open Municipality Management from the sidebar. To add, select Add municipality and fill in the name and details. To edit, open an existing municipality and update its barangays, boundary, status, or linked encoder account.',
-      },
-    ],
-  },
-  {
-    category: 'User management',
-    items: [
-      {
-        q: 'How do I create an encoder account?',
-        a: 'Open User Management from the sidebar, select Add user, choose the Encoder role, assign the municipality, and save. The encoder must change their password on first login before opening any other page.',
-      },
-      {
-        q: 'How do I reset an encoder account?',
-        a: 'Open User Management, open the encoder account, and set a new password. The encoder will be prompted to change it again on next login if required.',
+        q: 'How do I manage municipalities and encoder accounts?',
+        a: 'Open Municipality Management from the sidebar to add a municipality, or update its barangays, boundary, status, or linked encoder account. Open User Management from the sidebar to add an encoder user (choose the Encoder role and assign a municipality), reset a password, or view accounts.',
       },
     ],
   },
@@ -125,17 +108,8 @@ export const adminFaq = [
     category: 'Forecasting',
     items: [
       {
-        q: 'How do I view forecasts for one municipality?',
-        a: 'Open Forecasting from the sidebar, select the municipality from the filter, and view its production trajectory and outlook. Adjust the historical period or horizon to update the projection.',
-      },
-    ],
-  },
-  {
-    category: 'Target Evaluation',
-    items: [
-      {
-        q: 'How do I use Target Evaluation?',
-        a: 'Open Target Evaluation from the sidebar to compare recorded production with the target. Read the notes under each chart when explaining results to stakeholders.',
+        q: 'How do I use forecasts and Target Evaluation?',
+        a: 'Open Forecasting from the sidebar to select a municipality and view its production trajectory and outlook — adjust the historical period or horizon to update the projection. Open Target Evaluation from the sidebar to compare recorded production against the target; read the notes under each chart when explaining results to stakeholders.',
       },
     ],
   },
@@ -143,8 +117,26 @@ export const adminFaq = [
     category: 'Data Quality',
     items: [
       {
-        q: 'How do I check data quality problems?',
+        q: 'How do I check data quality?',
         a: 'Open Data Quality from the sidebar to find gaps in records before publishing figures. Check the active filters first if totals look stale, since each dashboard keeps its own period.',
+      },
+    ],
+  },
+  {
+    category: 'Salt Farmer Master List',
+    items: [
+      {
+        q: 'How do I manage the salt farmer master list?',
+        a: 'Open Salt Farmer Master List from the sidebar, select Add salt farmer, and enter the name, age, sex, barangay, and address. Save the record — it appears in the list immediately. Use search and filters to find a farmer before adding a duplicate.',
+      },
+    ],
+  },
+  {
+    category: 'Dashboard and map',
+    items: [
+      {
+        q: 'How do I read the dashboard and map?',
+        a: 'The dashboard cards summarize production volume, record count, salt beds, registered farmers, and male/female counts. On the map, greener municipalities indicate higher production — click a municipality to see its production, change, salt beds, dominant method, and male/female count.',
       },
     ],
   },
@@ -153,7 +145,7 @@ export const adminFaq = [
     items: [
       {
         q: 'How do I change my password?',
-        a: 'Go to Settings > Security from the sidebar, enter your current password and a new password (at least 6 characters), then select Update password.',
+        a: 'Go to Settings > Security from the sidebar, enter your current password and a new password (at least 6 characters), then select Update password. If your account was created with a temporary password, you must change it before opening any other page.',
       },
     ],
   },
@@ -164,34 +156,17 @@ export const encoderFaq = [
     category: 'Records',
     items: [
       {
-        q: 'How do I submit a production record?',
-        a: 'Open Production Records from the sidebar, choose New report, pick the barangay and production month, enter each salt bed’s volume and method, then select Continue to review and Submit. The report goes to the validation queue and is marked pending.',
-      },
-      {
-        q: 'How do I edit or fix a returned record?',
-        a: 'Open Production Records, find the rejected report, read the reviewer comment, correct the entries, and submit it again.',
-      },
-      {
-        q: 'How do I check if my record was approved?',
-        a: 'Open Production Records and look for reports marked Approved. Approved reports are included in production totals and dashboards.',
+        q: 'How do I add records?',
+        a: 'Production records: open Production Records from the sidebar, choose New report, pick the barangay and production month, enter each salt bed’s volume and method, then submit — it goes to the validation queue. Salt farmer master list: open Salt Farmer Master List from the sidebar, select Add salt farmer, and enter the name, age, sex, barangay, and address. Environment records: open Environment Records from the sidebar, choose New report, enter readings and observations, then submit.',
       },
     ],
   },
   {
-    category: 'Master List',
+    category: 'Records',
     items: [
       {
-        q: 'How do I add or update a salt farmer in the master list?',
-        a: 'Open Salt Farmer Master List from the sidebar, select Add salt farmer, and enter the name, age, sex, barangay, and address. Save the record; it appears in the list immediately. Use search and filters to find a farmer before adding a duplicate.',
-      },
-    ],
-  },
-  {
-    category: 'Environment',
-    items: [
-      {
-        q: 'How do I add environment records?',
-        a: 'Open Environment Records from the sidebar, choose New report, enter the required readings and observations for the period, review the summary, then select Submit Environment Report.',
+        q: 'What happens after I submit, and how do I fix a returned record?',
+        a: 'After you submit, your report goes to the validation queue and is marked pending. An administrator reviews it — if approved, it’s included in production totals and dashboards; if returned, a reviewer comment explains what to fix. Correct the entries and submit again.',
       },
     ],
   },
@@ -199,30 +174,30 @@ export const encoderFaq = [
     category: 'Accounts',
     items: [
       {
-        q: 'What do I do on first login?',
-        a: 'If your account was created with a temporary password, you must change it before opening any other page. Go to Settings > Security to set a new password (at least 6 characters).',
-      },
-      {
-        q: 'I forgot my password.',
-        a: 'On the sign-in page, select "Forgot password" and enter your email. You will receive a reset link. If none arrives, contact your administrator or the ASIN Center.',
-      },
-      {
         q: 'How do I change my password?',
-        a: 'Go to Settings > Security from the sidebar, enter your current password and a new password (at least 6 characters), then select Update password.',
+        a: 'Go to Settings > Security from the sidebar, enter your current password and a new password (at least 6 characters), then select Update password. If your account was created with a temporary password, you must change it before opening any other page.',
       },
     ],
   },
   {
-    category: 'Municipality',
+    category: 'Records',
     items: [
       {
-        q: 'Why only my municipality is visible?',
-        a: 'The administrator assigns each encoder to one municipality. Encoder data stays scoped to that municipality; you cannot see or submit records for other areas.',
+        q: 'How do I find or filter my past records?',
+        a: 'Open Production Records from the sidebar and use the filters for municipality, production month, and status to narrow down past records.',
+      },
+      {
+        q: 'Can I edit or delete a record after submitting?',
+        a: 'You can edit and resubmit a record that was returned for correction. Once approved, a record can no longer be edited or deleted.',
+      },
+      {
+        q: 'What do the record statuses mean?',
+        a: 'Pending means your report is awaiting review. Approved means it passed validation and is included in production totals and dashboards. Returned means it was sent back for correction with a reviewer comment explaining what to fix.',
       },
     ],
   },
   {
-    category: 'Feedback',
+    category: 'Accounts',
     items: [
       {
         q: 'How do I report a problem?',

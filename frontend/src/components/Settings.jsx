@@ -264,15 +264,15 @@ export default function Settings({ user }) {
         {section === 'help' && (
           <>
             <SectionHead icon={HelpCircle} title="Help &amp; Support" subtitle="Guides, FAQ and contact" />
-            <FaqList
-              faqs={roleFaq}
-              contactEmail={CONTACT_EMAIL}
-              manualUrl="/help/manual"
-              reportUrl="/help/report"
-              showSearch={false}
-              showHero={false}
-              grouped={false}
-            />
+<FaqList
+  faqs={roleFaq}
+  contactEmail={CONTACT_EMAIL}
+  manualUrl="/help/manual"
+  reportUrl="/help/report"
+  showSearch={false}
+  showHero={false}
+  grouped={false}
+/>
           </>
         )}
 
