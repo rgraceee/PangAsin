@@ -1407,59 +1407,6 @@ def data_quality():
     return jsonify(build_data_quality(range_months))
 
 
-@admin_api_bp.route("/insight", methods=["GET"])
-@login_required
-def insight():
-    if _admin_only():
-        return jsonify({"error": "Admin access only."}), 403
-
-    total_volume = (
-        db.session.query(func.sum(ProductionRecord.production_volume_mt))
-        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
-        .scalar()
-        or 0
-    )
-    pending = (
-        ProductionRecord.query.filter_by(status="pending")
-        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
-        .count()
-    )
-    approved = (
-        ProductionRecord.query.filter_by(status="approved")
-        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
-        .count()
-    )
-    rejected = (
-        ProductionRecord.query.filter_by(status="rejected")
-        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
-        .count()
-    )
-    top_muni = (
-        db.session.query(Municipality.name, func.sum(ProductionRecord.production_volume_mt).label("v"))
-        .join(ProductionRecord, ProductionRecord.municipality_id == Municipality.id)
-        .filter(Municipality.status == "active")
-        .group_by(Municipality.name)
-        .order_by(func.sum(ProductionRecord.production_volume_mt).desc())
-        .first()
-    )
-
-    if top_muni:
-        text = (
-            f"Top producing municipality is {top_muni.name} "
-            f"({float(top_muni.v):,.3f} Metric Tons (MT)). "
-            f"{pending} record(s) awaiting validation, {approved} approved, {rejected} rejected."
-        )
-    else:
-        text = "No production data yet. Submit encoder records to populate the dashboard."
-
-    return jsonify({
-        "insight": text,
-        "methodology": "Heuristic summary of DB aggregates. Will be replaced by Module 4.2 forecasting engine.",
-        "generated_at": datetime.utcnow().isoformat() + "Z",
-        "source": "module4.2-pending",
-    })
-
-
 # National-level sector demand breakdown (reference data, MT). Not stored in the
 # demand_benchmarks table (which holds annual supply/demand figures); served here
 # as a labeled reference constant for the sector breakdown visualisation.

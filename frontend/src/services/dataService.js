@@ -256,10 +256,6 @@ export function deleteAdminMunicipality(id, payload) {
   return api(`/admin/municipalities/${id}`, { method: 'DELETE', body: JSON.stringify(payload) });
 }
 
-export function seedAdminMunicipalities(payload = {}) {
-  return api('/admin/municipalities/seed', { method: 'POST', body: JSON.stringify(payload) });
-}
-
 async function apiUpload(path, formData) {
   const res = await fetch(`/api${path}`, {
     method: 'POST',
@@ -367,10 +363,6 @@ export function getAdminDescriptive(params = {}) {
   return api(`/admin/analytics/descriptive${qs ? `?${qs}` : ''}`);
 }
 
-export function getAdminPredictive() {
-  return api('/admin/analytics/predictive');
-}
-
 export function createReport(payload) {
   return api('/admin/reports', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -391,10 +383,6 @@ export function getReportDownloadUrl(id, format) {
 
 export function deleteReport(id) {
   return api(`/admin/reports/${id}`, { method: 'DELETE' });
-}
-
-export function runForecast(payload) {
-  return api('/admin/forecast/run', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export function getForecastRuns(params = {}) {

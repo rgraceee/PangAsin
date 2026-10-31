@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from app.extensions import db
 from app.models.audit_log import AuditLog
 from app.models.password_reset_token import PasswordResetToken
-from app.models.user import User
 from tests.conftest import create_encoder
 
 

@@ -8,7 +8,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Card } from 'react-bootstrap';
 import {
-  AlertTriangle, BadgeCheck, CalendarRange, ClipboardCheck, ClipboardList, RefreshCw,
+  AlertTriangle, BadgeCheck, CalendarRange, ClipboardCheck, ClipboardList,
 } from 'lucide-react';
 import { getDataQuality } from '../../services/dataService';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';

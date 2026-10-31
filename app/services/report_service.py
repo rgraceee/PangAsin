@@ -1,7 +1,7 @@
 # WHAT: Report generation (build data per report type + write Excel/PDF/DOCX).
 # WHY: Inilalayo ang file-format logic sa API para ma-reuse at madaling basahin.
 import os
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -12,7 +12,6 @@ from app.models.producer import Producer
 from app.models.environment_report import EnvironmentReport
 from app.models.municipality import Municipality
 from app.models.barangay import Barangay
-from app.models.user import User
 from app.models.demand_benchmark import DemandBenchmark
 from app.models.forecast import ForecastRun
 from app.services.aggregates import _monthly_aggregates

@@ -9,7 +9,6 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models.report import Report, REPORT_TYPES, REPORT_FORMATS
-from app.models.user import User
 from app.models.barangay import Barangay
 from app.models.municipality import Municipality
 from app.services.report_service import generate_report_file, build_report_data

@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Card } from 'react-bootstrap';
 import { MapPin } from 'lucide-react';
 import L from 'leaflet';
 import geojson from '../data/pangasinan_municipalities.json';
 import geojsonAll from '../data/pangasinan_municipalities_all.json';
 import { getMunicipalityProduction, getDemographicsByMunicipality } from '../services/dataService';
-import { greenScale, GREEN_LIGHT, GREEN_DARK, BRAND } from '../theme/colors';
+import { greenScale, GREEN_LIGHT, GREEN_DARK } from '../theme/colors';
 import { buildMapDetailCard, createMapDetailPopup, openMapDetailPopup } from '../utils/mapDetailCard';
-import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
+import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, getProductionTier, computeTierThresholds, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
 
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();

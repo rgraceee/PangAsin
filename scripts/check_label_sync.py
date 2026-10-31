@@ -40,7 +40,7 @@ from app import create_app  # noqa: E402
 
 app = create_app()
 with app.app_context():
-    from app.labels import LABELS, UNIT_MT, UNIT_PCT  # noqa: E402
+    from app.labels import LABELS  # noqa: E402
     from app.services.forecast_service import _trend_direction  # noqa: E402
 
     py_units = {}

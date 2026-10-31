@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Table, Alert, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Table, Alert, Card, Modal, Form } from 'react-bootstrap';
 import { getAdminUsers, getAdminMunicipalities, updateAdminUser } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';

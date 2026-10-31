@@ -62,24 +62,6 @@ export function buildProfile(masterList) {
   };
 }
 
-/* Environment: approved environment reports only. */
-export function buildEnvironment(environment, scope) {
-  const names = new Set(scope.map((m) => m.name));
-  const rows = (environment || []).filter((r) => names.has(r.municipality_name));
-  const methods = {};
-  rows.forEach((r) => {
-    Object.entries(r.production_methods || {}).forEach(([method, count]) => {
-      if (count > 0) methods[method] = (methods[method] || 0) + count;
-    });
-  });
-  return {
-    reports: rows.reduce((sum, r) => sum + (r.report_count || 0), 0),
-    beds: rows.reduce((sum, r) => sum + (r.total_salt_beds || 0), 0),
-    area: rows.reduce((sum, r) => sum + (r.total_production_area_sqm || 0), 0),
-    methods: Object.entries(methods).map(([method, count]) => ({ method, count })),
-  };
-}
-
 /* The details table rows. */
 export function buildTableRows(scope, masterList) {
   const masterById = new Map((masterList || []).map((m) => [m.id, m]));

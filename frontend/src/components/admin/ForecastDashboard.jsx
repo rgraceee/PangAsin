@@ -3,7 +3,7 @@
 //      municipality outlook, in that order, reading the same numbers.
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-bootstrap';
-import { TrendingUp, CalendarRange, Info } from 'lucide-react';
+import { TrendingUp, Info } from 'lucide-react';
 import ErrorBoundary from '../ErrorBoundary';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import PageHeader from './PageHeader';

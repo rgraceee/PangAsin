@@ -2,7 +2,7 @@
 # WHY: Used by both forecast_service.py and report_service.py so both stay
 #      in sync when the aggregation logic changes. No model imports beyond the
 #      shared ProductionRecord model.
-from datetime import date, timedelta
+from datetime import date
 from typing import Dict, List, Optional, Tuple
 
 from app.extensions import db

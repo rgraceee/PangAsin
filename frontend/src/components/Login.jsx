@@ -5,11 +5,10 @@
 //      epekto sa ibang pages (encoder, admin, at guest dashboard).
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Col, Container, Form, Row } from 'react-bootstrap';
-import { AlertCircle, ArrowLeft, ArrowRight, CalendarDays, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, MapPin, Phone, Scale, ShieldCheck, Trophy } from 'lucide-react';
+import { Alert, Button, Card, Container, Form } from 'react-bootstrap';
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, MapPin, Phone, ShieldCheck, Trophy } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Reveal from './Reveal';
-import { SkeletonBlock } from './Skeleton';
 import { loadPublicDashboardData, loginAPI, getMunicipalityProduction } from '../services/dataService';
 import { formatMT, formatMTWithUnit } from '../utils/volumeFormat';
 import { useToast } from './Toast';

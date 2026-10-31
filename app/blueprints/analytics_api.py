@@ -4,24 +4,20 @@
 #      fields are kept as aliases with a "# DEPRECATED alias" comment; only
 #      new fields are added, so responses stay backward compatible.
 from flask import Blueprint, request, jsonify
-from flask_login import login_required, current_user
+from flask_login import login_required
 from app.extensions import db
 from app.models.production_record import ProductionRecord
 from app.models.municipality_production import MunicipalityMonthlyProduction
-from app.models.forecast import ForecastRun, ForecastPoint
+from app.models.forecast import ForecastRun
 from app.models.municipality import Municipality
 from app.models.demand_benchmark import DemandBenchmark
-from app.models.producer import Producer
-from app.models.producer_report import ProducerReportEntry
 from app.services.forecast_service import (
     PRODUCTION_DATA_SOURCE,
     run_forecast,
     run_forecast_all_municipalities,
-    get_municipality_outlook,
 )
 from app.services.aggregates import (
     _monthly_aggregates,
-    _reindex_complete,
     _last_month_with_data,
     _reporting_grid,
 )
@@ -32,7 +28,7 @@ from app.services.municipalities import (
     scope_all_label,
 )
 from datetime import date, timedelta
-from sqlalchemy import func, extract, case
+from sqlalchemy import func, case
 
 analytics_api_bp = Blueprint("analytics_api", __name__, url_prefix="/api/admin/analytics")
 

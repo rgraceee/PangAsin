@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { Table, Alert, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Table, Alert, Card, Modal, Form } from 'react-bootstrap';
 import {
   getAdminRecords, getAdminRecord, getAdminMunicipalities, getAdminBarangays, reviewAdminRecord,
   getAdminEnvironmentReports, reviewAdminEnvironmentReport,

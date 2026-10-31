@@ -1,7 +1,7 @@
 # WHAT: Core forecasting logic (monthly aggregation, model fitting, forecast run,
 #       outlook, target evaluation).
 # WHY: Hiwalay sa API layer para ma-test/ma-reuse ang parehong Math kahit saan.
-from datetime import date, timedelta
+from datetime import date
 from typing import List, Optional, Tuple
 
 import numpy as np

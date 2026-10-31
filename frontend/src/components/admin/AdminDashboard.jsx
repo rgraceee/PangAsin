@@ -6,7 +6,7 @@ import {
   getAdminStats, getAdminSupplyDemand,
 } from '../../services/dataService';
 import { BRAND, greenScale, GREEN_LIGHT, GREEN_DARK } from '../../theme/colors';
-import { buildProvinceMaskRings, addProvinceMask, addLightBasemap, getProductionTier, computeTierThresholds, TIER_COLORS, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../../utils/mapLayers';
+import { buildProvinceMaskRings, addProvinceMask, addLightBasemap, getProductionTier, computeTierThresholds, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../../utils/mapLayers';
 import { buildMapDetailCard, createMapDetailPopup, openMapDetailPopup } from '../../utils/mapDetailCard';
 import geojson from '../../data/pangasinan_municipalities.json';
 import geojsonAll from '../../data/pangasinan_municipalities_all.json';

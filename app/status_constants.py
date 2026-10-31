@@ -10,9 +10,6 @@ Keep this file in sync with frontend/src/constants/labels.js.
 # The only statuses accepted by the API and shown in every UI control.
 ALLOWED_STATUSES = ("pending", "approved", "rejected")
 
-# Kept as an alias for callers that need "every status the database accepts".
-ALL_STATUSES = ALLOWED_STATUSES
-
 STATUS_LABELS = {
     "pending": "Pending",
     "approved": "Approved",
