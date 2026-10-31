@@ -28,6 +28,7 @@ import ReportForm from './components/support/ReportForm';
 import Settings from './components/Settings';
 import HelpCenter from './components/support/HelpCenter';
 import ScrollToTop from './components/ScrollToTop';
+import ErrorBoundary from './components/ErrorBoundary';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import { ToastProvider } from './components/Toast';
@@ -157,17 +158,19 @@ export default function App() {
       <Routes>
         <Route path="/" element={<GuestDashboard />} />
         <Route path="/login" element={(
-          <ToastProvider>
-            <Login onLogin={setUser} />
-          </ToastProvider>
+          <ErrorBoundary>
+            <ToastProvider>
+              <Login onLogin={setUser} />
+            </ToastProvider>
+          </ErrorBoundary>
         )} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/terms" element={<LegalDoc docType="terms" />} />
-        <Route path="/help" element={<HelpCenter />} />
-        <Route path="/help/manual" element={<HelpManual user={user} />} />
-        <Route path="/help/report" element={<ReportForm />} />
+        <Route path="/forgot-password" element={<ErrorBoundary><ForgotPassword /></ErrorBoundary>} />
+        <Route path="/reset-password" element={<ErrorBoundary><ResetPassword /></ErrorBoundary>} />
+        <Route path="/privacy" element={<ErrorBoundary><PrivacyPolicy /></ErrorBoundary>} />
+        <Route path="/terms" element={<ErrorBoundary><LegalDoc docType="terms" /></ErrorBoundary>} />
+        <Route path="/help" element={<ErrorBoundary><HelpCenter /></ErrorBoundary>} />
+        <Route path="/help/manual" element={<ErrorBoundary><HelpManual user={user} /></ErrorBoundary>} />
+        <Route path="/help/report" element={<ErrorBoundary><ReportForm /></ErrorBoundary>} />
         <Route
           path="/change-password"
           element={(

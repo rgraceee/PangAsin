@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, ArrowLeft, LogIn } from 'lucide-react';
+import { Mail, ArrowLeft, LogIn, Search } from 'lucide-react';
 import FaqList from './FaqList';
 import { publicFaq } from './faqData';
 
