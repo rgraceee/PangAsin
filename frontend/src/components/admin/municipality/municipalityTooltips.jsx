@@ -1,7 +1,7 @@
 // WHAT: The hover tooltips for the Municipality Analytics charts.
 // WHY: one white-card tooltip style for every panel in the section.
 
-import { fmtInt, fmtMT, fmtPct } from './muniData';
+import { fmtInt, fmtMT, fmtPct } from './municipalityData';
 
 function formatMom(mom) {
   if (mom === null || mom === undefined) return 'N/A';

@@ -10,7 +10,7 @@ import { UserRound, Users } from 'lucide-react';
 import MuniCard, { MuniChip } from '../admin/municipality/MuniCard';
 import MuniAgeChart from '../admin/municipality/MuniAgeChart';
 import MuniDonut from '../admin/municipality/MuniDonut';
-import { buildProfile } from '../admin/municipality/municipalitySelectors';
+import { buildProfile } from '../admin/municipality/municipalityData';
 import { fmtInt, fmtPct } from '../admin/municipality/municipalityData';
 import { GenderTooltip } from '../admin/municipality/municipalityTooltips';
 import { SkeletonChart } from '../Skeleton';

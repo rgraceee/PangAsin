@@ -23,7 +23,7 @@ import {
 } from './municipalityData';
 import {
   buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows,
-} from './municipalitySelectors';
+} from './municipalityData';
 
 export default function MunicipalityAnalytics() {
   const [data, setData] = useState(null);
