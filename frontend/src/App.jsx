@@ -203,7 +203,7 @@ export default function App() {
           <Route path="master-list" element={<ProducerMasterList />} />
           <Route path="settings/*" element={
             <RequireAuth user={user} isLoading={loading}>
-              <EncoderLayout user={user} />
+              <Settings user={user} />
             </RequireAuth>
           }>
             <Route index element={<Navigate to="account" replace />} />
@@ -234,7 +234,7 @@ export default function App() {
           <Route path="reports" element={<GenerateReports />} />
           <Route path="settings/*" element={
             <RequireAdmin user={user} isLoading={loading} setUser={setUser}>
-              <AdminLayout user={user} setUser={setUser} />
+              <Settings user={user} />
             </RequireAdmin>
           }>
             <Route index element={<Navigate to="account" replace />} />
