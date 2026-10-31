@@ -3,6 +3,8 @@
 // WHY: one place for the number formats and the field names, so the cards,
 //      charts and table always speak the same language.
 
+import { fmtMT as sharedFmtMT } from '../../../utils/volumeFormat';
+
 export const METHOD_LABELS = {
   solar: 'Solar Evaporation',
   cooked: 'Cooked / Boiled',
@@ -36,9 +38,8 @@ export function fmtInt(value) {
 }
 
 export function fmtMT(value, decimals = 0) {
-  const n = Number(value);
-  if (value === null || value === undefined || !Number.isFinite(n)) return '—';
-  return n.toLocaleString('en-US', { maximumFractionDigits: decimals });
+  if (value === null || value === undefined) return '—';
+  return sharedFmtMT(value, { decimals, empty: '—', locale: 'en-US' });
 }
 
 export function fmtPct(value) {

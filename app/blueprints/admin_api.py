@@ -22,6 +22,7 @@ from app.services.aggregates import _last_month_with_data
 from app.services import municipality_service
 from app.services import geojson_service
 from app.services.audit import log_action
+from app.services.date_math import shift_month, month_bounds
 from app.services.municipality_service import (
     MunicipalityConflictError,
     MunicipalityValidationError,
@@ -1608,36 +1609,14 @@ def admin_months():
     return jsonify({"months": months})
 
 
-def _shift_month(ym: str, delta: int) -> str:
-    """Shift a 'YYYY-MM' label by `delta` calendar months."""
-    y = int(ym[:4])
-    m = int(ym[5:7]) + delta
-    while m > 12:
-        m -= 12
-        y += 1
-    while m < 1:
-        m += 12
-        y -= 1
-    return f"{y:04d}-{m:02d}"
-
-
 def _month_block(end_ym: str, count: int) -> list:
     """The `count` calendar months ending with (and including) `end_ym`."""
     out = []
     for _ in range(count):
         out.append(end_ym)
-        end_ym = _shift_month(end_ym, -1)
+        end_ym = shift_month(end_ym, -1)
     out.reverse()
     return out
-
-
-def _month_bounds(ym: str):
-    """(first day, last day) of the calendar month 'YYYY-MM'."""
-    y = int(ym[:4])
-    m = int(ym[5:7])
-    start = date(y, m, 1)
-    end = date(y + 1, 1, 1) - timedelta(days=1) if m == 12 else date(y, m + 1, 1) - timedelta(days=1)
-    return start, end
 
 
 def _approved_month_totals(months, production_method=None):
@@ -1647,8 +1626,8 @@ def _approved_month_totals(months, production_method=None):
     Months without any approved record are simply absent from the maps, so a
     missing month is never silently treated as zero production.
     """
-    start, _ = _month_bounds(months[0])
-    _, end = _month_bounds(months[-1])
+    start, _ = month_bounds(months[0])
+    _, end = month_bounds(months[-1])
     q = (
         db.session.query(
             ProductionRecord.municipality_id,
@@ -1774,7 +1753,7 @@ def trends():
         anchor_ym = latest_month
 
     current_months = _month_block(anchor_ym, 12)
-    previous_months = _month_block(_shift_month(current_months[0], -1), 12)
+    previous_months = _month_block(shift_month(current_months[0], -1), 12)
     months = sorted(set(current_months + previous_months))
     if source == "municipality_production":
         per_muni, province = _production_month_totals(months)

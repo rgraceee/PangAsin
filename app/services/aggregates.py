@@ -9,23 +9,13 @@ from app.extensions import db
 from app.models.production_record import ProductionRecord
 from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.services.municipalities import active_municipality_ids_subquery
+from app.services.date_math import grid_start_end
 
 # Reference epoch for computing real (non-compressed) month positions.
 _EPOCH_YEAR = 2000
 _EPOCH_MONTH = 1
 
 
-def _grid_start_end(range_months: int, today: date) -> Tuple[date, date]:
-    """Return (start, end) dates covering the last `range_months` months ending
-    at the current month. `range_months` is one of 12, 24, or 36."""
-    end = today
-    # Count back `range_months` months from the first of this month.
-    y, m = today.year, today.month
-    total = y * 12 + (m - 1) - (range_months - 1)
-    sy, sm = divmod(total, 12)
-    sm += 1
-    start = date(sy, sm, 1)
-    return start, end
 
 
 def _month_labels(start: date, end: date) -> List[str]:
@@ -59,7 +49,7 @@ def _reporting_grid(
     WHY: Gaps in reporting reduce forecast accuracy; admins need to see them.
     """
     today = date.today()
-    grid_start, grid_end = _grid_start_end(range_months, today)
+    grid_start, grid_end = grid_start_end(range_months, today)
     grid_labels = _month_labels(grid_start, grid_end)
 
     reported_set = set()

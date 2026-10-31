@@ -16,15 +16,12 @@ import PageHeader from './PageHeader';
 import { SkeletonCards, SkeletonChart } from '../Skeleton';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import DashboardFilters, { useDashboardFilters } from './DashboardFilters';
+import { fmtMT } from '../../utils/volumeFormat';
 
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
 
 const prettyName = (raw) => raw.replace(/^City of (.+)$/, '$1 City');
-
-/* WHAT: Consistent Metric Tons (MT) formatting — max 2 decimals + thousands separators.
-   WHY: pareho ang pagtitingnan ng lahat ng volume sa buong dashboard. */
-const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 function buildMunicipalityTooltip(municipality, tierThresholds) {
   const tier = getProductionTier(municipality.volumeMT, tierThresholds);

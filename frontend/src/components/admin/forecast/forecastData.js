@@ -3,6 +3,8 @@
 // WHY: one place for every number/label rule so the charts, KPIs and captions
 //      can never disagree with each other.
 
+import { fmtMT as sharedFmtMT } from '../../../utils/volumeFormat';
+
 export const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const MONTH_LONG = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -41,9 +43,8 @@ export function monthNumber(ym) {
 
 /* Number formatting: thousands separators, max 2 decimals for Metric Tons (MT), 1 for %. */
 export function fmtMT(value) {
-  const n = Number(value);
-  if (value === null || value === undefined || !Number.isFinite(n)) return '\u2014';
-  return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  if (value === null || value === undefined) return '\u2014';
+  return sharedFmtMT(value, { decimals: 2, empty: '\u2014', locale: 'en-US' });
 }
 
 export function fmtPctSigned(value) {

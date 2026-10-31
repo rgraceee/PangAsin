@@ -6,6 +6,8 @@
 //      shared `fc-*` classes render correctly here, and every number format
 //      used by the public charts is defined in one place.
 
+import { fmtMT as sharedFmtMT } from '../../utils/volumeFormat';
+
 /* WHAT: Mga halaga na kinopya mula sa admin forecast card spec.
    WHY: '--fc-*' ay scoped sa '.forecast-page' sa admin, kaya kailangan itong
         i-declare dito para magamit ng shared na fc-* classes sa public page. */
@@ -56,8 +58,7 @@ export const SUPPLY_COLORS = {
 export function fmtMT(value, { unit = true } = {}) {
   const n = Number(value);
   if (!Number.isFinite(n)) return unit ? '— Metric Tons (MT)' : '—';
-  const text = n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  return unit ? `${text} Metric Tons (MT)` : text;
+  return sharedFmtMT(n, { decimals: 2, unit, empty: '—', locale: undefined });
 }
 
 /* WHAT: Format ng plain number (walang unit) para sa axis tick at bar label.

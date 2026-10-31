@@ -28,6 +28,7 @@ from app.services.municipalities import (
     scope_all_label,
 )
 from datetime import date, timedelta
+from app.services.date_math import add_months, month_start_offset
 from sqlalchemy import func, case
 
 analytics_api_bp = Blueprint("analytics_api", __name__, url_prefix="/api/admin/analytics")
@@ -44,16 +45,6 @@ _COMPLETE_YEAR_MONTHS = 10
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _add_months(source_date, months):
-    """Add `months` to a date and return the last day of the resulting month."""
-    month = source_date.month - 1 + months
-    year = source_date.year + month // 12
-    month = month % 12 + 1
-    # Last day of the resulting month
-    if month == 12:
-        return date(year + 1, 1, 1) - timedelta(days=1)
-    return date(year, month + 1, 1) - timedelta(days=1)
 
 
 def _query_records(municipality_id, start=None, end=None, production_method=None):
@@ -102,14 +93,6 @@ def _monthly_series(municipality_id, start, end, production_method=None):
         {"month": r.m, "total_mt": round(float(r.v or 0), 3)}
         for r in rows
     ]
-
-
-def _month_start_offset(base: date, months: int) -> date:
-    """First day of the month `months` away from the first day of `base`'s month."""
-    m = base.month - 1 + months
-    y = base.year + m // 12
-    m = m % 12 + 1
-    return date(y, m, 1)
 
 
 def _all_monthly_labels_values(municipality_id, end, production_method=None):
@@ -252,7 +235,7 @@ def _production_descriptive(municipality_id, months):
         })
 
     latest_month = date(latest.production_year, latest.production_month, 1)
-    end = _add_months(latest_month, 1)
+    end = add_months(latest_month, 1)
     all_rows_query = MunicipalityMonthlyProduction.query.filter(
         MunicipalityMonthlyProduction.production_year <= latest.production_year
     ).filter(
@@ -296,7 +279,7 @@ def _production_descriptive(municipality_id, months):
         if last_year_total
         else None
     )
-    series_start = _month_start_offset(latest_month, -(months - 1))
+    series_start = month_start_offset(latest_month, -(months - 1))
     series_rows = [
         {"month": label, "total_mt": round(value, 3)}
         for label, value in zip(all_labels, all_values)
@@ -639,7 +622,7 @@ def descriptive():
         latest_record_month = f"{latest_row.record_date.year:04d}-{latest_row.record_date.month:02d}"
 
     # Monthly series: the last `months` calendar months (default 24).
-    series_start = _month_start_offset(date(today.year, today.month, 1), -(months - 1))
+    series_start = month_start_offset(date(today.year, today.month, 1), -(months - 1))
     monthly_series = _monthly_series(municipality_id, series_start, today, production_method)
 
     # Yearly overlay {year: [12 values]} and seasonal averages, complete years only.
@@ -733,30 +716,30 @@ def _resolve_forecast_period(range_opt, start, end, today, last_data_date):
     period = {"start": None, "end": None, "months": 0, "label": range_opt}
     if range_opt == "this_month":
         period["start"] = date(today.year, today.month, 1)
-        period["end"] = _add_months(period["start"], 0)
+        period["end"] = add_months(period["start"], 0)
         period["months"] = 1
         period["label"] = "This month"
     elif range_opt == "next_3":
-        base = _add_months(last_data_date, 1) if last_data_date else today
+        base = add_months(last_data_date, 1) if last_data_date else today
         period["start"] = date(base.year, base.month, 1)
-        period["end"] = _add_months(period["start"], 2)
+        period["end"] = add_months(period["start"], 2)
         period["months"] = 3
         period["label"] = "Next 3 months"
     elif range_opt == "rest_of_year":
-        base = _add_months(last_data_date, 1) if last_data_date else today
+        base = add_months(last_data_date, 1) if last_data_date else today
         period["start"] = date(base.year, base.month, 1)
         period["end"] = date(base.year, 12, 31)
         period["months"] = max(1, 12 - base.month + 1)
         period["label"] = "Rest of this year"
     elif range_opt == "custom" and start and end:
         period["start"] = date(start.year, start.month, 1)
-        period["end"] = _add_months(date(end.year, end.month, 1), 0)
+        period["end"] = add_months(date(end.year, end.month, 1), 0)
         period["months"] = (end.year - start.year) * 12 + (end.month - start.month) + 1
         period["label"] = "Custom period"
     else:  # next_12 default
-        base = _add_months(last_data_date, 1) if last_data_date else today
+        base = add_months(last_data_date, 1) if last_data_date else today
         period["start"] = date(base.year, base.month, 1)
-        period["end"] = _add_months(period["start"], 11)
+        period["end"] = add_months(period["start"], 11)
         period["months"] = 12
         period["label"] = "Next 12 months"
     if period["months"] < 1:

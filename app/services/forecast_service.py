@@ -16,6 +16,7 @@ from app.services.aggregates import (
     _reindex_complete,
     _last_month_with_data,
 )
+from app.services.date_math import shift_month
 from sqlalchemy import func
 
 # Reference epoch for computing real (non-compressed) month positions.
@@ -464,7 +465,7 @@ def run_forecast(municipality_id: Optional[int] = None, forecast_horizon: int = 
         )
 
     last_label = complete_labels[-1] if complete_labels else last_ym
-    all_labels = complete_labels + [_next_month_label(last_label, i + 1) for i in range(forecast_horizon)]
+    all_labels = complete_labels + [shift_month(last_label, i + 1) for i in range(forecast_horizon)]
     note = None
 
     sarima_state = None
@@ -765,18 +766,6 @@ def run_forecast_all_municipalities(forecast_horizon: int = 12):
     )
     db.session.commit()
     return run
-
-def _next_month_label(current_ym: str, offset: int) -> str:
-    y, m = int(current_ym[:4]), int(current_ym[5:7])
-    m += offset
-    while m > 12:
-        m -= 12
-        y += 1
-    while m < 1:
-        m += 12
-        y -= 1
-    return f"{y:04d}-{m:02d}"
-
 
 def get_municipality_outlook():
     municipalities = Municipality.query.filter_by(status="active").order_by(Municipality.name).all()

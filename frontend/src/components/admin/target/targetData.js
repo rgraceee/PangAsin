@@ -3,6 +3,8 @@
 // WHY: every number on the page is derived here, so the strip, the charts and
 //       the captions can never disagree - and nothing is invented.
 
+import { fmtMT as sharedFmtMT } from '../../../utils/volumeFormat';
+
 export const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function monthLabel(year, month) {
@@ -10,10 +12,9 @@ export function monthLabel(year, month) {
 }
 
 export function fmtMT(value, decimals) {
-  const n = Number(value);
-  if (value === null || value === undefined || !Number.isFinite(n)) return '\u2014';
   const max = decimals === undefined ? 2 : decimals;
-  return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: max });
+  if (value === null || value === undefined) return '\u2014';
+  return sharedFmtMT(value, { decimals: max, empty: '\u2014', locale: 'en-US' });
 }
 
 export function fmtAxis(value) {

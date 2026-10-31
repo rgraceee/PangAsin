@@ -9,12 +9,9 @@ import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
+import { fmtMT } from '../../utils/volumeFormat';
 
 const GRADIENT = [BRAND.ocean, BRAND.gold, BRAND.green, STATUS.not_ready];
-
-// WHAT: I-round para sa consistent decimals + thousands separators.
-// WHY: max 2 decimals ang Metric Tons (MT) sa buong dashboard, hindi 3+.
-const fmtMT = (v) => Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 // WHAT: Nice ceiling sa multiples (1/2/5 x 10^n) para even ang axis ticks.
 // WHY: hindi bastang val*1.15 na pwedeng mag-iwan ng weird na max tick.
