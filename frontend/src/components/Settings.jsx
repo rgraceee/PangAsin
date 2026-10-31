@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card } from 'react-bootstrap';
 import {
   Settings as SettingsIcon,
@@ -63,16 +63,6 @@ const FAQS = [
   },
 ];
 
-// WHAT: Mga section ng Settings page sa order na ipakita sa left nav.
-// WHY: Isa lamang ang listahan para consistent ang left nav at right panel.
-const SECTIONS = [
-  { id: 'account', label: 'Account', Icon: User },
-  { id: 'security', label: 'Security', Icon: ShieldCheck },
-  { id: 'help', label: 'Help & Support', Icon: HelpCircle },
-  { id: 'legal', label: 'Legal', Icon: Archive },
-  { id: 'about', label: 'About', Icon: SettingsIcon },
-];
-
 // WHAT: Pangunahing component ng Settings page — two-pane layout.
 //       Left: vertical section list with icons. Right: one panel at a time.
 // WHY: Standard settings layout na nag-match sa ibang pages ng app.
@@ -98,7 +88,6 @@ export default function Settings({ user }) {
   const role = user?.role === 'admin' ? 'admin' : 'encoder';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
-  const settingsBase = role === 'admin' ? '/admin/settings' : '/encoder/settings';
 
 // WHAT: Gumagamit ng existing changePassword endpoint mula sa dataService —
 //       parehong logic na ginagamit ng ChangePassword page.
@@ -147,29 +136,8 @@ export default function Settings({ user }) {
         <h1 className="settings-title">Settings</h1>
       </div>
 
-      <div className="settings-layout">
-        {/* ===== LEFT: Section list ===== */}
-        <nav className="settings-section-nav" aria-label="Settings sections">
-          {SECTIONS.map((s) => {
-            const Icon = s.Icon;
-            const isActive = section === s.id;
-            return (
-              <Link
-                key={s.id}
-                to={`${settingsBase}/${s.id}`}
-                className={`settings-section-item${isActive ? ' active' : ''}`}
-              >
-                <span className="settings-section-icon" aria-hidden="true">
-                  <Icon size={16} strokeWidth={1.75} />
-                </span>
-                <span className="settings-section-label">{s.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* ===== RIGHT: Section panel ===== */}
-        <main className="settings-section-panel">
+      {/* ===== RIGHT: Section panel ===== */}
+      <main className="settings-section-panel">
           {section === 'account' && (
             <section className="settings-panel">
               <h2 className="settings-panel-title">Account</h2>
@@ -358,6 +326,5 @@ export default function Settings({ user }) {
           )}
         </main>
       </div>
-    </div>
-  );
+    );
 }

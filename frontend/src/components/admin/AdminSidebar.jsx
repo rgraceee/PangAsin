@@ -33,12 +33,29 @@ const MANAGE_ITEMS = [
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
 
+const SETTINGS_GROUP = {
+  id: 'settings',
+  label: 'Settings',
+  icon: Settings,
+  items: [
+    { id: 'account', label: 'Account', path: '/admin/settings/account' },
+    { id: 'security', label: 'Security', path: '/admin/settings/security' },
+    { id: 'help', label: 'Help & Support', path: '/admin/settings/help' },
+    { id: 'legal', label: 'Legal', path: '/admin/settings/legal' },
+    { id: 'about', label: 'About', path: '/admin/settings/about' },
+  ],
+};
+
 /* WHAT: I-map ang kasalukuyang URL papunta sa active nav id.
    WHY: pathname lang ang basehan, kaya simple at walang IntersectionObserver. */
 function activeIdFromPath(pathname) {
   if (pathname === '/help') return 'help';
   if (pathname === '/privacy') return 'privacy';
-  if (pathname.startsWith('/admin/settings')) return 'settings';
+  if (pathname.startsWith('/admin/settings/account')) return 'account';
+  if (pathname.startsWith('/admin/settings/security')) return 'security';
+  if (pathname.startsWith('/admin/settings/help')) return 'help';
+  if (pathname.startsWith('/admin/settings/legal')) return 'legal';
+  if (pathname.startsWith('/admin/settings/about')) return 'about';
   if (pathname === '/admin/validation') return 'validation';
   if (pathname === '/admin/data-quality') return 'data-quality';
   if (pathname === '/admin/forecast/target') return 'forecast-target';
@@ -129,12 +146,14 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
 
         <div className="p-bottom">
           <div className="p-sidebar-support">
-            <NavItem
-              icon={Settings}
-              label="Settings"
-              active={activeId === 'settings'}
+            <NavGroup
+              id={SETTINGS_GROUP.id}
+              icon={SETTINGS_GROUP.icon}
+              label={SETTINGS_GROUP.label}
+              items={SETTINGS_GROUP.items}
+              activeId={activeId}
               collapsed={collapsed}
-              onClick={go('/admin/settings')}
+              onNavigate={goItem}
             />
           </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />

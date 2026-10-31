@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ContactRound, ClipboardList, LayoutDashboard, Leaf, Settings } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import {
-  CollapseControl, Divider, NavItem, SectionLabel, SidebarLogo, UserBlock,
+  CollapseControl, Divider, NavGroup, NavItem, SectionLabel, SidebarLogo, UserBlock,
 } from '../shell/sidebarUi';
 
 /* WHAT: Mga page sa /encoder. Main = Dashboard, Manage = records pages.
@@ -19,6 +19,19 @@ const MANAGE_ITEMS = [
   { id: 'environment-records', label: 'Environment Records', icon: Leaf, path: '/encoder/environment-records' },
 ];
 
+const SETTINGS_GROUP = {
+  id: 'settings',
+  label: 'Settings',
+  icon: Settings,
+  items: [
+    { id: 'account', label: 'Account', path: '/encoder/settings/account' },
+    { id: 'security', label: 'Security', path: '/encoder/settings/security' },
+    { id: 'help', label: 'Help & Support', path: '/encoder/settings/help' },
+    { id: 'legal', label: 'Legal', path: '/encoder/settings/legal' },
+    { id: 'about', label: 'About', path: '/encoder/settings/about' },
+  ],
+};
+
 export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, closeMobile }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,6 +41,15 @@ export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, cl
   const isActive = (item) => (
     item.path === '/encoder' ? pathname === '/encoder' : pathname === item.path
   );
+  const isSettingsActive = () => pathname === '/encoder/settings' || pathname.startsWith('/encoder/settings/');
+  const settingsActiveId = () => {
+    if (pathname.startsWith('/encoder/settings/account')) return 'account';
+    if (pathname.startsWith('/encoder/settings/security')) return 'security';
+    if (pathname.startsWith('/encoder/settings/help')) return 'help';
+    if (pathname.startsWith('/encoder/settings/legal')) return 'legal';
+    if (pathname.startsWith('/encoder/settings/about')) return 'about';
+    return null;
+  };
 
   const muni = user?.municipality_name;
   usePageTitle(muni || 'Encoder Dashboard', muni ? { prefix: '' } : undefined);
@@ -74,12 +96,14 @@ export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, cl
 
         <div className="p-bottom">
           <div className="p-sidebar-support">
-            <NavItem
-              icon={Settings}
-              label="Settings"
-              active={pathname === '/encoder/settings' || pathname.startsWith('/encoder/settings/')}
+            <NavGroup
+              id={SETTINGS_GROUP.id}
+              icon={SETTINGS_GROUP.icon}
+              label={SETTINGS_GROUP.label}
+              items={SETTINGS_GROUP.items}
+              activeId={settingsActiveId()}
               collapsed={collapsed}
-              onClick={() => handleItem({ path: '/encoder/settings' })}
+              onNavigate={handleItem}
             />
           </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
