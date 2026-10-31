@@ -77,9 +77,9 @@ export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, cl
             <NavItem
               icon={Settings}
               label="Settings"
-              active={pathname === '/settings'}
+              active={pathname === '/encoder/settings' || pathname.startsWith('/encoder/settings/')}
               collapsed={collapsed}
-              onClick={() => handleItem({ path: '/settings' })}
+              onClick={() => handleItem({ path: '/encoder/settings' })}
             />
           </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />

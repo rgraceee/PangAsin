@@ -36,9 +36,9 @@ const MANAGE_ITEMS = [
 /* WHAT: I-map ang kasalukuyang URL papunta sa active nav id.
    WHY: pathname lang ang basehan, kaya simple at walang IntersectionObserver. */
 function activeIdFromPath(pathname) {
-  if (pathname === '/settings') return 'settings';
   if (pathname === '/help') return 'help';
   if (pathname === '/privacy') return 'privacy';
+  if (pathname.startsWith('/admin/settings')) return 'settings';
   if (pathname === '/admin/validation') return 'validation';
   if (pathname === '/admin/data-quality') return 'data-quality';
   if (pathname === '/admin/forecast/target') return 'forecast-target';
@@ -134,7 +134,7 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
               label="Settings"
               active={activeId === 'settings'}
               collapsed={collapsed}
-              onClick={go('/settings')}
+              onClick={go('/admin/settings')}
             />
           </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />

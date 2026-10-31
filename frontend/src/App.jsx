@@ -52,7 +52,18 @@ const ROUTE_TITLES = {
   '/admin/forecast': 'Forecasting',
   '/admin/forecast/target': 'Target Evaluation',
   '/admin/reports': 'Generate Reports',
-  '/settings': 'Settings',
+  '/admin/settings': 'Settings',
+  '/admin/settings/account': 'Account',
+  '/admin/settings/security': 'Security',
+  '/admin/settings/help': 'Help & Support',
+  '/admin/settings/legal': 'Legal',
+  '/admin/settings/about': 'About',
+  '/encoder/settings': 'Settings',
+  '/encoder/settings/account': 'Account',
+  '/encoder/settings/security': 'Security',
+  '/encoder/settings/help': 'Help & Support',
+  '/encoder/settings/legal': 'Legal',
+  '/encoder/settings/about': 'About',
 };
 
 function TitleSetter() {
@@ -85,6 +96,17 @@ function RequirePasswordChange({ user, isLoading, children }) {
     return <Navigate to={user.role === 'admin' ? '/admin' : '/encoder'} replace />;
   }
   return children;
+}
+
+// WHAT: Redirect mula sa lumang /settings pat sa role-specific na settings path.
+// WHY: Admin papunta sa /admin/settings, encoder papunta sa /encoder/settings.
+function SettingsRedirect({ user }) {
+  const navigate = useNavigate();
+  const path = user.role === 'admin' ? '/admin/settings' : '/encoder/settings';
+  useEffect(() => {
+    navigate(path, { replace: true });
+  }, [navigate, path]);
+  return null;
 }
 
 export default function App() {
@@ -150,22 +172,23 @@ export default function App() {
             </RequirePasswordChange>
           )}
         />
-// WHAT: Settings route para sa admin at encoder, kinakasa ng RequireAuth guard.
-//       Kung may must_change_password, ipapayo muna ang user mag-change ng
-//       password bago ma-access ang Settings.
-// WHY: parehong role ang makakapasok; ang guard ang nagpapatupad ng auth rules.
+// WHAT: Lumang /settings route — redirect sa role-specific na settings path
+//       (admin -> /admin/settings, encoder -> /encoder/settings).
+// WHY: Hindi na standalone page; nasa loob na ng admin/encoder shell.
+//      Unauthenticated users pa rin dinadala sa login sa pamamagitan ng RequireAuth.
         <Route
           path="/settings"
           element={(
             <RequireAuth user={user} isLoading={loading}>
-              <ToastProvider>
-                <ErrorBoundary>
-                  <Settings user={user} />
-                </ErrorBoundary>
-              </ToastProvider>
+              <SettingsRedirect user={user} />
             </RequireAuth>
           )}
         />
+        <Route path="/settings/*" element={(
+          <RequireAuth user={user} isLoading={loading}>
+            <SettingsRedirect user={user} />
+          </RequireAuth>
+        )} />
         <Route path="/encoder/login" element={<Navigate to="/login" replace />} />
         <Route
           path="/encoder"
@@ -179,6 +202,18 @@ export default function App() {
           <Route path="production-records" element={<ProductionRecordsPage />} />
           <Route path="environment-records" element={<EnvironmentRecordsPage />} />
           <Route path="master-list" element={<ProducerMasterList />} />
+          <Route path="settings/*" element={
+            <RequireAuth user={user} isLoading={loading}>
+              <EncoderLayout user={user} />
+            </RequireAuth>
+          }>
+            <Route index element={<Navigate to="account" replace />} />
+            <Route path="account" element={<Settings user={user} />} />
+            <Route path="security" element={<Settings user={user} />} />
+            <Route path="help" element={<Settings user={user} />} />
+            <Route path="legal" element={<Settings user={user} />} />
+            <Route path="about" element={<Settings user={user} />} />
+          </Route>
         </Route>
         <Route
           path="/admin"
@@ -198,6 +233,18 @@ export default function App() {
           <Route path="forecast" element={<ForecastDashboard />} />
           <Route path="forecast/target" element={<TargetEvaluation />} />
           <Route path="reports" element={<GenerateReports />} />
+          <Route path="settings/*" element={
+            <RequireAdmin user={user} isLoading={loading} setUser={setUser}>
+              <AdminLayout user={user} setUser={setUser} />
+            </RequireAdmin>
+          }>
+            <Route index element={<Navigate to="account" replace />} />
+            <Route path="account" element={<Settings user={user} />} />
+            <Route path="security" element={<Settings user={user} />} />
+            <Route path="help" element={<Settings user={user} />} />
+            <Route path="legal" element={<Settings user={user} />} />
+            <Route path="about" element={<Settings user={user} />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
