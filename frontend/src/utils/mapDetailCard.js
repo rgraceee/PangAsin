@@ -1,28 +1,16 @@
 import L from 'leaflet';
 
-// WHAT: Lumpukin ang 4 kilalang metrika (Total Volume, Record Count, Salt Beds,
-//       Registered Salt Farmers) sa 2-column grid; patungkol sa ibang hanay
-//       (Production Area, Male/Female) ay maliliit na buong-lapad na row.
-// WHY: Mas mababa at mas mahusay na hugis ang popup para hindi sakupin ang
-//      clicked polygon o map.
-export function buildMapDetailCard({ name, gridRows, compactRows = [] }) {
-  const gridHtml = (gridRows || [])
+// WHAT: Pangunahing metrika at ibang detalye bilang single-column list ng rows.
+//       Bawat row ay label sa kaliwa, value sa kanan, isang row bawat field.
+// WHY: Hindi na pinairal ang 2-column grid at compact row — mas simple at
+//      madaling basahin ang lahat ng field sa isang column pa lang.
+export function buildMapDetailCard({ name, rows }) {
+  const rowsHtml = (rows || [])
     .map(
       ([label, value]) => `
-        <div class="map-popup-grid-item">
+        <div class="map-popup-row">
           <span class="map-popup-label">${label}</span>
           <span class="map-popup-value">${value}</span>
-        </div>
-      `
-    )
-    .join('');
-
-  const compactHtml = (compactRows || [])
-    .map(
-      ([label, value]) => `
-        <div class="map-popup-compact-row">
-          <span class="map-popup-compact-label">${label}</span>
-          <span class="map-popup-compact-value">${value}</span>
         </div>
       `
     )
@@ -33,8 +21,7 @@ export function buildMapDetailCard({ name, gridRows, compactRows = [] }) {
       <div class="map-popup-header">
         <span class="map-popup-title">${name}</span>
       </div>
-      <div class="map-popup-grid">${gridHtml}</div>
-      ${compactHtml ? `<div class="map-popup-compact">${compactHtml}</div>` : ''}
+      ${rowsHtml}
       <div class="map-popup-foot">Administrative summary</div>
     </div>
   `;

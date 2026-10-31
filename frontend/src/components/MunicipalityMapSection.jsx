@@ -158,13 +158,11 @@ export default function MunicipalityMapSection() {
               : '—';
             const html = buildMapDetailCard({
               name: m.name,
-              gridRows: [
+              rows: [
                 ['Current Production', `${m.productionMT.toLocaleString()} Metric Tons (MT)`],
                 ['Change', changeText],
                 ['Salt Beds', bedEstimateLabel],
                 ['Dominant Method', methodLabel],
-              ],
-              compactRows: [
                 ['Production Area', m.productionAreaSqm == null ? 'Not included in source data' : `${m.productionAreaSqm.toLocaleString()} m²`],
                 ['Male / Female (approved submissions)', genderText],
               ],
