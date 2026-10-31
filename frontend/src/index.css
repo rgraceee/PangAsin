@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap');
 @import './styles/ui-tokens.css';
 @import './styles/support.css';
+@import './styles/settings.css';
 
 :root {
   --ocean-blue: #1565C8;

@@ -1,0 +1,354 @@
+/* ============================================================
+   WHAT: Settings page styles — card-based layout for admin and encoder.
+   WHY: Isang visual design para sa dalawang role; tokens-only para
+        hindi mag-hardcode ng kulay. Additive lang — walang binabago
+        sa index.css o sa ibang style file.
+   ============================================================ */
+
+.settings-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-text-2, #6B7280);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.settings-back:hover {
+  color: var(--ui-text, #111827);
+  text-decoration: underline;
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ui-text, #111827);
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Cards ---------- */
+.settings-card {
+  border: 1px solid var(--ui-border, #E5E7EB);
+  border-radius: var(--ui-radius-card, 12px);
+  background: #fff;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ui-border, #E5E7EB);
+  background: #FAFAFA;
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+
+.settings-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--ui-brown-tint, #F3E9E2);
+  border: 1px solid var(--ui-brown-border, #D9B38C);
+  color: var(--ui-brown, #8A5A2B);
+  flex-shrink: 0;
+}
+
+.settings-card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ui-text, #111827);
+}
+
+.settings-readonly-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6B7280;
+  background: #F3F4F6;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.settings-card-body {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Account ---------- */
+.settings-account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-account-list dt {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6B7280;
+}
+
+.settings-account-list dd {
+  margin: 0 0 0;
+  font-size: 14px;
+  color: var(--ui-text, #111827);
+}
+
+.settings-account-note {
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+/* ---------- Security ---------- */
+.settings-security-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-security-form .mb-3 {
+  margin-bottom: 0;
+}
+
+.settings-security-form .form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text, #111827);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.settings-security-form .form-control {
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.settings-error {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  font-size: 13px;
+}
+
+.settings-save-btn {
+  margin-top: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.settings-security-note {
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+/* ---------- Help & Support ---------- */
+.settings-help-list,
+.settings-legal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-help-link,
+.settings-legal-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border, #E5E7EB);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ui-text-2, #6B7280);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.settings-help-link:hover,
+.settings-legal-link:hover {
+  border-color: var(--ui-accent, #1565C8);
+  background: #F0F7FF;
+  color: var(--ui-accent, #1565C8);
+  text-decoration: none;
+}
+
+.settings-help-link svg,
+.settings-legal-link svg {
+  flex-shrink: 0;
+  color: #9CA3AF;
+}
+
+.settings-help-link:hover svg,
+.settings-legal-link:hover svg {
+  color: var(--ui-accent, #1565C8);
+}
+
+/* ---------- Legal ---------- */
+.settings-legal-note {
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+/* ---------- About ---------- */
+.settings-about-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-about-list dt {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6B7280;
+}
+
+.settings-about-list dd {
+  margin: 0 0 0;
+  font-size: 14px;
+  color: var(--ui-text, #111827);
+}
+
+.settings-about-note {
+  margin-top: 16px;
+  font-size: 12.5px;
+  color: #6B7280;
+  line-height: 1.5;
+}
+
+/* ---------- Help Center FAQ ---------- */
+.settings-faq-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ui-border, #E5E7EB);
+}
+
+.settings-faq-heading {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ui-text, #111827);
+}
+
+.settings-faq-sub {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #6B7280;
+}
+
+.settings-faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-faq-item {
+  border: 1px solid var(--ui-border, #E5E7EB);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.settings-faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #fff;
+  border: 0;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-text, #111827);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.settings-faq-question:hover {
+  background: #F9FAFB;
+}
+
+.settings-faq-question.active {
+  background: #F0F7FF;
+  color: var(--ui-accent, #1565C8);
+  border-bottom: 1px solid var(--ui-border, #E5E7EB);
+}
+
+.settings-faq-toggle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9CA3AF;
+  flex-shrink: 0;
+}
+
+.settings-faq-question.active .settings-faq-toggle {
+  color: var(--ui-accent, #1565C8);
+}
+
+.settings-faq-answer {
+  padding: 0 16px 14px;
+  font-size: 13.5px;
+  color: #4B5563;
+  line-height: 1.55;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 16px 12px 32px;
+  }
+  .settings-title {
+    font-size: 22px;
+  }
+}

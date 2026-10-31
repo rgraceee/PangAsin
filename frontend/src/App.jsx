@@ -23,6 +23,7 @@ import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import ProducerMasterList from './components/ProducerMasterList';
 import PrivacyPolicy from './components/support/PrivacyPolicy';
 import HelpManual from './components/support/HelpManual';
+import Settings from './components/Settings';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import usePageTitle from './hooks/usePageTitle';
@@ -49,6 +50,7 @@ const ROUTE_TITLES = {
   '/admin/forecast': 'Forecasting',
   '/admin/forecast/target': 'Target Evaluation',
   '/admin/reports': 'Generate Reports',
+  '/settings': 'Settings',
 };
 
 function TitleSetter() {
@@ -138,6 +140,14 @@ export default function App() {
             <RequirePasswordChange user={user} isLoading={loading}>
               <ChangePassword user={user} setUser={setUser} />
             </RequirePasswordChange>
+          )}
+        />
+        <Route
+          path="/settings"
+          element={(
+            <RequireAuth user={user} isLoading={loading}>
+              <Settings user={user} />
+            </RequireAuth>
           )}
         />
         <Route path="/encoder/login" element={<Navigate to="/login" replace />} />
