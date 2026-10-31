@@ -122,6 +122,173 @@ def _empty_payload(months: list, current_month: str) -> dict:
     }
 
 
+def _month_status_counts(muni_ids):
+    # WHAT: Count approved and pending records per municipality and month.
+    # WHY: One grouped query replaces a per-cell lookup.
+    month_expr = func.to_char(ProductionRecord.record_date, "YYYY-MM")
+    rows = (
+        db.session.query(
+            ProductionRecord.municipality_id,
+            month_expr.label("month"),
+            ProductionRecord.status,
+            func.count().label("n"),
+        )
+        .filter(ProductionRecord.status.in_(("approved", "pending")))
+        .filter(ProductionRecord.municipality_id.in_(muni_ids))
+        .group_by(ProductionRecord.municipality_id, month_expr, ProductionRecord.status)
+        .all()
+    )
+    approved_by = {}
+    pending_by = {}
+    for muni_id, month, status, count in rows:
+        if status == "approved":
+            approved_by[(muni_id, month)] = approved_by.get((muni_id, month), 0) + count
+        else:
+            pending_by[(muni_id, month)] = pending_by.get((muni_id, month), 0) + count
+    return approved_by, pending_by
+
+
+def _field_counts(muni_ids):
+    # WHAT: Count non-NULL required fields per municipality (approved rows only).
+    # WHY: func.count(column) counts non-NULL values, so a filled 0 still counts.
+    rows = (
+        db.session.query(
+            ProductionRecord.municipality_id,
+            func.count().label("approved_rows"),
+            *[
+                func.count(getattr(ProductionRecord, key)).label(key)
+                for key, _label in REQUIRED_FIELDS
+            ],
+        )
+        .filter(ProductionRecord.status == "approved")
+        .filter(ProductionRecord.municipality_id.in_(muni_ids))
+        .group_by(ProductionRecord.municipality_id)
+        .all()
+    )
+    return rows, {row.municipality_id: row for row in rows}
+
+
+def _pending_counts(muni_ids):
+    # WHAT: Count pending records and the oldest submission per municipality.
+    # WHY: Drives the review backlog KPI and the per-municipality pending count.
+    rows = (
+        db.session.query(
+            ProductionRecord.municipality_id,
+            func.count().label("pending_count"),
+            func.min(ProductionRecord.submitted_at).label("oldest_submitted"),
+        )
+        .filter(ProductionRecord.status == "pending")
+        .filter(ProductionRecord.municipality_id.in_(muni_ids))
+        .group_by(ProductionRecord.municipality_id)
+        .all()
+    )
+    return {row.municipality_id: row for row in rows}
+
+
+def _month_states(municipality_id, months, current_month, approved_by, pending_by):
+    # WHAT: Classify every month in the window for one municipality.
+    # WHY: "pending" must stay distinct from a silent "missing" month.
+    cells = {}
+    for month in months:
+        approved = approved_by.get((municipality_id, month), 0)
+        pending = pending_by.get((municipality_id, month), 0)
+        if approved > 0:
+            cells[month] = STATE_REPORTED
+        elif month == current_month:
+            cells[month] = STATE_PENDING if pending > 0 else STATE_CURRENT
+        elif pending > 0:
+            cells[month] = STATE_PENDING
+        else:
+            cells[month] = STATE_MISSING
+    return cells
+
+
+def _municipality_quality(
+    municipality,
+    months,
+    current_month,
+    expected_months,
+    approved_by,
+    pending_by,
+    field_by_muni,
+    pending_by_muni,
+    w_reporting,
+    w_fields,
+):
+    # WHAT: Build one municipality's Data Quality row.
+    # WHY: Reporting, fields, staleness and pending backlog must share the
+    #      same window and the same grouped query results.
+    cells = _month_states(
+        municipality.id, months, current_month, approved_by, pending_by
+    )
+
+    reported_months = sum(
+        1 for month in expected_months if cells[month] == STATE_REPORTED
+    )
+    reporting_pct = (
+        round(100.0 * reported_months / len(expected_months), 1)
+        if expected_months
+        else 0.0
+    )
+
+    behind_months = 0
+    for month in reversed(expected_months):
+        if cells[month] == STATE_REPORTED:
+            break
+        behind_months += 1
+
+    last_reported = None
+    for month in months:
+        if cells[month] == STATE_REPORTED:
+            last_reported = month
+
+    field_row = field_by_muni.get(municipality.id)
+    approved_rows = int(field_row.approved_rows) if field_row else 0
+    fields = {}
+    for key, _label in REQUIRED_FIELDS:
+        present = int(getattr(field_row, key) or 0) if field_row else 0
+        fields[key] = round(100.0 * present / approved_rows, 1) if approved_rows else 0.0
+    field_pct = round(sum(fields.values()) / len(REQUIRED_FIELDS), 1)
+
+    score = round(w_reporting * reporting_pct + w_fields * field_pct, 1)
+    pending_row = pending_by_muni.get(municipality.id)
+
+    return {
+        "id": municipality.id,
+        "name": municipality.name,
+        "cells": cells,
+        "reporting_pct": reporting_pct,
+        "field_pct": field_pct,
+        "score": score,
+        "behind_months": behind_months,
+        "last_reported": last_reported,
+        "pending_count": int(pending_row.pending_count) if pending_row else 0,
+        "oldest_pending_at": (
+            pending_row.oldest_submitted.isoformat() if pending_row and pending_row.oldest_submitted else None
+        ),
+        "status": _status_for(score, behind_months),
+        "reported_months": reported_months,
+        "expected_months": len(expected_months),
+        "approved_records": approved_rows,
+        "fields": fields,
+    }
+
+
+def _province_field_summary(field_rows):
+    # WHAT: Province-wide completeness per required field.
+    # WHY: The admin needs one aggregate row per field, not per municipality.
+    total_approved = sum(int(row.approved_rows) for row in field_rows)
+    province_fields = []
+    for key, label in REQUIRED_FIELDS:
+        present = sum(int(getattr(row, key) or 0) for row in field_rows)
+        province_fields.append({
+            "key": key,
+            "label": label,
+            "pct": round(100.0 * present / total_approved, 1) if total_approved else 0.0,
+        })
+    return province_fields, total_approved
+
+
 def build_data_quality(range_months=12) -> dict:
     """Build the whole Data Quality payload for the admin page.
 
@@ -143,136 +310,30 @@ def build_data_quality(range_months=12) -> dict:
 
     muni_ids = [m.id for m in municipalities]
 
-    # --- Query 1: how many records per municipality, per month, per status ---
-    month_expr = func.to_char(ProductionRecord.record_date, "YYYY-MM")
-    month_rows = (
-        db.session.query(
-            ProductionRecord.municipality_id,
-            month_expr.label("month"),
-            ProductionRecord.status,
-            func.count().label("n"),
-        )
-        .filter(ProductionRecord.status.in_(("approved", "pending")))
-        .filter(ProductionRecord.municipality_id.in_(muni_ids))
-        .group_by(ProductionRecord.municipality_id, month_expr, ProductionRecord.status)
-        .all()
-    )
-    approved_by = {}
-    pending_by = {}
-    for muni_id, month, status, count in month_rows:
-        if status == "approved":
-            approved_by[(muni_id, month)] = approved_by.get((muni_id, month), 0) + count
-        else:
-            pending_by[(muni_id, month)] = pending_by.get((muni_id, month), 0) + count
-
-    # --- Query 2: required-field counts per municipality (approved rows only) ---
-    # WHY: func.count(column) counts non-NULL values only, so a filled 0 still
-    #      counts as filled while an empty cell does not.
-    field_rows = (
-        db.session.query(
-            ProductionRecord.municipality_id,
-            func.count().label("approved_rows"),
-            *[
-                func.count(getattr(ProductionRecord, key)).label(key)
-                for key, _label in REQUIRED_FIELDS
-            ],
-        )
-        .filter(ProductionRecord.status == "approved")
-        .filter(ProductionRecord.municipality_id.in_(muni_ids))
-        .group_by(ProductionRecord.municipality_id)
-        .all()
-    )
-    field_by_muni = {row.municipality_id: row for row in field_rows}
-
-    # --- Query 3: how many records are still waiting, and how long ---
-    pending_rows = (
-        db.session.query(
-            ProductionRecord.municipality_id,
-            func.count().label("pending_count"),
-            func.min(ProductionRecord.submitted_at).label("oldest_submitted"),
-        )
-        .filter(ProductionRecord.status == "pending")
-        .filter(ProductionRecord.municipality_id.in_(muni_ids))
-        .group_by(ProductionRecord.municipality_id)
-        .all()
-    )
-    pending_by_muni = {row.municipality_id: row for row in pending_rows}
+    approved_by, pending_by = _month_status_counts(muni_ids)
+    field_rows, field_by_muni = _field_counts(muni_ids)
+    pending_by_muni = _pending_counts(muni_ids)
 
     w_reporting = THRESHOLDS["w_reporting"]
     w_fields = THRESHOLDS["w_fields"]
-    results = []
-
-    for municipality in municipalities:
-        cells = {}
-        for month in months:
-            approved = approved_by.get((municipality.id, month), 0)
-            pending = pending_by.get((municipality.id, month), 0)
-            if approved > 0:
-                cells[month] = STATE_REPORTED
-            elif month == current_month:
-                cells[month] = STATE_PENDING if pending > 0 else STATE_CURRENT
-            elif pending > 0:
-                cells[month] = STATE_PENDING
-            else:
-                cells[month] = STATE_MISSING
-
-        reported_months = sum(1 for month in expected_months if cells[month] == STATE_REPORTED)
-        reporting_pct = (
-            round(100.0 * reported_months / len(expected_months), 1) if expected_months else 0.0
+    results = [
+        _municipality_quality(
+            municipality,
+            months,
+            current_month,
+            expected_months,
+            approved_by,
+            pending_by,
+            field_by_muni,
+            pending_by_muni,
+            w_reporting,
+            w_fields,
         )
-
-        behind_months = 0
-        for month in reversed(expected_months):
-            if cells[month] == STATE_REPORTED:
-                break
-            behind_months += 1
-
-        last_reported = None
-        for month in months:
-            if cells[month] == STATE_REPORTED:
-                last_reported = month
-
-        field_row = field_by_muni.get(municipality.id)
-        approved_rows = int(field_row.approved_rows) if field_row else 0
-        fields = {}
-        for key, _label in REQUIRED_FIELDS:
-            present = int(getattr(field_row, key) or 0) if field_row else 0
-            fields[key] = round(100.0 * present / approved_rows, 1) if approved_rows else 0.0
-        field_pct = round(sum(fields.values()) / len(REQUIRED_FIELDS), 1)
-
-        score = round(w_reporting * reporting_pct + w_fields * field_pct, 1)
-        pending_row = pending_by_muni.get(municipality.id)
-
-        results.append({
-            "id": municipality.id,
-            "name": municipality.name,
-            "cells": cells,
-            "reporting_pct": reporting_pct,
-            "field_pct": field_pct,
-            "score": score,
-            "behind_months": behind_months,
-            "last_reported": last_reported,
-            "pending_count": int(pending_row.pending_count) if pending_row else 0,
-            "oldest_pending_at": (
-                pending_row.oldest_submitted.isoformat() if pending_row and pending_row.oldest_submitted else None
-            ),
-            "status": _status_for(score, behind_months),
-            "reported_months": reported_months,
-            "expected_months": len(expected_months),
-            "approved_records": approved_rows,
-            "fields": fields,
-        })
+        for municipality in municipalities
+    ]
 
     # --- Province-wide totals, summed from the same grouped rows ---
-    total_approved = sum(int(row.approved_rows) for row in field_rows)
-    province_fields = []
-    for key, label in REQUIRED_FIELDS:
-        present = sum(int(getattr(row, key) or 0) for row in field_rows)
-        province_fields.append({
-            "key": key,
-            "label": label,
-            "pct": round(100.0 * present / total_approved, 1) if total_approved else 0.0,
-        })
+    province_fields, _total_approved = _province_field_summary(field_rows)
     field_pct = round(
         sum(item["pct"] for item in province_fields) / len(province_fields), 1
     ) if province_fields else 0.0

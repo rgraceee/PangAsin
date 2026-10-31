@@ -432,6 +432,66 @@ def create_user():
     }), 400
 
 
+_USER_AUDIT_FIELDS = ("name", "municipality_id", "status", "role")
+
+
+def _user_snapshot(user):
+    # WHAT: Copy the auditable fields before applying an update.
+    # WHY: The audit entry needs the before/after values, and the ORM objects
+    #      mutate in place, so the snapshot must be taken first.
+    return {field: getattr(user, field) for field in _USER_AUDIT_FIELDS}
+
+
+def _apply_user_name(user, data, errors):
+    if "name" not in data:
+        return
+    name = (data.get("name") or "").strip()
+    if not name:
+        errors.append("name cannot be empty.")
+        return
+    user.name = name
+
+
+def _apply_user_municipality(user, data, errors):
+    if "municipality_id" not in data:
+        return
+    municipality_id = data.get("municipality_id")
+    # WHAT: Encoders must always point at a real municipality.
+    # WHY: Admin accounts may stay unassigned, so only encoders are validated.
+    if user.role != "encoder":
+        user.municipality_id = municipality_id
+        return
+    if not municipality_id:
+        errors.append("municipality_id is required for encoder accounts.")
+    elif not Municipality.query.get(municipality_id):
+        errors.append("municipality_id is invalid.")
+    else:
+        user.municipality_id = municipality_id
+
+
+def _apply_user_status(user, data, errors):
+    if "status" not in data:
+        return
+    status = data.get("status")
+    if status not in ("active", "inactive"):
+        errors.append("status must be active or inactive.")
+        return
+    user.status = status
+
+
+def _apply_user_password(user, data, errors):
+    # WHAT: Set a new password when one was supplied.
+    # WHY: Return whether it changed so the audit entry can record it.
+    password = data.get("password")
+    if not password:
+        return False
+    if len(password) < 6:
+        errors.append("password must be at least 6 chars.")
+        return False
+    user.set_password(password)
+    return True
+
+
 @admin_api_bp.route("/users/<int:user_id>", methods=["PATCH"])
 @login_required
 def update_user(user_id):
@@ -443,56 +503,17 @@ def update_user(user_id):
 
     data = request.get_json(silent=True) or {}
     errors = []
-    before = {
-        "name": user.name,
-        "municipality_id": user.municipality_id,
-        "status": user.status,
-        "role": user.role,
-    }
-    password_changed = False
+    before = _user_snapshot(user)
 
-    if "name" in data:
-        name = (data.get("name") or "").strip()
-        if not name:
-            errors.append("name cannot be empty.")
-        else:
-            user.name = name
-
-    if "municipality_id" in data:
-        muni_id = data.get("municipality_id")
-        if user.role == "encoder":
-            if not muni_id:
-                errors.append("municipality_id is required for encoder accounts.")
-            elif not Municipality.query.get(muni_id):
-                errors.append("municipality_id is invalid.")
-            else:
-                user.municipality_id = muni_id
-        else:
-            user.municipality_id = muni_id
-
-    if "status" in data:
-        status = data.get("status")
-        if status not in ("active", "inactive"):
-            errors.append("status must be active or inactive.")
-        else:
-            user.status = status
-
-    if "password" in data and data["password"]:
-        if len(data["password"]) < 6:
-            errors.append("password must be at least 6 chars.")
-        else:
-            user.set_password(data["password"])
-            password_changed = True
+    _apply_user_name(user, data, errors)
+    _apply_user_municipality(user, data, errors)
+    _apply_user_status(user, data, errors)
+    password_changed = _apply_user_password(user, data, errors)
 
     if errors:
         return jsonify({"errors": errors}), 400
 
-    after = {
-        "name": user.name,
-        "municipality_id": user.municipality_id,
-        "status": user.status,
-        "role": user.role,
-    }
+    after = _user_snapshot(user)
     changed = {
         key: {"from": before[key], "to": after[key]}
         for key in before
@@ -911,6 +932,294 @@ def _resolve_active_municipality():
     return municipality, None
 
 
+def _stats_scope_conditions(column, municipality_id):
+    # WHAT: No filter for province-wide scope, one equality filter otherwise.
+    # WHY: Every stats query applies the same dashboard municipality selector.
+    if municipality_id is None:
+        return []
+    return [column == municipality_id]
+
+
+_AGE_BANDS = ("18-30", "31-40", "41-50", "51-60", "61+")
+
+
+def _age_band_for(age):
+    # WHAT: Map an exact age to its dashboard band.
+    # WHY: The producer master list groups ages in five fixed bands.
+    if age <= 30:
+        return "18-30"
+    if age <= 40:
+        return "31-40"
+    if age <= 50:
+        return "41-50"
+    if age <= 60:
+        return "51-60"
+    return "61+"
+
+
+def _environment_by_municipality(municipality_id):
+    # WHAT: Aggregate approved environment reports per municipality.
+    # WHY: The environment panel needs bed, area and method totals in one pass.
+    summary = {}
+    reports = (
+        EnvironmentReport.query.filter_by(status="approved")
+        .filter(EnvironmentReport.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*_stats_scope_conditions(EnvironmentReport.municipality_id, municipality_id))
+        .all()
+    )
+    for report in reports:
+        name = (
+            report.barangay.municipality.name
+            if report.barangay and report.barangay.municipality
+            else "Unknown"
+        )
+        row = summary.setdefault(report.municipality_id, {
+            "municipality_id": report.municipality_id,
+            "municipality_name": name,
+            "report_count": 0,
+            "total_salt_beds": 0,
+            "total_production_area_sqm": 0.0,
+            "production_methods": {"solar": 0, "cooked": 0, "hybrid": 0},
+        })
+        row["report_count"] += 1
+        row["total_salt_beds"] += report.num_salt_beds
+        row["total_production_area_sqm"] += float(report.production_area_size or 0)
+        for method in report.production_methods or []:
+            if method in row["production_methods"]:
+                row["production_methods"][method] += 1
+    return summary
+
+
+def _producer_master_list(municipality_id, municipality_names):
+    # WHAT: Aggregate the distinct producer master list per municipality.
+    # WHY: Production records repeat head-counts; this list is the real registry.
+    master_by_municipality = {}
+    rows = (
+        db.session.query(Barangay.municipality_id, Producer.age, Producer.sex)
+        .join(Producer, Producer.barangay_id == Barangay.id)
+        .filter(Barangay.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*_stats_scope_conditions(Barangay.municipality_id, municipality_id))
+        .all()
+    )
+    for row_municipality_id, age, sex in rows:
+        bucket = master_by_municipality.setdefault(row_municipality_id, {
+            "producers": 0,
+            "age_bands": {band: 0 for band in _AGE_BANDS},
+            "sex": {"male": 0, "female": 0, "other": 0},
+        })
+        bucket["producers"] += 1
+        if age is not None:
+            bucket["age_bands"][_age_band_for(age)] += 1
+        bucket["sex"][{"Male": "male", "Female": "female"}.get(sex, "other")] += 1
+
+    return [
+        {
+            "municipality_id": row_municipality_id,
+            "municipality_name": municipality_names.get(row_municipality_id, "Unknown"),
+            "producers": bucket["producers"],
+            "age_bands": bucket["age_bands"],
+            "sex": bucket["sex"],
+        }
+        for row_municipality_id, bucket in sorted(
+            master_by_municipality.items(),
+            key=lambda item: municipality_names.get(item[0], "").lower(),
+        )
+    ]
+
+
+def _production_methods_by_municipality(municipality_id, municipality_names):
+    # WHAT: Sum approved production volume per method and municipality.
+    # WHY: The method panel uses all approved records, not a rolling window.
+    rows = (
+        db.session.query(
+            ProductionRecord.municipality_id,
+            ProductionRecord.production_method,
+            func.sum(ProductionRecord.production_volume_mt).label("mt"),
+        )
+        .filter(ProductionRecord.status == "approved")
+        .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*_stats_scope_conditions(ProductionRecord.municipality_id, municipality_id))
+        .group_by(ProductionRecord.municipality_id, ProductionRecord.production_method)
+        .all()
+    )
+    methods_by_municipality = {}
+    for row_municipality_id, method, mt in rows:
+        bucket = methods_by_municipality.setdefault(
+            row_municipality_id, {"solar": 0.0, "cooked": 0.0, "hybrid": 0.0}
+        )
+        if method in bucket:
+            bucket[method] = round(float(mt or 0), 3)
+    return [
+        {
+            "municipality_id": row_municipality_id,
+            "municipality_name": municipality_names.get(row_municipality_id, "Unknown"),
+            **bucket,
+        }
+        for row_municipality_id, bucket in sorted(
+            methods_by_municipality.items(),
+            key=lambda item: municipality_names.get(item[0], "").lower(),
+        )
+    ]
+
+
+def _monthly_production_source(municipality_id, municipality_stats, by_barangay_by_muni):
+    # WHAT: Build stats from the workbook-driven monthly production table.
+    # WHY: The dashboard can switch its production source without changing the UI.
+    year_raw = request.args.get("year")
+    month_raw = request.args.get("month")
+    try:
+        year = int(year_raw) if year_raw is not None else None
+        month = int(month_raw) if month_raw is not None else None
+    except ValueError:
+        return None, (jsonify({"error": "year and month must be valid integers."}), 400)
+    if year is not None and not 1 <= year <= 9999:
+        return None, (jsonify({"error": "year must be between 1 and 9999."}), 400)
+    if month is not None and not 1 <= month <= 12:
+        return None, (jsonify({"error": "month must be between 1 and 12."}), 400)
+
+    start_raw = request.args.get("start")
+    end_raw = request.args.get("end")
+    start = None
+    end = None
+    if start_raw or end_raw:
+        if not (start_raw and end_raw):
+            return None, (jsonify({"error": "start and end must be provided together."}), 400)
+        try:
+            start = datetime.strptime(start_raw, "%Y-%m-%d").date()
+            end = datetime.strptime(end_raw, "%Y-%m-%d").date()
+        except ValueError:
+            return None, (jsonify({"error": "start and end must use YYYY-MM-DD."}), 400)
+        if start > end:
+            return None, (jsonify({"error": "start must be on or before end."}), 400)
+
+    production_query = db.session.query(
+        MunicipalityMonthlyProduction.municipality_id,
+        func.sum(MunicipalityMonthlyProduction.production_kg).label("production_kg"),
+        func.count(MunicipalityMonthlyProduction.id).label("month_count"),
+        func.sum(
+            db.case(
+                (MunicipalityMonthlyProduction.is_synthetic.is_(True), 1),
+                else_=0,
+            )
+        ).label("synthetic_month_count"),
+        func.min(
+            func.to_char(
+                func.make_date(
+                    MunicipalityMonthlyProduction.production_year,
+                    MunicipalityMonthlyProduction.production_month,
+                    1,
+                ),
+                "YYYY-MM",
+            )
+        ).label("start_month"),
+        func.max(
+            func.to_char(
+                func.make_date(
+                    MunicipalityMonthlyProduction.production_year,
+                    MunicipalityMonthlyProduction.production_month,
+                    1,
+                ),
+                "YYYY-MM",
+            )
+        ).label("end_month"),
+    )
+    if year is not None:
+        production_query = production_query.filter(
+            MunicipalityMonthlyProduction.production_year == year
+        )
+    if month is not None:
+        production_query = production_query.filter(
+            MunicipalityMonthlyProduction.production_month == month
+        )
+    if start is not None:
+        production_query = production_query.filter(
+            func.make_date(
+                MunicipalityMonthlyProduction.production_year,
+                MunicipalityMonthlyProduction.production_month,
+                1,
+            ) >= start.replace(day=1)
+        )
+    if end is not None:
+        production_query = production_query.filter(
+            func.make_date(
+                MunicipalityMonthlyProduction.production_year,
+                MunicipalityMonthlyProduction.production_month,
+                1,
+            ) <= end.replace(day=1)
+        )
+    production_rows = (
+        production_query
+        .filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
+        .filter(*_stats_scope_conditions(
+            MunicipalityMonthlyProduction.municipality_id, municipality_id
+        ))
+        .group_by(MunicipalityMonthlyProduction.municipality_id)
+        .all()
+    )
+    production_by_municipality = {
+        row.municipality_id: row for row in production_rows
+    }
+    municipality_stats_by_id = {
+        row["municipality_id"]: row for row in municipality_stats
+    }
+    scoped_municipalities = (
+        Municipality.query.filter_by(status="active")
+        .filter(*_stats_scope_conditions(Municipality.id, municipality_id))
+        .all()
+    )
+    for municipality in scoped_municipalities:
+        row = production_by_municipality.get(municipality.id)
+        municipality_stat = municipality_stats_by_id.get(municipality.id)
+        if municipality_stat is None:
+            municipality_stat = {
+                "municipality_id": municipality.id,
+                "municipality_name": municipality.name,
+                "record_count": 0,
+                "total_area_sqm": 0.0,
+                "total_salt_beds": 0,
+                "total_registered_producers": 0,
+                "total_male_producers": 0,
+                "total_female_producers": 0,
+                "by_barangay": by_barangay_by_muni.get(municipality.id, []),
+            }
+            municipality_stats.append(municipality_stat)
+        municipality_stat["total_volume_mt"] = (
+            float(row.production_kg or 0) / 1000.0 if row else 0.0
+        )
+        municipality_stat["production_month_count"] = (
+            int(row.month_count) if row else 0
+        )
+        municipality_stat["synthetic_month_count"] = (
+            int(row.synthetic_month_count or 0) if row else 0
+        )
+
+    total_volume = sum(
+        float(row.production_kg or 0) / 1000.0
+        for row in production_rows
+    )
+    total_month_count = sum(int(row.month_count) for row in production_rows)
+    total_synthetic_month_count = sum(
+        int(row.synthetic_month_count or 0) for row in production_rows
+    )
+    production_period = None
+    if production_rows:
+        production_period = {
+            "start": min(row.start_month for row in production_rows),
+            "end": max(row.end_month for row in production_rows),
+        }
+    return {
+        "total_volume": total_volume,
+        "total_production_month_count": total_month_count,
+        "total_synthetic_month_count": total_synthetic_month_count,
+        "production_period": production_period,
+        "production_includes_synthetic": total_synthetic_month_count > 0,
+    }, None
+
+
 @admin_api_bp.route("/stats", methods=["GET"])
 @login_required
 def stats():
@@ -930,10 +1239,9 @@ def stats():
     )
 
     def scope_conditions(column):
-        """Empty list = province-wide; one condition = selected municipality."""
-        if selected_municipality_id is None:
-            return []
-        return [column == selected_municipality_id]
+        # WHAT: No filter for province-wide scope, one condition otherwise.
+        # WHY: Every stats query applies the same dashboard municipality selector.
+        return _stats_scope_conditions(column, selected_municipality_id)
 
     by_municipality = (
         db.session.query(
@@ -1067,28 +1375,7 @@ def stats():
         .count()
     )
 
-    environment_by_muni = {}
-    for report in (
-        EnvironmentReport.query.filter_by(status="approved")
-        .filter(EnvironmentReport.municipality_id.in_(active_municipality_ids_subquery()))
-        .filter(*scope_conditions(EnvironmentReport.municipality_id))
-        .all()
-    ):
-        name = report.barangay.municipality.name if report.barangay and report.barangay.municipality else "Unknown"
-        row = environment_by_muni.setdefault(report.municipality_id, {
-            "municipality_id": report.municipality_id,
-            "municipality_name": name,
-            "report_count": 0,
-            "total_salt_beds": 0,
-            "total_production_area_sqm": 0.0,
-            "production_methods": {"solar": 0, "cooked": 0, "hybrid": 0},
-        })
-        row["report_count"] += 1
-        row["total_salt_beds"] += report.num_salt_beds
-        row["total_production_area_sqm"] += float(report.production_area_size or 0)
-        for method in report.production_methods or []:
-            if method in row["production_methods"]:
-                row["production_methods"][method] += 1
+    environment_by_muni = _environment_by_municipality(selected_municipality_id)
 
     municipality_stats = []
     for row in by_municipality:
@@ -1123,241 +1410,33 @@ def stats():
             "by_barangay": by_barangay_by_muni.get(municipality_id, []),
         })
 
-    # --- Master list of producers (the real registry) -----------------------
-    # WHY: the production records carry a per-record "registered producers"
-    #      head-count, so summing it over every month counts the same people
-    #      again and again. The master list holds the distinct producers, so
-    #      the producer panels are driven by it.
-    AGE_BANDS = ("18-30", "31-40", "41-50", "51-60", "61+")
-    master_by_muni = {}
-    master_rows = (
-        db.session.query(Barangay.municipality_id, Producer.age, Producer.sex)
-        .join(Producer, Producer.barangay_id == Barangay.id)
-        .filter(Barangay.municipality_id.in_(active_municipality_ids_subquery()))
-        .filter(*scope_conditions(Barangay.municipality_id))
-        .all()
-    )
-    for municipality_id, age, sex in master_rows:
-        bucket = master_by_muni.setdefault(municipality_id, {
-            "producers": 0,
-            "age_bands": {band: 0 for band in AGE_BANDS},
-            "sex": {"male": 0, "female": 0, "other": 0},
-        })
-        bucket["producers"] += 1
-        if age is not None:
-            if age <= 30:
-                bucket["age_bands"]["18-30"] += 1
-            elif age <= 40:
-                bucket["age_bands"]["31-40"] += 1
-            elif age <= 50:
-                bucket["age_bands"]["41-50"] += 1
-            elif age <= 60:
-                bucket["age_bands"]["51-60"] += 1
-            else:
-                bucket["age_bands"]["61+"] += 1
-        bucket["sex"][{"Male": "male", "Female": "female"}.get(sex, "other")] += 1
-
     municipality_names = {m.id: m.name for m in Municipality.query.filter_by(status="active").all()}
-    master_list_by_municipality = [
-        {
-            "municipality_id": municipality_id,
-            "municipality_name": municipality_names.get(municipality_id, "Unknown"),
-            "producers": bucket["producers"],
-            "age_bands": bucket["age_bands"],
-            "sex": bucket["sex"],
-        }
-        for municipality_id, bucket in sorted(
-            master_by_muni.items(), key=lambda item: municipality_names.get(item[0], "").lower()
-        )
-    ]
+    master_list_by_municipality = _producer_master_list(
+        selected_municipality_id, municipality_names
+    )
 
     # --- Production method split over ALL approved records -----------------
     # WHY: the panel sits next to all-time tables, so it must use the same
     #      period instead of the public dashboard's rolling 12 months.
-    method_rows = (
-        db.session.query(
-            ProductionRecord.municipality_id,
-            ProductionRecord.production_method,
-            func.sum(ProductionRecord.production_volume_mt).label("mt"),
-        )
-        .filter(ProductionRecord.status == "approved")
-        .filter(
-            ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
-        )
-        .filter(*scope_conditions(ProductionRecord.municipality_id))
-        .group_by(ProductionRecord.municipality_id, ProductionRecord.production_method)
-        .all()
+    production_methods_mt = _production_methods_by_municipality(
+        selected_municipality_id, municipality_names
     )
-    methods_by_muni = {}
-    for municipality_id, method, mt in method_rows:
-        bucket = methods_by_muni.setdefault(municipality_id, {"solar": 0.0, "cooked": 0.0, "hybrid": 0.0})
-        if method in bucket:
-            bucket[method] = round(float(mt or 0), 3)
-    production_methods_mt = [
-        {
-            "municipality_id": municipality_id,
-            "municipality_name": municipality_names.get(municipality_id, "Unknown"),
-            **bucket,
-        }
-        for municipality_id, bucket in sorted(
-            methods_by_muni.items(), key=lambda item: municipality_names.get(item[0], "").lower()
-        )
-    ]
 
     production_period = None
     production_includes_synthetic = False
+    total_production_month_count = 0
+    total_synthetic_month_count = 0
     if production_source == "municipality_production":
-        production_year_raw = request.args.get("year")
-        production_month_raw = request.args.get("month")
-        try:
-            production_year = int(production_year_raw) if production_year_raw is not None else None
-            production_month = int(production_month_raw) if production_month_raw is not None else None
-        except ValueError:
-            return jsonify({"error": "year and month must be valid integers."}), 400
-        if production_year is not None and not 1 <= production_year <= 9999:
-            return jsonify({"error": "year must be between 1 and 9999."}), 400
-        if production_month is not None and not 1 <= production_month <= 12:
-            return jsonify({"error": "month must be between 1 and 12."}), 400
-
-        # WHAT: Optional inclusive date range (YYYY-MM-DD) for the monthly
-        #       production source. WHY: the dashboard's Date range filter is
-        #       month-based data, so a range includes every month it touches.
-        production_start_raw = request.args.get("start")
-        production_end_raw = request.args.get("end")
-        production_start = None
-        production_end = None
-        if production_start_raw or production_end_raw:
-            if not (production_start_raw and production_end_raw):
-                return jsonify({"error": "start and end must be provided together."}), 400
-            try:
-                production_start = datetime.strptime(production_start_raw, "%Y-%m-%d").date()
-                production_end = datetime.strptime(production_end_raw, "%Y-%m-%d").date()
-            except ValueError:
-                return jsonify({"error": "start and end must use YYYY-MM-DD."}), 400
-            if production_start > production_end:
-                return jsonify({"error": "start must be on or before end."}), 400
-
-        production_query = db.session.query(
-            MunicipalityMonthlyProduction.municipality_id,
-            func.sum(MunicipalityMonthlyProduction.production_kg).label("production_kg"),
-            func.count(MunicipalityMonthlyProduction.id).label("month_count"),
-            func.sum(
-                db.case(
-                    (MunicipalityMonthlyProduction.is_synthetic.is_(True), 1),
-                    else_=0,
-                )
-            ).label("synthetic_month_count"),
-            func.min(
-                func.to_char(
-                    func.make_date(
-                        MunicipalityMonthlyProduction.production_year,
-                        MunicipalityMonthlyProduction.production_month,
-                        1,
-                    ),
-                    "YYYY-MM",
-                )
-            ).label("start_month"),
-            func.max(
-                func.to_char(
-                    func.make_date(
-                        MunicipalityMonthlyProduction.production_year,
-                        MunicipalityMonthlyProduction.production_month,
-                        1,
-                    ),
-                    "YYYY-MM",
-                )
-            ).label("end_month"),
+        monthly, error = _monthly_production_source(
+            selected_municipality_id, municipality_stats, by_barangay_by_muni
         )
-        if production_year is not None:
-            production_query = production_query.filter(
-                MunicipalityMonthlyProduction.production_year == production_year
-            )
-        if production_month is not None:
-            production_query = production_query.filter(
-                MunicipalityMonthlyProduction.production_month == production_month
-            )
-        if production_start is not None:
-            production_query = production_query.filter(
-                func.make_date(
-                    MunicipalityMonthlyProduction.production_year,
-                    MunicipalityMonthlyProduction.production_month,
-                    1,
-                ) >= production_start.replace(day=1)
-            )
-        if production_end is not None:
-            production_query = production_query.filter(
-                func.make_date(
-                    MunicipalityMonthlyProduction.production_year,
-                    MunicipalityMonthlyProduction.production_month,
-                    1,
-                ) <= production_end.replace(day=1)
-            )
-        production_rows = (
-            production_query
-            .filter(
-                MunicipalityMonthlyProduction.municipality_id.in_(
-                    active_municipality_ids_subquery()
-                )
-            )
-            .filter(*scope_conditions(MunicipalityMonthlyProduction.municipality_id))
-            .group_by(MunicipalityMonthlyProduction.municipality_id)
-            .all()
-        )
-        production_by_municipality = {
-            row.municipality_id: row for row in production_rows
-        }
-        municipality_stats_by_id = {
-            row["municipality_id"]: row for row in municipality_stats
-        }
-        scoped_municipalities = (
-            Municipality.query.filter_by(status="active")
-            .filter(*scope_conditions(Municipality.id))
-            .all()
-        )
-        for municipality in scoped_municipalities:
-            row = production_by_municipality.get(municipality.id)
-            municipality_stat = municipality_stats_by_id.get(municipality.id)
-            if municipality_stat is None:
-                municipality_stat = {
-                    "municipality_id": municipality.id,
-                    "municipality_name": municipality.name,
-                    "record_count": 0,
-                    "total_area_sqm": 0.0,
-                    "total_salt_beds": 0,
-                    "total_registered_producers": 0,
-                    "total_male_producers": 0,
-                    "total_female_producers": 0,
-                    "by_barangay": by_barangay_by_muni.get(municipality.id, []),
-                }
-                municipality_stats.append(municipality_stat)
-            municipality_stat["total_volume_mt"] = (
-                float(row.production_kg or 0) / 1000.0 if row else 0.0
-            )
-            municipality_stat["production_month_count"] = (
-                int(row.month_count) if row else 0
-            )
-            municipality_stat["synthetic_month_count"] = (
-                int(row.synthetic_month_count or 0) if row else 0
-            )
-        total_volume = sum(
-            float(row.production_kg or 0) / 1000.0
-            for row in production_rows
-        )
-        total_production_month_count = sum(
-            int(row.month_count) for row in production_rows
-        )
-        total_synthetic_month_count = sum(
-            int(row.synthetic_month_count or 0) for row in production_rows
-        )
-        if production_rows:
-            production_period = {
-                "start": min(row.start_month for row in production_rows),
-                "end": max(row.end_month for row in production_rows),
-            }
-        production_includes_synthetic = total_synthetic_month_count > 0
-    else:
-        total_production_month_count = 0
-        total_synthetic_month_count = 0
+        if error:
+            return error
+        total_volume = monthly["total_volume"]
+        total_production_month_count = monthly["total_production_month_count"]
+        total_synthetic_month_count = monthly["total_synthetic_month_count"]
+        production_period = monthly["production_period"]
+        production_includes_synthetic = monthly["production_includes_synthetic"]
 
     return jsonify({
         "total_volume_mt": float(total_volume),

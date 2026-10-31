@@ -411,70 +411,117 @@ def create_municipality(data):
     return municipality, encoder_result
 
 
+def _municipality_snapshot(municipality, barangays=None):
+    # WHAT: Copy the auditable municipality fields for the audit entry.
+    # WHY: The ORM object mutates in place, so the before-value must be copied.
+    return {
+        "name": municipality.name,
+        "status": municipality.status,
+        "latitude": float(municipality.latitude) if municipality.latitude is not None else None,
+        "longitude": float(municipality.longitude) if municipality.longitude is not None else None,
+        "barangays": sorted(
+            barangays if barangays is not None
+            else (barangay.name for barangay in municipality.barangays)
+        ),
+    }
+
+
+def _new_barangay_names(municipality, payload):
+    # WHAT: Return only the barangay names that are not attached yet.
+    # WHY: Barangays are add-only on update, and the cap applies to the total.
+    if not payload["barangays"]:
+        return []
+    existing_names = {barangay.name.lower() for barangay in municipality.barangays}
+    new_barangays = [
+        name for name in payload["barangays"] if name.lower() not in existing_names
+    ]
+    if len(municipality.barangays) + len(new_barangays) > MAX_BARANGAYS:
+        raise MunicipalityValidationError(
+            [f"A municipality can have at most {MAX_BARANGAYS} barangays."]
+        )
+    return new_barangays
+
+
+def _apply_name_change(municipality, payload):
+    # WHAT: Rename the municipality and move its slug-based geojson reference.
+    # WHY: The boundary file follows the slug, so both must change together.
+    if payload["name"] is None or payload["name"] == municipality.name:
+        return
+    _assert_name_available(payload["name"], exclude_id=municipality.id)
+    slug = slugify(payload["name"])
+    if not slug:
+        raise MunicipalityValidationError(
+            ["name must contain at least one letter or digit."]
+        )
+    geojson_ref = f"geojson/{slug}.json"
+    _assert_geojson_ref_available(geojson_ref, exclude_id=municipality.id)
+    municipality.name = payload["name"]
+    municipality.geojson_ref = geojson_ref
+
+
+def _apply_status_change(municipality, payload):
+    # WHAT: Apply the status and deactivate encoders when it becomes inactive.
+    # WHY: An inactive municipality must not keep active encoder accounts.
+    if payload["status"] is None:
+        return 0
+    municipality.status = payload["status"]
+    if municipality.status != "inactive":
+        return 0
+    encoders = User.query.filter_by(
+        role="encoder", municipality_id=municipality.id, status="active"
+    ).all()
+    for encoder in encoders:
+        encoder.status = "inactive"
+    return len(encoders)
+
+
+def _move_boundary_file(old_geojson_ref, new_geojson_ref):
+    # WHAT: Keep an uploaded boundary attached to the municipality after a rename.
+    # WHY: geojson_ref follows the new slug, so the stored file must move too or
+    #      the boundary would silently disappear and the old file would be orphaned.
+    if not (
+        old_geojson_ref
+        and new_geojson_ref
+        and old_geojson_ref != new_geojson_ref
+        and old_geojson_ref.startswith("geojson/")
+    ):
+        return
+    from app.services import geojson_service
+
+    old_path = geojson_service.geojson_path(old_geojson_ref)
+    new_path = geojson_service.geojson_path(new_geojson_ref)
+    if os.path.isfile(old_path):
+        try:
+            os.replace(old_path, new_path)
+        except OSError:
+            pass
+
+
 def update_municipality(municipality, data):
     """Apply an edit. Barangays are add-only and deactivation disables encoders.
 
     Returns ``(municipality, deactivated_encoder_count)``.
     """
     payload = _validate_payload(data or {}, creating=False)
-    deactivated = 0
     old_geojson_ref = municipality.geojson_ref
-    before = {
-        "name": municipality.name,
-        "status": municipality.status,
-        "latitude": float(municipality.latitude) if municipality.latitude is not None else None,
-        "longitude": float(municipality.longitude) if municipality.longitude is not None else None,
-        "barangays": sorted(b.name for b in municipality.barangays),
-    }
+    before = _municipality_snapshot(municipality)
 
-    new_barangays = []
-    if payload["barangays"]:
-        existing_names = {barangay.name.lower() for barangay in municipality.barangays}
-        new_barangays = [
-            name for name in payload["barangays"] if name.lower() not in existing_names
-        ]
-        if len(municipality.barangays) + len(new_barangays) > MAX_BARANGAYS:
-            raise MunicipalityValidationError(
-                [f"A municipality can have at most {MAX_BARANGAYS} barangays."]
-            )
-
-    if payload["name"] is not None and payload["name"] != municipality.name:
-        _assert_name_available(payload["name"], exclude_id=municipality.id)
-        slug = slugify(payload["name"])
-        if not slug:
-            raise MunicipalityValidationError(
-                ["name must contain at least one letter or digit."]
-            )
-        geojson_ref = f"geojson/{slug}.json"
-        _assert_geojson_ref_available(geojson_ref, exclude_id=municipality.id)
-        municipality.name = payload["name"]
-        municipality.geojson_ref = geojson_ref
+    new_barangays = _new_barangay_names(municipality, payload)
+    _apply_name_change(municipality, payload)
 
     if payload["latitude"] is not None:
         municipality.latitude = payload["latitude"]
     if payload["longitude"] is not None:
         municipality.longitude = payload["longitude"]
 
-    if payload["status"] is not None:
-        municipality.status = payload["status"]
-        if municipality.status == "inactive":
-            encoders = User.query.filter_by(
-                role="encoder", municipality_id=municipality.id, status="active"
-            ).all()
-            for encoder in encoders:
-                encoder.status = "inactive"
-            deactivated = len(encoders)
+    deactivated = _apply_status_change(municipality, payload)
 
     for name in new_barangays:
         db.session.add(Barangay(municipality_id=municipality.id, name=name))
 
-    after = {
-        "name": municipality.name,
-        "status": municipality.status,
-        "latitude": float(municipality.latitude) if municipality.latitude is not None else None,
-        "longitude": float(municipality.longitude) if municipality.longitude is not None else None,
-        "barangays": sorted(before["barangays"] + new_barangays),
-    }
+    after = _municipality_snapshot(
+        municipality, barangays=before["barangays"] + new_barangays
+    )
     changed = {
         key: {"from": before[key], "to": after[key]}
         for key in before
@@ -500,25 +547,7 @@ def update_municipality(municipality, data):
             "That change conflicts with an existing municipality or barangay."
         )
 
-    # WHAT: Keep an uploaded boundary attached to the municipality after a rename.
-    # WHY: geojson_ref follows the new slug, so the stored file must move too or
-    #      the boundary would silently disappear and the old file would be orphaned.
-    new_geojson_ref = municipality.geojson_ref
-    if (
-        old_geojson_ref
-        and new_geojson_ref
-        and old_geojson_ref != new_geojson_ref
-        and old_geojson_ref.startswith("geojson/")
-    ):
-        from app.services import geojson_service
-
-        old_path = geojson_service.geojson_path(old_geojson_ref)
-        new_path = geojson_service.geojson_path(new_geojson_ref)
-        if os.path.isfile(old_path):
-            try:
-                os.replace(old_path, new_path)
-            except OSError:
-                pass
+    _move_boundary_file(old_geojson_ref, municipality.geojson_ref)
 
     return municipality, deactivated
 
@@ -612,43 +641,36 @@ def _remove_or_detach_encoders(municipality_id):
     return deleted, detached
 
 
-def delete_municipality(municipality, *, force=False):
-    """Hard-delete a municipality and every row that belongs to it.
+_PROTECTED_DEPENDENCY_KEYS = (
+    "production_records",
+    "environment_reports",
+    "producer_reports",
+    "producers",
+    "reports",
+    "forecast_runs",
+    "monthly_production",
+    "salt_bed_data",
+)
 
-    Production data makes this destructive, so a caller that has not explicitly
-    set ``force`` receives a conflict listing the dependent row counts. The
-    blueprint translates that into a second, explicit confirmation in the UI.
-    """
-    municipality_id = municipality.id
-    name = municipality.name
-    geojson_ref = municipality.geojson_ref
-    counts = _municipality_dependency_counts(municipality)
-    protected_total = sum(
-        counts[key]
-        for key in (
-            "production_records",
-            "environment_reports",
-            "producer_reports",
-            "producers",
-            "reports",
-            "forecast_runs",
-            "monthly_production",
-            "salt_bed_data",
-        )
+
+def _dependency_conflict(name, counts):
+    # WHAT: Raise the standard conflict listing every protected dependency.
+    # WHY: A destructive hard delete needs an explicit force confirmation.
+    return MunicipalityConflictError(
+        f"{name} still has dependent data "
+        f"({counts['production_records']} production record(s), "
+        f"{counts['environment_reports']} environment report(s), "
+        f"{counts['producer_reports']} producer report(s), "
+        f"{counts['producers']} producer(s), "
+        f"{counts['reports']} generated report(s), "
+        f"{counts['forecast_runs']} forecast run(s)). "
+        "Re-send with force=true to delete all of it."
     )
 
-    if protected_total and not force:
-        raise MunicipalityConflictError(
-            f"{name} still has dependent data "
-            f"({counts['production_records']} production record(s), "
-            f"{counts['environment_reports']} environment report(s), "
-            f"{counts['producer_reports']} producer report(s), "
-            f"{counts['producers']} producer(s), "
-            f"{counts['reports']} generated report(s), "
-            f"{counts['forecast_runs']} forecast run(s)). "
-            "Re-send with force=true to delete all of it."
-        )
 
+def _collect_delete_targets(municipality_id):
+    # WHAT: Gather child ids and stored report files before deleting rows.
+    # WHY: The files must be removed by name after the database rows are gone.
     barangay_ids = [
         row[0]
         for row in db.session.query(Barangay.id)
@@ -671,7 +693,12 @@ def delete_municipality(municipality, *, force=False):
         .all()
         if row[0]
     ]
+    return barangay_ids, forecast_run_ids, report_files
 
+
+def _delete_municipality_rows(municipality_id, barangay_ids, forecast_run_ids):
+    # WHAT: Delete every row that belongs to the municipality.
+    # WHY: Order matters: child rows must go before their parent rows.
     if barangay_ids:
         ProducerReportEntry.query.filter(
             ProducerReportEntry.barangay_id.in_(barangay_ids)
@@ -718,6 +745,69 @@ def delete_municipality(municipality, *, force=False):
         synchronize_session=False
     )
 
+
+def _remove_boundary_file(geojson_ref):
+    # WHAT: Delete the stored boundary file for a hard-deleted municipality.
+    # WHY: The database row is gone, so geojson/<slug>.json would be orphaned.
+    if not geojson_ref or not geojson_ref.startswith("geojson/"):
+        return None
+    from app.services import geojson_service
+
+    try:
+        path = geojson_service.geojson_path(geojson_ref)
+        if os.path.isfile(path):
+            os.remove(path)
+            return True
+    except OSError:
+        return False
+    return None
+
+
+def _remove_report_files(report_files):
+    # WHAT: Delete the stored files behind deleted report rows.
+    # WHY: The report rows are gone, so their files would be orphaned.
+    if not report_files:
+        return None
+    reports_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "static",
+        "reports",
+    )
+    removed_reports = 0
+    for stored_name in report_files:
+        path = os.path.join(reports_dir, os.path.basename(stored_name))
+        try:
+            if os.path.isfile(path):
+                os.remove(path)
+                removed_reports += 1
+        except OSError:
+            pass
+    return removed_reports
+
+
+def delete_municipality(municipality, *, force=False):
+    """Hard-delete a municipality and every row that belongs to it.
+
+    Production data makes this destructive, so a caller that has not explicitly
+    set ``force`` receives a conflict listing the dependent row counts. The
+    blueprint translates that into a second, explicit confirmation in the UI.
+    """
+    municipality_id = municipality.id
+    name = municipality.name
+    geojson_ref = municipality.geojson_ref
+    counts = _municipality_dependency_counts(municipality)
+    protected_total = sum(
+        counts[key] for key in _PROTECTED_DEPENDENCY_KEYS
+    )
+
+    if protected_total and not force:
+        raise _dependency_conflict(name, counts)
+
+    barangay_ids, forecast_run_ids, report_files = _collect_delete_targets(
+        municipality_id
+    )
+    _delete_municipality_rows(municipality_id, barangay_ids, forecast_run_ids)
+
     deleted_encoders, detached_encoders = _remove_or_detach_encoders(municipality_id)
     counts["deleted_encoders"] = deleted_encoders
     counts["detached_encoders"] = detached_encoders
@@ -732,36 +822,12 @@ def delete_municipality(municipality, *, force=False):
     Municipality.query.filter_by(id=municipality_id).delete(synchronize_session=False)
     db.session.commit()
 
-    # WHAT: Remove the stored boundary file after the database commit succeeds.
-    # WHY: A hard delete must not leave an orphaned geojson/<slug>.json behind.
-    if geojson_ref and geojson_ref.startswith("geojson/"):
-        from app.services import geojson_service
+    boundary_removed = _remove_boundary_file(geojson_ref)
+    if boundary_removed is not None:
+        counts["boundary_file_removed"] = boundary_removed
 
-        try:
-            path = geojson_service.geojson_path(geojson_ref)
-            if os.path.isfile(path):
-                os.remove(path)
-                counts["boundary_file_removed"] = True
-        except OSError:
-            counts["boundary_file_removed"] = False
-
-    # WHAT: Remove generated report files for the deleted rows.
-    # WHY: The report rows are gone, so their stored files would be orphaned.
-    if report_files:
-        reports_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "static",
-            "reports",
-        )
-        removed_reports = 0
-        for stored_name in report_files:
-            path = os.path.join(reports_dir, os.path.basename(stored_name))
-            try:
-                if os.path.isfile(path):
-                    os.remove(path)
-                    removed_reports += 1
-            except OSError:
-                pass
+    removed_reports = _remove_report_files(report_files)
+    if removed_reports is not None:
         counts["report_files_removed"] = removed_reports
     return counts
 

@@ -72,107 +72,153 @@ def _allocate(record, data):
         record.production_method = data["production_method"]
 
 
+def _validate_barangay(data, partial, errors):
+    # WHAT: Check the barangay exists and belongs to the encoder's municipality.
+    # WHY: An encoder must never write a record outside its assigned area.
+    if partial and "barangay_id" not in data:
+        return
+    barangay_id = data.get("barangay_id")
+    if barangay_id in (None, ""):
+        errors.append("barangay_id is required.")
+        return
+    barangay = Barangay.query.get(barangay_id)
+    if not barangay or barangay.municipality_id != current_user.municipality_id:
+        errors.append("barangay_id is invalid for this municipality.")
+
+
+def _validate_record_date(data, partial, errors):
+    if partial and "record_date" not in data:
+        return
+    date_str = data.get("record_date")
+    if not date_str:
+        errors.append("record_date is required.")
+        return
+    try:
+        _parse_date(date_str)
+    except (TypeError, ValueError):
+        errors.append("record_date must be a date in YYYY-MM-DD format.")
+
+
+def _validate_production_volume(data, partial, errors):
+    if partial and "production_volume_mt" not in data:
+        return
+    try:
+        volume = float(data.get("production_volume_mt"))
+        if volume < 0:
+            errors.append("production_volume_mt must be non-negative.")
+        elif volume > MAX_MONTHLY_VOLUME_MT:
+            errors.append(
+                f"production_volume_mt cannot exceed {MAX_MONTHLY_VOLUME_MT} metric tons per month."
+            )
+    except (TypeError, ValueError):
+        errors.append("production_volume_mt must be a number (metric tons).")
+
+
+def _validate_salt_beds(data, partial, existing_record, errors):
+    # WHAT: Check bed count and that it does not exceed approved beds.
+    # WHY: A record cannot report more beds than the barangay's environment report.
+    if partial and "num_salt_beds" not in data and "barangay_id" not in data:
+        return
+    value = data.get(
+        "num_salt_beds",
+        existing_record.num_salt_beds if existing_record else None,
+    )
+    beds_used = None
+    if value in (None, ""):
+        errors.append("num_salt_beds is required.")
+    else:
+        try:
+            beds_used = int(value)
+            if beds_used <= 0:
+                errors.append("num_salt_beds must be positive.")
+        except (TypeError, ValueError):
+            errors.append("num_salt_beds must be an integer.")
+    barangay_id = data.get(
+        "barangay_id",
+        existing_record.barangay_id if existing_record else None,
+    )
+    if beds_used is None or not barangay_id:
+        return
+    environment_report = (
+        EnvironmentReport.query
+        .filter_by(
+            municipality_id=current_user.municipality_id,
+            barangay_id=barangay_id,
+            status="approved",
+        )
+        .order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc())
+        .first()
+    )
+    if environment_report and beds_used > environment_report.num_salt_beds:
+        errors.append(
+            f"Beds used cannot exceed the {environment_report.num_salt_beds} available beds for this barangay."
+        )
+
+
+def _validate_required_count(field, value, errors):
+    # WHAT: A producer count is required and must be a non-negative integer.
+    # WHY: The dashboard totals these counts, so a bad value breaks every panel.
+    if value in (None, ""):
+        errors.append(f"{field} is required.")
+        return
+    try:
+        if int(value) < 0:
+            errors.append(f"{field} must be non-negative.")
+    except (TypeError, ValueError):
+        errors.append(f"{field} must be an integer.")
+
+
+def _validate_optional_count(field, value, errors):
+    try:
+        if int(value) < 0:
+            errors.append(f"{field} must be non-negative.")
+    except (TypeError, ValueError):
+        errors.append(f"{field} must be an integer.")
+
+
+def _validate_area_per_bed(data, errors):
+    if "area_per_salt_bed" not in data or data["area_per_salt_bed"] in (None, ""):
+        return
+    try:
+        area = float(data["area_per_salt_bed"])
+        if area < 0:
+            errors.append("area_per_salt_bed must be non-negative (m2).")
+    except (TypeError, ValueError):
+        errors.append("area_per_salt_bed must be a number (m2).")
+
+
+def _validate_method(data, partial, errors):
+    if partial and "production_method" not in data:
+        return
+    method = data.get("production_method")
+    if method in (None, ""):
+        errors.append("production_method is required.")
+    elif method not in PRODUCTION_METHODS:
+        errors.append(
+            f"production_method must be one of: {', '.join(PRODUCTION_METHODS)}."
+        )
+
+
 def _validate(data, partial=False, existing_record=None):
     # WHAT: Validate one record's incoming payload before save/update.
     # WHY: Pinipigilan ang malisya/mali na data; partial=True kapag update lamang.
     errors = []
 
-    if not partial or "barangay_id" in data:
-        barangay_id = data.get("barangay_id")
-        if barangay_id in (None, ""):
-            errors.append("barangay_id is required.")
-        else:
-            barangay = Barangay.query.get(barangay_id)
-            if not barangay or barangay.municipality_id != current_user.municipality_id:
-                errors.append("barangay_id is invalid for this municipality.")
-
-    if not partial or "record_date" in data:
-        date_str = data.get("record_date")
-        if not date_str:
-            errors.append("record_date is required.")
-        else:
-            try:
-                _parse_date(date_str)
-            except (TypeError, ValueError):
-                errors.append("record_date must be a date in YYYY-MM-DD format.")
-
-    if not partial or "production_volume_mt" in data:
-        try:
-            vol = float(data.get("production_volume_mt"))
-            if vol < 0:
-                errors.append("production_volume_mt must be non-negative.")
-            elif vol > MAX_MONTHLY_VOLUME_MT:
-                errors.append(
-                    f"production_volume_mt cannot exceed {MAX_MONTHLY_VOLUME_MT} metric tons per month."
-                )
-        except (TypeError, ValueError):
-            errors.append("production_volume_mt must be a number (metric tons).")
-
-    if not partial or "num_salt_beds" in data or "barangay_id" in data:
-        value = data.get("num_salt_beds", existing_record.num_salt_beds if existing_record else None)
-        beds_used = None
-        if value in (None, ""):
-            errors.append("num_salt_beds is required.")
-        else:
-            try:
-                beds_used = int(value)
-                if beds_used <= 0:
-                    errors.append("num_salt_beds must be positive.")
-            except (TypeError, ValueError):
-                errors.append("num_salt_beds must be an integer.")
-        barangay_id = data.get("barangay_id", existing_record.barangay_id if existing_record else None)
-        if beds_used is not None and barangay_id:
-            environment_report = (
-                EnvironmentReport.query
-                .filter_by(
-                    municipality_id=current_user.municipality_id,
-                    barangay_id=barangay_id,
-                    status="approved",
-                )
-                .order_by(EnvironmentReport.created_at.desc(), EnvironmentReport.id.desc())
-                .first()
-            )
-            if environment_report and beds_used > environment_report.num_salt_beds:
-                errors.append(
-                    f"Beds used cannot exceed the {environment_report.num_salt_beds} available beds for this barangay."
-                )
+    _validate_barangay(data, partial, errors)
+    _validate_record_date(data, partial, errors)
+    _validate_production_volume(data, partial, errors)
+    _validate_salt_beds(data, partial, existing_record, errors)
 
     for field in PRODUCER_COUNT_FIELDS:
         if field in data:
-            value = data.get(field)
-            if value in (None, ""):
-                errors.append(f"{field} is required.")
-            else:
-                try:
-                    if int(value) < 0:
-                        errors.append(f"{field} must be non-negative.")
-                except (TypeError, ValueError):
-                    errors.append(f"{field} must be an integer.")
+            _validate_required_count(field, data.get(field), errors)
 
     for field in AGE_BUCKET_FIELDS:
         if field in data and data[field] not in (None, ""):
-            try:
-                if int(data[field]) < 0:
-                    errors.append(f"{field} must be non-negative.")
-            except (TypeError, ValueError):
-                errors.append(f"{field} must be an integer.")
+            _validate_optional_count(field, data[field], errors)
 
-    if "area_per_salt_bed" in data and data["area_per_salt_bed"] not in (None, ""):
-        try:
-            area = float(data["area_per_salt_bed"])
-            if area < 0:
-                errors.append("area_per_salt_bed must be non-negative (m2).")
-        except (TypeError, ValueError):
-            errors.append("area_per_salt_bed must be a number (m2).")
-
-    if not partial or "production_method" in data:
-        method = data.get("production_method")
-        if method in (None, ""):
-            errors.append("production_method is required.")
-        elif method not in PRODUCTION_METHODS:
-            errors.append(
-                f"production_method must be one of: {', '.join(PRODUCTION_METHODS)}."
-            )
+    _validate_area_per_bed(data, errors)
+    _validate_method(data, partial, errors)
 
     return errors
 
@@ -743,6 +789,95 @@ def encoder_months():
     return jsonify({"months": months})
 
 
+def _record_totals(base):
+    # WHAT: Sum volume, area, records, beds and registered producers.
+    # WHY: The month and range branches must report identical totals.
+    total_volume = base.with_entities(
+        func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)
+    ).scalar() or 0
+    total_area = base.with_entities(
+        func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)
+    ).scalar() or 0
+    record_count = base.count()
+    total_beds = base.with_entities(
+        func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0)
+    ).scalar() or 0
+    total_registered = base.with_entities(
+        func.coalesce(func.sum(ProductionRecord.registered_producers), 0)
+    ).scalar() or 0
+    return total_volume, total_area, record_count, total_beds, total_registered
+
+
+def _by_month_series(month_rows):
+    # WHAT: Pivot monthly barangay rows into chart-ready rows.
+    # WHY: Both branches build the same stacked-chart shape.
+    months_set = []
+    months_seen = set()
+    barangay_names = []
+    barangay_seen = set()
+    series = {}
+    for month, _barangay_id, barangay_name, volume in month_rows:
+        if month not in months_seen:
+            months_seen.add(month)
+            months_set.append(month)
+        if barangay_name not in barangay_seen:
+            barangay_seen.add(barangay_name)
+            barangay_names.append(barangay_name)
+            series[barangay_name] = {}
+        series[barangay_name][month] = float(volume or 0)
+
+    by_month = []
+    for month in months_set:
+        row = {"month": month}
+        for barangay_name in barangay_names:
+            row[barangay_name] = series.get(barangay_name, {}).get(month, 0.0)
+        by_month.append(row)
+    return by_month, barangay_names
+
+
+def _by_barangay_payload(rows):
+    # WHAT: Serialize grouped barangay totals for the dashboard table.
+    # WHY: Both branches return the same row shape.
+    return [
+        {
+            "barangay_id": row.barangay_id,
+            "barangay": row.name,
+            "total_volume_mt": float(row.total_volume or 0),
+            "record_count": row.record_count,
+            "total_area_sqm": float(row.total_area or 0),
+            "total_registered_producers": int(row.total_registered or 0),
+        }
+        for row in rows
+    ]
+
+
+def _encoder_stats_response(
+    period,
+    totals,
+    municipality_total,
+    by_barangay_rows,
+    by_month,
+    barangay_names,
+):
+    # WHAT: Build the single encoder stats response used by both branches.
+    # WHY: Keeps the JSON shape identical no matter how the period was chosen.
+    total_volume, total_area, record_count, total_beds, total_registered = totals
+    return jsonify({
+        "municipality_id": current_user.municipality_id,
+        "municipality_name": current_user.municipality.name if current_user.municipality else None,
+        "period": period,
+        "total_volume_mt": float(total_volume),
+        "total_area_sqm": float(total_area or 0),
+        "record_count": record_count,
+        "total_salt_beds": int(total_beds or 0),
+        "total_registered_producers": int(total_registered or 0),
+        "municipality_total_volume_mt": municipality_total,
+        "by_barangay": _by_barangay_payload(by_barangay_rows),
+        "by_month": by_month,
+        "barangays": barangay_names,
+    })
+
+
 @encoder_api_bp.route("/stats", methods=["GET"])
 @login_required
 def stats():
@@ -817,62 +952,19 @@ def stats():
             .order_by(func.to_char(ProductionRecord.record_date, "YYYY-MM"))
             .all()
         )
-        months_set = []
-        months_seen = set()
-        barangay_names = []
-        barangay_seen = set()
-        series = {}
-        for m, _bid, bname, vol in month_rows:
-            if m not in months_seen:
-                months_seen.add(m)
-                months_set.append(m)
-            if bname not in barangay_seen:
-                barangay_seen.add(bname)
-                barangay_names.append(bname)
-                series[bname] = {}
-            series[bname][m] = float(vol or 0)
-        by_month = []
-        for m in months_set:
-            row = {"month": m}
-            for bname in barangay_names:
-                row[bname] = series.get(bname, {}).get(m, 0.0)
-            by_month.append(row)
-        total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
-        total_area = base.with_entities(
-            func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)
-        ).scalar() or 0
-        record_count = base.count()
-        total_beds = base.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0)).scalar() or 0
-        total_registered = base.with_entities(
-            func.coalesce(func.sum(ProductionRecord.registered_producers), 0)
-        ).scalar() or 0
-        return jsonify({
-            "municipality_id": current_user.municipality_id,
-            "municipality_name": current_user.municipality.name if current_user.municipality else None,
-            "period": {
+        by_month, barangay_names = _by_month_series(month_rows)
+        totals = _record_totals(base)
+        return _encoder_stats_response(
+            {
                 "start": month_start.isoformat(),
                 "end": (month_end - timedelta(days=1)).isoformat(),
             },
-            "total_volume_mt": float(total_volume),
-            "total_area_sqm": float(total_area or 0),
-            "record_count": record_count,
-            "total_salt_beds": int(total_beds or 0),
-            "total_registered_producers": int(total_registered or 0),
-            "municipality_total_volume_mt": municipality_total,
-            "by_barangay": [
-                {
-                    "barangay_id": b.barangay_id,
-                    "barangay": b.name,
-                    "total_volume_mt": float(b.total_volume or 0),
-                    "record_count": b.record_count,
-                    "total_area_sqm": float(b.total_area or 0),
-                    "total_registered_producers": int(b.total_registered or 0),
-                }
-                for b in by_barangay_q
-            ],
-            "by_month": by_month,
-            "barangays": barangay_names,
-        })
+            totals,
+            municipality_total,
+            by_barangay_q,
+            by_month,
+            barangay_names,
+        )
 
     base = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id)
     start_raw = request.args.get("start")
@@ -897,15 +989,7 @@ def stats():
         by_barangay_q = by_barangay_q.filter(ProductionRecord.barangay_id == barangay_id)
     by_barangay = by_barangay_q.group_by(ProductionRecord.barangay_id, Barangay.name).all()
 
-    total_volume = base.with_entities(func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0)).scalar() or 0
-    total_area = base.with_entities(
-        func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0)
-    ).scalar() or 0
-    record_count = base.count()
-    total_beds = base.with_entities(func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0)).scalar() or 0
-    total_registered = base.with_entities(
-        func.coalesce(func.sum(ProductionRecord.registered_producers), 0)
-    ).scalar() or 0
+    totals = _record_totals(base)
 
     month_rows = (
         base.with_entities(
@@ -924,52 +1008,15 @@ def stats():
         .all()
     )
 
-    months_set = []
-    months_seen = set()
-    barangay_names = []
-    barangay_seen = set()
-    series = {}
-    for m, _bid, bname, vol in month_rows:
-        if m not in months_seen:
-            months_seen.add(m)
-            months_set.append(m)
-        if bname not in barangay_seen:
-            barangay_seen.add(bname)
-            barangay_names.append(bname)
-            series[bname] = {}
-        series[bname][m] = float(vol or 0)
-
-    by_month = []
-    for m in months_set:
-        row = {"month": m}
-        for bname in barangay_names:
-            row[bname] = series.get(bname, {}).get(m, 0.0)
-        by_month.append(row)
-
-    return jsonify({
-        "municipality_id": current_user.municipality_id,
-        "municipality_name": current_user.municipality.name if current_user.municipality else None,
-        "period": {
+    by_month, barangay_names = _by_month_series(month_rows)
+    return _encoder_stats_response(
+        {
             "start": start_d.isoformat() if start_d else None,
             "end": end_d.isoformat() if end_d else None,
         },
-        "total_volume_mt": float(total_volume),
-        "total_area_sqm": float(total_area or 0),
-        "record_count": record_count,
-        "total_salt_beds": int(total_beds or 0),
-        "total_registered_producers": int(total_registered or 0),
-        "municipality_total_volume_mt": municipality_total,
-        "by_barangay": [
-            {
-                "barangay_id": b.barangay_id,
-                "barangay": b.name,
-                "total_volume_mt": float(b.total_volume or 0),
-                "record_count": b.record_count,
-                "total_area_sqm": float(b.total_area or 0),
-                "total_registered_producers": int(b.total_registered or 0),
-            }
-            for b in by_barangay
-        ],
-        "by_month": by_month,
-        "barangays": barangay_names,
-    })
+        totals,
+        municipality_total,
+        by_barangay,
+        by_month,
+        barangay_names,
+    )
