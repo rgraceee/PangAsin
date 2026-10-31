@@ -1,26 +1,82 @@
-// WHAT: Shared FAQ list with client-side search and accordions grouped by
-//       category, rendered in a two-column layout (FAQ on left, help cards
-//       on right). Used by both the public Help Center (/help) and Settings >
-//       Help & Support so answers stay consistent.
+// WHAT: Shared FAQ list with accordions, rendered grouped by category
+//       (public /help) or flat (Settings > Help & Support), in a two-column
+//       layout (FAQ on left, help cards on right).
 // WHY: One component to maintain; answers defined once in faqData.js.
+//      Settings shows one flat list of questions (no category headings,
+//      no search bar, no hero) because the section header already says
+//      "Help & Support".
 import React, { useState } from 'react';
 import { BookOpen, AlertTriangle, Mail } from 'lucide-react';
 
-export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual', reportUrl = '/help/report', showSearch = true, showHero = true }) {
+export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual', reportUrl = '/help/report', showSearch = true, showHero = true, grouped = true }) {
   const [query, setQuery] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
 
-  const filtered = faqs.map((category) => ({
-    category: category.category,
-    items: category.items.filter(
-      (item) =>
+  // Flatten all items for search
+  const allItems = faqs.flatMap((c) => c.items.map((item) => ({ ...item, category: c.category })));
+  const filtered = query.length > 0
+    ? allItems.filter((item) =>
         item.q.toLowerCase().includes(query.toLowerCase()) ||
         item.a.toLowerCase().includes(query.toLowerCase()),
-    ),
-  })).filter((category) => category.items.length > 0);
+      )
+    : allItems;
 
   const hasResults = query.length > 0 && filtered.length > 0;
   const categories = [...new Set(faqs.map((c) => c.category))];
+
+  const faqListContent = grouped ? (
+    <>
+      {categories.map((category) => {
+        const items = faqs.filter((f) => f.category === category);
+        const visibleItems = query.length === 0 ? items : filtered.filter((f) => f.category === category);
+        if (visibleItems.length === 0) return null;
+        return (
+          <div key={category} className="faq-category">
+            <h4 className="faq-category-title">{category}</h4>
+            <div className="faq-list">
+              {visibleItems.map((faq, index) => (
+                <div key={`${category}-${index}`} className="faq-item">
+                  <button
+                    type="button"
+                    className={`faq-question${openFaq === `${category}-${index}` ? ' active' : ''}`}
+                    aria-expanded={openFaq === `${category}-${index}`}
+                    aria-controls={`faq-${category}-${index}`}
+                    onClick={() => setOpenFaq(openFaq === `${category}-${index}` ? null : `${category}-${index}`)}
+                  >
+                    {faq.q}
+                    <span className="faq-toggle" aria-hidden="true">{openFaq === `${category}-${index}` ? '▸' : '▾'}</span>
+                  </button>
+                  <div id={`faq-${category}-${index}`} className="faq-answer" hidden={openFaq !== `${category}-${index}`}>
+                    {faq.a}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  ) : (
+    <>
+      {filtered.map((faq, index) => (
+        <div key={index} className="faq-item">
+          <button
+            type="button"
+            className={`faq-question${openFaq === index ? ' active' : ''}`}
+            aria-expanded={openFaq === index}
+            aria-controls={`faq-${index}`}
+            onClick={() => setOpenFaq(openFaq === index ? null : index)}
+          >
+            {faq.q}
+            <span className="faq-toggle" aria-hidden="true">{openFaq === index ? '▸' : '▾'}</span>
+          </button>
+          <div id={`faq-${index}`} className="faq-answer" hidden={openFaq !== index}>
+            {faq.a}
+          </div>
+        </div>
+      ))}
+    </>
+  );
 
   return (
     <div className="faq-list-wrap">
@@ -61,43 +117,8 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
       <div className="faq-two-column">
         {/* Left: FAQ accordions */}
         <div className="faq-left-column">
-          <h3 className="faq-list-heading">Frequently Asked Questions</h3>
-          <div className="faq-wrap">
-            {categories.map((category) => {
-              const items = faqs.filter((f) => f.category === category);
-              const visibleItems = query.length === 0 ? items : filtered.find((c) => c.category === category)?.items || [];
-              if (visibleItems.length === 0) return null;
-              return (
-                <div key={category} className="faq-category">
-                  <h4 className="faq-category-title">{category}</h4>
-                  <div className="faq-list">
-                    {visibleItems.map((faq, index) => {
-                      const isOpen = openFaq === `${category}-${index}`;
-                      return (
-                        <div key={`${category}-${index}`} className="faq-item">
-                          <button
-                            type="button"
-                            className={`faq-question${isOpen ? ' active' : ''}`}
-                            aria-expanded={isOpen}
-                            aria-controls={`faq-${category}-${index}`}
-                            onClick={() => setOpenFaq(isOpen ? null : `${category}-${index}`)}
-                          >
-                            {faq.q}
-                            <span className="faq-toggle" aria-hidden="true">
-                              {isOpen ? '▸' : '▾'}
-                            </span>
-                          </button>
-                          <div id={`faq-${category}-${index}`} className="faq-answer" hidden={!isOpen}>
-                            {faq.a}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {grouped ? null : <h3 className="faq-list-heading">Frequently Asked Questions</h3>}
+          {faqListContent}
         </div>
 
         {/* Right: Help cards */}
@@ -105,18 +126,18 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
           <h3 className="faq-right-heading">Need more help?</h3>
           <div className="faq-help-cards">
             <a href={manualUrl} className="faq-help-card">
-            <span className="faq-card-icon" aria-hidden="true">
-              <BookOpen size={20} strokeWidth={2} />
-            </span>
+              <span className="faq-card-icon" aria-hidden="true">
+                <BookOpen size={20} strokeWidth={2} />
+              </span>
               <div>
                 <div className="faq-card-title">User Manual</div>
                 <div className="faq-card-desc">Read the full user manual for the PangAsin dashboard.</div>
               </div>
             </a>
             <a href={reportUrl} className="faq-help-card">
-            <span className="faq-card-icon" aria-hidden="true">
-              <AlertTriangle size={20} strokeWidth={2} />
-            </span>
+              <span className="faq-card-icon" aria-hidden="true">
+                <AlertTriangle size={20} strokeWidth={2} />
+              </span>
               <div>
                 <div className="faq-card-title">Report a problem</div>
                 <div className="faq-card-desc">Tell us about a data error, login issue, or bug.</div>

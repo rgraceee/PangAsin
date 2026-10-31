@@ -271,6 +271,7 @@ export default function Settings({ user }) {
               reportUrl="/help/report"
               showSearch={false}
               showHero={false}
+              grouped={false}
             />
           </>
         )}
