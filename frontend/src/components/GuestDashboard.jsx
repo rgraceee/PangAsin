@@ -181,7 +181,6 @@ export default function GuestDashboard() {
           <p className="public-footer-copy">© 2026 ASIN Center, Pangasinan State University</p>
           <nav className="public-footer-links" aria-label="Support and access">
             <Link to="/privacy">Privacy Policy</Link>
-            <Link to="/help">Help Center</Link>
             <Link to="/login">Sign in</Link>
           </nav>
         </div>
