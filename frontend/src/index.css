@@ -2302,23 +2302,36 @@ body {
 /* WHAT: Mas malaking close target na tugma sa header.
    WHY: Madaling mapindot sa mobile at hindi na kailangang i-click ang labas. */
 .leaflet-container .admin-map-popup a.leaflet-popup-close-button {
-  top: 8px;
-  right: 8px;
-  width: 32px;
-  height: 32px;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
-  font: 700 24px/32px "Inter", "Segoe UI", Roboto, sans-serif;
+  font: 700 22px/28px "Inter", "Segoe UI", Roboto, sans-serif;
   text-align: center;
-  transition: background 0.15s ease;
+  line-height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .leaflet-container .admin-map-popup a.leaflet-popup-close-button:hover,
 .leaflet-container .admin-map-popup a.leaflet-popup-close-button:focus {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.6);
   color: #ffffff;
+  transform: rotate(90deg);
+}
+
+.leaflet-container .admin-map-popup a.leaflet-popup-close-button:active {
+  background: rgba(255, 255, 255, 0.45);
+  transform: rotate(180deg) scale(0.95);
 }
 
 .leaflet-container .admin-map-popup a.leaflet-popup-close-button:focus-visible {
@@ -2327,19 +2340,22 @@ body {
 }
 
 .map-popup-card .map-popup-header {
+  position: relative;
   font-family: "Montserrat", sans-serif;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.2;
   color: #ffffff;
-  padding: 8px 40px 8px 14px;
+  padding: 10px 44px 10px 16px;
   background: linear-gradient(135deg, var(--ui-accent) 0%, var(--ui-accent-dark) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .map-popup-title {
   display: block;
   min-width: 0;
   overflow-wrap: break-word;
+  letter-spacing: 0.2px;
 }
 
 .map-popup-row {
@@ -2385,12 +2401,12 @@ body {
   }
 
   .leaflet-container .admin-map-popup a.leaflet-popup-close-button {
-    top: 6px;
-    right: 6px;
-    width: 40px;
-    height: 40px;
-    font-size: 28px;
-    line-height: 40px;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    font-size: 26px;
+    line-height: 36px;
   }
 
   .map-popup-row {
