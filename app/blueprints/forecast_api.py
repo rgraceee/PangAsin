@@ -9,8 +9,8 @@ from app.services.forecast_service import (
     get_municipality_outlook,
     evaluate_target,
 )
-from app.utils import _admin_only
-from app.services.municipalities import is_active_municipality
+from app.utils import is_not_admin
+from app.services.municipality_directory import is_active_municipality
 
 forecast_api_bp = Blueprint("forecast_api", __name__, url_prefix="/api/admin/forecast")
 
@@ -74,7 +74,7 @@ def _serialize_run(run):
 @forecast_api_bp.route("/run", methods=["POST"])
 @login_required
 def run():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     body = request.get_json(silent=True) or {}
@@ -114,7 +114,7 @@ def list_runs():
            municipality_id IS NULL), latest="1" (only the newest run, which is
            all the Forecasting page needs and is far cheaper to serialize).
     """
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality_id = request.args.get("municipality_id", type=int)
@@ -143,7 +143,7 @@ def list_runs():
 @forecast_api_bp.route("/runs/<run_id>", methods=["GET"])
 @login_required
 def get_run(run_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     run = ForecastRun.query.get_or_404(run_id)
@@ -153,7 +153,7 @@ def get_run(run_id):
 @forecast_api_bp.route("/municipality-outlook", methods=["GET"])
 @login_required
 def outlook():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     data = get_municipality_outlook()
@@ -163,7 +163,7 @@ def outlook():
 @forecast_api_bp.route("/evaluate-target", methods=["POST"])
 @login_required
 def evaluate_target_route():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     body = request.get_json(silent=True) or {}

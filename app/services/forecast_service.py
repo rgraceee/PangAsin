@@ -11,7 +11,7 @@ from app.extensions import db
 from app.models.forecast import ForecastRun, ForecastPoint
 from app.models.municipality import Municipality
 from app.models.municipality_production import MunicipalityMonthlyProduction
-from app.services.aggregates import (
+from app.services.production_aggregates import (
     _monthly_aggregates,
     _reindex_complete,
     _last_month_with_data,

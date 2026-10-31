@@ -19,7 +19,7 @@ from app.models.municipality_production import (
     MunicipalitySaltBedData,
 )
 from app.services.forecast_service import _monthly_aggregates
-from app.services.municipalities import (
+from app.services.municipality_directory import (
     active_municipalities,
     active_municipality_ids_subquery,
     normalized_name,

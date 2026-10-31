@@ -14,7 +14,7 @@ from app.models.municipality import Municipality
 from app.models.barangay import Barangay
 from app.models.demand_benchmark import DemandBenchmark
 from app.models.forecast import ForecastRun
-from app.services.aggregates import _monthly_aggregates
+from app.services.production_aggregates import _monthly_aggregates
 from app.constants import SECTOR_DEMAND
 
 

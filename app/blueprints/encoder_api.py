@@ -12,7 +12,7 @@ from sqlalchemy import func, case
 from sqlalchemy.exc import IntegrityError
 from app.constants import AGE_BUCKET_FIELDS, MAX_MONTHLY_VOLUME_MT
 from app.status_constants import ALLOWED_STATUSES
-from app.utils import _parse_date
+from app.utils import parse_iso_date
 
 encoder_api_bp = Blueprint("encoder_api", __name__, url_prefix="/api/encoder")
 
@@ -26,7 +26,7 @@ def _barangay_name(record):
     return None
 
 
-def _serialize(record):
+def serialize_record(record):
     return {
         "id": record.id,
         "municipality_id": record.municipality_id,
@@ -54,12 +54,12 @@ def _serialize(record):
     }
 
 
-def _allocate(record, data):
+def apply_record_payload(record, data):
     if "barangay_id" in data:
         record.barangay_id = data["barangay_id"]
     date_str = data.get("record_date")
     if date_str:
-        record.record_date = _parse_date(date_str)
+        record.record_date = parse_iso_date(date_str)
     for field in ("production_volume_mt", "num_salt_beds") + PRODUCER_COUNT_FIELDS:
         if field in data:
             setattr(record, field, data[field])
@@ -94,7 +94,7 @@ def _validate_record_date(data, partial, errors):
         errors.append("record_date is required.")
         return
     try:
-        _parse_date(date_str)
+        parse_iso_date(date_str)
     except (TypeError, ValueError):
         errors.append("record_date must be a date in YYYY-MM-DD format.")
 
@@ -199,7 +199,7 @@ def _validate_method(data, partial, errors):
         )
 
 
-def _validate(data, partial=False, existing_record=None):
+def validate_production_record(data, partial=False, existing_record=None):
     # WHAT: Validate one record's incoming payload before save/update.
     # WHY: Pinipigilan ang malisya/mali na data; partial=True kapag update lamang.
     errors = []
@@ -578,7 +578,7 @@ def list_records():
         pages = 1 if total else 0
 
     return jsonify({
-        "records": [_serialize(r) for r in records],
+        "records": [serialize_record(r) for r in records],
         "summary": {
             "count": total,
             "pending": int(summary_row[2] or 0),
@@ -599,11 +599,11 @@ def create_record():
         return jsonify({"error": "Encoder access only."}), 403
 
     data = request.get_json(silent=True) or {}
-    errors = _validate(data)
+    errors = validate_production_record(data)
     if errors:
         return jsonify({"errors": errors}), 400
 
-    record_date = _parse_date(data["record_date"])
+    record_date = parse_iso_date(data["record_date"])
     dup = ProductionRecord.query.filter_by(
         municipality_id=current_user.municipality_id,
         barangay_id=data["barangay_id"],
@@ -620,7 +620,7 @@ def create_record():
         status="pending",
         submitted_at=datetime.utcnow(),
     )
-    _allocate(record, data)
+    apply_record_payload(record, data)
     record.registered_producers = (record.male_producers or 0) + (record.female_producers or 0)
     db.session.add(record)
     try:
@@ -631,7 +631,7 @@ def create_record():
     except Exception:
         db.session.rollback()
         return jsonify({"error": "Could not create the record. Please try again."}), 500
-    return jsonify(_serialize(record)), 201
+    return jsonify(serialize_record(record)), 201
 
 
 @encoder_api_bp.route("/records/<int:record_id>", methods=["GET"])
@@ -642,7 +642,7 @@ def get_record(record_id):
     record = ProductionRecord.query.get(record_id)
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
-    return jsonify(_serialize(record))
+    return jsonify(serialize_record(record))
 
 
 @encoder_api_bp.route("/records/<int:record_id>", methods=["PUT"])
@@ -660,7 +660,7 @@ def update_record(record_id):
         }), 409
 
     data = request.get_json(silent=True) or {}
-    errors = _validate(data, partial=True, existing_record=record)
+    errors = validate_production_record(data, partial=True, existing_record=record)
     if errors:
         return jsonify({"errors": errors}), 400
 
@@ -671,13 +671,13 @@ def update_record(record_id):
         dup = ProductionRecord.query.filter(
             ProductionRecord.municipality_id == current_user.municipality_id,
             ProductionRecord.barangay_id == new_barangay_id,
-            ProductionRecord.record_date == _parse_date(new_date),
+            ProductionRecord.record_date == parse_iso_date(new_date),
             ProductionRecord.id != record.id,
         ).first()
     if dup:
         return jsonify({"error": "A record for this barangay and date already exists."}), 409
 
-    _allocate(record, data)
+    apply_record_payload(record, data)
     record.registered_producers = (record.male_producers or 0) + (record.female_producers or 0)
     try:
         db.session.commit()
@@ -687,7 +687,7 @@ def update_record(record_id):
     except Exception:
         db.session.rollback()
         return jsonify({"error": "Could not update the record. Please try again."}), 500
-    return jsonify(_serialize(record))
+    return jsonify(serialize_record(record))
 
 
 @encoder_api_bp.route("/records/<int:record_id>/submit", methods=["PATCH", "POST"])
@@ -709,7 +709,7 @@ def submit_record(record_id):
     except Exception:
         db.session.rollback()
         return jsonify({"error": "Could not submit the record. Please try again."}), 500
-    return jsonify(_serialize(record))
+    return jsonify(serialize_record(record))
 
 
 @encoder_api_bp.route("/records/<int:record_id>", methods=["DELETE"])
@@ -739,8 +739,8 @@ def delete_record(record_id):
 
 
 def _apply_period(query, start_raw, end_raw):
-    start_d = _parse_date(start_raw) if start_raw else None
-    end_d = _parse_date(end_raw) if end_raw else None
+    start_d = parse_iso_date(start_raw) if start_raw else None
+    end_d = parse_iso_date(end_raw) if end_raw else None
     if start_d:
         query = query.filter(ProductionRecord.record_date >= start_d)
     if end_d:

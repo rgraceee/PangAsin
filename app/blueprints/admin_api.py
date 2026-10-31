@@ -1,6 +1,6 @@
 # WHAT: Admin-only API endpoints (users, records review, stats, data quality,
 #       insight, supply-demand, months).
-# WHY: Lahat ng admin actions ay nasa isang lugar, may iisang _admin_only guard.
+# WHY: Lahat ng admin actions ay nasa isang lugar, may iisang is_not_admin guard.
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import os
@@ -18,7 +18,7 @@ from app.extensions import db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from app.services.data_quality import build_data_quality, DATA_QUALITY_RANGES
-from app.services.aggregates import _last_month_with_data
+from app.services.production_aggregates import _last_month_with_data
 from app.services import municipality_service
 from app.services import geojson_service
 from app.services.audit import log_action
@@ -27,10 +27,10 @@ from app.services.municipality_service import (
     MunicipalityConflictError,
     MunicipalityValidationError,
 )
-from app.services.municipalities import active_municipality_ids_subquery
+from app.services.municipality_directory import active_municipality_ids_subquery
 from app.constants import AGE_BUCKET_FIELDS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
 from app.status_constants import ALLOWED_STATUSES
-from app.utils import _admin_only
+from app.utils import is_not_admin
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
 
@@ -90,7 +90,7 @@ def _serialize(record):
 @admin_api_bp.route("/me", methods=["GET"])
 @login_required
 def me():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     return jsonify({
         "id": current_user.id,
@@ -106,7 +106,7 @@ def me():
 @admin_api_bp.route("/municipalities", methods=["GET"])
 @login_required
 def list_municipalities():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     return jsonify({
@@ -117,7 +117,7 @@ def list_municipalities():
 @admin_api_bp.route("/municipalities", methods=["POST"])
 @login_required
 def create_municipality():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     data = request.get_json(silent=True) or {}
@@ -137,7 +137,7 @@ def create_municipality():
 @admin_api_bp.route("/municipalities/<int:municipality_id>", methods=["PATCH"])
 @login_required
 def update_municipality(municipality_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality = db.session.get(Municipality, municipality_id)
@@ -163,7 +163,7 @@ def update_municipality(municipality_id):
 @admin_api_bp.route("/municipalities/seed", methods=["POST"])
 @login_required
 def seed_municipalities():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     data = request.get_json(silent=True) or {}
@@ -180,7 +180,7 @@ def seed_municipalities():
 @admin_api_bp.route("/municipalities/<int:municipality_id>", methods=["DELETE"])
 @login_required
 def delete_municipality(municipality_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality = db.session.get(Municipality, municipality_id)
@@ -210,7 +210,7 @@ def delete_municipality(municipality_id):
 @admin_api_bp.route("/municipalities/<int:municipality_id>/geojson", methods=["POST"])
 @login_required
 def upload_municipality_geojson(municipality_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality = db.session.get(Municipality, municipality_id)
@@ -248,7 +248,7 @@ def upload_municipality_geojson(municipality_id):
 @admin_api_bp.route("/municipalities/<int:municipality_id>/geojson", methods=["DELETE"])
 @login_required
 def delete_municipality_geojson(municipality_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality = db.session.get(Municipality, municipality_id)
@@ -284,7 +284,7 @@ def delete_municipality_geojson(municipality_id):
 @admin_api_bp.route("/barangays/<int:barangay_id>", methods=["PATCH"])
 @login_required
 def rename_barangay(barangay_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     barangay = db.session.get(Barangay, barangay_id)
@@ -305,7 +305,7 @@ def rename_barangay(barangay_id):
 @admin_api_bp.route("/barangays/<int:barangay_id>", methods=["DELETE"])
 @login_required
 def delete_barangay(barangay_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     barangay = db.session.get(Barangay, barangay_id)
@@ -323,7 +323,7 @@ def delete_barangay(barangay_id):
 @admin_api_bp.route("/audit-logs", methods=["GET"])
 @login_required
 def list_audit_logs():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     page = max(1, request.args.get("page", 1, type=int) or 1)
@@ -365,7 +365,7 @@ def list_barangays():
     # WHAT: Read-only source ng lahat ng barangay para sa admin filters.
     # WHY: /encoder/barangays ay encoder-only at scoped sa assigned municipality,
     #      kaya kailangan ng admin-wide list para sa dependent dropdown.
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     barangays = (
@@ -389,7 +389,7 @@ def list_barangays():
 @admin_api_bp.route("/users", methods=["GET"])
 @login_required
 def list_users():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     query = User.query
@@ -424,7 +424,7 @@ def list_users():
 @admin_api_bp.route("/users", methods=["POST"])
 @login_required
 def create_user():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     # Encoder accounts are created when a municipality is added; the manual
     # add-user flow has been removed. New accounts cannot be created here.
@@ -496,7 +496,7 @@ def _apply_user_password(user, data, errors):
 @admin_api_bp.route("/users/<int:user_id>", methods=["PATCH"])
 @login_required
 def update_user(user_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     user = db.session.get(User, user_id)
     if not user:
@@ -553,7 +553,7 @@ def update_user(user_id):
 @admin_api_bp.route("/records", methods=["GET"])
 @login_required
 def list_records():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     query = ProductionRecord.query
@@ -619,7 +619,7 @@ def list_records():
 @admin_api_bp.route("/records/<int:record_id>", methods=["GET"])
 @login_required
 def get_record(record_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     record = ProductionRecord.query.get(record_id)
     if not record:
@@ -630,7 +630,7 @@ def get_record(record_id):
 @admin_api_bp.route("/records/<int:record_id>/review", methods=["PATCH", "POST"])
 @login_required
 def review_record(record_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     record = ProductionRecord.query.get(record_id)
     if not record:
@@ -725,7 +725,7 @@ def _serialize_producer_submission(report):
 @admin_api_bp.route("/environment-reports", methods=["GET"])
 @login_required
 def list_environment_submissions():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     query = EnvironmentReport.query
     status = request.args.get("status")
@@ -779,7 +779,7 @@ def list_environment_submissions():
 @admin_api_bp.route("/environment-reports/<int:report_id>/review", methods=["PATCH", "POST"])
 @login_required
 def review_environment_submission(report_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     report = db.session.get(EnvironmentReport, report_id)
     if not report:
@@ -804,7 +804,7 @@ def review_environment_submission(report_id):
 @admin_api_bp.route("/producer-reports", methods=["GET"])
 @login_required
 def list_producer_submissions():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     query = ProducerReport.query
     status = request.args.get("status")
@@ -865,7 +865,7 @@ def list_producer_submissions():
 @admin_api_bp.route("/producer-reports/<int:report_id>/review", methods=["PATCH", "POST"])
 @login_required
 def review_producer_submission(report_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     report = db.session.get(ProducerReport, report_id)
     if not report:
@@ -1223,8 +1223,8 @@ def _monthly_production_source(municipality_id, municipality_stats, by_barangay_
 
 @admin_api_bp.route("/stats", methods=["GET"])
 @login_required
-def stats():
-    if _admin_only():
+def get_dashboard_stats():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     production_source = request.args.get("source", "approved_records")
     if production_source not in ("approved_records", "municipality_production"):
@@ -1467,7 +1467,7 @@ def data_quality():
     # WHY: The page must show only what the database really contains, so every
     #      score, cell state and threshold is computed in the service and sent
     #      along - the browser never guesses a number of its own.
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     # WHY: "months" is the documented parameter ("all" = every month since data
@@ -1493,7 +1493,7 @@ def data_quality():
 @admin_api_bp.route("/supply-demand", methods=["GET"])
 @login_required
 def supply_demand():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     provincial = DemandBenchmark.query.filter_by(geographic_scope="provincial").order_by(DemandBenchmark.year.desc()).first()
@@ -1557,7 +1557,7 @@ def supply_demand():
 @admin_api_bp.route("/months", methods=["GET"])
 @login_required
 def admin_months():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     source = request.args.get("source", "approved_records")
     if source == "municipality_production":
@@ -1684,7 +1684,7 @@ def _production_month_totals(months):
 
 @admin_api_bp.route("/trends", methods=["GET"])
 @login_required
-def trends():
+def get_production_trends():
     """Year-over-year comparison of approved records or municipality production data.
 
     Compares TWO COMPLETE 12-month calendar blocks: the 12 months ending on
@@ -1700,7 +1700,7 @@ def trends():
     Query: month (optional 'YYYY-MM' anchor for the current block),
            production_method (optional solar|cooked|hybrid filter).
     """
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     source = request.args.get("source", "approved_records")

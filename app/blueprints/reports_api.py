@@ -12,7 +12,7 @@ from app.models.report import Report, REPORT_TYPES, REPORT_FORMATS
 from app.models.barangay import Barangay
 from app.models.municipality import Municipality
 from app.services.report_service import generate_report_file, build_report_data
-from app.utils import _admin_only, _parse_date
+from app.utils import is_not_admin, parse_iso_date
 
 reports_api_bp = Blueprint("reports_api", __name__, url_prefix="/api/admin/reports")
 
@@ -72,7 +72,7 @@ def _report_download_name(report, ext):
 @reports_api_bp.route("", methods=["POST"])
 @login_required
 def create_report():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     payload = request.get_json(silent=True) or {}
@@ -80,8 +80,8 @@ def create_report():
     fmt = (payload.get("format") or "pdf").strip().lower()
     municipality_id = payload.get("municipality_id")
     barangay_id = payload.get("barangay_id")
-    start = _parse_date(payload.get("date_range_start"))
-    end = _parse_date(payload.get("date_range_end"))
+    start = parse_iso_date(payload.get("date_range_start"))
+    end = parse_iso_date(payload.get("date_range_end"))
 
     if report_type not in REPORT_TYPES:
         return jsonify({"error": f"Invalid report_type. Must be one of: {', '.join(REPORT_TYPES)}"}), 400
@@ -162,7 +162,7 @@ def create_report():
 @reports_api_bp.route("", methods=["GET"])
 @login_required
 def list_reports():
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     q = Report.query.options(
@@ -187,7 +187,7 @@ def list_reports():
 @reports_api_bp.route("/<int:report_id>", methods=["GET"])
 @login_required
 def get_report(report_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     report = Report.query.options(
@@ -211,7 +211,7 @@ def get_report(report_id):
 @reports_api_bp.route("/<int:report_id>/download", methods=["GET"])
 @login_required
 def download_report(report_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     report = Report.query.get_or_404(report_id)
@@ -246,7 +246,7 @@ def download_report(report_id):
 @reports_api_bp.route("/<int:report_id>", methods=["DELETE"])
 @login_required
 def delete_report(report_id):
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     report = Report.query.get_or_404(report_id)

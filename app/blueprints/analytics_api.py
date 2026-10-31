@@ -16,13 +16,13 @@ from app.services.forecast_service import (
     run_forecast,
     run_forecast_all_municipalities,
 )
-from app.services.aggregates import (
+from app.services.production_aggregates import (
     _monthly_aggregates,
     _last_month_with_data,
     _reporting_grid,
 )
-from app.utils import _admin_only, _parse_date
-from app.services.municipalities import (
+from app.utils import is_not_admin, parse_iso_date
+from app.services.municipality_directory import (
     active_municipality_ids_subquery,
     is_active_municipality,
     scope_all_label,
@@ -564,7 +564,7 @@ def descriptive():
            production_method (optional solar|cooked|hybrid; narrows every
            approved-record query in this response).
     """
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality_id = request.args.get("municipality_id", type=int)
@@ -916,15 +916,15 @@ def predictive():
     Query: municipality_id, range (this_month|next_3|rest_of_year|next_12|custom),
     start, end, growth_pct (default 0).
     """
-    if _admin_only():
+    if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
     municipality_id = request.args.get("municipality_id", type=int)
     if municipality_id is not None and not is_active_municipality(municipality_id):
         return jsonify({"error": "municipality_id is invalid or inactive."}), 400
     range_opt = request.args.get("range") or "next_12"
-    start = _parse_date(request.args.get("start")) if request.args.get("start") else None
-    end = _parse_date(request.args.get("end")) if request.args.get("end") else None
+    start = parse_iso_date(request.args.get("start")) if request.args.get("start") else None
+    end = parse_iso_date(request.args.get("end")) if request.args.get("end") else None
     growth_pct = float(request.args.get("growth_pct") or 0)
 
     today = date.today()
