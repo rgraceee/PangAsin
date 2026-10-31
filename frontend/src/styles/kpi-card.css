@@ -174,14 +174,11 @@
 }
 
 .ui-kpi__tooltip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
+  position: fixed;
+  z-index: 9999;
   width: max-content;
-  max-width: 220px;
-  padding: 8px 10px;
+  max-width: 240px;
+  padding: 10px 12px;
   border-radius: var(--ui-radius-row);
   background: var(--ui-text);
   color: var(--ui-surface);
@@ -190,6 +187,8 @@
   line-height: 1.4;
   text-align: left;
   box-shadow: 0 10px 24px -12px rgba(12, 35, 64, 0.6);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 /* ---------- Skeleton ---------- */

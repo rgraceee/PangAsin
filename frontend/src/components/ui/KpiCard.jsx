@@ -1,4 +1,5 @@
 import React, { useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 
 // WHAT: I-format ang raw value para sa display at para sa aria-label.
@@ -31,7 +32,27 @@ export default function KpiCard({
   className = '',
 }) {
   const [open, setOpen] = useState(false);
+  const [tip, setTip] = useState(null);
+  const buttonRef = useRef(null);
   const tooltipId = useId();
+  /* WHAT: Ipukot ang tooltip sa document.body para hindi maputol ng card
+     grid o ngang overflow:hidden na magulang. I-fixed ang position sa
+     viewport gamit ang bounding rect ng info button.
+     WHY: Ang ui-kpi__tooltip ay naka-position: absolute loob ng card;
+          kapag nasa gilid ang card, ang tooltip ay naililabas ng grid
+          container at nabububot. Ang portal sa body ay lumalabas sa
+          lahat ng stacking context. */
+  const showTip = () => {
+    if (!info || !buttonRef.current) return;
+    const r = buttonRef.current.getBoundingClientRect();
+    setTip({ top: r.top - 10, left: r.left + r.width / 2 });
+    setOpen(true);
+  };
+  const hideTip = () => {
+    setTip(null);
+    setOpen(false);
+  };
+
   const classes = ['ui-kpi', tone !== 'default' ? `ui-kpi--${tone}` : '', className].filter(Boolean).join(' ');
 
   /* WHAT: Skeleton state na pareho ang sukat sa totoong card.
@@ -74,21 +95,24 @@ export default function KpiCard({
         </div>
         {info && (
           <button
+            ref={buttonRef}
             type="button"
             className="ui-kpi__info"
             aria-label={`About ${title}`}
             aria-expanded={open}
             aria-describedby={open ? tooltipId : undefined}
+            onMouseEnter={showTip}
+            onMouseLeave={hideTip}
+            onFocus={showTip}
+            onBlur={hideTip}
             onClick={() => setOpen((o) => !o)}
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
-            onFocus={() => setOpen(true)}
-            onBlur={() => setOpen(false)}
-            onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
+            onKeyDown={(e) => { if (e.key === 'Escape') hideTip(); }}
           >
             <Info size={14} strokeWidth={2} />
-            {open && (
-              <span className="ui-kpi__tooltip" role="tooltip" id={tooltipId}>{info}</span>
+            {open && tip && createPortal(
+              <span className="ui-kpi__tooltip" role="tooltip" id={tooltipId}
+                    style={{ top: tip.top, left: tip.left }}>{info}</span>,
+              document.body,
             )}
           </button>
         )}

@@ -122,7 +122,7 @@ export default function GuestDashboard() {
               value={kpis.nationalDemand}
               unit="Metric Tons (MT)"
               supporting="Philippines demand benchmark"
-              info="Latest national salt demand benchmark compiled by the ASIN Center."
+              info="The total amount of salt the country needs in a year. A higher number means greater national demand."
             />
             <KpiCard
               icon={Factory}
@@ -130,7 +130,7 @@ export default function GuestDashboard() {
               value={kpis.coverage}
               unit="%"
               supporting="Share of demand from local production"
-              info="How much of national demand is covered by domestic supply."
+              info="The share of national salt demand met by locally produced salt. A higher percentage means less reliance on imports."
             />
             <KpiCard
               icon={Ship}
@@ -138,7 +138,7 @@ export default function GuestDashboard() {
               value={kpis.importDependence}
               unit="%"
               supporting="Share of demand covered by imports"
-              info="How much of national demand relies on imported salt."
+              info="The share of national salt demand covered by imported salt. A higher percentage means more reliance on foreign supply."
             />
             <KpiCard
               icon={Boxes}
@@ -146,7 +146,7 @@ export default function GuestDashboard() {
               value={kpis.totalMT == null ? null : Math.round(kpis.totalMT * 100) / 100}
               unit="Metric Tons (MT)"
               supporting="Workbook-derived production data · Pangasinan"
-              info="Source-labeled municipality data used for public analytics. Approved barangay submissions are retained separately."
+              info="Total salt production recorded across Pangasinan municipalities for the latest period. Each municipality’s figure is shown on the map and charts below."
             />
           </KpiGrid>
         </Reveal>
