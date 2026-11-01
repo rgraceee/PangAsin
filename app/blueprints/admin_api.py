@@ -4,6 +4,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import os
+from secrets import token_urlsafe
 from app.models.production_record import ProductionRecord
 from app.models.environment_report import EnvironmentReport
 from app.models.producer_report import ProducerReport, ProducerReportEntry
@@ -30,7 +31,7 @@ from app.services.municipality_service import (
 from app.services.municipality_directory import active_municipality_ids_subquery
 from app.constants import AGE_BUCKET_FIELDS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
 from app.status_constants import ALLOWED_STATUSES
-from app.utils import is_not_admin
+from app.utils import is_not_admin, is_not_admin_only
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
 
@@ -124,6 +125,8 @@ def list_municipalities():
 def create_municipality():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     data = request.get_json(silent=True) or {}
     try:
@@ -144,6 +147,8 @@ def create_municipality():
 def update_municipality(municipality_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     municipality = db.session.get(Municipality, municipality_id)
     if not municipality:
@@ -170,6 +175,8 @@ def update_municipality(municipality_id):
 def seed_municipalities():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     data = request.get_json(silent=True) or {}
     try:
@@ -187,6 +194,8 @@ def seed_municipalities():
 def delete_municipality(municipality_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     municipality = db.session.get(Municipality, municipality_id)
     if not municipality:
@@ -217,6 +226,8 @@ def delete_municipality(municipality_id):
 def upload_municipality_geojson(municipality_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     municipality = db.session.get(Municipality, municipality_id)
     if not municipality:
@@ -255,6 +266,8 @@ def upload_municipality_geojson(municipality_id):
 def delete_municipality_geojson(municipality_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     municipality = db.session.get(Municipality, municipality_id)
     if not municipality:
@@ -291,6 +304,8 @@ def delete_municipality_geojson(municipality_id):
 def rename_barangay(barangay_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     barangay = db.session.get(Barangay, barangay_id)
     if not barangay:
@@ -312,6 +327,8 @@ def rename_barangay(barangay_id):
 def delete_barangay(barangay_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
 
     barangay = db.session.get(Barangay, barangay_id)
     if not barangay:
@@ -323,53 +340,6 @@ def delete_barangay(barangay_id):
         return jsonify({"error": str(exc), "code": "barangay_in_use"}), exc.status_code
 
     return jsonify({"ok": True})
-
-
-@admin_api_bp.route("/audit-logs", methods=["GET"])
-@login_required
-def list_audit_logs():
-    if is_not_admin():
-        return jsonify({"error": "Admin access only."}), 403
-
-    page = max(1, request.args.get("page", 1, type=int) or 1)
-    per_page = min(200, max(1, request.args.get("per_page", 50, type=int) or 50))
-    query = AuditLog.query
-    # WHAT: Hide SuperAdmin actors and SuperAdmin-only actions.
-    # WHY: The audit page is visible to Admins, who must not discover that a
-    #      SuperAdmin account exists.
-    superadmin_ids = db.session.query(User.id).filter(User.role == "superadmin")
-    query = query.filter(
-        or_(AuditLog.actor_id.is_(None), ~AuditLog.actor_id.in_(superadmin_ids)),
-        ~AuditLog.action.like("superadmin.%"),
-    )
-
-    action = (request.args.get("action") or "").strip()
-    entity_type = (request.args.get("entity_type") or "").strip()
-    actor_email = (request.args.get("actor_email") or "").strip().lower()
-    entity_id = request.args.get("entity_id", type=int)
-    if action:
-        query = query.filter(AuditLog.action == action)
-    if entity_type:
-        query = query.filter(AuditLog.entity_type == entity_type)
-    if actor_email:
-        query = query.filter(func.lower(AuditLog.actor_email).like(f"%{actor_email}%"))
-    if entity_id:
-        query = query.filter(AuditLog.entity_id == entity_id)
-
-    total = query.count()
-    logs = (
-        query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
-    return jsonify({
-        "logs": [entry.serialize() for entry in logs],
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "pages": (total + per_page - 1) // per_page if per_page else 0,
-    })
 
 
 @admin_api_bp.route("/barangays", methods=["GET"])
@@ -451,6 +421,8 @@ def get_user(user_id):
 def create_user():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
     # Encoder accounts are created when a municipality is added; the manual
     # add-user flow has been removed. New accounts cannot be created here.
     return jsonify({
@@ -458,117 +430,53 @@ def create_user():
     }), 400
 
 
-_USER_AUDIT_FIELDS = ("name", "municipality_id", "status", "role")
-
-
-def _user_snapshot(user):
-    # WHAT: Copy the auditable fields before applying an update.
-    # WHY: The audit entry needs the before/after values, and the ORM objects
-    #      mutate in place, so the snapshot must be taken first.
-    return {field: getattr(user, field) for field in _USER_AUDIT_FIELDS}
-
-
-def _apply_user_name(user, data, errors):
-    if "name" not in data:
-        return
-    name = (data.get("name") or "").strip()
-    if not name:
-        errors.append("name cannot be empty.")
-        return
-    user.name = name
-
-
-def _apply_user_municipality(user, data, errors):
-    if "municipality_id" not in data:
-        return
-    municipality_id = data.get("municipality_id")
-    # WHAT: Encoders must always point at a real municipality.
-    # WHY: Admin accounts may stay unassigned, so only encoders are validated.
-    if user.role != "encoder":
-        user.municipality_id = municipality_id
-        return
-    if not municipality_id:
-        errors.append("municipality_id is required for encoder accounts.")
-    elif not Municipality.query.get(municipality_id):
-        errors.append("municipality_id is invalid.")
-    else:
-        user.municipality_id = municipality_id
-
-
-def _apply_user_status(user, data, errors):
-    if "status" not in data:
-        return
-    status = data.get("status")
-    if status not in ("active", "inactive"):
-        errors.append("status must be active or inactive.")
-        return
-    user.status = status
-
-
-def _apply_user_password(user, data, errors):
-    # WHAT: Set a new password when one was supplied.
-    # WHY: Return whether it changed so the audit entry can record it.
-    password = data.get("password")
-    if not password:
-        return False
-    if len(password) < 6:
-        errors.append("password must be at least 6 chars.")
-        return False
-    user.set_password(password)
-    return True
-
-
-@admin_api_bp.route("/users/<int:user_id>", methods=["PATCH"])
+@admin_api_bp.route("/users/<int:user_id>/reset-password", methods=["POST"])
 @login_required
-def update_user(user_id):
+def admin_reset_password(user_id):
+    # WHAT: Admin can reset an encoder's password with a required reason.
+    # WHY: Admin manages encoders but cannot deactivate, force-logout, or
+    #      change roles; password reset is the only account action allowed.
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
-    user = db.session.get(User, user_id)
-    # WHAT: Treat SuperAdmin accounts as nonexistent for Admins.
-    # WHY: Returning 404 for both missing and hidden users avoids leaking
-    #      SuperAdmin ids through the update endpoint.
-    if not user or user.role == "superadmin":
-        return jsonify({"error": "User not found."}), 404
 
     data = request.get_json(silent=True) or {}
-    if data.get("role") and data["role"] != user.role:
-        return jsonify({"error": "Roles cannot be changed here."}), 400
-    errors = []
-    before = _user_snapshot(user)
+    reason = (data.get("reason") or "").strip()
+    if not reason or len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
 
-    _apply_user_name(user, data, errors)
-    _apply_user_municipality(user, data, errors)
-    _apply_user_status(user, data, errors)
-    password_changed = _apply_user_password(user, data, errors)
+    user = db.session.get(User, user_id)
+    if not user or user.role != "encoder":
+        return jsonify({"error": "Encoder not found."}), 404
 
-    if errors:
-        return jsonify({"errors": errors}), 400
+    raw_token = token_urlsafe(16)
+    user.set_password(raw_token)
+    user.must_change_password = True
+    user.session_version = (user.session_version or 0) + 1
+    user.failed_login_count = 0
+    user.locked_until = None
+    db.session.add(user)
+    db.session.commit()
 
-    after = _user_snapshot(user)
-    changed = {
-        key: {"from": before[key], "to": after[key]}
-        for key in before
-        if before[key] != after[key]
-    }
-    if changed or password_changed:
-        log_action(
-            "user.update",
-            "user",
-            user.id,
-            summary=f"Updated account {user.email}.",
-            details={
-                "changes": changed,
-                "password_changed": password_changed,
-            },
-        )
+    log_action(
+        "admin.user.reset_password",
+        "user",
+        user.id,
+        actor=current_user,
+        summary=f"{current_user.email} reset password for encoder {user.email}.",
+        reason=reason,
+        details={"email": user.email, "role": user.role},
+    )
+    db.session.commit()
 
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        return jsonify({"error": "Could not update user. Please try again."}), 500
-
-    return jsonify(_serialize_admin_user(user))
+    return jsonify(
+        {
+            "user": _serialize_admin_user(user),
+            "temporary_password": raw_token,
+            "message": (
+                "Password reset. The encoder must change it on next login."
+            ),
+        }
+    )
 
 
 @admin_api_bp.route("/records", methods=["GET"])
@@ -653,6 +561,8 @@ def get_record(record_id):
 def review_record(record_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
     record = ProductionRecord.query.get(record_id)
     if not record:
         return jsonify({"error": "Record not found."}), 404
@@ -802,6 +712,8 @@ def list_environment_submissions():
 def review_environment_submission(report_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
     report = db.session.get(EnvironmentReport, report_id)
     if not report:
         return jsonify({"error": "Environment report not found."}), 404
@@ -888,6 +800,8 @@ def list_producer_submissions():
 def review_producer_submission(report_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
+    if is_not_admin_only():
+        return jsonify({"error": "Not found."}), 404
     report = db.session.get(ProducerReport, report_id)
     if not report:
         return jsonify({"error": "Salt farmer report not found."}), 404
@@ -1058,6 +972,7 @@ def _production_methods_by_municipality(municipality_id, municipality_names):
             ProductionRecord.production_method,
             func.sum(ProductionRecord.production_volume_mt).label("mt"),
         )
+        .filter(ProductionRecord.deleted_at.is_(None))
         .filter(ProductionRecord.status == "approved")
         .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
         .filter(*_stats_scope_conditions(ProductionRecord.municipality_id, municipality_id))
@@ -1371,7 +1286,8 @@ def get_dashboard_stats():
         })
 
     approved_production = (
-        ProductionRecord.query.filter_by(status="approved")
+        ProductionRecord.active()
+        .filter_by(status="approved")
         .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
         .filter(*scope_conditions(ProductionRecord.municipality_id))
     )
@@ -1383,7 +1299,8 @@ def get_dashboard_stats():
     standalone_registered = sum(totals["registered"] for totals in producer_totals_by_muni.values())
     total_registered = int(legacy_registered or 0) + standalone_registered
     pending_validation_count = (
-        ProductionRecord.query.filter_by(status="pending")
+        ProductionRecord.active()
+        .filter_by(status="pending")
         .filter(ProductionRecord.municipality_id.in_(active_municipality_ids_subquery()))
         .filter(*scope_conditions(ProductionRecord.municipality_id))
         .count()
@@ -1613,6 +1530,7 @@ def admin_months():
         db.session.query(
             func.to_char(ProductionRecord.record_date, "YYYY-MM").label("month"),
         )
+        .filter(ProductionRecord.deleted_at.is_(None))
         .filter(ProductionRecord.status == "approved")
         .filter(
             ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
@@ -1655,6 +1573,7 @@ def _approved_month_totals(months, production_method=None):
             func.to_char(ProductionRecord.record_date, "YYYY-MM").label("m"),
             func.sum(ProductionRecord.production_volume_mt).label("v"),
         )
+        .filter(ProductionRecord.deleted_at.is_(None))
         .filter(ProductionRecord.status == "approved")
         .filter(
             ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())

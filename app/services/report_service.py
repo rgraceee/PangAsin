@@ -360,7 +360,7 @@ def build_forecast_data():
 
 
 def build_data_quality_data():
-    records = ProductionRecord.query.all()
+    records = ProductionRecord.active().all()
     total = len(records)
     WEIGHTS = {
         "production_volume_mt": 0.20,

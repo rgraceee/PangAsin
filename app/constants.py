@@ -51,3 +51,7 @@ SECTOR_DEMAND_NOTE = (
     "Reference national sector breakdown by end use. Not derived from "
     "production_records; shown for context only."
 )
+
+# WHAT: Application version, shown on the health page.
+# WHY: So SuperAdmin can confirm which build is deployed.
+APP_VERSION = "1.0.0"

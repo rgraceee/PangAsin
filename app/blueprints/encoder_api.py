@@ -604,7 +604,7 @@ def create_record():
         return jsonify({"errors": errors}), 400
 
     record_date = parse_iso_date(data["record_date"])
-    dup = ProductionRecord.query.filter_by(
+    dup = ProductionRecord.active().filter_by(
         municipality_id=current_user.municipality_id,
         barangay_id=data["barangay_id"],
         record_date=record_date,
@@ -639,7 +639,7 @@ def create_record():
 def get_record(record_id):
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
-    record = ProductionRecord.query.get(record_id)
+    record = ProductionRecord.active().filter_by(id=record_id).first()
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
     return jsonify(serialize_record(record))
@@ -650,7 +650,7 @@ def get_record(record_id):
 def update_record(record_id):
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
-    record = ProductionRecord.query.get(record_id)
+    record = ProductionRecord.active().filter_by(id=record_id).first()
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
 
@@ -668,7 +668,7 @@ def update_record(record_id):
     new_date = data.get("record_date")
     dup = None
     if new_date:
-        dup = ProductionRecord.query.filter(
+        dup = ProductionRecord.active().filter(
             ProductionRecord.municipality_id == current_user.municipality_id,
             ProductionRecord.barangay_id == new_barangay_id,
             ProductionRecord.record_date == parse_iso_date(new_date),
@@ -695,7 +695,7 @@ def update_record(record_id):
 def submit_record(record_id):
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
-    record = ProductionRecord.query.get(record_id)
+    record = ProductionRecord.active().filter_by(id=record_id).first()
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
     if record.status != "pending":
@@ -717,7 +717,7 @@ def submit_record(record_id):
 def delete_record(record_id):
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
-    record = ProductionRecord.query.get(record_id)
+    record = ProductionRecord.active().filter_by(id=record_id).first()
     if not record or record.municipality_id != current_user.municipality_id:
         return jsonify({"error": "Record not found."}), 404
 
@@ -903,7 +903,7 @@ def stats():
                 month_end = date(month_start.year, month_start.month + 1, 1)
         except (TypeError, ValueError):
             return jsonify({"error": "month must be in YYYY-MM format."}), 400
-        base = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id).filter(
+        base = ProductionRecord.active().filter_by(municipality_id=current_user.municipality_id).filter(
             ProductionRecord.record_date >= month_start,
             ProductionRecord.record_date < month_end,
         )
@@ -966,7 +966,7 @@ def stats():
             barangay_names,
         )
 
-    base = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id)
+    base = ProductionRecord.active().filter_by(municipality_id=current_user.municipality_id)
     start_raw = request.args.get("start")
     end_raw = request.args.get("end")
     try:

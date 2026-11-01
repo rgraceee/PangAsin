@@ -6,9 +6,14 @@ let dashboardCache = { municipalities: [], production: { provinceTotalMT: 0, rec
 async function apiNoAuth(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const res = await fetch(path, { ...options, headers, credentials: 'include' });
-  const data = await res.json().catch(() => ({}));
+  const contentType = res.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await res.json().catch(() => ({}))
+    : {};
   if (!res.ok) {
-    const err = new Error(data.error || 'Request failed');
+    const err = new Error(
+      data.error || (res.status >= 500 ? 'Server error. Please try again later.' : 'Request failed')
+    );
     err.status = res.status;
     err.data = data;
     throw err;
@@ -73,9 +78,14 @@ export function getDemographicsByMunicipality() {
 async function api(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const res = await fetch(`/api${path}`, { ...options, headers, credentials: 'include' });
-  const data = await res.json().catch(() => ({}));
+  const contentType = res.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await res.json().catch(() => ({}))
+    : {};
   if (!res.ok) {
-    const err = new Error(data.error || data.errors?.join(', ') || 'Request failed');
+    const err = new Error(
+      data.error || data.errors?.join(', ') || (res.status >= 500 ? 'Server error. Please try again later.' : 'Request failed')
+    );
     err.status = res.status;
     err.data = data;
     throw err;
@@ -464,10 +474,18 @@ export function putSuperAdminSetting(key, value) {
 export function getSuperAdminContent(key) {
   return api(`/content/${key}`);
 }
+export function getPublicContent(key) {
+  return api(`/content/${key}`);
+}
 export function putSuperAdminContent(key, data) {
   return api(`/content/${key}`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  });
+}
+export function resetSuperAdminContent(key) {
+  return api(`/content/${key}/reset`, {
+    method: 'POST',
   });
 }
 export function getSuperAdminAnnouncement() {
@@ -493,5 +511,58 @@ export function softDeleteRecord(id, reason) {
 }
 export function restoreRecord(id) {
   return api(`/superadmin/records/${id}/restore`, { method: 'POST' });
+}
+
+export function editRecord(id, data) {
+  return api(`/superadmin/records/${id}/edit`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function permanentDeleteRecord(id, confirmText) {
+  return api(`/superadmin/records/${id}/permanent-delete`, {
+    method: 'DELETE',
+    body: JSON.stringify({ confirm_text: confirmText }),
+  });
+}
+
+export function exportCsv(type, params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/superadmin/export/csv/${type}${qs ? `?${qs}` : ''}`, {
+    method: 'GET',
+  });
+}
+
+export function downloadBackup() {
+  return fetch(`/api/superadmin/export/backup`, {
+    method: 'GET',
+    credentials: 'include',
+  }).then(async (res) => {
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const err = new Error(data.error || 'Backup failed');
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return res.blob();
+  });
+}
+
+export function getSuperAdminHealth() {
+  return api('/superadmin/health');
+}
+
+export function runSuperAdminForecast() {
+  return api('/superadmin/forecast/run', {
+    method: 'POST',
+  });
+}
+
+export function sendSmtpTest() {
+  return api('/superadmin/smtp/test', {
+    method: 'POST',
+  });
 }
 

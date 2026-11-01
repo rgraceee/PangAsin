@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Table, Form, Badge } from 'react-bootstrap';
-import { getSuperAdminSettings, putSuperAdminSetting } from '../../services/dataService';
+import { Button, Card, Table, Form, Badge, Alert } from 'react-bootstrap';
+import { getSuperAdminSettings, putSuperAdminSetting, getSuperAdminSmtp, sendSmtpTest } from '../../services/dataService';
 import { useToast } from '../Toast';
 import PageHeader from './PageHeader';
-import { ShieldAlert, Mailbox, Clock, Key } from 'lucide-react';
+import { ShieldAlert, Mailbox, Clock, Key, Database, Edit3, Activity } from 'lucide-react';
 
 const SETTINGS = [
   { key: 'min_password_length', label: 'Minimum password length', type: 'number', icon: <ShieldAlert size={15} strokeWidth={2} />, desc: 'Shortest password an account may set.' },
@@ -14,6 +14,8 @@ const SETTINGS = [
   { key: 'forgot_password_request_limit_per_hour', label: 'Reset requests per hour per email/IP', type: 'number', icon: <Mailbox size={15} strokeWidth={2} />, desc: 'Rate limit for forgot-password requests.' },
   { key: 'forgot_password_email_subject', label: 'Forgot-password email subject', type: 'text', icon: <Mailbox size={15} strokeWidth={2} />, desc: 'Subject line of the reset email.' },
   { key: 'forgot_password_email_message', label: 'Forgot-password email message', type: 'textarea', icon: <Mailbox size={15} strokeWidth={2} />, desc: 'Body of the reset email.' },
+  { key: 'forecast_horizon', label: 'Default forecast horizon (months)', type: 'number', icon: <Activity size={15} strokeWidth={2} />, desc: 'How many months ahead forecasts project.' },
+  { key: 'production_methods', label: 'Production methods', type: 'json', icon: <Database size={15} strokeWidth={2} />, desc: 'Allowed production methods (JSON array).' },
 ];
 
 export default function SuperAdminConfig() {
@@ -24,6 +26,8 @@ export default function SuperAdminConfig() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [smtp, setSmtp] = useState(null);
+  const [smtpLoading, setSmtpLoading] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -36,6 +40,15 @@ export default function SuperAdminConfig() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadSmtp = useCallback(() => {
+    setSmtpLoading(true);
+    getSuperAdminSmtp()
+      .then((s) => { setSmtp(s); setSmtpLoading(false); })
+      .catch(() => { setSmtpLoading(false); });
+  }, []);
+
+  useEffect(() => { loadSmtp(); }, [loadSmtp]);
 
   const startEdit = (key) => {
     setEditing(key);
@@ -54,6 +67,11 @@ export default function SuperAdminConfig() {
       const n = Number(raw);
       if (!Number.isFinite(n)) { setErrors({ ...errors, [key]: 'Must be a number.' }); return; }
       val = n;
+    } else if (spec.type === 'json') {
+      try {
+        val = JSON.parse(raw);
+        if (!Array.isArray(val)) throw new Error('must be an array');
+      } catch { setErrors({ ...errors, [key]: 'Must be a JSON array, e.g. ["solar","cooked"].' }); return; }
     }
     setSaving(true);
     try {
@@ -70,15 +88,24 @@ export default function SuperAdminConfig() {
 
   const resetToDefault = async (key) => {
     const spec = SETTINGS.find((s) => s.key === key);
-    if (!window.confirm(`Reset “${spec.label}” to its default (${spec.default})? This is audited.`)) return;
+    if (!window.confirm(`Reset “${spec.label}” to its default (${JSON.stringify(spec.default)})? This is audited.`)) return;
     setSaving(true);
     try {
       await putSuperAdminSetting(key, spec.default);
       setEditing(null);
-      toastSuccess(`Reset to default (${spec.default}).`, 'Setting reset');
+      toastSuccess(`Reset to default (${JSON.stringify(spec.default)}).`, 'Setting reset');
       load();
     } catch (err) { toastError(err.data?.error || err.message || 'Reset failed.'); }
     finally { setSaving(false); }
+  };
+
+  const handleSmtpTest = async () => {
+    setSmtpLoading(true);
+    try {
+      await sendSmtpTest();
+      toastSuccess('Test email sent.', 'SMTP test');
+    } catch (err) { toastError(err.message || 'SMTP test failed.'); }
+    finally { setSmtpLoading(false); }
   };
 
   return (
@@ -116,11 +143,11 @@ export default function SuperAdminConfig() {
                             <Form.Control value={values[spec.key] || ''} onChange={(e) => handleChange(spec.key, e)} />
                           )
                         ) : (
-                          <span className="text-break" style={{ maxWidth: '260px' }}>{value === undefined || value === null ? '—' : String(value)}</span>
+                          <span className="text-break" style={{ maxWidth: '260px' }}>{value === undefined || value === null ? '—' : JSON.stringify(value)}</span>
                         )}
                         {errors[spec.key] && <div className="text-danger small mt-1">{errors[spec.key]}</div>}
                       </td>
-                      <td>{cur ? cur.default : spec.default}</td>
+                      <td>{cur ? JSON.stringify(cur.default) : JSON.stringify(spec.default)}</td>
                       <td><span className="text-muted small">{spec.type}</span></td>
                       <td className="text-nowrap">
                         {isEditing ? (
@@ -141,6 +168,38 @@ export default function SuperAdminConfig() {
               </tbody>
             </Table>
           )}
+        </Card.Body>
+      </Card>
+
+      {/* SMTP section */}
+      <Card className="encoder-card admin-card mt-4">
+        <Card.Body>
+          <div className="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h5 className="card-title mb-1"><Edit3 size={16} strokeWidth={2} className="me-2" /> SMTP Configuration</h5>
+              <div className="text-muted small">Read-only display from environment variables. Password is never shown.</div>
+            </div>
+            {smtp?.smtp_configured && (
+              <Button variant="outline-primary" size="sm" onClick={handleSmtpTest} disabled={smtpLoading}>
+                {smtpLoading ? 'Testing…' : 'Send test email'}
+              </Button>
+            )}
+          </div>
+          {smtpLoading && <div className="text-muted small">Testing SMTP…</div>}
+          {!smtpLoading && smtp && (
+            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+              <tbody>
+                <tr><td className="fw-medium">Mail server</td><td>{smtp.mail_server || '—'}</td></tr>
+                <tr><td className="fw-medium">Mail port</td><td>{smtp.mail_port ?? '—'}</td></tr>
+                <tr><td className="fw-medium">Use TLS</td><td>{String(smtp.mail_use_tls)}</td></tr>
+                <tr><td className="fw-medium">Use SSL</td><td>{String(smtp.mail_use_ssl)}</td></tr>
+                <tr><td className="fw-medium">Username</td><td>{smtp.mail_username || '—'}</td></tr>
+                <tr><td className="fw-medium">Default sender</td><td>{smtp.mail_default_sender || '—'}</td></tr>
+                <tr><td className="fw-medium">Configured</td><td><Badge className={`text-bg-${smtp.smtp_configured ? 'success' : 'warning'}`}>{smtp.smtp_configured ? 'Yes' : 'No'}</Badge></td></tr>
+              </tbody>
+            </Table>
+          )}
+          {!smtp && !smtpLoading && <div className="text-muted small">SMTP configuration unavailable.</div>}
         </Card.Body>
       </Card>
     </>

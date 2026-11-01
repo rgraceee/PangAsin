@@ -20,7 +20,11 @@ class AuditLog(db.Model):
     entity_id = db.Column(db.Integer, nullable=True, index=True)
     summary = db.Column(db.String(255), nullable=True)
     details = db.Column(db.JSON, nullable=True)
+    old_value = db.Column(db.JSON, nullable=True)
+    new_value = db.Column(db.JSON, nullable=True)
+    reason = db.Column(db.String(500), nullable=True)
     ip_address = db.Column(db.String(64), nullable=True)
+    user_agent = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     def serialize(self):
@@ -33,6 +37,10 @@ class AuditLog(db.Model):
             "entity_id": self.entity_id,
             "summary": self.summary,
             "details": self.details or {},
+            "old_value": self.old_value or {},
+            "new_value": self.new_value or {},
+            "reason": self.reason,
             "ip_address": self.ip_address,
+            "user_agent": self.user_agent,
             "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
         }

@@ -8,8 +8,37 @@ from app.services.audit import log_action
 from flask import request
 from flask_login import current_user
 from datetime import datetime
+import re
 
 CONTENT_KEYS = ("privacy", "terms", "about", "faq_admin", "faq_encoder", "faq_public")
+
+# Dangerous patterns stripped from user-editable content to prevent XSS.
+_SCRIPT_RE = re.compile(r"<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>", re.IGNORECASE | re.DOTALL)
+_EVENT_HANDLER_RE = re.compile(r"\bon(?:click|load|error|mouseover|mouseout|submit|change|focus|blur|keydown|keyup|keypress|abort|resize|scroll|unload|dblclick|mousedown|mouseup|mousemove|mouseenter|mouseleave|select|reset|abort|canplay|canplaythrough|durationchange|emptied|ended|loadeddata|loadedmetadata|loadstart|pause|play|playing|progress|ratechange|seeked|seeking|stalled|suspend|timeupdate|volumechange|waiting|toggle|wheel|pointerdown|pointerup|pointermove|pointerenter|pointerleave|pointerover|pointerout|cancel|invalid|copy|cut|paste|compositionstart|compositionupdate|compositionend|drag|dragend|dragenter|dragleave|dragover|dragstart|drop)\s*=", re.IGNORECASE)
+_JAVASCRIPT_URL_RE = re.compile(r"\bjavascript\s*:", re.IGNORECASE)
+_DATA_URI_RE = re.compile(r"\bdata\s*:\s*(?:text/html|application/javascript|image/svg\+xml)", re.IGNORECASE)
+
+
+def _sanitize_text(value):
+    """Strip script tags, inline event handlers, javascript: URLs and data: URIs from a string."""
+    if not isinstance(value, str):
+        return value
+    result = _SCRIPT_RE.sub("", value)
+    result = _EVENT_HANDLER_RE.sub("", result)
+    result = _JAVASCRIPT_URL_RE.sub("", result)
+    result = _DATA_URI_RE.sub("", result)
+    return result
+
+
+def _sanitize_structure(obj):
+    """Recursively sanitize all strings in a dict/list structure."""
+    if isinstance(obj, str):
+        return _sanitize_text(obj)
+    if isinstance(obj, list):
+        return [_sanitize_structure(item) for item in obj]
+    if isinstance(obj, dict):
+        return {k: _sanitize_structure(v) for k, v in obj.items()}
+    return obj
 
 # Bundled defaults reproduce the current public wording exactly.
 # Privacy / Terms: sections of title + paragraphs/bullets, plus last_updated.
@@ -301,6 +330,9 @@ def set_content(key, data, actor):
     if not isinstance(data, dict):
         return None, "Content must be a JSON object."
 
+    # Sanitize all string values to prevent XSS through edited content.
+    data = _sanitize_structure(data)
+
     # Server validation: required titles for privacy/terms/about; max lengths.
     if key in ("privacy", "terms"):
         if not data.get("title"):
@@ -308,6 +340,10 @@ def set_content(key, data, actor):
     if key == "about":
         if not data.get("name"):
             return None, "App name is required."
+
+    # Auto-set last_updated for privacy/terms so it always reflects the save time.
+    if key in ("privacy", "terms"):
+        data["last_updated"] = datetime.utcnow().strftime("%d %B %Y")
 
     row = SiteContent.query.get(key)
     if not row:
@@ -325,5 +361,36 @@ def set_content(key, data, actor):
         actor=current_user,
         summary=f"{current_user.email if current_user.is_authenticated else actor} updated {key} content.",
         details={"key": key, "before": before, "after": data},
+    )
+    return row, None
+
+
+def reset_content(key, actor):
+    """Reset content for a key to its bundled default and persist. Audited."""
+    if key not in CONTENT_KEYS:
+        return None, "Unknown content key."
+
+    default = _default_for(key)
+    # Sanitize defaults too (defensive).
+    default = _sanitize_structure(default)
+    if key in ("privacy", "terms"):
+        default["last_updated"] = datetime.utcnow().strftime("%d %B %Y")
+
+    row = SiteContent.query.get(key)
+    before = row.data if row and row.data else None
+    if not row:
+        row = SiteContent(key=key)
+        db.session.add(row)
+    row.data = default
+    row.updated_by = getattr(actor, "id", None) if actor else None
+    row.updated_at = datetime.utcnow()
+
+    log_action(
+        "superadmin.content.reset",
+        "site_content",
+        key,
+        actor=current_user,
+        summary=f"{current_user.email if current_user.is_authenticated else actor} reset {key} content to default.",
+        details={"key": key, "before": before, "after": default},
     )
     return row, None

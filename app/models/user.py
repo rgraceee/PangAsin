@@ -16,9 +16,9 @@ class User(db.Model, UserMixin):
     municipality_id = db.Column(db.Integer, db.ForeignKey("municipalities.id"), nullable=True)
     status = db.Column(db.Enum("active", "inactive", name="user_status_enum"), default="active", nullable=False)
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
-    # WHAT: Bilang ng nabigong pag-login.
-    # WHY: Kapag nahinto sa 5, i-lock ang account para 15 minuto para iwasan
-    #      ang password-guessing attacks.
+# WHAT: Bilang ng nabigong pag-login.
+# WHY: Kapag nahinto sa limit (setting), i-lock ang account para iwasan
+#      ang password-guessing attacks.
     failed_login_count = db.Column(db.Integer, default=0, nullable=False)
     # WHAT: Oras hanggang kailan ang account ay i-lock.
     # WHY: Automatikong nabubuksan pagkalipas ng 15 minuto; admin pede ring
@@ -76,12 +76,14 @@ class User(db.Model, UserMixin):
 
     def record_failed_login(self):
         # WHAT: Idagdag ang bilang ng pagkakamali at i-lock kung nakakaantong
-        #      sa limit (5) para 15 minuto.
+        #      sa limit (setting) para lockout_minutes.
         # WHY: Iwasan ang pag-uulit ng password sa pamamagitan ng pagbabad
         #      ng pag-akyat ng bilang ng pagkakamali.
+        from app.services.setting_service import get_setting
+        max_attempts = get_setting("lockout_attempts", 5)
         self.failed_login_count += 1
-        if self.failed_login_count >= 5:
-            self.lock(minutes=15)
+        if self.failed_login_count >= max_attempts:
+            self.lock(minutes=get_setting("lockout_minutes", 15))
         return self.failed_login_count
 
     def record_successful_login(self):

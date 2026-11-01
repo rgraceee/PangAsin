@@ -31,6 +31,8 @@ import SuperAdminHealth from './components/admin/SuperAdminHealth';
 import SuperAdminConfig from './components/admin/SuperAdminConfig';
 import SuperAdminRecords from './components/admin/SuperAdminRecords';
 import SuperAdminExport from './components/admin/SuperAdminExport';
+import SuperAdminPolicies from './components/admin/SuperAdminPolicies';
+import SuperAdminHelp from './components/admin/SuperAdminHelp';
 import RequireSuperAdmin from './components/admin/RequireSuperAdmin';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
@@ -51,7 +53,6 @@ const ROUTE_TITLES = {
   '/admin': 'Executive Dashboard',
   '/admin/users': 'User Management',
   '/admin/municipalities': 'Municipality Management',
-  '/admin/audit-logs': 'Audit Log',
   '/change-password': 'Change Password',
   '/admin/master-list': 'Salt Farmer Master List',
   '/encoder/master-list': 'Salt Farmer Master List',
@@ -112,9 +113,9 @@ function RequirePasswordChange({ user, isLoading, children }) {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  if (!user.must_change_password) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/encoder'} replace />;
-  }
+      if (!user.must_change_password) {
+        return <Navigate to={user.role === 'superadmin' ? '/superadmin/health' : (user.role === 'admin' ? '/admin' : '/encoder')} replace />;
+      }
   return children;
 }
 
@@ -245,7 +246,6 @@ export default function App() {
           <Route index element={<AdminPage user={user} />} />
           <Route path="users" element={<UsersManagement />} />
           <Route path="municipalities" element={<Municipalities />} />
-          <Route path="audit-logs" element={<Navigate to="/admin" replace />} />
           <Route path="master-list" element={<ProducerMasterList user={user} isAdmin />} />
           <Route path="validation" element={<ValidationQueue />} />
           <Route path="data-quality" element={<DataQualityDashboard />} />
@@ -327,6 +327,36 @@ export default function App() {
           <Route path="config" element={
             <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
               <SuperAdminConfig />
+            </RequireSuperAdmin>
+          } />
+          <Route path="policies" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SuperAdminPolicies />
+            </RequireSuperAdmin>
+          } />
+          <Route path="help" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SuperAdminHelp />
+            </RequireSuperAdmin>
+          } />
+          <Route path="dashboard" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <AdminPage user={user} />
+            </RequireSuperAdmin>
+          } />
+          <Route path="forecast" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <ForecastDashboard />
+            </RequireSuperAdmin>
+          } />
+          <Route path="forecast/target" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <TargetEvaluation />
+            </RequireSuperAdmin>
+          } />
+          <Route path="data-quality" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <DataQualityDashboard />
             </RequireSuperAdmin>
           } />
           <Route path="settings/*" element={

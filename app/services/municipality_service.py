@@ -287,7 +287,7 @@ def serialize_municipality(municipality, encoder_count=None, record_count=None, 
     if encoder_count is None:
         encoder_count = len(encoders)
     if record_count is None:
-        record_count = ProductionRecord.query.filter_by(
+        record_count = ProductionRecord.active().filter_by(
             municipality_id=municipality.id
         ).count()
 
@@ -561,7 +561,7 @@ def _municipality_dependency_counts(municipality):
         .all()
     ]
     return {
-        "production_records": ProductionRecord.query.filter_by(
+        "production_records": ProductionRecord.active().filter_by(
             municipality_id=municipality_id
         ).count(),
         "environment_reports": EnvironmentReport.query.filter_by(
@@ -595,7 +595,7 @@ def _municipality_dependency_counts(municipality):
 def _encoder_reference_count(user_id):
     """Count rows outside the deleted scope that still point at an encoder."""
     return (
-        ProductionRecord.query.filter(
+        ProductionRecord.active().filter(
             or_(
                 ProductionRecord.submitted_by == user_id,
                 ProductionRecord.reviewed_by == user_id,

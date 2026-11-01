@@ -117,6 +117,62 @@ export default function SuperAdminUsers() {
     } finally { setSubmitting(false); }
   };
 
+  const handleDeactivate = async (user) => {
+    const confirmed = await confirmAction({
+      title: `Deactivate account for ${user.name}?`,
+      text: `The account will be marked inactive and cannot sign in. Reason is required and will be recorded in the audit log.`,
+      confirmText: 'Deactivate',
+      danger: true,
+    });
+    if (!confirmed) return;
+    openReasonAction('Deactivate account', 'deactivate', user);
+  };
+
+  const handleReactivate = async (user) => {
+    const confirmed = await confirmAction({
+      title: `Reactivate account for ${user.name}?`,
+      text: `The account will be marked active again. Reason is required and will be recorded in the audit log.`,
+      confirmText: 'Reactivate',
+      danger: false,
+    });
+    if (!confirmed) return;
+    openReasonAction('Reactivate account', 'reactivate', user);
+  };
+
+  const handleUnlock = async (user) => {
+    const confirmed = await confirmAction({
+      title: `Unlock account for ${user.name}?`,
+      text: `The lockout will be cleared and the failed login counter reset. Reason is required and will be recorded in the audit log.`,
+      confirmText: 'Unlock',
+      danger: false,
+    });
+    if (!confirmed) return;
+    openReasonAction('Unlock account', 'unlock', user);
+  };
+
+  const handleForceLogout = async (user) => {
+    const confirmed = await confirmAction({
+      title: `Force logout ${user.name}?`,
+      text: `All sessions for this account will be invalidated. Reason is required and will be recorded in the audit log.`,
+      confirmText: 'Force logout',
+      danger: true,
+    });
+    if (!confirmed) return;
+    openReasonAction('Force logout', 'force-logout', user);
+  };
+
+  const handleChangeMunicipality = async (user) => {
+    const confirmed = await confirmAction({
+      title: `Change municipality for ${user.name}?`,
+      text: `The encoder will be moved to a different municipality. Reason is required and will be recorded in the audit log.`,
+      confirmText: 'Change',
+      danger: true,
+    });
+    if (!confirmed) return;
+    setActionForm({ kind: 'municipality', targetUser: user, reason: '', municipality_id: user.municipality_id || '' });
+    setOpenAction(true);
+  };
+
   const handleResetPassword = async (user) => {
     const confirmed = await confirmAction({
       title: `Reset password for ${user.name}?`,
@@ -214,16 +270,16 @@ export default function SuperAdminUsers() {
                       {u.role !== 'superadmin' && (
                         <>
                           {u.status === 'active' && (
-                            <IconButton icon={<ShieldAlert size={14} strokeWidth={2} />} label={`Deactivate ${u.name}`} variant="outline-danger" onClick={() => openReasonAction('Deactivate account', 'deactivate', u)} />
+                            <IconButton icon={<ShieldAlert size={14} strokeWidth={2} />} label={`Deactivate ${u.name}`} variant="outline-danger" onClick={() => handleDeactivate(u)} />
                           )}
                           {u.status !== 'active' && (
-                            <IconButton icon={<RefreshCw size={14} strokeWidth={2} />} label={`Reactivate ${u.name}`} variant="outline-success" onClick={() => openReasonAction('Reactivate account', 'reactivate', u)} />
+                            <IconButton icon={<RefreshCw size={14} strokeWidth={2} />} label={`Reactivate ${u.name}`} variant="outline-success" onClick={() => handleReactivate(u)} />
                           )}
                           <IconButton icon={<Key size={14} strokeWidth={2} />} label={`Reset password ${u.name}`} variant="outline-primary" onClick={() => handleResetPassword(u)} />
-                          {u.locked_until && <IconButton icon={<Lock size={14} strokeWidth={2} />} label={`Unlock ${u.name}`} variant="outline-warning" onClick={() => openReasonAction('Unlock account', 'unlock', u)} />}
-                          <IconButton icon={<LogOut size={14} strokeWidth={2} />} label={`Force logout ${u.name}`} variant="outline-secondary" onClick={() => openReasonAction('Force logout', 'force-logout', u)} />
+                          {u.locked_until && <IconButton icon={<Lock size={14} strokeWidth={2} />} label={`Unlock ${u.name}`} variant="outline-warning" onClick={() => handleUnlock(u)} />}
+                          <IconButton icon={<LogOut size={14} strokeWidth={2} />} label={`Force logout ${u.name}`} variant="outline-secondary" onClick={() => handleForceLogout(u)} />
                           {u.role === 'encoder' && (
-                            <IconButton icon={<ShieldAlert size={14} strokeWidth={2} />} label={`Change municipality ${u.name}`} variant="outline-secondary" onClick={() => { setActionForm({ kind: 'municipality', targetUser: u, reason: '', municipality_id: u.municipality_id || '' }); setOpenAction(true); }} />
+                            <IconButton icon={<ShieldAlert size={14} strokeWidth={2} />} label={`Change municipality ${u.name}`} variant="outline-secondary" onClick={() => handleChangeMunicipality(u)} />
                           )}
                         </>
                       )}

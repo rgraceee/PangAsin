@@ -5,7 +5,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 
-from app.services.content_service import get_content, set_content, CONTENT_KEYS
+from app.services.content_service import get_content, set_content, reset_content, CONTENT_KEYS
 from app.services.setting_service import get_all_settings, set_setting, SETTING_CODES
 from app.services.announcement_service import get_active_announcement, set_announcement
 from app.extensions import db
@@ -45,6 +45,21 @@ def put_content_item(key):
         return jsonify({"error": "Unknown content key."}), 404
     data = request.get_json(silent=True) or {}
     row, err = set_content(key, data, current_user)
+    if err:
+        return jsonify({"error": err}), 400
+    db.session.commit()
+    return jsonify(get_content(key)), 200
+
+
+@content_api_bp.route("/content/<key>/reset", methods=["POST"])
+@login_required
+def reset_content_item(key):
+    err = _require_superadmin()
+    if err:
+        return err
+    if key not in CONTENT_KEYS:
+        return jsonify({"error": "Unknown content key."}), 404
+    row, err = reset_content(key, current_user)
     if err:
         return jsonify({"error": err}), 400
     db.session.commit()

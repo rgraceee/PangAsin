@@ -121,7 +121,7 @@ export default function Login({ onLogin }) {
       }
       onLogin(user);
       toastSuccess('Log in successful.', 'Welcome back');
-      navigate(user.must_change_password ? '/change-password' : (user.role === 'encoder' ? '/encoder' : '/admin'));
+      navigate(user.must_change_password ? '/change-password' : (user.role === 'superadmin' ? '/superadmin/health' : (user.role === 'encoder' ? '/encoder' : '/admin')));
     } catch (err) {
       const message = err.message || 'Login failed.';
       // WHAT: Pagbubukas ng isang bagong error, ipapatay ang shake animation.

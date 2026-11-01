@@ -97,6 +97,10 @@ function activeIdFromPath(pathname) {
   if (pathname.startsWith('/superadmin/export')) return 'system-export';
   if (pathname.startsWith('/superadmin/health')) return 'system-health';
   if (pathname.startsWith('/superadmin/config')) return 'system-config';
+  if (pathname === '/superadmin/dashboard') return 'dashboard';
+  if (pathname === '/superadmin/forecast') return 'forecast';
+  if (pathname === '/superadmin/forecast/target') return 'forecast-target';
+  if (pathname === '/superadmin/data-quality') return 'data-quality';
   if (pathname.startsWith('/superadmin/accounts') || pathname.startsWith('/admin/system/accounts') || pathname.startsWith('/admin/settings/system/accounts')) return 'system-users';
   if (pathname.startsWith('/superadmin/activity') || pathname.startsWith('/admin/system/activity') || pathname.startsWith('/admin/settings/system/activity')) return 'system-health';
   if (pathname.startsWith('/superadmin/settings/account')) return 'account';
@@ -111,7 +115,8 @@ function activeIdFromPath(pathname) {
   if (pathname === '/admin/reports') return 'reports';
   if (pathname === '/admin/master-list') return 'master-list';
   if (pathname === '/admin/municipalities') return 'municipalities';
-  if (pathname === '/admin/audit-logs') return 'audit-logs';
+  if (pathname === '/admin/master-list') return 'master-list';
+  if (pathname === '/admin/municipalities') return 'municipalities';
   if (pathname === '/admin/users') return 'users';
   return 'dashboard';
 }
@@ -155,31 +160,49 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
         <nav className="p-nav" aria-label="Main">
           <div className="p-navlist">
             <SectionLabel collapsed={collapsed}>Main</SectionLabel>
-            {MAIN_ITEMS.filter(() => user?.role !== 'superadmin').map((item) => (
-              <NavItem
-                key={item.id}
-                icon={item.icon}
-                label={item.label}
-                active={activeId === item.id}
-                badge={item.id === 'validation' ? pendingCount : 0}
-                collapsed={collapsed}
-                onClick={go(item.path)}
-              />
-            ))}
+            {MAIN_ITEMS.filter((item) => {
+              if (user?.role === 'superadmin') {
+                // SuperAdmin sees Dashboard and Data Quality (view-only),
+                // but not Validation Queue.
+                return item.id !== 'validation';
+              }
+              return true;
+            }).map((item) => {
+              // SuperAdmin routes live under /superadmin/* instead of /admin/*.
+              const path = user?.role === 'superadmin'
+                ? item.path.replace('/admin', '/superadmin')
+                : item.path;
+              return (
+                <NavItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  active={activeId === item.id}
+                  badge={item.id === 'validation' ? pendingCount : 0}
+                  collapsed={collapsed}
+                  onClick={go(path)}
+                />
+              );
+            })}
 
+            <Divider />
+            <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
+            <NavGroup
+              id={FORECAST_GROUP.id}
+              icon={FORECAST_GROUP.icon}
+              label={FORECAST_GROUP.label}
+              items={FORECAST_GROUP.items.map((item) => ({
+                ...item,
+                path: user?.role === 'superadmin'
+                  ? item.path.replace('/admin', '/superadmin')
+                  : item.path,
+              }))}
+              activeId={activeId}
+              collapsed={collapsed}
+              onNavigate={(item) => goItem({ ...item, path: user?.role === 'superadmin' ? item.path.replace('/admin', '/superadmin') : item.path })}
+            />
             {user?.role !== 'superadmin' && (
               <>
-                <Divider />
-                <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
-                <NavGroup
-                  id={FORECAST_GROUP.id}
-                  icon={FORECAST_GROUP.icon}
-                  label={FORECAST_GROUP.label}
-                  items={FORECAST_GROUP.items}
-                  activeId={activeId}
-                  collapsed={collapsed}
-                  onNavigate={goItem}
-                />
                 {MANAGE_ITEMS.map((item) => (
                   <NavItem
                     key={item.id}

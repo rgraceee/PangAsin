@@ -8,6 +8,7 @@ from flask import current_app
 from app import create_app
 from app.extensions import db
 from app.models.user import User
+from app.services.audit import log_action
 
 
 @click.command("create-superadmin")
@@ -41,6 +42,15 @@ def create_superadmin(email, name):
         )
         user.set_password(raw_password)
         db.session.add(user)
+        db.session.commit()
+
+        log_action(
+            "superadmin.user.create_cli",
+            "user",
+            user.id,
+            summary=f"Created SuperAdmin account {user.email} via CLI.",
+            details={"email": user.email, "role": user.role},
+        )
         db.session.commit()
 
         click.echo("=" * 60)

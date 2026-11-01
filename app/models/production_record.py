@@ -66,6 +66,10 @@ class ProductionRecord(db.Model):
         self.deleted_by = None
         db.session.add(self)
 
+    def permanent_delete(self):
+        """Hard-delete the row from the database. Only for already soft-deleted records."""
+        db.session.delete(self)
+
     __table_args__ = (
         db.UniqueConstraint("municipality_id", "barangay_id", "record_date", name="uq_production_records_barangay_date"),
         db.CheckConstraint("production_volume_mt >= 0", name="chk_production_volume_mt"),

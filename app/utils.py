@@ -17,6 +17,16 @@ def parse_iso_date(date_str):
 
 def is_not_admin():
     # WHAT: True when the current user is neither an admin nor a superadmin.
-    # WHY: SuperAdmin sits above Admin and must reach every admin endpoint;
-    #      encoders and anonymous callers are still rejected.
+    # WHY: SuperAdmin can reach readonly admin pages (dashboard, forecast,
+    #      data quality) but is blocked from admin-write/management routes
+    #      via is_not_admin_only() where needed.
     return current_user.role not in ("admin", "superadmin")
+
+
+def is_not_admin_only():
+    # WHAT: True when the current user is not strictly an admin (blocks
+    #       superadmin too). Used on admin-write/management routes that
+    #       SuperAdmin must not reach.
+    # WHY: Keeps admin work (validation, reports, municipalities, users)
+    #      walled off from SuperAdmin, server-side, not just in the UI.
+    return current_user.role != "admin"

@@ -12,7 +12,7 @@ from app.models.login_events import LoginEvent
 from app.constants import MAX_MONTHLY_VOLUME_MT
 from app.extensions import db
 from app.services.setting_service import get_setting
-from app.services.audit import log_action
+from app.services.audit import log_action, safe_log_action
 from app.services.email import send_email
 
 auth_api_bp = Blueprint("auth_api", __name__, url_prefix="/api/auth")
@@ -70,7 +70,7 @@ def login():
     ip = ip.split(",")[0].strip()[:64] if ip else None
 
     if not user or not user.check_password(data["password"]):
-        log_action(
+        safe_log_action(
             "auth.login.failed",
             "user",
             getattr(user, "id", None),
@@ -101,7 +101,7 @@ def login():
         return jsonify({"error": "Invalid email or password."}), 401
 
     if user.status != "active":
-        log_action(
+        safe_log_action(
             "auth.login.blocked",
             "user",
             user.id,
@@ -122,7 +122,7 @@ def login():
         return jsonify({"error": "Account is inactive. Contact administrator."}), 403
 
     if user.locked_until is not None and user.locked_until > datetime.utcnow():
-        log_action(
+        safe_log_action(
             "auth.login.locked",
             "user",
             user.id,
@@ -156,7 +156,7 @@ def login():
             user_agent=request.headers.get("User-Agent", "")[:255],
         )
     )
-    log_action(
+    safe_log_action(
         "auth.login",
         "user",
         user.id,
@@ -191,7 +191,7 @@ def change_password():
         }), 400
     if not current_user.check_password(current_password):
         return jsonify({"error": "Current password is incorrect."}), 400
-    if len(new_password) < 6:
+    if len(new_password) < get_setting("min_password_length", 6):
         return jsonify({"error": "New password must be at least 6 characters."}), 400
     if new_password == current_password:
         return jsonify({
@@ -354,7 +354,7 @@ def confirm_password_reset():
         payload, status = error
         return jsonify(payload), status
 
-    if len(new_password) < 6:
+    if len(new_password) < get_setting("min_password_length", 6):
         return jsonify({
             "code": "weak_password",
             "error": "Password must be at least 6 characters.",

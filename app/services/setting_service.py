@@ -18,6 +18,8 @@ SETTINGS_REGISTRY = {
     "forgot_password_request_limit_per_hour": {"type": "int", "default": 5, "min": 1, "max": 10000},
     "forgot_password_email_subject": {"type": "string", "default": "PangAsin password reset", "min": 1, "max": 200},
     "forgot_password_email_message": {"type": "string", "default": "You requested a password reset for your PangAsin account. Use the reset link below to set a new password. If you did not request this, you can ignore this email.", "min": 1, "max": 4000},
+    "forecast_horizon": {"type": "int", "default": 12, "min": 1, "max": 36},
+    "production_methods": {"type": "json", "default": ["solar", "cooked", "hybrid"], "min": 1, "max": 10},
 }
 
 SETTING_CODES = tuple(SETTINGS_REGISTRY.keys())
@@ -30,6 +32,16 @@ def _coerce(value, spec):
             return int(value)
         except (TypeError, ValueError):
             return None
+    if t == "json":
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            try:
+                import json
+                return json.loads(value)
+            except (ValueError, TypeError):
+                return None
+        return None
     return value
 
 
@@ -50,6 +62,15 @@ def _validate(code, value):
         if len(value) > spec["max"]:
             return None, f"{code} is too long (max {spec['max']} chars)."
         coerced = value
+    if spec["type"] == "json":
+        if not isinstance(coerced, list) or len(coerced) < spec.get("min", 1):
+            return None, f"{code} must be a list with at least {spec.get('min', 1)} item(s)."
+        if len(coerced) > spec.get("max", 10):
+            return None, f"{code} must have at most {spec.get('max', 10)} item(s)."
+        for item in coerced:
+            if not isinstance(item, str) or not item.strip():
+                return None, f"{code} items must be non-empty strings."
+        coerced = coerced
     return coerced, None
 
 

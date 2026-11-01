@@ -55,7 +55,7 @@ def _reporting_grid(
     reported_set = set()
     if municipality_ids:
         reported_rows = (
-            ProductionRecord.query
+            ProductionRecord.active()
             .filter(ProductionRecord.status == "approved")
             .filter(ProductionRecord.municipality_id.in_(municipality_ids))
             .filter(ProductionRecord.record_date >= grid_start)
@@ -163,7 +163,7 @@ def _monthly_aggregates(
         raise ValueError(f"Unsupported monthly aggregate source: {source}")
 
     q = (
-        ProductionRecord.query
+        ProductionRecord.active()
         .filter(ProductionRecord.status == "approved")
         .filter(ProductionRecord.record_date >= start)
         .filter(ProductionRecord.record_date <= end)
@@ -260,7 +260,7 @@ def _last_month_with_data(
         raise ValueError(f"Unsupported latest-month source: {source}")
 
     q = (
-        ProductionRecord.query
+        ProductionRecord.active()
         .filter(ProductionRecord.status == "approved")
         .filter(
             ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())

@@ -3,29 +3,35 @@
 # WHY: Isang malapit na papel (superadmin) ang makakagawa ng mga kritikal na
 #      pagbabago sa account at monitoring ng lahat ng login at audit events.
 #      Walang role ang makakahanap rito maliban sa superadmin.
-from datetime import datetime
+from datetime import datetime, timedelta
 from secrets import token_urlsafe
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_login import current_user, login_required
 
 from app.models.user import User
 from app.models.login_events import LoginEvent
 from app.models.audit_log import AuditLog
 from app.models.production_record import ProductionRecord
+from app.models.forecast import ForecastRun
+from app.models.municipality import Municipality
 from app.extensions import db
 from app.services.audit import log_action
+from app.services.setting_service import get_setting
+from app.services.forecast_service import run_forecast_all_municipalities
+from app.constants import APP_VERSION
 from app.utils import is_not_admin
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 superadmin_api_bp = Blueprint("superadmin_api", __name__, url_prefix="/api/superadmin")
 
 
 def _require_superadmin():
-    # WHAT: Pareho ang is_not_admin kaya idagdag natin ang check para sa role.
-    # WHY: Hindi pwedeng ma-access ng admin ang superadmin endpoints.
+    # WHAT: Non-superadmin (admin, encoder, anon) gets 404, not 403,
+    #       so superadmin routes are indistinguishable from missing routes.
+    # WHY: Admin/encoder/anon must not learn that SuperAdmin endpoints exist.
     if current_user.role != "superadmin":
-        return jsonify({"error": "SuperAdmin access required."}), 403
+        return jsonify({"error": "Not found."}), 404
     return None
 
 
@@ -169,6 +175,11 @@ def deactivate_user(user_id):
     if err:
         return err
 
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason or len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found."}), 404
@@ -201,6 +212,7 @@ def deactivate_user(user_id):
         user.id,
         actor=current_user,
         summary=f"{current_user.email} deactivated {user.email}.",
+        reason=reason,
         details={"email": user.email, "role": user.role},
     )
     db.session.commit()
@@ -214,6 +226,11 @@ def reactivate_user(user_id):
     err = _require_superadmin()
     if err:
         return err
+
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason or len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
 
     user = User.query.get(user_id)
     if not user:
@@ -229,6 +246,7 @@ def reactivate_user(user_id):
         user.id,
         actor=current_user,
         summary=f"{current_user.email} reactivated {user.email}.",
+        reason=reason,
         details={"email": user.email, "role": user.role},
     )
     db.session.commit()
@@ -242,6 +260,11 @@ def reset_password(user_id):
     err = _require_superadmin()
     if err:
         return err
+
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason or len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
 
     user = User.query.get(user_id)
     if not user:
@@ -264,6 +287,7 @@ def reset_password(user_id):
         user.id,
         actor=current_user,
         summary=f"{current_user.email} reset password for {user.email}.",
+        reason=reason,
         details={"email": user.email, "role": user.role},
     )
     db.session.commit()
@@ -286,12 +310,16 @@ def change_municipality(user_id):
     if err:
         return err
 
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason or len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
+
+    municipality_id = data.get("municipality_id")
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found."}), 404
-
-    data = request.get_json(silent=True) or {}
-    municipality_id = data.get("municipality_id")
 
     if user.role == "encoder" and not municipality_id:
         return jsonify({"error": "Municipality is required for encoders."}), 400
@@ -311,6 +339,7 @@ def change_municipality(user_id):
         user.id,
         actor=current_user,
         summary=f"{current_user.email} changed municipality of {user.email}.",
+        reason=reason,
         details={
             "email": user.email,
             "from": before,
@@ -329,6 +358,11 @@ def force_logout(user_id):
     if err:
         return err
 
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason or len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
+
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found."}), 404
@@ -345,6 +379,7 @@ def force_logout(user_id):
         user.id,
         actor=current_user,
         summary=f"{current_user.email} forced logout of {user.email}.",
+        reason=reason,
         details={"email": user.email, "role": user.role},
     )
     db.session.commit()
@@ -358,6 +393,11 @@ def unlock_user(user_id):
     err = _require_superadmin()
     if err:
         return err
+
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason or len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
 
     user = User.query.get(user_id)
     if not user:
@@ -373,6 +413,7 @@ def unlock_user(user_id):
         user.id,
         actor=current_user,
         summary=f"{current_user.email} unlocked {user.email}.",
+        reason=reason,
         details={"email": user.email, "role": user.role},
     )
     db.session.commit()
@@ -568,3 +609,537 @@ def restore_record(record_id):
     )
     db.session.commit()
     return jsonify({"message": "Record restored."})
+
+
+@superadmin_api_bp.route("/records/<int:record_id>/edit", methods=["PATCH"])
+@login_required
+def edit_record(record_id):
+    err = _require_superadmin()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if len(reason) < 10:
+        return jsonify({"error": "Reason must be at least 10 characters."}), 400
+
+    record = ProductionRecord.query.get(record_id)
+    if not record:
+        return jsonify({"error": "Record not found."}), 404
+    if record.deleted_at:
+        return jsonify({"error": "Cannot edit a deleted record."}), 400
+    if record.status != "approved":
+        return jsonify({"error": "Only approved records can be edited here."}), 409
+
+    # Fields allowed for SuperAdmin edit of approved records.
+    allowed = {
+        "production_volume_mt", "num_salt_beds", "area_per_salt_bed",
+        "registered_producers", "male_producers", "female_producers",
+        "producers_18_30", "producers_31_40", "producers_41_50",
+        "producers_51_60", "producers_61_plus", "production_method",
+    }
+    before = {}
+    changed = False
+    for field in allowed:
+        if field in data:
+            new_val = data[field]
+            old_val = getattr(record, field)
+            # Normalize numeric comparison.
+            if isinstance(old_val, (int, float)) and new_val is not None:
+                try:
+                    new_val = type(old_val)(new_val)
+                except (TypeError, ValueError):
+                    return jsonify({"error": f"Invalid value for {field}."}), 400
+            before[field] = old_val
+            if new_val != old_val:
+                setattr(record, field, new_val)
+                changed = True
+
+    if not changed:
+        return jsonify({"error": "No fields changed."}), 400
+
+    # Recompute registered_producers from male + female if those changed.
+    if "male_producers" in data or "female_producers" in data:
+        record.registered_producers = (record.male_producers or 0) + (record.female_producers or 0)
+
+    db.session.add(record)
+
+    after = {f: getattr(record, f) for f in allowed}
+    log_action(
+        "superadmin.record.edit",
+        "production_record",
+        record.id,
+        actor=current_user,
+        summary=f"{current_user.email} edited approved production record {record.id}.",
+        reason=reason,
+        old_value=before,
+        new_value=after,
+        details={"reason": reason},
+    )
+    db.session.commit()
+
+    return jsonify({
+        "message": "Record updated.",
+        "record": {
+            "id": record.id,
+            "production_volume_mt": str(record.production_volume_mt),
+            "num_salt_beds": record.num_salt_beds,
+            "area_per_salt_bed": str(record.area_per_salt_bed) if record.area_per_salt_bed is not None else None,
+            "registered_producers": record.registered_producers,
+            "male_producers": record.male_producers,
+            "female_producers": record.female_producers,
+            "production_method": record.production_method,
+        },
+    })
+
+
+@superadmin_api_bp.route("/records/<int:record_id>/permanent-delete", methods=["DELETE"])
+@login_required
+def permanent_delete_record(record_id):
+    err = _require_superadmin()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    confirm_text = (data.get("confirm_text") or "").strip()
+    if confirm_text != "DELETE":
+        return jsonify({"error": 'Type "DELETE" to confirm permanent deletion.'}), 400
+
+    record = ProductionRecord.query.get(record_id)
+    if not record:
+        return jsonify({"error": "Record not found."}), 404
+    if not record.deleted_at:
+        return jsonify({"error": "Only soft-deleted records can be permanently deleted."}), 400
+
+    log_action(
+        "superadmin.record.permanent_delete",
+        "production_record",
+        record.id,
+        actor=current_user,
+        summary=f"{current_user.email} permanently deleted production record {record.id}.",
+        details={"before": {
+            "production_volume_mt": str(record.production_volume_mt),
+            "status": record.status,
+            "municipality_id": record.municipality_id,
+            "barangay_id": record.barangay_id,
+            "record_date": str(record.record_date),
+        }},
+    )
+    record.permanent_delete()
+    db.session.commit()
+
+    return jsonify({"message": "Record permanently deleted."})
+
+
+# ---------------------------------------------------------------------------
+# CSV export helpers — explicit column allowlists, no secrets, injection-safe.
+# ---------------------------------------------------------------------------
+
+_CSV_DANGEROUS_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def _csv_safe(value):
+    """Guard against CSV injection: prefix cells starting with dangerous chars."""
+    if value is None:
+        return ""
+    s = str(value)
+    if s and s[0] in _CSV_DANGEROUS_PREFIXES:
+        return "'" + s
+    return s
+
+
+def _csv_response(rows, header, filename):
+    import csv, io
+    from datetime import datetime
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(header)
+    for row in rows:
+        writer.writerow([_csv_safe(c) for c in row])
+
+    log_action(
+        "superadmin.export.csv",
+        "export",
+        None,
+        actor=current_user,
+        summary=f"{current_user.email} exported {filename} to CSV.",
+    )
+    db.session.commit()
+
+    return (
+        buf.getvalue(),
+        200,
+        {
+            "Content-Type": "text/csv",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@superadmin_api_bp.route("/export/csv/salt-farmers", methods=["GET"])
+@login_required
+def export_salt_farmers():
+    err = _require_superadmin()
+    if err:
+        return err
+    from app.models.producer import Producer
+
+    municipality_id = request.args.get("municipality_id", type=int)
+    q = Producer.query
+    if municipality_id:
+        q = q.filter(Producer.municipality_id == municipality_id)
+    q = q.order_by(Producer.municipality_id, Producer.name)
+    rows = [
+        [p.id, p.name, p.age or "", p.sex or "", p.address or "", p.barangay_id or "", p.municipality_id or ""]
+        for p in q.all()
+    ]
+    return _csv_response(
+        rows,
+        ["id", "name", "age", "sex", "address", "barangay_id", "municipality_id"],
+        f"pangasin-salt-farmers-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.csv",
+    )
+
+
+@superadmin_api_bp.route("/export/csv/audit-log", methods=["GET"])
+@login_required
+def export_audit_log():
+    err = _require_superadmin()
+    if err:
+        return err
+    from datetime import datetime
+
+    q = AuditLog.query.order_by(AuditLog.created_at.desc())
+    rows = [
+        [
+            a.id,
+            a.actor_email or "",
+            a.action or "",
+            a.entity_type or "",
+            a.entity_id or "",
+            a.summary or "",
+            a.reason or "",
+            a.ip_address or "",
+            a.created_at.isoformat() + "Z" if a.created_at else "",
+        ]
+        for a in q.all()
+    ]
+    return _csv_response(
+        rows,
+        ["id", "actor_email", "action", "entity_type", "entity_id", "summary", "reason", "ip_address", "created_at"],
+        f"pangasin-audit-log-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.csv",
+    )
+
+
+@superadmin_api_bp.route("/export/csv/login-history", methods=["GET"])
+@login_required
+def export_login_history():
+    err = _require_superadmin()
+    if err:
+        return err
+    from datetime import datetime
+
+    q = LoginEvent.query.order_by(LoginEvent.created_at.desc())
+    rows = [
+        [
+            e.id,
+            e.email or "",
+            e.success,
+            e.ip_address or "",
+            e.created_at.isoformat() + "Z" if e.created_at else "",
+        ]
+        for e in q.all()
+    ]
+    return _csv_response(
+        rows,
+        ["id", "email", "success", "ip_address", "created_at"],
+        f"pangasin-login-history-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.csv",
+    )
+
+
+@superadmin_api_bp.route("/export/backup", methods=["GET"])
+@login_required
+def export_backup():
+    err = _require_superadmin()
+    if err:
+        return err
+    from datetime import datetime
+    import os, tempfile, shutil
+
+    db_uri = str(db.engine.url)
+    filename_base = f"pangasin-backup-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+
+    if "sqlite" in db_uri:
+        # WHAT: Consistent SQLite copy via the backup API.
+        # WHY: Never a raw file copy of a live DB file.
+        src = db_uri.replace("sqlite:///", "", 1)
+        fd, dst = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        try:
+            src_conn = db.engine.connect()
+            dst_conn = __import__("sqlite3").connect(dst)
+            with dst_conn:
+                src_conn.connection.backup(dst_conn)
+            dst_conn.close()
+            src_conn.close()
+            log_action(
+                "superadmin.export.backup",
+                "backup",
+                None,
+                actor=current_user,
+                summary=f"{current_user.email} downloaded SQLite database backup.",
+            )
+            db.session.commit()
+            return (
+                open(dst, "rb").read(),
+                200,
+                {
+                    "Content-Type": "application/x-sqlite3",
+                    "Content-Disposition": f'attachment; filename="{filename_base}.db"',
+                    "Cache-Control": "no-store",
+                },
+            )
+        finally:
+            try:
+                os.unlink(dst)
+            except OSError:
+                pass
+    elif "postgresql" in db_uri:
+        # WHAT: PostgreSQL logical backup via pg_dump.
+        # WHY: Consistent dump without locking the live database.
+        import subprocess
+
+        fd, dst = tempfile.mkstemp(suffix=".sql")
+        os.close(fd)
+        try:
+            env = dict(os.environ)
+            result = subprocess.run(
+                ["pg_dump", db_uri, "-f", dst],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            if result.returncode != 0:
+                return jsonify({"error": "Database backup failed.", "detail": result.stderr[:500]}), 500
+            log_action(
+                "superadmin.export.backup",
+                "backup",
+                None,
+                actor=current_user,
+                summary=f"{current_user.email} downloaded PostgreSQL database backup.",
+            )
+            db.session.commit()
+            return (
+                open(dst, "rb").read(),
+                200,
+                {
+                    "Content-Type": "application/sql",
+                    "Content-Disposition": f'attachment; filename="{filename_base}.sql"',
+                    "Cache-Control": "no-store",
+                },
+            )
+        finally:
+            try:
+                os.unlink(dst)
+            except OSError:
+                pass
+    else:
+        return jsonify({"error": "Database backup not supported for this database type."}), 400
+
+
+# ---------------------------------------------------------------------------
+# Health
+# ---------------------------------------------------------------------------
+
+@superadmin_api_bp.route("/health", methods=["GET"])
+@login_required
+def health():
+    err = _require_superadmin()
+    if err:
+        return err
+
+    now = datetime.utcnow()
+
+    # Last forecast run (province-wide).
+    last_run = (
+        ForecastRun.query.filter(ForecastRun.municipality_id.is_(None))
+        .order_by(ForecastRun.created_at.desc())
+        .first()
+    )
+    last_forecast_run = last_run.created_at.isoformat() + "Z" if last_run else None
+
+    # Last approved production record update.
+    last_approved = (
+        ProductionRecord.active()
+        .filter_by(status="approved")
+        .order_by(ProductionRecord.updated_at.desc())
+        .first()
+    )
+    last_approved_update = last_approved.updated_at.isoformat() + "Z" if last_approved else None
+
+    # Pending validations count.
+    pending_validations = (
+        ProductionRecord.active()
+        .filter_by(status="pending")
+        .count()
+    )
+
+    # User count by role.
+    user_counts = (
+        db.session.query(User.role, func.count(User.id))
+        .group_by(User.role)
+        .all()
+    )
+    users_by_role = {role: count for role, count in user_counts}
+
+    # Failed logins last 24h.
+    since_24h = now - timedelta(hours=24)
+    failed_logins_24h = (
+        LoginEvent.query
+        .filter_by(success=False)
+        .filter(LoginEvent.created_at >= since_24h)
+        .count()
+    )
+
+    # DB type + size.
+    db_uri = str(db.engine.url)
+    if "sqlite" in db_uri:
+        db_type = "SQLite"
+        db_path = db_uri.replace("sqlite:///", "", 1)
+        try:
+            import os
+            db_size_bytes = os.path.getsize(db_path)
+            db_size = f"{db_size_bytes / 1024 / 1024:.2f} MB"
+        except OSError:
+            db_size = "unknown"
+    elif "postgresql" in db_uri:
+        db_type = "PostgreSQL"
+        row = db.session.execute(
+            "SELECT pg_size_pretty(pg_database_size(current_database()))"
+        ).scalar()
+        db_size = row or "unknown"
+    else:
+        db_type = db_uri.split("://")[0]
+        db_size = "unknown"
+
+    log_action(
+        "superadmin.health.view",
+        "health",
+        None,
+        actor=current_user,
+        summary=f"{current_user.email} viewed system health.",
+    )
+    db.session.commit()
+
+    return jsonify({
+        "app_version": APP_VERSION,
+        "last_forecast_run": last_forecast_run,
+        "last_approved_update": last_approved_update,
+        "pending_validations": pending_validations,
+        "users_by_role": users_by_role,
+        "failed_logins_24h": failed_logins_24h,
+        "db_type": db_type,
+        "db_size": db_size,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Run forecast now (all municipalities)
+# ---------------------------------------------------------------------------
+
+_forecast_running = False
+
+
+@superadmin_api_bp.route("/forecast/run", methods=["POST"])
+@login_required
+def run_forecast_now():
+    global _forecast_running
+    err = _require_superadmin()
+    if err:
+        return err
+    if _forecast_running:
+        return jsonify({"error": "A forecast run is already in progress."}), 409
+
+    _forecast_running = True
+    try:
+        horizon = int(get_setting("forecast_horizon", 12))
+        if horizon < 1 or horizon > 36:
+            horizon = 12
+
+        run_obj = run_forecast_all_municipalities(horizon)
+
+        log_action(
+            "superadmin.forecast.run",
+            "forecast_run",
+            run_obj.id,
+            actor=current_user,
+            summary=f"{current_user.email} ran a forecast for all municipalities (horizon={horizon} months).",
+            details={"horizon": horizon, "run_id": run_obj.id},
+        )
+        db.session.commit()
+
+        return jsonify({
+            "message": "Forecast run completed.",
+            "run_id": run_obj.id,
+            "algorithm": run_obj.algorithm,
+            "projected_total": str(run_obj.projected_total) if run_obj.projected_total is not None else None,
+        }), 201
+    except Exception as exc:
+        current_app.logger.exception("Forecast run failed.")
+        return jsonify({"error": f"Forecast run failed: {str(exc)}"}), 500
+    finally:
+        _forecast_running = False
+
+
+# ---------------------------------------------------------------------------
+# SMTP (read-only display + test)
+# ---------------------------------------------------------------------------
+
+@superadmin_api_bp.route("/smtp", methods=["GET"])
+@login_required
+def smtp_config():
+    err = _require_superadmin()
+    if err:
+        return err
+    # WHAT: Read-only SMTP config from env. Never expose MAIL_PASSWORD.
+    # WHY: SuperAdmin can see that SMTP is configured but not the secret.
+    return jsonify({
+        "mail_server": current_app.config.get("MAIL_SERVER", ""),
+        "mail_port": current_app.config.get("MAIL_PORT", 587),
+        "mail_use_tls": bool(current_app.config.get("MAIL_USE_TLS", True)),
+        "mail_use_ssl": bool(current_app.config.get("MAIL_USE_SSL", False)),
+        "mail_username": current_app.config.get("MAIL_USERNAME", ""),
+        "mail_default_sender": current_app.config.get("MAIL_DEFAULT_SENDER", ""),
+        "smtp_configured": bool(current_app.config.get("MAIL_USERNAME") and current_app.config.get("MAIL_PASSWORD")),
+    }), 200
+
+
+@superadmin_api_bp.route("/smtp/test", methods=["POST"])
+@login_required
+def smtp_test():
+    err = _require_superadmin()
+    if err:
+        return err
+    if not current_app.config.get("MAIL_USERNAME") or not current_app.config.get("MAIL_PASSWORD"):
+        return jsonify({"error": "SMTP is not configured (MAIL_USERNAME / MAIL_PASSWORD missing)."}), 400
+    try:
+        from app.services.email import send_email
+        ok = send_email(
+            current_user.email,
+            "PangAsin SMTP Test",
+            "<p>This is a test email from the PangAsin system. SMTP is working.</p>",
+            "This is a test email from the PangAsin system. SMTP is working.",
+        )
+        if not ok:
+            return jsonify({"error": "SMTP test email could not be sent. Check server logs."}), 500
+        log_action(
+            "superadmin.smtp.test",
+            "smtp",
+            None,
+            actor=current_user,
+            summary=f"{current_user.email} sent an SMTP test email.",
+        )
+        db.session.commit()
+        return jsonify({"message": "Test email sent successfully."}), 200
+    except Exception as exc:
+        current_app.logger.exception("SMTP test failed.")
+        return jsonify({"error": f"SMTP test failed: {str(exc)}"}), 500

@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { Button, Card, Badge } from 'react-bootstrap';
-import { exportRecords } from '../../services/dataService';
+import { exportRecords, exportCsv, downloadBackup } from '../../services/dataService';
 import { useToast } from '../Toast';
 import PageHeader from './PageHeader';
-import { Download } from 'lucide-react';
+import { Download, Database, FileText } from 'lucide-react';
+
+const EXPORT_TYPES = [
+  { value: 'records', label: 'Production records', icon: <FileText size={14} strokeWidth={2} /> },
+  { value: 'salt-farmers', label: 'Salt farmers', icon: <FileText size={14} strokeWidth={2} /> },
+  { value: 'audit-log', label: 'Audit log', icon: <FileText size={14} strokeWidth={2} /> },
+  { value: 'login-history', label: 'Login history', icon: <FileText size={14} strokeWidth={2} /> },
+];
 
 export default function SuperAdminExport() {
   const { toastSuccess, toastError } = useToast();
   const [filters, setFilters] = useState({ municipality_id: '', start: '', end: '', status: '' });
+  const [type, setType] = useState('records');
   const [loading, setLoading] = useState(false);
   const [lastExported, setLastExported] = useState(null);
 
@@ -15,22 +23,47 @@ export default function SuperAdminExport() {
     e.preventDefault();
     setLoading(true);
     try {
-      const blob = await exportRecords(filters);
+      const blob = await exportCsv(type, filters);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `pangasin-export-${new Date().toISOString().slice(0,10)}.csv`;
+      a.download = `pangasin-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
       setLastExported(new Date().toISOString());
-      toastSuccess('CSV export downloaded.', 'Export complete');
+      toastSuccess(`${type} CSV downloaded.`, 'Export complete');
     } catch (err) { toastError(err.message || 'Export failed.'); }
+    finally { setLoading(false); }
+  };
+
+  const handleBackup = async () => {
+    setLoading(true);
+    try {
+      const blob = await downloadBackup();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ext = blob.type.includes('sqlite') ? '.db' : '.sql';
+      a.download = `pangasin-backup-${new Date().toISOString().slice(0, 13)}${ext}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setLastExported(new Date().toISOString());
+      toastSuccess('Database backup downloaded.', 'Backup complete');
+    } catch (err) { toastError(err.message || 'Backup failed.'); }
     finally { setLoading(false); }
   };
 
   return (
     <>
-      <PageHeader id="superadmin-export" title="Export &amp; Backup" subtitle="CSV export of production records, salt farmers, audit log and login history. Never includes password hashes." art={<></>}>
+      <PageHeader id="superadmin-export" title="Export &amp; Backup" subtitle="CSV exports never include password hashes or credentials. Backup is SuperAdmin-only and audited." art={<></>}>
+        <div className="admin-page-hero-control">
+          <label className="admin-page-hero-field" htmlFor="sae-type">Export type</label>
+          <select id="sae-type" className="form-select admin-page-hero-select" value={type} onChange={(e) => setType(e.target.value)}>
+            {EXPORT_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="admin-page-hero-control">
           <label className="admin-page-hero-field" htmlFor="sae-muni">Municipality</label>
           <select id="sae-muni" className="form-select admin-page-hero-select" name="municipality_id" value={filters.municipality_id} onChange={(e) => setFilters({ ...filters, municipality_id: e.target.value })}><option value="">All</option></select>
@@ -51,15 +84,22 @@ export default function SuperAdminExport() {
 
       <Card className="encoder-card admin-card">
         <Card.Body>
-          <form onSubmit={handleExport} className="d-flex gap-2 align-items-end">
+          <form onSubmit={handleExport} className="d-flex gap-2 align-items-end mb-3">
             <Button type="submit" variant="primary" disabled={loading}>
               <Download size={16} strokeWidth={2} aria-hidden="true" />{' '}{loading ? 'Exporting…' : 'Download CSV'}
             </Button>
             <Badge className="ms-auto text-bg-light text-dark border">{lastExported ? `Last export: ${new Date(lastExported).toLocaleString()}` : '—'}</Badge>
           </form>
+
+          <div className="d-flex gap-2">
+            <Button onClick={handleBackup} variant="outline-secondary" disabled={loading}>
+              <Database size={16} strokeWidth={2} aria-hidden="true" />{' '}{loading ? 'Backing up…' : 'Download DB Backup'}
+            </Button>
+          </div>
+
           <div className="mt-3">
             <p className="text-muted small">Scope: production records, salt farmers, audit log, login history. Filters: municipality, date range, status. Password hashes are never included.</p>
-            <p className="text-muted small">Backup: SQLite consistent copy via the backup API (other DBs show “unsupported here”). Download is audited, timestamped, and marked Cache-Control: no-store.</p>
+            <p className="text-muted small">Backup: consistent database copy via the server backup API. Download is audited, timestamped, and marked Cache-Control: no-store. CSV cells are injection-safe.</p>
           </div>
         </Card.Body>
       </Card>

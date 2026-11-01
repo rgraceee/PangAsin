@@ -8,6 +8,7 @@ import { Card, Form, Modal, Alert } from 'react-bootstrap';
 import {
   getSuperAdminContent,
   putSuperAdminContent,
+  resetSuperAdminContent,
 } from '../../services/dataService';
 import { useToast } from '../Toast';
 import {
@@ -124,6 +125,14 @@ export default function ContentEditor({ key, defaultContent, open, onClose }) {
     setError(null);
     setSaving(true);
     try {
+      // Auto-set last_updated for privacy/terms before sending to the server.
+      if (key === 'privacy' || key === 'terms') {
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = now.toLocaleString('default', { month: 'long' });
+        const year = now.getFullYear();
+        setField('last_updated', `${day} ${month} ${year}`);
+      }
       await putSuperAdminContent(key, content);
       setInitialContent(JSON.stringify(content));
       setSuccess(true);
@@ -141,11 +150,26 @@ export default function ContentEditor({ key, defaultContent, open, onClose }) {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!window.confirm(`Reset ${LABELS[key]} to its default content? This is audited.`)) return;
-    setContent(JSON.parse(JSON.stringify(defaultContent)));
+    setSaving(true);
     setError(null);
-    setSuccess(false);
+    try {
+      await resetSuperAdminContent(key);
+      setSuccess(true);
+      toastSuccess(`${LABELS[key]} reset to default.`, 'Content reset');
+      loadContent();
+    } catch (err) {
+      const message =
+        err.data?.error ||
+        (err.data?.errors ? err.data.errors.join(', ') : '') ||
+        err.message ||
+        'Reset failed.';
+      setError(message);
+      toastError(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const close = () => onClose();
@@ -211,8 +235,8 @@ function SectionsEditor({ content, setField, spliceAt, pushAt }) {
       </Form.Group>
       <Form.Group className="mb-3">
         <Form.Label>Last updated</Form.Label>
-        <Form.Control value={content.last_updated || ''} onChange={(e) => setField('last_updated', e.target.value)} />
-        <Form.Text className="text-muted">Shown at the end of the document.</Form.Text>
+        <Form.Control value={content.last_updated || ''} readOnly />
+        <Form.Text className="text-muted">Set automatically on save or reset.</Form.Text>
       </Form.Group>
       <h5 className="content-editor-sub mb-2">Sections</h5>
       {sections.map((section, si) => (
