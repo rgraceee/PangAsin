@@ -38,9 +38,33 @@ class ProductionRecord(db.Model):
     reviewed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    # WHAT: Soft-delete columns so a SuperAdmin can remove bad data without
+    #       destroying history. Queries must filter deleted_at IS NULL.
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by = db.Column(db.Integer, nullable=True)
 
     reviewer = db.relationship("User", foreign_keys=[reviewed_by], backref="reviewed_records", lazy=True)
     barangay = db.relationship("Barangay", foreign_keys=[barangay_id], lazy=True)
+
+    @classmethod
+    def active(cls):
+        """Return a query excluding soft-deleted records (deleted_at IS NULL).
+
+        Every read path on production records must use this so deleted rows
+        vanish from dashboards, forecasts, reports, validation queue and the
+        public API while history is preserved.
+        """
+        return cls.query.filter(cls.deleted_at.is_(None))
+
+    def soft_delete(self, actor_id):
+        self.deleted_at = datetime.utcnow()
+        self.deleted_by = actor_id
+        db.session.add(self)
+
+    def restore(self):
+        self.deleted_at = None
+        self.deleted_by = None
+        db.session.add(self)
 
     __table_args__ = (
         db.UniqueConstraint("municipality_id", "barangay_id", "record_date", name="uq_production_records_barangay_date"),

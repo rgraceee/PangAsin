@@ -15,8 +15,12 @@ PAGES = [
     "/",
     "/login",
     "/admin",
-    "/superadmin/accounts",
-    "/superadmin/activity",
+    "/superadmin/health",
+    "/superadmin/users",
+    "/superadmin/audit-log",
+    "/superadmin/records",
+    "/superadmin/export",
+    "/superadmin/config",
 ]
 
 # WHAT: /superadmin/* pages are served by the SPA shell (200) and guarded

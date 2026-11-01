@@ -12,6 +12,7 @@ from flask_login import current_user, login_required
 from app.models.user import User
 from app.models.login_events import LoginEvent
 from app.models.audit_log import AuditLog
+from app.models.production_record import ProductionRecord
 from app.extensions import db
 from app.services.audit import log_action
 from app.utils import is_not_admin
@@ -424,3 +425,126 @@ def login_events():
             "total": pagination.total,
         }
     )
+
+
+@superadmin_api_bp.route("/export/records", methods=["GET"])
+@login_required
+def export_records():
+    err = _require_superadmin()
+    if err:
+        return err
+    import csv, io
+    from datetime import datetime
+
+    municipality_id = request.args.get("municipality_id", type=int)
+    start = request.args.get("start")
+    end = request.args.get("end")
+    status = request.args.get("status")
+
+    q = ProductionRecord.active()
+    if municipality_id:
+        q = q.filter(ProductionRecord.municipality_id == municipality_id)
+    if start:
+        q = q.filter(ProductionRecord.record_date >= start)
+    if end:
+        q = q.filter(ProductionRecord.record_date <= end)
+    if status:
+        q = q.filter(ProductionRecord.status == status)
+    q = q.order_by(ProductionRecord.record_date.desc(), ProductionRecord.id.desc())
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "id", "record_date", "municipality_id", "barangay_id",
+        "production_volume_mt", "num_salt_beds", "production_method", "status",
+        "submitted_by", "submitted_at", "reviewed_by", "reviewed_at",
+        "deleted_at", "deleted_by",
+    ])
+    for r in q.all():
+        writer.writerow([
+            r.id, r.record_date, r.municipality_id, r.barangay_id,
+            r.production_volume_mt, r.num_salt_beds, r.production_method, r.status,
+            r.submitted_by, r.submitted_at.isoformat() + "Z" if r.submitted_at else None,
+            r.reviewed_by, r.reviewed_at.isoformat() + "Z" if r.reviewed_at else None,
+            r.deleted_at.isoformat() + "Z" if r.deleted_at else None,
+            r.deleted_by,
+        ])
+
+    log_action(
+        "superadmin.export.records",
+        "export",
+        None,
+        actor=current_user,
+        summary=f"{current_user.email} exported production records to CSV.",
+    )
+    db.session.commit()
+
+    filename = f"pangasin-production-records-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.csv"
+    return (
+        buf.getvalue(),
+        200,
+        {
+            "Content-Type": "text/csv",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@superadmin_api_bp.route("/records/<int:record_id>/soft-delete", methods=["POST"])
+@login_required
+def soft_delete_record(record_id):
+    err = _require_superadmin()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if len(reason) < 10:
+        return jsonify({"error": "Reason must be at least 10 characters."}), 400
+
+    record = ProductionRecord.query.get(record_id)
+    if not record:
+        return jsonify({"error": "Record not found."}), 404
+    if record.deleted_at:
+        return jsonify({"error": "Record is already deleted."}), 400
+
+    before = {
+        "production_volume_mt": str(record.production_volume_mt),
+        "status": record.status,
+    }
+    record.soft_delete(current_user.id)
+
+    log_action(
+        "superadmin.record.soft_delete",
+        "production_record",
+        record.id,
+        actor=current_user,
+        summary=f"{current_user.email} soft-deleted production record {record.id}.",
+        details={"before": before, "reason": reason},
+    )
+    db.session.commit()
+    return jsonify({"message": "Record soft-deleted."})
+
+
+@superadmin_api_bp.route("/records/<int:record_id>/restore", methods=["POST"])
+@login_required
+def restore_record(record_id):
+    err = _require_superadmin()
+    if err:
+        return err
+    record = ProductionRecord.query.get(record_id)
+    if not record:
+        return jsonify({"error": "Record not found."}), 404
+    if not record.deleted_at:
+        return jsonify({"error": "Record is not deleted."}), 400
+
+    record.restore()
+    log_action(
+        "superadmin.record.restore",
+        "production_record",
+        record.id,
+        actor=current_user,
+        summary=f"{current_user.email} restored production record {record.id}.",
+    )
+    db.session.commit()
+    return jsonify({"message": "Record restored."})

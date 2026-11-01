@@ -92,6 +92,7 @@ def _method_split_by_municipality():
             func.sum(ProductionRecord.production_volume_mt).label("mt"),
         )
         .filter(ProductionRecord.status == "approved")
+        .filter(ProductionRecord.deleted_at.is_(None))
         .filter(
             ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
         )

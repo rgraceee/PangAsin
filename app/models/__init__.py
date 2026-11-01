@@ -15,6 +15,9 @@ from app.models.municipality_production import (
 from app.models.audit_log import AuditLog
 from app.models.login_events import LoginEvent
 from app.models.password_reset_token import PasswordResetToken
+from app.models.site_content import SiteContent
+from app.models.system_setting import SystemSetting
+from app.models.announcement import Announcement
 
 __all__ = [
     "Municipality",
@@ -34,4 +37,7 @@ __all__ = [
     "AuditLog",
     "LoginEvent",
     "PasswordResetToken",
+    "SiteContent",
+    "SystemSetting",
+    "Announcement",
 ]

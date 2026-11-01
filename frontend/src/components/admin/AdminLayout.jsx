@@ -4,7 +4,7 @@ import { logoutAPI } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
 import AppShell from '../shell/AppShell';
-import AdminSidebar, { HIDDEN_FROM_SUPERADMIN_ROUTES } from './AdminSidebar';
+import AdminSidebar from './AdminSidebar';
 
 export default function AdminLayout({ user, setUser }) {
   const navigate = useNavigate();
@@ -13,12 +13,12 @@ export default function AdminLayout({ user, setUser }) {
   const { toastInfo } = useToast();
 
   useEffect(() => {
-    /* WHAT: I-redirect ang superadmin sa /admin kapag nakatunggal sa lumang
-       ruta na ngayong nakatago sa sidebar (validation, reports, master list,
-       municipalities, audit logs, user management). WHY: frontend-only guard;
+    /* WHAT: SuperAdmin never uses the Admin shell routes. Redirect /admin (and
+       every /admin/* path) to /superadmin/health so the superadmin landing is
+       the health dashboard, never an admin page. WHY: frontend-only guard;
        admin/encoder behavior ay hindi nabago. */
-    if (user?.role === 'superadmin' && HIDDEN_FROM_SUPERADMIN_ROUTES.includes(location.pathname)) {
-      navigate('/admin', { replace: true });
+    if (user?.role === 'superadmin' && location.pathname.startsWith('/admin')) {
+      navigate('/superadmin/health', { replace: true });
       return;
     }
 

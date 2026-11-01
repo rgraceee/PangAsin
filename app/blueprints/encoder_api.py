@@ -531,7 +531,7 @@ def list_records():
     if current_user.role != "encoder":
         return jsonify({"error": "Encoder access only."}), 403
 
-    query = ProductionRecord.query.filter_by(municipality_id=current_user.municipality_id)
+    query = ProductionRecord.active().filter_by(municipality_id=current_user.municipality_id)
     barangay_id = request.args.get("barangay_id", type=int)
     status = request.args.get("status")
     if barangay_id:

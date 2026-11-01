@@ -49,7 +49,7 @@ _COMPLETE_YEAR_MONTHS = 10
 
 def _query_records(municipality_id, start=None, end=None, production_method=None):
     q = (
-        ProductionRecord.query
+        ProductionRecord.active()
         .filter(ProductionRecord.status == "approved")
         .filter(
             ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())

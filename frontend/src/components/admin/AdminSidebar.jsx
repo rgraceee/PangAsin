@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, ContactRound, Users, Map,
-  ScrollText, Settings,
+  ScrollText, Settings, Activity, Sliders, FileText,
 } from 'lucide-react';
 import { getAdminStats } from '../../services/dataService';
 import {
@@ -29,20 +29,25 @@ const MANAGE_ITEMS = [
   { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
   { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/admin/master-list' },
   { id: 'municipalities', label: 'Municipalities', icon: Map, path: '/admin/municipalities' },
-  { id: 'audit-logs', label: 'Audit Log', icon: ScrollText, path: '/admin/audit-logs' },
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
 
 /* WHAT: Mga ruta na hindi dapat makita o ma-access ng superadmin sa admin sidebar.
    WHY: Isa lamang ang listahan para madaling i-reverse; gagamitin din
-        ng AdminLayout para i-redirect sa /admin ang pamagat na ruta. */
+        ng AdminLayout para i-redirect sa /superadmin/health ang pamagat na ruta. */
 export const HIDDEN_FROM_SUPERADMIN_ROUTES = [
+  '/admin',
+  '/admin/forecast',
+  '/admin/forecast/target',
+  '/admin/data-quality',
   '/admin/validation',
   '/admin/reports',
   '/admin/master-list',
   '/admin/municipalities',
-  '/admin/audit-logs',
   '/admin/users',
+  '/admin/audit-logs',
+  '/superadmin/accounts',
+  '/superadmin/activity',
 ];
 
 const SETTINGS_BASE_ITEMS = [
@@ -58,8 +63,12 @@ const SETTINGS_BASE_ITEMS = [
 const SYSTEM_ITEMS = [
   ...SETTINGS_BASE_ITEMS,
   { id: 'system-section', label: 'System', labelOnly: true },
-  { id: 'system-accounts', label: 'Accounts', path: '/superadmin/accounts' },
-  { id: 'system-activity', label: 'Activity', path: '/superadmin/activity' },
+  { id: 'system-users', label: 'User Management', icon: Users, path: '/superadmin/users' },
+  { id: 'system-audit-log', label: 'Audit Log', icon: ScrollText, path: '/superadmin/audit-log' },
+  { id: 'system-records', label: 'Records', icon: FileText, path: '/superadmin/records' },
+  { id: 'system-export', label: 'Export & Backup', icon: FileDown, path: '/superadmin/export' },
+  { id: 'system-health', label: 'Health', icon: Activity, path: '/superadmin/health' },
+  { id: 'system-config', label: 'Configuration', icon: Sliders, path: '/superadmin/config' },
 ];
 
 const SETTINGS_GROUP = {
@@ -78,8 +87,14 @@ function activeIdFromPath(pathname) {
   if (pathname.startsWith('/admin/settings/help')) return 'help';
   if (pathname.startsWith('/admin/settings/legal')) return 'legal';
   if (pathname.startsWith('/admin/settings/about')) return 'about';
-  if (pathname.startsWith('/superadmin/accounts') || pathname.startsWith('/admin/system/accounts') || pathname.startsWith('/admin/settings/system/accounts')) return 'system-accounts';
-  if (pathname.startsWith('/superadmin/activity') || pathname.startsWith('/admin/system/activity') || pathname.startsWith('/admin/settings/system/activity')) return 'system-activity';
+  if (pathname.startsWith('/superadmin/users')) return 'system-users';
+  if (pathname.startsWith('/superadmin/audit-log')) return 'system-audit-log';
+  if (pathname.startsWith('/superadmin/records')) return 'system-records';
+  if (pathname.startsWith('/superadmin/export')) return 'system-export';
+  if (pathname.startsWith('/superadmin/health')) return 'system-health';
+  if (pathname.startsWith('/superadmin/config')) return 'system-config';
+  if (pathname.startsWith('/superadmin/accounts') || pathname.startsWith('/admin/system/accounts') || pathname.startsWith('/admin/settings/system/accounts')) return 'system-users';
+  if (pathname.startsWith('/superadmin/activity') || pathname.startsWith('/admin/system/activity') || pathname.startsWith('/admin/settings/system/activity')) return 'system-health';
   if (pathname === '/admin/validation') return 'validation';
   if (pathname === '/admin/data-quality') return 'data-quality';
   if (pathname === '/admin/forecast/target') return 'forecast-target';
@@ -125,13 +140,13 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
   return (
     <aside className="p-sidebar" aria-label="Admin navigation">
       <div className="p-sidebar-inner">
-        <SidebarLogo collapsed={collapsed} homePath="/admin" />
+        <SidebarLogo collapsed={collapsed} homePath={user?.role === 'superadmin' ? '/superadmin/health' : '/admin'} />
 
         {/* WHAT: Pangunahing nav. WHY: aria-label="Main" para sa screen readers. */}
         <nav className="p-nav" aria-label="Main">
           <div className="p-navlist">
             <SectionLabel collapsed={collapsed}>Main</SectionLabel>
-            {MAIN_ITEMS.filter((item) => !(user?.role === 'superadmin' && item.id === 'validation')).map((item) => (
+            {MAIN_ITEMS.filter(() => user?.role !== 'superadmin').map((item) => (
               <NavItem
                 key={item.id}
                 icon={item.icon}

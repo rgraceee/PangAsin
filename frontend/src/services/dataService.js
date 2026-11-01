@@ -448,3 +448,50 @@ export function getLoginEvents(params = {}) {
   const qs = new URLSearchParams(params).toString();
   return api(`/superadmin/login-events${qs ? `?${qs}` : ''}`);
 }
+
+/* WHAT: SuperAdmin governance API — content, settings, announcement, records
+   soft-delete and CSV export. WHY: SuperAdmin manages editable content,
+   runtime settings, the announcement banner, and record retention. */
+export function getSuperAdminSettings() {
+  return api('/settings');
+}
+export function putSuperAdminSetting(key, value) {
+  return api(`/settings/${key}`, {
+    method: 'PUT',
+    body: JSON.stringify({ value }),
+  });
+}
+export function getSuperAdminContent(key) {
+  return api(`/content/${key}`);
+}
+export function putSuperAdminContent(key, data) {
+  return api(`/content/${key}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+export function getSuperAdminAnnouncement() {
+  return api('/announcement');
+}
+export function putSuperAdminAnnouncement(payload) {
+  return api('/announcement', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+export function exportRecords(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/superadmin/export/records${qs ? `?${qs}` : ''}`, {
+    method: 'GET',
+  });
+}
+export function softDeleteRecord(id, reason) {
+  return api(`/superadmin/records/${id}/soft-delete`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+export function restoreRecord(id) {
+  return api(`/superadmin/records/${id}/restore`, { method: 'POST' });
+}
+

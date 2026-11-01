@@ -22,6 +22,7 @@ def create_app(config_class=Config):
 
     from app import models  # noqa: F401  (register models with SQLAlchemy)
 
+    from app.blueprints.content_api import content_api_bp
     from app.blueprints.monitoring import monitoring_bp
     from app.blueprints.public_dashboard_react import public_dashboard_react_bp
     from app.blueprints.auth_api import auth_api_bp
@@ -38,6 +39,7 @@ def create_app(config_class=Config):
     app.extensions["rate_limiter"] = RateLimiter()
 
     app.register_blueprint(monitoring_bp)
+    app.register_blueprint(content_api_bp)
     app.register_blueprint(public_dashboard_react_bp)
     app.register_blueprint(auth_api_bp)
     app.register_blueprint(public_api_bp)

@@ -14,7 +14,6 @@ import AdminLayout from './components/admin/AdminLayout';
 import AdminPage from './components/admin/AdminPage';
 import UsersManagement from './components/admin/UsersManagement';
 import Municipalities from './components/admin/Municipalities';
-import AuditLogs from './components/admin/AuditLogs';
 import ForecastDashboard from './components/admin/ForecastDashboard';
 import TargetEvaluation from './components/admin/target/TargetEvaluation';
 import GenerateReports from './components/admin/GenerateReports';
@@ -26,8 +25,12 @@ import LegalDoc from './components/support/LegalDoc';
 import Settings from './components/Settings';
 import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
-import SystemAccounts from './components/admin/SystemAccounts';
-import SystemActivity from './components/admin/SystemActivity';
+import SuperAdminUsers from './components/admin/SuperAdminUsers';
+import SuperAdminAuditLog from './components/admin/SuperAdminAuditLog';
+import SuperAdminHealth from './components/admin/SuperAdminHealth';
+import SuperAdminConfig from './components/admin/SuperAdminConfig';
+import SuperAdminRecords from './components/admin/SuperAdminRecords';
+import SuperAdminExport from './components/admin/SuperAdminExport';
 import RequireSuperAdmin from './components/admin/RequireSuperAdmin';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
@@ -67,8 +70,12 @@ const ROUTE_TITLES = {
   '/admin/settings/legal/privacy': 'Privacy Policy',
   '/admin/settings/legal/terms': 'Terms & Conditions',
   '/admin/settings/about': 'About',
-  '/superadmin/accounts': 'Accounts',
-  '/superadmin/activity': 'Activity',
+  '/superadmin/users': 'User Management',
+  '/superadmin/audit-log': 'Audit Log',
+  '/superadmin/records': 'Records',
+  '/superadmin/export': 'Export & Backup',
+  '/superadmin/health': 'Health',
+  '/superadmin/config': 'Configuration',
   '/encoder/settings': 'Settings',
   '/encoder/settings/account': 'Account',
   '/encoder/settings/security': 'Security',
@@ -238,7 +245,7 @@ export default function App() {
           <Route index element={<AdminPage user={user} />} />
           <Route path="users" element={<UsersManagement />} />
           <Route path="municipalities" element={<Municipalities />} />
-          <Route path="audit-logs" element={<AuditLogs />} />
+          <Route path="audit-logs" element={<Navigate to="/admin" replace />} />
           <Route path="master-list" element={<ProducerMasterList user={user} isAdmin />} />
           <Route path="validation" element={<ValidationQueue />} />
           <Route path="data-quality" element={<DataQualityDashboard />} />
@@ -263,22 +270,24 @@ export default function App() {
           </Route>
 
           {/* WHAT: Old /admin/system/* and /admin/settings/system/* routes now
-             live under /superadmin/*. Kept here as redirects to the new paths.
-             WHY: Frontend-only URL change; bookmarked/emailed old links still work. */}
-          <Route path="settings/system" element={<Navigate to="/superadmin/accounts" replace />} />
-          <Route path="settings/system/accounts" element={<Navigate to="/superadmin/accounts" replace />} />
-          <Route path="settings/system/activity" element={<Navigate to="/superadmin/activity" replace />} />
-          <Route path="settings/system/*" element={<Navigate to="/superadmin/accounts" replace />} />
-          <Route path="settings/activity" element={<Navigate to="/superadmin/activity" replace />} />
-          <Route path="system" element={<Navigate to="/superadmin/accounts" replace />} />
-          <Route path="system/accounts" element={<Navigate to="/superadmin/accounts" replace />} />
-          <Route path="system/activity" element={<Navigate to="/superadmin/activity" replace />} />
-          <Route path="system/*" element={<Navigate to="/superadmin/accounts" replace />} />
+             live under /superadmin/*. Old /superadmin/accounts and /activity
+             also redirect to the health landing. WHY: frontend-only URL change;
+             bookmarked/emailed old links still work. */}
+          <Route path="settings/system" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="settings/system/accounts" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="settings/system/activity" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="settings/system/*" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="settings/activity" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="system" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="system/accounts" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="system/activity" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="system/*" element={<Navigate to="/superadmin/health" replace />} />
         </Route>
 
         {/* WHAT: SuperAdmin pages under /superadmin/*, rendered inside the admin
            shell so the sidebar stays visible, and guarded by RequireSuperAdmin.
-           WHY: Admin and encoder hitting /superadmin/* are redirected to /admin. */}
+           WHY: Admin and encoder hitting /superadmin/* are redirected to /admin
+           (and superadmin hitting admin-only routes is redirected to /superadmin/health). */}
         <Route
           path="/superadmin"
           element={
@@ -287,18 +296,40 @@ export default function App() {
             </RequireAdmin>
           }
         >
-          <Route index element={<Navigate to="accounts" replace />} />
-          <Route path="accounts" element={
+          <Route index element={<Navigate to="health" replace />} />
+          <Route path="accounts" element={<Navigate to="/superadmin/users" replace />} />
+          <Route path="activity" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="users" element={
             <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SystemAccounts />
+              <SuperAdminUsers />
             </RequireSuperAdmin>
           } />
-          <Route path="activity" element={
+          <Route path="audit-log" element={
             <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SystemActivity />
+              <SuperAdminAuditLog />
             </RequireSuperAdmin>
           } />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
+          <Route path="records" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SuperAdminRecords />
+            </RequireSuperAdmin>
+          } />
+          <Route path="export" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SuperAdminExport />
+            </RequireSuperAdmin>
+          } />
+          <Route path="health" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SuperAdminHealth />
+            </RequireSuperAdmin>
+          } />
+          <Route path="config" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SuperAdminConfig />
+            </RequireSuperAdmin>
+          } />
+          <Route path="*" element={<Navigate to="/superadmin/health" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

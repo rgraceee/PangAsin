@@ -419,7 +419,7 @@ def list_users():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
-    query = User.query.filter(User.role != "superadmin")
+    query = User.query.filter(User.role == "encoder")
     role = request.args.get("role")
     status = request.args.get("status")
     muni = request.args.get("municipality_id", type=int)
@@ -577,7 +577,7 @@ def list_records():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
-    query = ProductionRecord.query
+    query = ProductionRecord.active()
     status = request.args.get("status")
     muni = request.args.get("municipality_id", type=int)
     barangay_id = request.args.get("barangay_id", type=int)

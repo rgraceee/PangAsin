@@ -11,6 +11,7 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.login_events import LoginEvent
 from app.constants import MAX_MONTHLY_VOLUME_MT
 from app.extensions import db
+from app.services.setting_service import get_setting
 from app.services.audit import log_action
 from app.services.email import send_email
 
@@ -238,7 +239,7 @@ def password_reset_request():
         ).update({"used_at": now}, synchronize_session=False)
 
         raw_token = secrets.token_urlsafe(32)
-        expiry_minutes = current_app.config.get("PASSWORD_RESET_TOKEN_MINUTES", 30)
+        expiry_minutes = get_setting("forgot_password_validity_minutes", 30)
         token = PasswordResetToken(
             user_id=sendable_user.id,
             token_hash=_hash_reset_token(raw_token),
@@ -269,13 +270,14 @@ def password_reset_request():
                 "FRONTEND_URL", "http://localhost:5000"
             ).rstrip("/")
             reset_url = f"{frontend_url}/reset-password?token={raw_token}"
-            expiry_minutes = current_app.config.get(
-                "PASSWORD_RESET_TOKEN_MINUTES", 30
-            )
+            expiry_minutes = get_setting("forgot_password_validity_minutes", 30)
+            email_subject = get_setting("forgot_password_email_subject", "Reset your PangAsin password")
+            email_message = get_setting("forgot_password_email_message", None)
             context = {
                 "user_name": sendable_user.name,
                 "reset_url": reset_url,
                 "expiry_minutes": expiry_minutes,
+                "email_message": email_message,
             }
             html = render_template("emails/password_reset.html", **context)
             text = render_template("emails/password_reset.txt", **context)
@@ -283,7 +285,7 @@ def password_reset_request():
             # WHY: The public response must stay generic and must not crash.
             send_email(
                 sendable_user.email,
-                "Reset your PangAsin password",
+                email_subject,
                 html,
                 text,
             )
