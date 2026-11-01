@@ -116,12 +116,12 @@ export default function Login({ onLogin }) {
     setLoading(true);
     try {
       const user = await loginAPI(email, password);
-      if (user.role !== 'admin' && user.role !== 'encoder') {
+      if (user.role !== 'admin' && user.role !== 'encoder' && user.role !== 'superadmin') {
         throw Object.assign(new Error('This account cannot sign in to PangAsin.'), { status: 403 });
       }
       onLogin(user);
       toastSuccess('Log in successful.', 'Welcome back');
-      navigate(user.must_change_password ? '/change-password' : (user.role === 'admin' ? '/admin' : '/encoder'));
+      navigate(user.must_change_password ? '/change-password' : (user.role === 'encoder' ? '/encoder' : '/admin'));
     } catch (err) {
       const message = err.message || 'Login failed.';
       // WHAT: Pagbubukas ng isang bagong error, ipapatay ang shake animation.

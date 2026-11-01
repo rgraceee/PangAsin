@@ -88,7 +88,10 @@ def login():
         )
         if user:
             if user.locked_until is not None and user.locked_until > datetime.utcnow():
-                return jsonify({"error": "Account is locked. Try again later."}), 403
+                # WHAT: Same generic message as any other bad credential.
+                # WHY: A distinct "locked" reply would confirm that the email
+                #      exists, enabling account enumeration.
+                return jsonify({"error": "Invalid email or password."}), 401
             failures = user.record_failed_login()
             db.session.add(user)
             db.session.commit()
@@ -136,7 +139,7 @@ def login():
             )
         )
         db.session.commit()
-        return jsonify({"error": "Account is locked. Try again later."}), 403
+        return jsonify({"error": "Invalid email or password."}), 401
 
     login_user(user)
     session["user_id"] = user.id

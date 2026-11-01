@@ -47,7 +47,9 @@ export default function RequireSuperAdmin({ user, isLoading, setUser, children }
     return <div className="auth-skeleton-wrap"><SkeletonPage /></div>;
   }
   if (!state.ok) {
-    return <Navigate to="/login" replace />;
+    // WHAT: Signed-in Admins/Encoders land on the admin home; guests on login.
+    // WHY: Only a missing session should see the sign-in page.
+    return <Navigate to={user ? '/admin' : '/login'} replace />;
   }
   return children;
 }

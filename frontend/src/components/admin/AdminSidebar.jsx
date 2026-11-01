@@ -46,6 +46,16 @@ const SETTINGS_GROUP = {
   ],
 };
 
+const SYSTEM_GROUP = {
+  id: 'system',
+  label: 'System',
+  icon: Settings,
+  items: [
+    { id: 'system-accounts', label: 'Accounts', path: '/admin/system/accounts' },
+    { id: 'system-activity', label: 'Activity', path: '/admin/system/activity' },
+  ],
+};
+
 /* WHAT: I-map ang kasalukuyang URL papunta sa active nav id.
    WHY: pathname lang ang basehan, kaya simple at walang IntersectionObserver. */
 function activeIdFromPath(pathname) {
@@ -56,6 +66,8 @@ function activeIdFromPath(pathname) {
   if (pathname.startsWith('/admin/settings/help')) return 'help';
   if (pathname.startsWith('/admin/settings/legal')) return 'legal';
   if (pathname.startsWith('/admin/settings/about')) return 'about';
+  if (pathname.startsWith('/admin/system/accounts') || pathname.startsWith('/admin/settings/system/accounts')) return 'system-accounts';
+  if (pathname.startsWith('/admin/system/activity') || pathname.startsWith('/admin/settings/system/activity')) return 'system-activity';
   if (pathname === '/admin/validation') return 'validation';
   if (pathname === '/admin/data-quality') return 'data-quality';
   if (pathname === '/admin/forecast/target') return 'forecast-target';
@@ -155,6 +167,17 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
               collapsed={collapsed}
               onNavigate={goItem}
             />
+            {user?.role === 'superadmin' && (
+              <NavGroup
+                id={SYSTEM_GROUP.id}
+                icon={SYSTEM_GROUP.icon}
+                label={SYSTEM_GROUP.label}
+                items={SYSTEM_GROUP.items}
+                activeId={activeId}
+                collapsed={collapsed}
+                onNavigate={goItem}
+              />
+            )}
           </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
           <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />

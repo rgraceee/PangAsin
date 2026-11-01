@@ -67,6 +67,8 @@ const ROUTE_TITLES = {
   '/admin/settings/legal/privacy': 'Privacy Policy',
   '/admin/settings/legal/terms': 'Terms & Conditions',
   '/admin/settings/about': 'About',
+  '/admin/system/accounts': 'Accounts',
+  '/admin/system/activity': 'Activity',
   '/encoder/settings': 'Settings',
   '/encoder/settings/account': 'Account',
   '/encoder/settings/security': 'Security',
@@ -223,15 +225,6 @@ export default function App() {
               <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
             </Route>
             <Route path="about" element={<Settings user={user} />} />
-            <Route path="system/*" element={
-              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-                <Settings user={user} />
-              </RequireSuperAdmin>
-            }>
-              <Route index element={<Navigate to="accounts" replace />} />
-              <Route path="accounts" element={<SystemAccounts />} />
-              <Route path="activity" element={<SystemActivity />} />
-            </Route>
           </Route>
         </Route>
         <Route
@@ -267,16 +260,26 @@ export default function App() {
               <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
             </Route>
             <Route path="about" element={<Settings user={user} />} />
-            <Route path="system/*" element={
-              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-                <Settings user={user} />
-              </RequireSuperAdmin>
-            }>
-              <Route index element={<Navigate to="accounts" replace />} />
-              <Route path="accounts" element={<SystemAccounts />} />
-              <Route path="activity" element={<SystemActivity />} />
-            </Route>
           </Route>
+
+          {/* WHAT: System pages live under /admin/system now. */}
+          {/* WHY: The old /admin/settings/system/* URLs are kept as redirects. */}
+          <Route path="settings/system" element={<Navigate to="/admin/system" replace />} />
+          <Route path="settings/system/accounts" element={<Navigate to="/admin/system/accounts" replace />} />
+          <Route path="settings/system/activity" element={<Navigate to="/admin/system/activity" replace />} />
+          <Route path="settings/system/*" element={<Navigate to="/admin/system" replace />} />
+          <Route path="system" element={<Navigate to="accounts" replace />} />
+          <Route path="system/accounts" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SystemAccounts />
+            </RequireSuperAdmin>
+          } />
+          <Route path="system/activity" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <SystemActivity />
+            </RequireSuperAdmin>
+          } />
+          <Route path="system/*" element={<Navigate to="accounts" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

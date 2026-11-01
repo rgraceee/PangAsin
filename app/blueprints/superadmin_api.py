@@ -120,7 +120,8 @@ def create_user():
             "email": user.email,
             "role": role,
             "municipality_id": user.municipality_id,
-            "temporary_password": raw_token,
+            # WHAT: Never persist the one-time password.
+            # WHY: Audit rows and logs are long-lived and readable by others.
         },
     )
     db.session.commit()
@@ -153,7 +154,13 @@ def deactivate_user(user_id):
     if user.id == current_user.id:
         return jsonify({"error": "You cannot deactivate your own account."}), 400
     if user.role == "superadmin":
-        return jsonify({"error": "SuperAdmin accounts cannot be deactivated."}), 403
+        active_superadmins = User.query.filter_by(
+            role="superadmin", status="active"
+        ).count()
+        if active_superadmins <= 1:
+            return jsonify(
+                {"error": "Cannot deactivate the last active SuperAdmin."}
+            ), 400
 
     active_admins = User.query.filter(
         User.role.in_(("admin", "superadmin")), User.status == "active"
@@ -220,8 +227,6 @@ def reset_password(user_id):
         return jsonify({"error": "User not found."}), 404
     if user.id == current_user.id:
         return jsonify({"error": "You cannot reset your own password here."}), 400
-    if user.role == "superadmin":
-        return jsonify({"error": "SuperAdmin accounts cannot be reset here."}), 403
 
     raw_token = token_urlsafe(16)
     user.set_password(raw_token)
@@ -251,6 +256,49 @@ def reset_password(user_id):
             ),
         }
     )
+
+
+@superadmin_api_bp.route("/users/<int:user_id>/municipality", methods=["POST"])
+@login_required
+def change_municipality(user_id):
+    err = _require_superadmin()
+    if err:
+        return err
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found."}), 404
+
+    data = request.get_json(silent=True) or {}
+    municipality_id = data.get("municipality_id")
+
+    if user.role == "encoder" and not municipality_id:
+        return jsonify({"error": "Municipality is required for encoders."}), 400
+    if municipality_id:
+        err = _validate_municipality(municipality_id)
+        if err:
+            return err
+
+    before = user.municipality_id
+    user.municipality_id = municipality_id or None
+    db.session.add(user)
+    db.session.commit()
+
+    log_action(
+        "superadmin.user.change_municipality",
+        "user",
+        user.id,
+        actor=current_user,
+        summary=f"{current_user.email} changed municipality of {user.email}.",
+        details={
+            "email": user.email,
+            "from": before,
+            "to": user.municipality_id,
+        },
+    )
+    db.session.commit()
+
+    return jsonify({"user": _serialize_user(user)})
 
 
 @superadmin_api_bp.route("/users/<int:user_id>/force-logout", methods=["POST"])

@@ -17,7 +17,8 @@ AGE_GROUPS = ("under30", "30to44", "45to59", "60plus")
 
 
 def _authorized():
-    return current_user.role in ("admin", "encoder")
+    # WHAT: SuperAdmin inherits every Admin capability.
+    return current_user.role in ("admin", "encoder", "superadmin")
 
 
 def _serialize(producer):
@@ -177,7 +178,11 @@ def list_producers():
         visible = producers
         pages = 1 if total else 0
 
-    municipalities = Municipality.query.order_by(Municipality.name).all() if current_user.role == "admin" else []
+    municipalities = (
+        Municipality.query.order_by(Municipality.name).all()
+        if current_user.role in ("admin", "superadmin")
+        else []
+    )
     return jsonify({
         "producers": [_serialize(producer) for producer in visible],
         "statistics": statistics,

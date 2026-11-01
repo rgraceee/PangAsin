@@ -8,7 +8,7 @@ export default function RequireAdmin({ user, isLoading, setUser, children }) {
 
   useEffect(() => {
     let mounted = true;
-    if (user && user.role === 'admin') {
+    if (user && (user.role === 'admin' || user.role === 'superadmin')) {
       setState({ loading: false, ok: true });
       return () => { mounted = false; };
     }
@@ -18,7 +18,7 @@ export default function RequireAdmin({ user, isLoading, setUser, children }) {
     getAdminMe()
       .then((u) => {
         if (!mounted) return;
-        if (u && u.role === 'admin') {
+        if (u && (u.role === 'admin' || u.role === 'superadmin')) {
           if (setUser) setUser(u);
           setState({ loading: false, ok: true });
         } else {

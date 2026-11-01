@@ -1,164 +1,121 @@
 // WHAT: System > Activity page - superadmin-only audit logs and login history.
-// WHY: SuperAdmin needs to review all authentication and administrative actions
-//      across the system for audit and compliance.
-import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardBody, Table, Tabs } from 'react-bootstrap';
+// WHY: SuperAdmin reviews authentication and administrative actions without
+//      exposing this page to Admins or Encoders.
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Card, Table, Tabs } from 'react-bootstrap';
 import { getAuditLog, getLoginEvents } from '../../services/dataService';
 import { useToast } from '../Toast';
+import { SkeletonList } from '../Skeleton';
 import PageHeader from './PageHeader';
 
+function formatTime(value) {
+  return value ? new Date(value).toLocaleString() : '—';
+}
+
 export default function SystemActivity() {
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [loginEvents, setLoginEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('audit');
-  const [toastError] = useToast();
+  const { toastError } = useToast();
 
-  const fetchAuditLogs = async () => {
+  const load = useCallback(() => {
     setLoading(true);
-    try {
-      const { entries } = await getAuditLog({ page: 1, per_page: 50 });
-      setAuditLogs(entries || []);
-    } catch (e) {
-      toastError(e.message || 'Failed to load audit logs.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchLoginEvents = async () => {
-    setLoading(true);
-    try {
-      const { entries } = await getLoginEvents({ page: 1, per_page: 50 });
-      setLoginEvents(entries || []);
-    } catch (e) {
-      toastError(e.message || 'Failed to load login events.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'audit') fetchAuditLogs();
-    else fetchLoginEvents();
+    setError(null);
+    const request = activeTab === 'audit'
+      ? getAuditLog({ page: 1, per_page: 50 })
+      : getLoginEvents({ page: 1, per_page: 50 });
+    request
+      .then((result) => { setRows(result.entries || []); setLoading(false); })
+      .catch((err) => {
+        setError(err.message || 'Failed to load activity.');
+        setRows([]);
+        setLoading(false);
+        toastError(err.message || 'Failed to load activity.');
+      });
   }, [activeTab, toastError]);
 
+  useEffect(() => { load(); }, [load]);
+
   return (
-    <div>
-      <PageHeader title="Settings" subtitle="Help & Support" />
-      <Card>
-        <CardHeader>
-          <Tabs activeKey={activeTab} onChange={(k) => setActiveTab(k)}>
+    <>
+      <PageHeader
+        variant="clean"
+        className="ui-pageheader--admin"
+        title="Activity"
+        subtitle="Audit log and sign-in history for the whole system."
+      />
+
+      <Card className="encoder-card admin-card">
+        <Card.Body>
+          <Tabs activeKey={activeTab} onSelect={(key) => setActiveTab(key || 'audit')} className="mb-3">
             <Tabs.Tab eventKey="audit" title="Audit Log" />
             <Tabs.Tab eventKey="login" title="Login History" />
           </Tabs>
-        </CardHeader>
-        <CardBody>
-          <h5 className="mb-3">Audit Log</h5>
-          <p className="text-muted mb-3">
-            All administrative actions performed in the system, including
-            user management, production records, and system configuration
-            changes.
-          </p>
-          <div className="table-container">
-            {loading ? (
-              <div className="text-center py-4">Loading audit log...</div>
-            ) : (
-              <></>
-            )}
-            {loading ? null : (
-              <Table striped bordered hover size="sm">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Actor</th>
-                    <th>Action</th>
-                    <th>Target</th>
-                    <th>Details</th>
+
+          {error && <Alert variant="danger">{error}</Alert>}
+          {loading && <div className="text-center py-2"><SkeletonList rows={8} cols={5} /></div>}
+          {!loading && rows.length === 0 && (
+            <Alert variant="info">
+              {activeTab === 'audit' ? 'No audit log entries found.' : 'No login events found.'}
+            </Alert>
+          )}
+
+          {!loading && rows.length > 0 && activeTab === 'audit' && (
+            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Actor</th>
+                  <th>Action</th>
+                  <th>Target</th>
+                  <th>Summary</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((entry) => (
+                  <tr key={entry.id}>
+                    <td>{formatTime(entry.created_at)}</td>
+                    <td>{entry.actor_email || '—'}</td>
+                    <td>{entry.action || '—'}</td>
+                    <td>{entry.entity_type ? `${entry.entity_type} #${entry.entity_id ?? '—'}` : '—'}</td>
+                    <td>{entry.summary || '—'}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {(auditLogs || []).map((log) => (
-                    <tr key={log.id}>
-                      <td>{log.created_at || '—'}</td>
-                      <td>{log.actor_name || log.actor_email || '—'}</td>
-                      <td>{log.action || '—'}</td>
-                      <td>{log.target_type} #{log.target_id || '—'}</td>
-                      <td>
-                        {log.details ? (
-                          <span
-                            className="badge bg-info text-white"
-                            style={{ fontSize: '0.75rem' }}
-                          >
-                            Details
-                          </span>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-            {(auditLogs || []).length === 0 && (
-              <div className="text-center py-4 text-muted">
-                No audit log entries found.
-              </div>
-            )}
-          </div>
-        </CardBody>
-        <CardBody>
-          <h5 className="mb-3">Login History</h5>
-          <p className="text-muted mb-3">
-            All login attempts (successful and failed) across the system,
-            including IP address and user agent for auditing purposes.
-          </p>
-          <div className="table-container">
-            {loading ? (
-              <div className="text-center py-4">Loading login history...</div>
-            ) : (
-              <Table striped bordered hover size="sm">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th>IP Address</th>
+                ))}
+              </tbody>
+            </Table>
+          )}
+
+          {!loading && rows.length > 0 && activeTab === 'login' && (
+            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Email</th>
+                  <th>Result</th>
+                  <th>IP Address</th>
+                  <th>User Agent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((event) => (
+                  <tr key={event.id}>
+                    <td>{formatTime(event.created_at)}</td>
+                    <td>{event.email || '—'}</td>
+                    <td>
+                      <span className={`record-status-badge ${event.success ? 'status-approved' : 'status-rejected'}`}>
+                        {event.success ? 'success' : 'failed'}
+                      </span>
+                    </td>
+                    <td>{event.ip || '—'}</td>
+                    <td className="text-truncate" style={{ maxWidth: 280 }}>{event.user_agent || '—'}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {(loginEvents || []).map((event) => (
-                    <tr key={event.id}>
-                      <td>{event.created_at || '—'}</td>
-                      <td>{event.user_id || '—'}</td>
-                      <td>{event.email || '—'}</td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            event.success
-                              ? 'bg-success'
-                              : 'bg-danger'
-                          }`}
-                        >
-                          {event.success ? 'Success' : 'Failed'}
-                        </span>
-                      </td>
-                      <td>{event.ip || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-            {(loginEvents || []).length === 0 && (
-              <div className="text-center py-4 text-muted">
-                No login events found.
-              </div>
-            )}
-          </div>
-        </CardBody>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card.Body>
       </Card>
-    </div>
+    </>
   );
 }

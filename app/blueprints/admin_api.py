@@ -16,7 +16,7 @@ from app.models.demand_benchmark import DemandBenchmark
 from app.models.audit_log import AuditLog
 from app.extensions import db
 from datetime import datetime, date, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from app.services.data_quality import build_data_quality, DATA_QUALITY_RANGES
 from app.services.production_aggregates import _last_month_with_data
 from app.services import municipality_service
@@ -45,14 +45,19 @@ def _record_submit_user(record):
     return None
 
 
+def _admin_visible_identity(user):
+    # WHAT: Show a neutral label for SuperAdmin reviewers.
+    # WHY: Admins must never learn that a SuperAdmin account exists, but the
+    #      reviewed-by field still needs a meaningful value.
+    if user is None:
+        return None
+    if user.role == "superadmin":
+        return {"id": None, "name": "ASIN Center", "email": None}
+    return {"id": user.id, "name": user.name, "email": user.email}
+
+
 def _record_reviewer(record):
-    if record.reviewer is not None:
-        return {
-            "id": record.reviewer.id,
-            "name": record.reviewer.name,
-            "email": record.reviewer.email,
-        }
-    return None
+    return _admin_visible_identity(record.reviewer)
 
 
 def _serialize(record):
@@ -329,6 +334,14 @@ def list_audit_logs():
     page = max(1, request.args.get("page", 1, type=int) or 1)
     per_page = min(200, max(1, request.args.get("per_page", 50, type=int) or 50))
     query = AuditLog.query
+    # WHAT: Hide SuperAdmin actors and SuperAdmin-only actions.
+    # WHY: The audit page is visible to Admins, who must not discover that a
+    #      SuperAdmin account exists.
+    superadmin_ids = db.session.query(User.id).filter(User.role == "superadmin")
+    query = query.filter(
+        or_(AuditLog.actor_id.is_(None), ~AuditLog.actor_id.in_(superadmin_ids)),
+        ~AuditLog.action.like("superadmin.%"),
+    )
 
     action = (request.args.get("action") or "").strip()
     entity_type = (request.args.get("entity_type") or "").strip()
@@ -386,39 +399,51 @@ def list_barangays():
     })
 
 
+def _serialize_admin_user(u):
+    return {
+        "id": u.id,
+        "name": u.name,
+        "email": u.email,
+        "role": u.role,
+        "municipality_id": u.municipality_id,
+        "municipality_name": u.municipality.name if u.municipality else None,
+        "status": u.status,
+        "must_change_password": u.must_change_password,
+        "last_login": u.last_login.isoformat() if u.last_login else None,
+    }
+
+
 @admin_api_bp.route("/users", methods=["GET"])
 @login_required
 def list_users():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
-    query = User.query
+    query = User.query.filter(User.role != "superadmin")
     role = request.args.get("role")
     status = request.args.get("status")
     muni = request.args.get("municipality_id", type=int)
     if role:
+        if role == "superadmin":
+            return jsonify({"users": []})
         query = query.filter(User.role == role)
     if status:
         query = query.filter(User.status == status)
     if muni:
         query = query.filter(User.municipality_id == muni)
     users = query.order_by(User.role, User.name).all()
-    return jsonify({
-        "users": [
-            {
-                "id": u.id,
-                "name": u.name,
-                "email": u.email,
-                "role": u.role,
-                "municipality_id": u.municipality_id,
-                "municipality_name": u.municipality.name if u.municipality else None,
-                "status": u.status,
-                "must_change_password": u.must_change_password,
-                "last_login": u.last_login.isoformat() if u.last_login else None,
-            }
-            for u in users
-        ]
-    })
+    return jsonify({"users": [_serialize_admin_user(u) for u in users]})
+
+
+@admin_api_bp.route("/users/<int:user_id>", methods=["GET"])
+@login_required
+def get_user(user_id):
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+    user = db.session.get(User, user_id)
+    if not user or user.role == "superadmin":
+        return jsonify({"error": "User not found."}), 404
+    return jsonify(_serialize_admin_user(user))
 
 
 @admin_api_bp.route("/users", methods=["POST"])
@@ -499,10 +524,15 @@ def update_user(user_id):
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
     user = db.session.get(User, user_id)
-    if not user:
+    # WHAT: Treat SuperAdmin accounts as nonexistent for Admins.
+    # WHY: Returning 404 for both missing and hidden users avoids leaking
+    #      SuperAdmin ids through the update endpoint.
+    if not user or user.role == "superadmin":
         return jsonify({"error": "User not found."}), 404
 
     data = request.get_json(silent=True) or {}
+    if data.get("role") and data["role"] != user.role:
+        return jsonify({"error": "Roles cannot be changed here."}), 400
     errors = []
     before = _user_snapshot(user)
 
@@ -538,16 +568,7 @@ def update_user(user_id):
         db.session.rollback()
         return jsonify({"error": "Could not update user. Please try again."}), 500
 
-    return jsonify({
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "role": user.role,
-        "municipality_id": user.municipality_id,
-        "municipality_name": user.municipality.name if user.municipality else None,
-        "status": user.status,
-        "must_change_password": user.must_change_password,
-    })
+    return jsonify(_serialize_admin_user(user))
 
 
 @admin_api_bp.route("/records", methods=["GET"])
@@ -683,7 +704,7 @@ def _serialize_environment_submission(report):
         "submitter": {"id": submitter.id, "name": submitter.name, "email": submitter.email} if submitter else None,
         "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
         "reviewed_by": report.reviewed_by,
-        "reviewer": {"id": reviewer.id, "name": reviewer.name, "email": reviewer.email} if reviewer else None,
+        "reviewer": _admin_visible_identity(reviewer),
         "reviewed_at": report.reviewed_at.isoformat() if report.reviewed_at else None,
         "created_at": report.created_at.isoformat() if report.created_at else None,
     }
@@ -704,7 +725,7 @@ def _serialize_producer_submission(report):
         "submitter": {"id": submitter.id, "name": submitter.name, "email": submitter.email} if submitter else None,
         "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
         "reviewed_by": report.reviewed_by,
-        "reviewer": {"id": reviewer.id, "name": reviewer.name, "email": reviewer.email} if reviewer else None,
+        "reviewer": _admin_visible_identity(reviewer),
         "reviewed_at": report.reviewed_at.isoformat() if report.reviewed_at else None,
         "created_at": report.created_at.isoformat() if report.created_at else None,
         "entries": [

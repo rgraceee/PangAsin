@@ -16,6 +16,7 @@ def parse_iso_date(date_str):
 
 
 def is_not_admin():
-    # WHAT: True when the current user is not an admin.
-    # WHY: Admin routes call this at the top to reject non-admin access.
-    return current_user.role != "admin"
+    # WHAT: True when the current user is neither an admin nor a superadmin.
+    # WHY: SuperAdmin sits above Admin and must reach every admin endpoint;
+    #      encoders and anonymous callers are still rejected.
+    return current_user.role not in ("admin", "superadmin")

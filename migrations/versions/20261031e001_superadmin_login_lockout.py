@@ -45,10 +45,6 @@ def _replace_user_role_enum():
 def upgrade():
     # Recreate the enum first so 'superadmin' becomes a valid value.
     _replace_user_role_enum()
-    # Restore any superadmin rows to admin (none should exist yet).
-    op.execute(
-        "UPDATE users SET role = 'admin' WHERE role = 'superadmin'"
-    )
 
     op.add_column(
         "users",
@@ -64,7 +60,7 @@ def upgrade():
         sa.Column("success", sa.Boolean(), nullable=False),
         sa.Column("ip", sa.String(length=64), nullable=True),
         sa.Column("user_agent", sa.String(length=255), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, index=True),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
     )
     op.create_index("ix_login_events_created_at", "login_events", ["created_at"])
 
@@ -75,7 +71,13 @@ def downgrade():
     op.drop_column("users", "locked_until")
     op.drop_column("users", "failed_login_count")
 
-    # Recreate the enum without 'superadmin' first, then restore any rows.
+    # WHAT: Convert SuperAdmin rows before the enum loses the value.
+    # WHY: Once the new enum exists, 'superadmin' is no longer a valid literal.
+    op.execute(
+        "UPDATE users SET role = 'admin' WHERE role = 'superadmin'"
+    )
+
+    # Recreate the enum without 'superadmin'.
     old_name = "user_role_enum_old"
     literals = ", ".join(f"'{value}'" for value in OLD_ROLES)
     op.execute(f"ALTER TABLE users ALTER COLUMN role DROP DEFAULT")
@@ -86,6 +88,3 @@ def downgrade():
         f"USING role::text::user_role_enum"
     )
     op.execute(f"DROP TYPE {old_name}")
-    op.execute(
-        "UPDATE users SET role = 'admin' WHERE role = 'superadmin'"
-    )

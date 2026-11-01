@@ -196,6 +196,10 @@ def create_app(config_class=Config):
 
         return None
 
+    # WHAT: Register the SuperAdmin creation CLI with this app instance.
+    # WHY: Without this call `flask create-superadmin` is never available.
+    register_cli(app)
+
     return app
 
 

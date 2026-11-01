@@ -17,7 +17,7 @@ export default function ChangePassword({ user, setUser }) {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const homePath = user?.role === 'admin' ? '/admin' : '/encoder';
+  const homePath = user?.role === 'encoder' ? '/encoder' : '/admin';
 
   const handleSubmit = async (event) => {
     event.preventDefault();

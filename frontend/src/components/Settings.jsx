@@ -75,7 +75,7 @@ export default function Settings({ user }) {
     setSection(valid.includes(last) ? last : 'account');
   }, [location.pathname]);
 
-  const role = user?.role === 'admin' ? 'admin' : 'encoder';
+  const role = user?.role === 'encoder' ? 'encoder' : 'admin';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
   const roleFaq = role === 'admin' ? adminFaq : encoderFaq;
