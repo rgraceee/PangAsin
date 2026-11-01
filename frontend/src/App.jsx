@@ -67,8 +67,8 @@ const ROUTE_TITLES = {
   '/admin/settings/legal/privacy': 'Privacy Policy',
   '/admin/settings/legal/terms': 'Terms & Conditions',
   '/admin/settings/about': 'About',
-  '/admin/system/accounts': 'Accounts',
-  '/admin/system/activity': 'Activity',
+  '/superadmin/accounts': 'Accounts',
+  '/superadmin/activity': 'Activity',
   '/encoder/settings': 'Settings',
   '/encoder/settings/account': 'Account',
   '/encoder/settings/security': 'Security',
@@ -262,24 +262,43 @@ export default function App() {
             <Route path="about" element={<Settings user={user} />} />
           </Route>
 
-          {/* WHAT: System pages live under /admin/system now. */}
-          {/* WHY: The old /admin/settings/system/* URLs are kept as redirects. */}
-          <Route path="settings/system" element={<Navigate to="/admin/system" replace />} />
-          <Route path="settings/system/accounts" element={<Navigate to="/admin/system/accounts" replace />} />
-          <Route path="settings/system/activity" element={<Navigate to="/admin/system/activity" replace />} />
-          <Route path="settings/system/*" element={<Navigate to="/admin/system" replace />} />
-          <Route path="system" element={<Navigate to="accounts" replace />} />
-          <Route path="system/accounts" element={
+          {/* WHAT: Old /admin/system/* and /admin/settings/system/* routes now
+             live under /superadmin/*. Kept here as redirects to the new paths.
+             WHY: Frontend-only URL change; bookmarked/emailed old links still work. */}
+          <Route path="settings/system" element={<Navigate to="/superadmin/accounts" replace />} />
+          <Route path="settings/system/accounts" element={<Navigate to="/superadmin/accounts" replace />} />
+          <Route path="settings/system/activity" element={<Navigate to="/superadmin/activity" replace />} />
+          <Route path="settings/system/*" element={<Navigate to="/superadmin/accounts" replace />} />
+          <Route path="settings/activity" element={<Navigate to="/superadmin/activity" replace />} />
+          <Route path="system" element={<Navigate to="/superadmin/accounts" replace />} />
+          <Route path="system/accounts" element={<Navigate to="/superadmin/accounts" replace />} />
+          <Route path="system/activity" element={<Navigate to="/superadmin/activity" replace />} />
+          <Route path="system/*" element={<Navigate to="/superadmin/accounts" replace />} />
+        </Route>
+
+        {/* WHAT: SuperAdmin pages under /superadmin/*, rendered inside the admin
+           shell so the sidebar stays visible, and guarded by RequireSuperAdmin.
+           WHY: Admin and encoder hitting /superadmin/* are redirected to /admin. */}
+        <Route
+          path="/superadmin"
+          element={
+            <RequireAdmin user={user} isLoading={loading} setUser={setUser}>
+              <AdminLayout user={user} setUser={setUser} />
+            </RequireAdmin>
+          }
+        >
+          <Route index element={<Navigate to="accounts" replace />} />
+          <Route path="accounts" element={
             <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
               <SystemAccounts />
             </RequireSuperAdmin>
           } />
-          <Route path="system/activity" element={
+          <Route path="activity" element={
             <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
               <SystemActivity />
             </RequireSuperAdmin>
           } />
-          <Route path="system/*" element={<Navigate to="accounts" replace />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

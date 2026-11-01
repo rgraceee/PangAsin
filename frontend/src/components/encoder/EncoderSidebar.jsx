@@ -26,8 +26,8 @@ const SETTINGS_GROUP = {
   items: [
     { id: 'account', label: 'Account', path: '/encoder/settings/account' },
     { id: 'security', label: 'Security', path: '/encoder/settings/security' },
-    { id: 'help', label: 'Help & Support', path: '/encoder/settings/help' },
     { id: 'legal', label: 'Legal', path: '/encoder/settings/legal' },
+    { id: 'help', label: 'Help & Support', path: '/encoder/settings/help' },
     { id: 'about', label: 'About', path: '/encoder/settings/about' },
   ],
 };

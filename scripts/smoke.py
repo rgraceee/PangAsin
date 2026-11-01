@@ -15,11 +15,13 @@ PAGES = [
     "/",
     "/login",
     "/admin",
-    "/admin/system/accounts",
-    "/admin/system/activity",
-    "/admin/settings/system/accounts",
-    "/admin/settings/system/activity",
+    "/superadmin/accounts",
+    "/superadmin/activity",
 ]
+
+# WHAT: /superadmin/* pages are served by the SPA shell (200) and guarded
+#       client-side; admin/encoder hitting /superadmin/* are redirected to /admin.
+# WHY: Frontend-only route move; old /admin/system/* paths now redirect too.
 
 
 def _login(client, email, password):

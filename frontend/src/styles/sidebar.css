@@ -292,6 +292,16 @@
   font-weight: 600;
 }
 
+/* WHAT: Hindi nakakaliktaang "System" label loob ng Settings sub-list (superadmin lamang).
+   WHY: Reuse lamang ng existing token; wala ng bagong kulay o font. */
+.p-subrow-label {
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* ===== Bottom area ===== */
 .p-bottom {
   flex: 0 0 auto;

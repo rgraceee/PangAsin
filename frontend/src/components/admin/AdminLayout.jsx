@@ -4,7 +4,7 @@ import { logoutAPI } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
 import AppShell from '../shell/AppShell';
-import AdminSidebar from './AdminSidebar';
+import AdminSidebar, { HIDDEN_FROM_SUPERADMIN_ROUTES } from './AdminSidebar';
 
 export default function AdminLayout({ user, setUser }) {
   const navigate = useNavigate();
@@ -13,6 +13,15 @@ export default function AdminLayout({ user, setUser }) {
   const { toastInfo } = useToast();
 
   useEffect(() => {
+    /* WHAT: I-redirect ang superadmin sa /admin kapag nakatunggal sa lumang
+       ruta na ngayong nakatago sa sidebar (validation, reports, master list,
+       municipalities, audit logs, user management). WHY: frontend-only guard;
+       admin/encoder behavior ay hindi nabago. */
+    if (user?.role === 'superadmin' && HIDDEN_FROM_SUPERADMIN_ROUTES.includes(location.pathname)) {
+      navigate('/admin', { replace: true });
+      return;
+    }
+
     const target = location.state?.scrollTo;
     if (!target) return;
     const scroller = scrollRef.current;
@@ -22,7 +31,7 @@ export default function AdminLayout({ user, setUser }) {
       scroller.scrollTo({ top, behavior: 'auto' });
     }
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate]);
+  }, [location.state, location.pathname, navigate, user]);
 
   const handleLogout = async () => {
     await confirmAction({

@@ -33,27 +33,39 @@ const MANAGE_ITEMS = [
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
 
+/* WHAT: Mga ruta na hindi dapat makita o ma-access ng superadmin sa admin sidebar.
+   WHY: Isa lamang ang listahan para madaling i-reverse; gagamitin din
+        ng AdminLayout para i-redirect sa /admin ang pamagat na ruta. */
+export const HIDDEN_FROM_SUPERADMIN_ROUTES = [
+  '/admin/validation',
+  '/admin/reports',
+  '/admin/master-list',
+  '/admin/municipalities',
+  '/admin/audit-logs',
+  '/admin/users',
+];
+
+const SETTINGS_BASE_ITEMS = [
+  { id: 'account', label: 'Account', path: '/admin/settings/account' },
+  { id: 'security', label: 'Security', path: '/admin/settings/security' },
+  { id: 'legal', label: 'Legal', path: '/admin/settings/legal' },
+  { id: 'help', label: 'Help & Support', path: '/admin/settings/help' },
+  { id: 'about', label: 'About', path: '/admin/settings/about' },
+];
+
+/* WHAT: Isa lamang ang listahan ng System items para sa superadmin.
+   WHY: Madaling i-appende ang Records, Export & Backup, Health, Configuration. */
+const SYSTEM_ITEMS = [
+  ...SETTINGS_BASE_ITEMS,
+  { id: 'system-section', label: 'System', labelOnly: true },
+  { id: 'system-accounts', label: 'Accounts', path: '/superadmin/accounts' },
+  { id: 'system-activity', label: 'Activity', path: '/superadmin/activity' },
+];
+
 const SETTINGS_GROUP = {
   id: 'settings',
   label: 'Settings',
   icon: Settings,
-  items: [
-    { id: 'account', label: 'Account', path: '/admin/settings/account' },
-    { id: 'security', label: 'Security', path: '/admin/settings/security' },
-    { id: 'help', label: 'Help & Support', path: '/admin/settings/help' },
-    { id: 'legal', label: 'Legal', path: '/admin/settings/legal' },
-    { id: 'about', label: 'About', path: '/admin/settings/about' },
-  ],
-};
-
-const SYSTEM_GROUP = {
-  id: 'system',
-  label: 'System',
-  icon: Settings,
-  items: [
-    { id: 'system-accounts', label: 'Accounts', path: '/admin/system/accounts' },
-    { id: 'system-activity', label: 'Activity', path: '/admin/system/activity' },
-  ],
 };
 
 /* WHAT: I-map ang kasalukuyang URL papunta sa active nav id.
@@ -66,8 +78,8 @@ function activeIdFromPath(pathname) {
   if (pathname.startsWith('/admin/settings/help')) return 'help';
   if (pathname.startsWith('/admin/settings/legal')) return 'legal';
   if (pathname.startsWith('/admin/settings/about')) return 'about';
-  if (pathname.startsWith('/admin/system/accounts') || pathname.startsWith('/admin/settings/system/accounts')) return 'system-accounts';
-  if (pathname.startsWith('/admin/system/activity') || pathname.startsWith('/admin/settings/system/activity')) return 'system-activity';
+  if (pathname.startsWith('/superadmin/accounts') || pathname.startsWith('/admin/system/accounts') || pathname.startsWith('/admin/settings/system/accounts')) return 'system-accounts';
+  if (pathname.startsWith('/superadmin/activity') || pathname.startsWith('/admin/system/activity') || pathname.startsWith('/admin/settings/system/activity')) return 'system-activity';
   if (pathname === '/admin/validation') return 'validation';
   if (pathname === '/admin/data-quality') return 'data-quality';
   if (pathname === '/admin/forecast/target') return 'forecast-target';
@@ -119,7 +131,7 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
         <nav className="p-nav" aria-label="Main">
           <div className="p-navlist">
             <SectionLabel collapsed={collapsed}>Main</SectionLabel>
-            {MAIN_ITEMS.map((item) => (
+            {MAIN_ITEMS.filter((item) => !(user?.role === 'superadmin' && item.id === 'validation')).map((item) => (
               <NavItem
                 key={item.id}
                 icon={item.icon}
@@ -131,28 +143,31 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
               />
             ))}
 
-            <Divider />
-
-            <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
-            <NavGroup
-              id={FORECAST_GROUP.id}
-              icon={FORECAST_GROUP.icon}
-              label={FORECAST_GROUP.label}
-              items={FORECAST_GROUP.items}
-              activeId={activeId}
-              collapsed={collapsed}
-              onNavigate={goItem}
-            />
-            {MANAGE_ITEMS.map((item) => (
-              <NavItem
-                key={item.id}
-                icon={item.icon}
-                label={item.label}
-                active={activeId === item.id}
-                collapsed={collapsed}
-                onClick={go(item.path)}
-              />
-            ))}
+            {user?.role !== 'superadmin' && (
+              <>
+                <Divider />
+                <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
+                <NavGroup
+                  id={FORECAST_GROUP.id}
+                  icon={FORECAST_GROUP.icon}
+                  label={FORECAST_GROUP.label}
+                  items={FORECAST_GROUP.items}
+                  activeId={activeId}
+                  collapsed={collapsed}
+                  onNavigate={goItem}
+                />
+                {MANAGE_ITEMS.map((item) => (
+                  <NavItem
+                    key={item.id}
+                    icon={item.icon}
+                    label={item.label}
+                    active={activeId === item.id}
+                    collapsed={collapsed}
+                    onClick={go(item.path)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </nav>
 
@@ -162,22 +177,11 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
               id={SETTINGS_GROUP.id}
               icon={SETTINGS_GROUP.icon}
               label={SETTINGS_GROUP.label}
-              items={SETTINGS_GROUP.items}
+              items={user?.role === 'superadmin' ? SYSTEM_ITEMS : SETTINGS_BASE_ITEMS}
               activeId={activeId}
               collapsed={collapsed}
               onNavigate={goItem}
             />
-            {user?.role === 'superadmin' && (
-              <NavGroup
-                id={SYSTEM_GROUP.id}
-                icon={SYSTEM_GROUP.icon}
-                label={SYSTEM_GROUP.label}
-                items={SYSTEM_GROUP.items}
-                activeId={activeId}
-                collapsed={collapsed}
-                onNavigate={goItem}
-              />
-            )}
           </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
           <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />

@@ -278,17 +278,26 @@ export function NavGroup({ id, icon: Icon, label, items, activeId, collapsed, on
       </Tip>
       {!collapsed && open ? (
         <div className="p-sublist" id={listId}>
-          {items.map((it) => (
-            <button
-              key={it.id}
-              type="button"
-              className={`p-subrow${activeId === it.id ? ' active' : ''}`}
-              onClick={() => onNavigate(it)}
-              aria-current={activeId === it.id ? 'page' : undefined}
-            >
-              {it.label}
-            </button>
-          ))}
+          {items.map((it) => {
+            if (!it.path) {
+              return (
+                <div key={it.id} className="p-subrow p-subrow-label" aria-label={it.label}>
+                  {it.label}
+                </div>
+              );
+            }
+            return (
+              <button
+                key={it.id}
+                type="button"
+                className={`p-subrow${activeId === it.id ? ' active' : ''}`}
+                onClick={() => onNavigate(it)}
+                aria-current={activeId === it.id ? 'page' : undefined}
+              >
+                {it.label}
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </div>
