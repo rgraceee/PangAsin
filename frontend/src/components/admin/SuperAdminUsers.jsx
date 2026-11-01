@@ -36,6 +36,8 @@ export default function SuperAdminUsers() {
   const [actionForm, setActionForm] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [tempPassword, setTempPassword] = useState(null);
+  const [openTemp, setOpenTemp] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -96,13 +98,18 @@ export default function SuperAdminUsers() {
     if (!reason || reason.length < REASON_MIN) { setError(`Reason must be at least ${REASON_MIN} characters.`); return; }
     setSubmitting(true);
     try {
+      let resetResult = null;
       if (kind === 'deactivate') await deactivateUser(targetUser.id);
       else if (kind === 'reactivate') await reactivateUser(targetUser.id);
-      else if (kind === 'reset') await resetSuperAdminPassword(targetUser.id);
+      else if (kind === 'reset') resetResult = await resetSuperAdminPassword(targetUser.id);
       else if (kind === 'unlock') await unlockUser(targetUser.id);
       else if (kind === 'force-logout') await forceLogoutUser(targetUser.id);
       else if (kind === 'municipality') await changeUserMunicipality(targetUser.id, actionForm.municipality_id || null);
       setOpenAction(false);
+      if (resetResult && resetResult.temporary_password) {
+        setTempPassword(resetResult.temporary_password);
+        setOpenTemp(true);
+      }
       toastSuccess(`${kind.replace('-', ' ')} done.`, 'Action complete');
       load();
     } catch (err) {
@@ -119,6 +126,16 @@ export default function SuperAdminUsers() {
     });
     if (!confirmed) return;
     openReasonAction('Reset password', 'reset', user);
+  };
+
+  const copyPassword = async () => {
+    if (!tempPassword) return;
+    try {
+      await navigator.clipboard.writeText(tempPassword);
+      toastSuccess('Temporary password copied to clipboard.', 'Copied');
+    } catch {
+      /* clipboard unavailable; user can copy manually */
+    }
   };
 
   const hasFilter = Boolean(filters.role || filters.status || filters.municipality_id || filters.q);
@@ -231,7 +248,7 @@ export default function SuperAdminUsers() {
             {error && <Alert variant="danger">{error}</Alert>}
             <Form.Group className="mb-3"><Form.Label>Name <span className="text-danger">*</span></Form.Label><Form.Control value={actionForm.name} onChange={(e) => setActionForm({ ...actionForm, name: e.target.value })} required /></Form.Group>
             <Form.Group className="mb-3"><Form.Label>Email <span className="text-danger">*</span></Form.Label><Form.Control type="email" value={actionForm.email} onChange={(e) => setActionForm({ ...actionForm, email: e.target.value })} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Role <span className="text-danger">*</span></Form.Label><Form.Select value={actionForm.role} onChange={(e) => setActionForm({ ...actionForm, role: e.target.value })} required><option value="admin">Admin</option><option value="encoder">Encoder</option><option value="superadmin">SuperAdmin</option></Form.Select></Form.Group>
+            <Form.Group className="mb-3"><Form.Label>Role <span className="text-danger">*</span></Form.Label><Form.Select value={actionForm.role} onChange={(e) => setActionForm({ ...actionForm, role: e.target.value })} required><option value="admin">Admin</option><option value="encoder">Encoder</option></Form.Select></Form.Group>
             <Form.Group className="mb-3"><Form.Label>Municipality {actionForm.role === 'encoder' && <span className="text-danger">*</span>}</Form.Label><Form.Select value={actionForm.municipality_id} onChange={(e) => setActionForm({ ...actionForm, municipality_id: e.target.value })}><option value="">Select municipality…</option>{munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Form.Select></Form.Group>
             <Form.Text className="text-muted">A temporary password is generated and shown once after creation.</Form.Text>
           </Modal.Body>
@@ -262,6 +279,22 @@ export default function SuperAdminUsers() {
           </Modal.Footer>
         </Form>
       </Modal>
+      {openTemp && tempPassword && (
+        <Modal show onHide={() => setOpenTemp(false)} centered dialogClassName="muni-modal" aria-labelledby="sa-tmp-title">
+          <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header"><Modal.Title id="sa-tmp-title" className="muni-modal__title">Temporary password</Modal.Title></Modal.Header>
+          <Modal.Body className="muni-modal__body">
+            <p>Share this temporary password with <strong>{actionForm.targetUser?.name}</strong> once. They must change it on next login.</p>
+            <div className="input-group mb-3">
+              <Form.Control readOnly value={tempPassword} />
+              <button type="button" className="btn btn-outline-secondary" onClick={copyPassword}>Copy</button>
+            </div>
+            <Form.Text className="text-muted">This is the only time the password is shown.</Form.Text>
+          </Modal.Body>
+          <Modal.Footer className="muni-modal__footer-actions">
+            <button type="button" className="ui-btn-primary" onClick={() => setOpenTemp(false)}>OK, I saved it</button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </>
   );
 }

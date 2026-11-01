@@ -16,6 +16,7 @@ from app.models.production_record import ProductionRecord
 from app.extensions import db
 from app.services.audit import log_action
 from app.utils import is_not_admin
+from sqlalchemy import or_
 
 superadmin_api_bp = Blueprint("superadmin_api", __name__, url_prefix="/api/superadmin")
 
@@ -63,14 +64,33 @@ def list_users():
 
     role = request.args.get("role")
     status = request.args.get("status")
-    q = User.query
+    municipality_id = request.args.get("municipality_id", type=int)
+    q = request.args.get("q", "").strip()
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
+
+    query = User.query
     if role:
-        q = q.filter(User.role == role)
+        query = query.filter(User.role == role)
     if status:
-        q = q.filter(User.status == status)
-    q = q.order_by(User.created_at.desc())
-    users = q.all()
-    return jsonify({"users": [_serialize_user(u) for u in users]}), 200
+        query = query.filter(User.status == status)
+    if municipality_id:
+        query = query.filter(User.municipality_id == municipality_id)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(User.name.ilike(like), User.email.ilike(like))
+        )
+    query = query.order_by(User.created_at.desc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    users = pagination.items
+    return jsonify({
+        "users": [_serialize_user(u) for u in users],
+        "total": pagination.total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pagination.pages,
+    }), 200
 
 
 @superadmin_api_bp.route("/users", methods=["POST"])

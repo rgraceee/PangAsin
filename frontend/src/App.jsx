@@ -329,6 +329,19 @@ export default function App() {
               <SuperAdminConfig />
             </RequireSuperAdmin>
           } />
+          <Route path="settings/*" element={
+            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+              <Settings user={user} />
+            </RequireSuperAdmin>
+          }>
+            <Route index element={<Navigate to="account" replace />} />
+            <Route path="account" element={<Settings user={user} />} />
+            <Route path="security" element={<Settings user={user} />} />
+            <Route path="help" element={<Settings user={user} />} />
+            <Route path="legal" element={<Settings user={user} />} />
+            <Route path="legal/*" element={<Settings user={user} />} />
+            <Route path="about" element={<Settings user={user} />} />
+          </Route>
           <Route path="*" element={<Navigate to="/superadmin/health" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

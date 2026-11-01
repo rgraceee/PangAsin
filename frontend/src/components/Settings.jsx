@@ -9,10 +9,13 @@ import {
   Archive,
   Eye,
   EyeOff,
+  X,
 } from 'lucide-react';
 import { changePassword } from '../services/dataService';
+import ContentEditor from './admin/ContentEditor';
+import CONTENT_DEFAULTS from './admin/contentDefaults';
 import { useToast } from './Toast';
-import { adminFaq, encoderFaq } from './support/faqData';
+import { adminFaq, encoderFaq, publicFaq } from './support/faqData';
 import FaqList from './support/FaqList';
 import { UserAvatar } from './shell/sidebarUi';
 
@@ -63,6 +66,8 @@ export default function Settings({ user }) {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [editContent, setEditContent] = useState(null);
+  const [selectedFaqKey, setSelectedFaqKey] = useState('faq_admin');
 
   // WHAT: Derive ang active section mula sa URL pathname
   //       (/admin/settings/account -> account).
@@ -76,9 +81,17 @@ export default function Settings({ user }) {
   }, [location.pathname]);
 
   const role = user?.role === 'encoder' ? 'encoder' : 'admin';
+  const isSuperAdmin = user?.role === 'superadmin';
   const homePath = role === 'admin' ? '/admin' : '/encoder';
   const isEncoder = role === 'encoder';
-  const roleFaq = role === 'admin' ? adminFaq : encoderFaq;
+  const roleFaq = isSuperAdmin
+    ? (() => {
+        const map = { faq_admin: adminFaq, faq_encoder: encoderFaq, faq_public: publicFaq };
+        return map[selectedFaqKey] || adminFaq;
+      })()
+    : role === 'admin'
+    ? adminFaq
+    : encoderFaq;
 
   // WHAT: Gumagamit ng existing changePassword endpoint mula sa dataService —
 //       parehong logic na ginagamit ng ChangePassword page.
@@ -264,15 +277,37 @@ export default function Settings({ user }) {
         {section === 'help' && (
           <>
             <SectionHead icon={HelpCircle} title="Help &amp; Support" subtitle="Guides, FAQ and contact" />
-<FaqList
-  faqs={roleFaq}
-  contactEmail={CONTACT_EMAIL}
-  manualUrl="/help/manual"
-  reportUrl="/help/report"
-  showSearch={false}
-  showHero={false}
-  grouped={false}
-/>
+            {isSuperAdmin && (
+              <div className="settings-faq-picker mb-3">
+                <label className="settings-faq-label">Edit FAQ</label>
+                <select
+                  className="form-select settings-faq-select"
+                  value={selectedFaqKey}
+                  onChange={(e) => setSelectedFaqKey(e.target.value)}
+                >
+                  <option value="faq_admin">Admin FAQ</option>
+                  <option value="faq_encoder">Encoder FAQ</option>
+                  <option value="faq_public">Public FAQ</option>
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm settings-edit-btn"
+                  onClick={() => setEditContent(selectedFaqKey)}
+                  title="Edit FAQ content"
+                >
+                  <X size={14} strokeWidth={2} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+            <FaqList
+              faqs={roleFaq}
+              contactEmail={CONTACT_EMAIL}
+              manualUrl="/help/manual"
+              reportUrl="/help/report"
+              showSearch={false}
+              showHero={false}
+              grouped={false}
+            />
           </>
         )}
 
@@ -284,28 +319,52 @@ export default function Settings({ user }) {
               <Card.Body className="settings-card-body">
                 <ul className="settings-legal-list">
                   <li>
-                    <a href="/privacy" className="settings-legal-link">
-                      <span className="settings-link-icon" aria-hidden="true">
-                        <Archive size={14} strokeWidth={1.5} />
-                      </span>
-                      <div>
-                        <div className="settings-link-title">Privacy Policy</div>
-                        <div className="settings-link-desc">How PangAsin collects, uses, and protects your data.</div>
-                      </div>
-                      <span className="settings-link-chevron" aria-hidden="true">›</span>
-                    </a>
+                    <div className="settings-legal-row">
+                      <a href="/privacy" className="settings-legal-link">
+                        <span className="settings-link-icon" aria-hidden="true">
+                          <Archive size={14} strokeWidth={1.5} />
+                        </span>
+                        <div>
+                          <div className="settings-link-title">Privacy Policy</div>
+                          <div className="settings-link-desc">How PangAsin collects, uses, and protects your data.</div>
+                        </div>
+                        <span className="settings-link-chevron" aria-hidden="true">›</span>
+                      </a>
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm settings-edit-btn"
+                          onClick={() => setEditContent('privacy')}
+                          title="Edit Privacy Policy content"
+                        >
+                          <X size={14} strokeWidth={2} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
                   </li>
                   <li>
-                    <a href="/privacy" className="settings-legal-link">
-                      <span className="settings-link-icon" aria-hidden="true">
-                        <Archive size={14} strokeWidth={1.5} />
-                      </span>
-                      <div>
-                        <div className="settings-link-title">Terms &amp; Conditions</div>
-                        <div className="settings-link-desc">Terms of use for the PangAsin dashboard.</div>
-                      </div>
-                      <span className="settings-link-chevron" aria-hidden="true">›</span>
-                    </a>
+                    <div className="settings-legal-row">
+                      <a href="/privacy" className="settings-legal-link">
+                        <span className="settings-link-icon" aria-hidden="true">
+                          <Archive size={14} strokeWidth={1.5} />
+                        </span>
+                        <div>
+                          <div className="settings-link-title">Terms &amp; Conditions</div>
+                          <div className="settings-link-desc">Terms of use for the PangAsin dashboard.</div>
+                        </div>
+                        <span className="settings-link-chevron" aria-hidden="true">›</span>
+                      </a>
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm settings-edit-btn"
+                          onClick={() => setEditContent('terms')}
+                          title="Edit Terms &amp; Conditions content"
+                        >
+                          <X size={14} strokeWidth={2} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
                   </li>
                 </ul>
                 <p className="settings-legal-note">
@@ -319,7 +378,19 @@ export default function Settings({ user }) {
         {/* About */}
         {section === 'about' && (
           <>
-            <SectionHead icon={SettingsIcon} title="About" subtitle="About PangAsin" />
+            <div className="d-flex justify-content-between align-items-start mb-2">
+              <SectionHead icon={SettingsIcon} title="About" subtitle="About PangAsin" />
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm settings-edit-btn"
+                  onClick={() => setEditContent('about')}
+                  title="Edit About content"
+                >
+                  <X size={14} strokeWidth={2} aria-hidden="true" />
+                </button>
+              )}
+            </div>
             <Card className="settings-card">
               <Card.Body className="settings-card-body">
                 <dl className="settings-about-list">
@@ -342,6 +413,16 @@ export default function Settings({ user }) {
           </>
         )}
       </main>
+
+      {/* Content editor modals (SuperAdmin only) */}
+      {isSuperAdmin && editContent && (
+        <ContentEditor
+          key={editContent}
+          defaultContent={CONTENT_DEFAULTS[editContent]}
+          open
+          onClose={() => setEditContent(null)}
+        />
+      )}
     </div>
   );
 }

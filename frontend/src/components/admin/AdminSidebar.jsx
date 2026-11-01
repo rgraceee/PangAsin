@@ -61,7 +61,11 @@ const SETTINGS_BASE_ITEMS = [
 /* WHAT: Isa lamang ang listahan ng System items para sa superadmin.
    WHY: Madaling i-appende ang Records, Export & Backup, Health, Configuration. */
 const SYSTEM_ITEMS = [
-  ...SETTINGS_BASE_ITEMS,
+  { id: 'account', label: 'Account', path: '/superadmin/settings/account' },
+  { id: 'security', label: 'Security', path: '/superadmin/settings/security' },
+  { id: 'legal', label: 'Legal', path: '/superadmin/settings/legal' },
+  { id: 'help', label: 'Help & Support', path: '/superadmin/settings/help' },
+  { id: 'about', label: 'About', path: '/superadmin/settings/about' },
   { id: 'system-section', label: 'System', labelOnly: true },
   { id: 'system-users', label: 'User Management', icon: Users, path: '/superadmin/users' },
   { id: 'system-audit-log', label: 'Audit Log', icon: ScrollText, path: '/superadmin/audit-log' },
@@ -95,7 +99,12 @@ function activeIdFromPath(pathname) {
   if (pathname.startsWith('/superadmin/config')) return 'system-config';
   if (pathname.startsWith('/superadmin/accounts') || pathname.startsWith('/admin/system/accounts') || pathname.startsWith('/admin/settings/system/accounts')) return 'system-users';
   if (pathname.startsWith('/superadmin/activity') || pathname.startsWith('/admin/system/activity') || pathname.startsWith('/admin/settings/system/activity')) return 'system-health';
-  if (pathname === '/admin/validation') return 'validation';
+  if (pathname.startsWith('/superadmin/settings/account')) return 'account';
+  if (pathname.startsWith('/superadmin/settings/security')) return 'security';
+  if (pathname.startsWith('/superadmin/settings/help')) return 'help';
+  if (pathname.startsWith('/superadmin/settings/legal')) return 'legal';
+  if (pathname.startsWith('/superadmin/settings/about')) return 'about';
+  if (pathname.startsWith('/admin/settings/account')) return 'account';
   if (pathname === '/admin/data-quality') return 'data-quality';
   if (pathname === '/admin/forecast/target') return 'forecast-target';
   if (pathname === '/admin/forecast') return 'forecast';
