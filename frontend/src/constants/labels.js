@@ -253,6 +253,15 @@ export const STATUS_LABELS = {
 // Only these three statuses are exposed in every filter dropdown and badge.
 export const STATUS_OPTIONS = ["pending", "approved", "rejected"];
 
+// WHAT: Human-readable role labels for UI display.
+// WHY: Role names are used in dropdowns, badges, and headers across the system.
+//      Keeping them here means one place to update wording.
+export const ROLE_LABELS = {
+  admin: "Admin",
+  encoder: "Encoder",
+  superadmin: "SuperAdmin",
+};
+
 export const PAGE_DESCRIPTIVE = "Descriptive: What our data shows";
 export const PAGE_PREDICTIVE = "Predictive: What to expect";
 export const TAB_DESCRIPTIVE = "descriptive";

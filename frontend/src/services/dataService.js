@@ -395,3 +395,56 @@ export function getMunicipalityOutlook() {
 export function evaluateTarget(payload) {
   return api('/admin/forecast/evaluate-target', { method: 'POST', body: JSON.stringify(payload) });
 }
+
+// WHAT: SuperAdmin API functions for user management, audit logs, and login events.
+// WHY: SuperAdmin needs dedicated endpoints for managing users, viewing audit
+//      logs, and viewing login events - all separate from regular admin functions.
+
+export function getSuperAdminUsers(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/superadmin/users${qs ? `?${qs}` : ''}`);
+}
+
+export function createSuperAdminUser(data) {
+  return api('/superadmin/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deactivateUser(userId) {
+  return api(`/superadmin/users/${userId}/deactivate`, { method: 'POST' });
+}
+
+export function reactivateUser(userId) {
+  return api(`/superadmin/users/${userId}/reactivate`, { method: 'POST' });
+}
+
+export function resetSuperAdminPassword(userId) {
+  return api(`/superadmin/users/${userId}/reset-password`, { method: 'POST' });
+}
+
+export function changeUserMunicipality(userId, municipalityId) {
+  return api(`/superadmin/users/${userId}/municipality`, {
+    method: 'POST',
+    body: JSON.stringify({ municipality_id: municipalityId }),
+  });
+}
+
+export function forceLogoutUser(userId) {
+  return api(`/superadmin/users/${userId}/force-logout`, { method: 'POST' });
+}
+
+export function unlockUser(userId) {
+  return api(`/superadmin/users/${userId}/unlock`, { method: 'POST' });
+}
+
+export function getAuditLog(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/superadmin/audit-log${qs ? `?${qs}` : ''}`);
+}
+
+export function getLoginEvents(params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return api(`/superadmin/login-events${qs ? `?${qs}` : ''}`);
+}

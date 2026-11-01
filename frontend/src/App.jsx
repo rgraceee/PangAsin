@@ -26,6 +26,9 @@ import LegalDoc from './components/support/LegalDoc';
 import Settings from './components/Settings';
 import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
+import SystemAccounts from './components/admin/SystemAccounts';
+import SystemActivity from './components/admin/SystemActivity';
+import RequireSuperAdmin from './components/admin/RequireSuperAdmin';
 import { getMe } from './services/dataService';
 import { SkeletonPage } from './components/Skeleton';
 import { ToastProvider } from './components/Toast';
@@ -220,6 +223,15 @@ export default function App() {
               <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
             </Route>
             <Route path="about" element={<Settings user={user} />} />
+            <Route path="system/*" element={
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <Settings user={user} />
+              </RequireSuperAdmin>
+            }>
+              <Route index element={<Navigate to="accounts" replace />} />
+              <Route path="accounts" element={<SystemAccounts />} />
+              <Route path="activity" element={<SystemActivity />} />
+            </Route>
           </Route>
         </Route>
         <Route
@@ -255,6 +267,15 @@ export default function App() {
               <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
             </Route>
             <Route path="about" element={<Settings user={user} />} />
+            <Route path="system/*" element={
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <Settings user={user} />
+              </RequireSuperAdmin>
+            }>
+              <Route index element={<Navigate to="accounts" replace />} />
+              <Route path="accounts" element={<SystemAccounts />} />
+              <Route path="activity" element={<SystemActivity />} />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
