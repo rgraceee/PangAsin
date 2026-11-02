@@ -11,6 +11,7 @@ import {
   resetSuperAdminContent,
 } from '../../services/dataService';
 import { useToast } from '../Toast';
+import CONTENT_DEFAULTS from './contentDefaults';
 import {
   Plus,
   Trash2,
@@ -19,7 +20,10 @@ import {
   Edit3,
   FileText,
   Users,
+  Clock,
 } from 'lucide-react';
+
+const SUPPORTED_KEYS = ['privacy', 'terms', 'about', 'faq_admin', 'faq_encoder', 'faq_public'];
 
 const LABELS = {
   privacy: 'Privacy Policy',
@@ -31,18 +35,19 @@ const LABELS = {
 };
 
 const ICONS = {
-  privacy: <FileText size={16} strokeWidth={2} />,
-  terms: <FileText size={16} strokeWidth={2} />,
-  about: <Users size={16} strokeWidth={2} />,
-  faq_admin: <Edit3 size={16} strokeWidth={2} />,
-  faq_encoder: <Edit3 size={16} strokeWidth={2} />,
-  faq_public: <Edit3 size={16} strokeWidth={2} />,
+  privacy: FileText,
+  terms: FileText,
+  about: Users,
+  faq_admin: Edit3,
+  faq_encoder: Edit3,
+  faq_public: Edit3,
 };
 
-export default function ContentEditor({ key, defaultContent, open, onClose }) {
+export default function ContentEditor({ contentKey, defaultContent, open, onClose }) {
   const { toastSuccess, toastError } = useToast();
-  const [content, setContent] = useState(defaultContent);
-  const [initialContent, setInitialContent] = useState(JSON.stringify(defaultContent));
+  const resolvedDefault = defaultContent || CONTENT_DEFAULTS[contentKey] || {};
+  const [content, setContent] = useState(resolvedDefault);
+  const [initialContent, setInitialContent] = useState(JSON.stringify(resolvedDefault));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -54,18 +59,31 @@ export default function ContentEditor({ key, defaultContent, open, onClose }) {
     setLoading(true);
     setError(null);
     setSuccess(false);
-    getSuperAdminContent(key)
+    // If the key is not supported, do not attempt a server round-trip; use the
+    // bundled default so the editor never crashes on an unknown content key.
+    if (!contentKey || !SUPPORTED_KEYS.includes(contentKey)) {
+      setContent(resolvedDefault);
+      setInitialContent(JSON.stringify(resolvedDefault));
+      setLoading(false);
+      setError(`The document key "${contentKey || '(none)'}" is not a supported content type.`);
+      return;
+    }
+    getSuperAdminContent(contentKey)
       .then((data) => {
-        const merged = { ...defaultContent, ...data };
+        const merged = { ...resolvedDefault, ...data };
         setContent(merged);
         setInitialContent(JSON.stringify(merged));
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.message || 'Could not load content.');
+        // Degrade gracefully to the bundled default so editing is never blocked
+        // by a fetch failure or an unsupported content key.
+        setContent(resolvedDefault);
+        setInitialContent(JSON.stringify(resolvedDefault));
         setLoading(false);
+        setError(err.message || 'Could not load content.');
       });
-  }, [key, defaultContent]);
+  }, [contentKey, resolvedDefault]);
 
   useEffect(() => {
     loadContent();
@@ -125,18 +143,17 @@ export default function ContentEditor({ key, defaultContent, open, onClose }) {
     setError(null);
     setSaving(true);
     try {
-      // Auto-set last_updated for privacy/terms before sending to the server.
-      if (key === 'privacy' || key === 'terms') {
+      if (contentKey === 'privacy' || contentKey === 'terms') {
         const now = new Date();
         const day = String(now.getDate()).padStart(2, '0');
         const month = now.toLocaleString('default', { month: 'long' });
         const year = now.getFullYear();
         setField('last_updated', `${day} ${month} ${year}`);
       }
-      await putSuperAdminContent(key, content);
+      await putSuperAdminContent(contentKey, content);
       setInitialContent(JSON.stringify(content));
       setSuccess(true);
-      toastSuccess(`${LABELS[key]} updated.`, 'Content saved');
+      toastSuccess(`${LABELS[contentKey]} updated.`, 'Content saved');
     } catch (err) {
       const message =
         err.data?.error ||
@@ -151,13 +168,13 @@ export default function ContentEditor({ key, defaultContent, open, onClose }) {
   };
 
   const handleReset = async () => {
-    if (!window.confirm(`Reset ${LABELS[key]} to its default content? This is audited.`)) return;
+    if (!window.confirm(`Reset ${LABELS[contentKey]} to its default content? This is audited.`)) return;
     setSaving(true);
     setError(null);
     try {
-      await resetSuperAdminContent(key);
+      await resetSuperAdminContent(contentKey);
       setSuccess(true);
-      toastSuccess(`${LABELS[key]} reset to default.`, 'Content reset');
+      toastSuccess(`${LABELS[contentKey]} reset to default.`, 'Content reset');
       loadContent();
     } catch (err) {
       const message =
@@ -174,21 +191,50 @@ export default function ContentEditor({ key, defaultContent, open, onClose }) {
 
   const close = () => onClose();
 
+  // Unsupported key: show a graceful state instead of crashing with "Unknown content key."
+  if (!contentKey || !SUPPORTED_KEYS.includes(contentKey)) {
+    return (
+      <Modal show={open} onHide={close} centered dialogClassName="content-modal" aria-labelledby="content-editor-title">
+        <Modal.Header closeButton closeLabel="Close editor" className="content-modal__header">
+          <Modal.Title id="content-editor-title" className="content-modal__title">Document editor</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="content-modal__body">
+          <Alert variant="warning">
+            The document key <strong>{contentKey || '(none)'}</strong> is not a supported content type and cannot be edited here.
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer className="content-modal__footer-actions">
+          <button type="button" className="btn btn-outline-secondary" onClick={close} disabled={saving}>
+            Close
+          </button>
+        </Modal.Footer>
+      </Modal>
+    );
+  }
+
+  const DocumentIcon = ICONS[contentKey] || FileText;
+
   return (
     <Modal show={open} onHide={close} centered dialogClassName="content-modal" aria-labelledby="content-editor-title">
       <Modal.Header closeButton closeLabel="Close editor" className="content-modal__header">
-        <Modal.Title id="content-editor-title" className="content-modal__title">
-          {ICONS[key]} Edit {LABELS[key]}
-        </Modal.Title>
+        <div className="content-modal__head">
+          <div className="content-modal__icon"><DocumentIcon size={16} strokeWidth={2} aria-hidden="true" /></div>
+          <div className="content-modal__title-wrap">
+            <Modal.Title id="content-editor-title" className="content-modal__title">
+              Edit {LABELS[contentKey]}
+            </Modal.Title>
+            <div className="content-modal__subtitle">Sections, paragraphs, and bullets are saved to the database and audited.</div>
+          </div>
+        </div>
       </Modal.Header>
       <Form onSubmit={handleSave} className="content-modal__form">
-        <Modal.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
-          {loading && <div className="text-center py-3">Loading content…</div>}
+        <Modal.Body className="content-modal__body">
+          {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
+          {loading && <div className="text-center py-4">Loading content…</div>}
           {!loading && (
             <>
-              <p className="text-muted small mb-3">
-                Changes are saved to the database and audited. Reset restores the bundled default.
+              <p className="content-modal__intro">
+                Changes are saved to the database and audited. <strong>Reset</strong> restores the bundled default wording.
               </p>
               {type === 'sections' && (
                 <SectionsEditor content={content} setField={setField} spliceAt={spliceAt} pushAt={pushAt} />
@@ -228,58 +274,81 @@ function SectionsEditor({ content, setField, spliceAt, pushAt }) {
   const sections = content.sections || [];
   return (
     <div className="content-sections-editor">
-      <Form.Group className="mb-3">
-        <Form.Label>Title <span className="text-danger">*</span></Form.Label>
-        <Form.Control value={content.title || ''} onChange={(e) => setField('title', e.target.value)} required />
-        <Form.Text className="text-muted">Required.</Form.Text>
-      </Form.Group>
-      <Form.Group className="mb-3">
-        <Form.Label>Last updated</Form.Label>
-        <Form.Control value={content.last_updated || ''} readOnly />
-        <Form.Text className="text-muted">Set automatically on save or reset.</Form.Text>
-      </Form.Group>
-      <h5 className="content-editor-sub mb-2">Sections</h5>
-      {sections.map((section, si) => (
-        <Card key={si} className="content-section-card mb-3 p-3">
-          <div className="d-flex justify-content-between align-items-start mb-2">
-            <Form.Control value={section.title || ''} onChange={(e) => setField(`sections.${si}.title`, e.target.value)} className="content-section-title-input" />
-            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => spliceAt('sections', si)}>
-              <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
-            </button>
-          </div>
-          <div className="mb-2">
-            <span className="content-sub-label">Paragraphs</span>
-            {(section.paragraphs || []).map((p, pi) => (
-              <div key={pi} className="content-field-row">
-                <Form.Control value={p} onChange={(e) => setField(`sections.${si}.paragraphs.${pi}`, e.target.value)} />
-                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => spliceAt(`sections.${si}.paragraphs`, pi)}>
+      <Card className="content-doc-card">
+        <Card.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Document title <span className="text-danger">*</span></Form.Label>
+            <Form.Control value={content.title || ''} onChange={(e) => setField('title', e.target.value)} required />
+            <Form.Text className="text-muted">Required. Shown at the top of the published document.</Form.Text>
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Last updated</Form.Label>
+            <Form.Control value={content.last_updated || ''} readOnly />
+            <Form.Text className="text-muted">Set automatically on save.</Form.Text>
+          </Form.Group>
+        </Card.Body>
+      </Card>
+
+      <div className="content-section-group">
+        <div className="d-flex justify-content-between align-items-baseline mb-3">
+          <h5 className="content-editor-sub mb-0">Sections</h5>
+          <button type="button" className="content-add-btn" onClick={() => pushAt('sections', { title: '', paragraphs: [], bullets: [] })}>
+            <Plus size={14} strokeWidth={2} aria-hidden="true" /> Add section
+          </button>
+        </div>
+        {sections.map((section, si) => (
+          <Card key={si} className="content-section-card">
+            <Card.Body>
+              <div className="content-section-header">
+                <Form.Control value={section.title || ''} onChange={(e) => setField(`sections.${si}.title`, e.target.value)} className="content-section-title-input" />
+                <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => spliceAt('sections', si)} title={`Delete section "${section.title || 'Untitled'}"`} aria-label={`Delete section ${si + 1}`}>
                   <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
                 </button>
               </div>
-            ))}
-            <button type="button" className="btn btn-sm btn-outline-secondary mt-1" onClick={() => pushAt(`sections.${si}.paragraphs`, '')}>
-              <Plus size={14} strokeWidth={2} aria-hidden="true" /> Add paragraph
-            </button>
-          </div>
-          <div className="mb-2">
-            <span className="content-sub-label">Bullets</span>
-            {(section.bullets || []).map((b, bi) => (
-              <div key={bi} className="content-field-row">
-                <Form.Control value={b} onChange={(e) => setField(`sections.${si}.bullets.${bi}`, e.target.value)} />
-                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => spliceAt(`sections.${si}.bullets`, bi)}>
-                  <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
-                </button>
+
+              <div className="content-block mb-3">
+                <label className="content-block-label">Paragraphs</label>
+                <div className="content-field-list">
+                  {(section.paragraphs || []).map((p, pi) => (
+                    <div key={pi} className="content-field-row">
+                      <Form.Control as="textarea" rows={2} value={p} onChange={(e) => setField(`sections.${si}.paragraphs.${pi}`, e.target.value)} placeholder="Enter paragraph…" />
+                      <button type="button" className="btn btn-outline-danger btn-sm content-del-btn" onClick={() => spliceAt(`sections.${si}.paragraphs`, pi)} title="Delete paragraph" aria-label={`Delete paragraph ${pi + 1}`}>
+                        <Trash2 size={13} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="content-add-row-btn" onClick={() => pushAt(`sections.${si}.paragraphs`, '')}>
+                    <Plus size={13} strokeWidth={2} aria-hidden="true" /> Add paragraph
+                  </button>
+                </div>
               </div>
-            ))}
-            <button type="button" className="btn btn-sm btn-outline-secondary mt-1" onClick={() => pushAt(`sections.${si}.bullets`, '')}>
-              <Plus size={14} strokeWidth={2} aria-hidden="true" /> Add bullet
-            </button>
+
+              <div className="content-block">
+                <label className="content-block-label">Bulleted items</label>
+                <div className="content-field-list">
+                  {(section.bullets || []).map((b, bi) => (
+                    <div key={bi} className="content-field-row">
+                      <Form.Control value={b} onChange={(e) => setField(`sections.${si}.bullets.${bi}`, e.target.value)} placeholder="Bullet item…" />
+                      <button type="button" className="btn btn-outline-danger btn-sm content-del-btn" onClick={() => spliceAt(`sections.${si}.bullets`, bi)} title="Delete bullet" aria-label={`Delete bullet ${bi + 1}`}>
+                        <Trash2 size={13} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="content-add-row-btn" onClick={() => pushAt(`sections.${si}.bullets`, '')}>
+                    <Plus size={13} strokeWidth={2} aria-hidden="true" /> Add bullet
+                  </button>
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        ))}
+        {sections.length === 0 && (
+          <div className="content-empty">
+            <Clock size={20} strokeWidth={2} className="text-muted mb-2" aria-hidden="true" />
+            <p className="text-muted small">No sections yet. Add a section to begin.</p>
           </div>
-        </Card>
-      ))}
-      <button type="button" className="btn btn-sm btn-outline-secondary mt-3" onClick={() => pushAt('sections', { title: '', paragraphs: [], bullets: [] })}>
-        <Plus size={14} strokeWidth={2} aria-hidden="true" /> Add section
-      </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -290,34 +359,49 @@ function FaqEditor({ content, setField, spliceAt, pushAt }) {
   const categories = content.items || [];
   return (
     <div className="content-faq-editor">
-      <h5 className="content-editor-sub mb-2">Categories &amp; questions</h5>
+      <div className="d-flex justify-content-between align-items-baseline mb-3">
+        <h5 className="content-editor-sub mb-0">Categories &amp; questions</h5>
+        <button type="button" className="content-add-btn" onClick={() => pushAt('items', { category: 'New category', items: [] })}>
+          <Plus size={14} strokeWidth={2} aria-hidden="true" /> Add category
+        </button>
+      </div>
       {categories.map((cat, ci) => (
-        <Card key={ci} className="content-section-card mb-3 p-3">
-          <div className="d-flex justify-content-between align-items-start mb-2">
-            <Form.Control value={cat.category || ''} onChange={(e) => setField(`items.${ci}.category`, e.target.value)} className="content-section-title-input" />
-            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => spliceAt('items', ci)}>
-              <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
-            </button>
-          </div>
-          {(cat.items || []).map((item, ii) => (
-            <div key={ii} className="content-faq-item mb-2 p-2 border rounded">
-              <div className="d-flex justify-content-between mb-1">
-                <Form.Control value={item.q || ''} onChange={(e) => setField(`items.${ci}.items.${ii}.q`, e.target.value)} placeholder="Question" />
-                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => spliceAt(`items.${ci}.items`, ii)}>
-                  <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+        <Card key={ci} className="content-section-card">
+          <Card.Body>
+            <div className="content-section-header">
+              <Form.Control value={cat.category || ''} onChange={(e) => setField(`items.${ci}.category`, e.target.value)} className="content-section-title-input" placeholder="Category name" />
+              <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => spliceAt('items', ci)} title={`Delete category "${cat.category || 'Untitled'}"`} aria-label={`Delete category ${ci + 1}`}>
+                <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="content-block mb-3">
+              <label className="content-block-label">Questions &amp; answers</label>
+              <div className="content-field-list">
+                {(cat.items || []).map((item, ii) => (
+                  <div key={ii} className="content-faq-item">
+                    <div className="content-field-row">
+                      <Form.Control value={item.q || ''} onChange={(e) => setField(`items.${ci}.items.${ii}.q`, e.target.value)} placeholder="Question" />
+                      <button type="button" className="btn btn-outline-danger btn-sm content-del-btn" onClick={() => spliceAt(`items.${ci}.items`, ii)} title="Delete question" aria-label={`Delete question ${ii + 1}`}>
+                        <Trash2 size={13} strokeWidth={2} aria-hidden="true" />
+                      </button>
+                    </div>
+                    <Form.Control as="textarea" rows={2} value={item.a || ''} onChange={(e) => setField(`items.${ci}.items.${ii}.a`, e.target.value)} placeholder="Answer" />
+                  </div>
+                ))}
+                <button type="button" className="content-add-row-btn" onClick={() => pushAt(`items.${ci}.items`, { q: '', a: '' })}>
+                  <Plus size={13} strokeWidth={2} aria-hidden="true" /> Add question
                 </button>
               </div>
-              <Form.Control as="textarea" rows={2} value={item.a || ''} onChange={(e) => setField(`items.${ci}.items.${ii}.a`, e.target.value)} placeholder="Answer" />
             </div>
-          ))}
-          <button type="button" className="btn btn-sm btn-outline-secondary mt-1" onClick={() => pushAt(`items.${ci}.items`, { q: '', a: '' })}>
-            <Plus size={14} strokeWidth={2} aria-hidden="true" /> Add question
-          </button>
+          </Card.Body>
         </Card>
       ))}
-      <button type="button" className="btn btn-sm btn-outline-secondary mt-3" onClick={() => pushAt('items', { category: 'New category', items: [] })}>
-        <Plus size={14} strokeWidth={2} aria-hidden="true" /> Add category
-      </button>
+      {categories.length === 0 && (
+        <div className="content-empty">
+          <FileText size={20} strokeWidth={2} className="text-muted mb-2" aria-hidden="true" />
+          <p className="text-muted small">No categories yet. Add a category to begin.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -334,10 +418,15 @@ function AboutEditor({ content, setField }) {
   ];
   return (
     <div className="content-about-editor">
+      <div className="content-doc-intro">
+        <FileText size={20} strokeWidth={2} className="text-muted mb-2" aria-hidden="true" />
+        <p className="text-muted small">Edit the metadata shown in Settings &gt; About and on public pages.</p>
+      </div>
       {fields.map((f) => (
         <Form.Group key={f.key} className="mb-3">
           <Form.Label>{f.label} {f.required && <span className="text-danger">*</span>}</Form.Label>
           <Form.Control value={content[f.key] || ''} onChange={(e) => setField(f.key, e.target.value)} required={f.required} />
+          <Form.Text className="text-muted">{f.key === 'note' ? 'Short note displayed under the app credit.' : ''}</Form.Text>
         </Form.Group>
       ))}
     </div>

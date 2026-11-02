@@ -58,21 +58,41 @@ const SETTINGS_BASE_ITEMS = [
   { id: 'about', label: 'About', path: '/admin/settings/about' },
 ];
 
-/* WHAT: Isa lamang ang listahan ng System items para sa superadmin.
-   WHY: Madaling i-appende ang Records, Export & Backup, Health, Configuration. */
-const SYSTEM_ITEMS = [
+/* WHAT: SuperAdmin nav sections, ordered: Overview -> PEOPLE & DATA -> CONTENT -> SYSTEM.
+   WHY: Single source of truth for the superadmin sidebar grouping and order.
+   Account and Security are rendered in the profile/bottom area instead. */
+const SUPERADMIN_GROUPS = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard, path: '/superadmin' },
+  {
+    id: 'people-data', label: 'PEOPLE & DATA', icon: Users,
+    items: [
+      { id: 'users', label: 'User Management', icon: Users, path: '/superadmin/users' },
+      { id: 'records', label: 'Records', icon: FileText, path: '/superadmin/records' },
+      { id: 'audit-log', label: 'Audit Log', icon: ScrollText, path: '/superadmin/audit-log' },
+    ],
+  },
+  {
+    id: 'content', label: 'CONTENT', icon: FileText,
+    items: [
+      { id: 'legal-documents', label: 'Legal Documents', icon: FileText, path: '/superadmin/policies' },
+      { id: 'help-center', label: 'Help Center', icon: FileText, path: '/superadmin/help' },
+      { id: 'about', label: 'About', icon: FileText, path: '/superadmin/about' },
+      { id: 'announcements', label: 'Announcements', icon: FileText, path: '/superadmin/announcement' },
+    ],
+  },
+  {
+    id: 'system', label: 'SYSTEM', icon: Sliders,
+    items: [
+      { id: 'configuration', label: 'Configuration', icon: Sliders, path: '/superadmin/config' },
+      { id: 'export-backup', label: 'Export & Backup', icon: FileDown, path: '/superadmin/export' },
+    ],
+  },
+];
+
+/* WHAT: Bottom profile items (Account, Security) rendered outside the main list. */
+const SUPERADMIN_BOTTOM_ITEMS = [
   { id: 'account', label: 'Account', path: '/superadmin/settings/account' },
   { id: 'security', label: 'Security', path: '/superadmin/settings/security' },
-  { id: 'legal', label: 'Legal', path: '/superadmin/settings/legal' },
-  { id: 'help', label: 'Help & Support', path: '/superadmin/settings/help' },
-  { id: 'about', label: 'About', path: '/superadmin/settings/about' },
-  { id: 'system-section', label: 'System', labelOnly: true },
-  { id: 'system-users', label: 'User Management', icon: Users, path: '/superadmin/users' },
-  { id: 'system-audit-log', label: 'Audit Log', icon: ScrollText, path: '/superadmin/audit-log' },
-  { id: 'system-records', label: 'Records', icon: FileText, path: '/superadmin/records' },
-  { id: 'system-export', label: 'Export & Backup', icon: FileDown, path: '/superadmin/export' },
-  { id: 'system-health', label: 'Health', icon: Activity, path: '/superadmin/health' },
-  { id: 'system-config', label: 'Configuration', icon: Sliders, path: '/superadmin/config' },
 ];
 
 const SETTINGS_GROUP = {
@@ -91,13 +111,18 @@ function activeIdFromPath(pathname) {
   if (pathname.startsWith('/admin/settings/help')) return 'help';
   if (pathname.startsWith('/admin/settings/legal')) return 'legal';
   if (pathname.startsWith('/admin/settings/about')) return 'about';
-  if (pathname.startsWith('/superadmin/users')) return 'system-users';
-  if (pathname.startsWith('/superadmin/audit-log')) return 'system-audit-log';
-  if (pathname.startsWith('/superadmin/records')) return 'system-records';
-  if (pathname.startsWith('/superadmin/export')) return 'system-export';
-  if (pathname.startsWith('/superadmin/health')) return 'system-health';
-  if (pathname.startsWith('/superadmin/config')) return 'system-config';
-  if (pathname === '/superadmin/dashboard') return 'dashboard';
+  if (pathname.startsWith('/superadmin/users')) return 'users';
+  if (pathname.startsWith('/superadmin/audit-log')) return 'audit-log';
+  if (pathname.startsWith('/superadmin/records')) return 'records';
+  if (pathname.startsWith('/superadmin/export')) return 'export-backup';
+  if (pathname.startsWith('/superadmin/health')) return 'overview';
+  if (pathname.startsWith('/superadmin/config')) return 'configuration';
+  if (pathname === '/superadmin' || pathname === '/superadmin/') return 'overview';
+  if (pathname === '/superadmin/dashboard') return 'overview';
+  if (pathname === '/superadmin/announcement') return 'announcements';
+  if (pathname === '/superadmin/about') return 'about';
+  if (pathname === '/superadmin/policies') return 'legal-documents';
+  if (pathname === '/superadmin/help') return 'help-center';
   if (pathname === '/superadmin/forecast') return 'forecast';
   if (pathname === '/superadmin/forecast/target') return 'forecast-target';
   if (pathname === '/superadmin/data-quality') return 'data-quality';
@@ -159,60 +184,87 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
         {/* WHAT: Pangunahing nav. WHY: aria-label="Main" para sa screen readers. */}
         <nav className="p-nav" aria-label="Main">
           <div className="p-navlist">
-            <SectionLabel collapsed={collapsed}>Main</SectionLabel>
-            {MAIN_ITEMS.filter((item) => {
-              if (user?.role === 'superadmin') {
-                // SuperAdmin sees Dashboard and Data Quality (view-only),
-                // but not Validation Queue.
-                return item.id !== 'validation';
-              }
-              return true;
-            }).map((item) => {
-              // SuperAdmin routes live under /superadmin/* instead of /admin/*.
-              const path = user?.role === 'superadmin'
-                ? item.path.replace('/admin', '/superadmin')
-                : item.path;
-              return (
-                <NavItem
-                  key={item.id}
-                  icon={item.icon}
-                  label={item.label}
-                  active={activeId === item.id}
-                  badge={item.id === 'validation' ? pendingCount : 0}
-                  collapsed={collapsed}
-                  onClick={go(path)}
-                />
-              );
-            })}
-
-            <Divider />
-            <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
-            <NavGroup
-              id={FORECAST_GROUP.id}
-              icon={FORECAST_GROUP.icon}
-              label={FORECAST_GROUP.label}
-              items={FORECAST_GROUP.items.map((item) => ({
-                ...item,
-                path: user?.role === 'superadmin'
-                  ? item.path.replace('/admin', '/superadmin')
-                  : item.path,
-              }))}
-              activeId={activeId}
-              collapsed={collapsed}
-              onNavigate={(item) => goItem({ ...item, path: user?.role === 'superadmin' ? item.path.replace('/admin', '/superadmin') : item.path })}
-            />
             {user?.role !== 'superadmin' && (
               <>
-                {MANAGE_ITEMS.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    active={activeId === item.id}
-                    collapsed={collapsed}
-                    onClick={go(item.path)}
-                  />
+                <SectionLabel collapsed={collapsed}>Main</SectionLabel>
+                {MAIN_ITEMS.filter((item) => item.id !== 'validation').map((item) => {
+                  // SuperAdmin routes live under /superadmin/* instead of /admin/*.
+                  const path = user?.role === 'superadmin'
+                    ? item.path.replace('/admin', '/superadmin')
+                    : item.path;
+                  return (
+                    <NavItem
+                      key={item.id}
+                      icon={item.icon}
+                      label={item.label}
+                      active={activeId === item.id}
+                      badge={item.id === 'validation' ? pendingCount : 0}
+                      collapsed={collapsed}
+                      onClick={go(path)}
+                    />
+                  );
+                })}
+              </>
+            )}
+
+            {user?.role === 'superadmin' ? (
+              <>
+                <NavItem
+                  key="overview"
+                  icon={LayoutDashboard}
+                  label="Overview"
+                  active={activeId === 'overview'}
+                  collapsed={collapsed}
+                  onClick={go('/superadmin')}
+                />
+                {SUPERADMIN_GROUPS.slice(1).map((group) => (
+                  <React.Fragment key={group.id}>
+                    <SectionLabel collapsed={collapsed}>{group.label}</SectionLabel>
+                    {group.items.map((item) => (
+                      <NavItem
+                        key={item.id}
+                        icon={item.icon}
+                        label={item.label}
+                        active={activeId === item.id}
+                        collapsed={collapsed}
+                        onClick={go(item.path)}
+                      />
+                    ))}
+                  </React.Fragment>
                 ))}
+              </>
+            ) : (
+              <>
+                <Divider />
+                <SectionLabel collapsed={collapsed}>Manage</SectionLabel>
+                <NavGroup
+                  id={FORECAST_GROUP.id}
+                  icon={FORECAST_GROUP.icon}
+                  label={FORECAST_GROUP.label}
+                  items={FORECAST_GROUP.items.map((item) => ({
+                    ...item,
+                    path: user?.role === 'superadmin'
+                      ? item.path.replace('/admin', '/superadmin')
+                      : item.path,
+                  }))}
+                  activeId={activeId}
+                  collapsed={collapsed}
+                  onNavigate={(item) => goItem({ ...item, path: user?.role === 'superadmin' ? item.path.replace('/admin', '/superadmin') : item.path })}
+                />
+                {user?.role !== 'superadmin' && (
+                  <>
+                    {MANAGE_ITEMS.map((item) => (
+                      <NavItem
+                        key={item.id}
+                        icon={item.icon}
+                        label={item.label}
+                        active={activeId === item.id}
+                        collapsed={collapsed}
+                        onClick={go(item.path)}
+                      />
+                    ))}
+                  </>
+                )}
               </>
             )}
           </div>
@@ -220,15 +272,29 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
 
         <div className="p-bottom">
           <div className="p-sidebar-support">
-            <NavGroup
-              id={SETTINGS_GROUP.id}
-              icon={SETTINGS_GROUP.icon}
-              label={SETTINGS_GROUP.label}
-              items={user?.role === 'superadmin' ? SYSTEM_ITEMS : SETTINGS_BASE_ITEMS}
-              activeId={activeId}
-              collapsed={collapsed}
-              onNavigate={goItem}
-            />
+            {user?.role === 'superadmin' ? (
+              <>
+                {SUPERADMIN_BOTTOM_ITEMS.map((item) => (
+                  <NavItem
+                    key={item.id}
+                    label={item.label}
+                    active={activeId === item.id}
+                    collapsed={collapsed}
+                    onClick={go(item.path)}
+                  />
+                ))}
+              </>
+            ) : (
+              <NavGroup
+                id={SETTINGS_GROUP.id}
+                icon={SETTINGS_GROUP.icon}
+                label={SETTINGS_GROUP.label}
+                items={SETTINGS_BASE_ITEMS}
+                activeId={activeId}
+                collapsed={collapsed}
+                onNavigate={goItem}
+              />
+            )}
           </div>
           <CollapseControl collapsed={collapsed} onToggle={onToggle} />
           <UserBlock user={user} collapsed={collapsed} onLogout={onLogout} />

@@ -244,6 +244,60 @@ export default function EnvironmentRecordsPage() {
         />
       </KpiGrid>
 
+      {/* Pending Review section — newest submissions first, above the full table. */}
+      <Card className="encoder-card admin-card mb-4">
+        <Card.Header className="master-toolbar">
+          <h2 className="h6 mb-0"><Clock size={16} className="me-2" />Pending Review</h2>
+          <div className="master-toolbar__actions">
+            <Badge bg="light" text="dark">{totals.pending.toLocaleString()} awaiting approval</Badge>
+            <span className="small text-muted">Newest submission first</span>
+          </div>
+        </Card.Header>
+        <Card.Body className="p-0">
+          {loading && (
+            <div className="text-center py-4"><SkeletonList rows={3} cols={6} /></div>
+          )}
+          {totals.pending === 0 && (
+            <div className="chart-empty py-4">
+              <span className="muni-empty-chip">No pending records</span>
+              No environment records awaiting approval.
+            </div>
+          )}
+          {totals.pending > 0 && (
+            <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
+              <thead>
+                <tr>
+                  <th>Record Date</th>
+                  <th>Record Type</th>
+                  <th>Measurements</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th className="text-nowrap" aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered
+                  .filter((report) => report.status === 'pending')
+                  .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+                  .slice(0, 5)
+                  .map((report) => (
+                    <tr key={report.id}>
+                      <td>{report.created_at ? new Date(report.created_at).toLocaleDateString() : '—'}</td>
+                      <td>{(report.production_methods || []).map((method) => method[0].toUpperCase() + method.slice(1)).join(', ')}</td>
+                      <td>
+                        {report.num_salt_beds} beds · {report.area_per_salt_bed} m² bed · {report.production_area_size} m² area
+                      </td>
+                      <td><Badge bg="warning" text="dark">Pending</Badge></td>
+                      <td>{report.created_at ? new Date(report.created_at).toLocaleDateString() : '—'}</td>
+                      <td className="text-nowrap text-end"></td>
+                    </tr>
+                  ))}
+              </tbody>
+            </Table>
+          )}
+        </Card.Body>
+      </Card>
+
       <Card className="encoder-card admin-card">
         <Card.Header className="master-toolbar">
           <h2 className="h6 mb-0"><Leaf size={16} className="me-2" />Environment Records</h2>

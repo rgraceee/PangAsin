@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, LogIn, Search } from 'lucide-react';
-import { getPublicContent } from '../../services/dataService';
+import { getHelpFaqs } from '../../services/dataService';
+import { SkeletonPageHeader } from '../Skeleton';
 
 const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 
-// WHAT: Public Help Center page — fetches FAQ from /api/content/faq_public,
-//       falling back to bundled defaults. No login required.
+// WHAT: Public Help Center page — fetches active FAQ items from
+//       /api/help-faqs?public=1, falling back to bundled defaults if the
+//       API returns none or the call fails. No login required.
 // WHY: /help must load for everyone (logged out, admin, encoder) without
 //      redirecting to login or /change-password.
 export default function HelpCenter() {
@@ -19,9 +21,10 @@ export default function HelpCenter() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    getPublicContent('faq_public')
+    getHelpFaqs(true)
       .then((data) => {
-        setFaqs(data);
+        const items = Array.isArray(data.faqs) ? data.faqs : [];
+        setFaqs(items.length ? items : null);
         setLoading(false);
       })
       .catch((err) => {
@@ -54,8 +57,8 @@ export default function HelpCenter() {
             Sign in
           </Link>
         </div>
-        <div className="help-header-card" style={{ minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted">Loading Help Center…</p>
+        <div className="help-header-card">
+          <SkeletonPageHeader />
         </div>
       </div>
     );

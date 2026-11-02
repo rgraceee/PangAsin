@@ -20,6 +20,7 @@ SETTINGS_REGISTRY = {
     "forgot_password_email_message": {"type": "string", "default": "You requested a password reset for your PangAsin account. Use the reset link below to set a new password. If you did not request this, you can ignore this email.", "min": 1, "max": 4000},
     "forecast_horizon": {"type": "int", "default": 12, "min": 1, "max": 36},
     "production_methods": {"type": "json", "default": ["solar", "cooked", "hybrid"], "min": 1, "max": 10},
+    "help_contact_email": {"type": "string", "default": "pang.asin26@gmail.com", "min": 1, "max": 200},
 }
 
 SETTING_CODES = tuple(SETTINGS_REGISTRY.keys())

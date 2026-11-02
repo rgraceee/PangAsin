@@ -422,31 +422,46 @@ export function createSuperAdminUser(data) {
   });
 }
 
-export function deactivateUser(userId) {
-  return api(`/superadmin/users/${userId}/deactivate`, { method: 'POST' });
-}
-
-export function reactivateUser(userId) {
-  return api(`/superadmin/users/${userId}/reactivate`, { method: 'POST' });
-}
-
-export function resetSuperAdminPassword(userId) {
-  return api(`/superadmin/users/${userId}/reset-password`, { method: 'POST' });
-}
-
-export function changeUserMunicipality(userId, municipalityId) {
-  return api(`/superadmin/users/${userId}/municipality`, {
+export function deactivateUser(userId, reason) {
+  return api(`/superadmin/users/${userId}/deactivate`, {
     method: 'POST',
-    body: JSON.stringify({ municipality_id: municipalityId }),
+    body: JSON.stringify({ reason }),
   });
 }
 
-export function forceLogoutUser(userId) {
-  return api(`/superadmin/users/${userId}/force-logout`, { method: 'POST' });
+export function reactivateUser(userId, reason) {
+  return api(`/superadmin/users/${userId}/reactivate`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
 }
 
-export function unlockUser(userId) {
-  return api(`/superadmin/users/${userId}/unlock`, { method: 'POST' });
+export function resetSuperAdminPassword(userId, reason) {
+  return api(`/superadmin/users/${userId}/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function changeUserMunicipality(userId, municipalityId, reason) {
+  return api(`/superadmin/users/${userId}/municipality`, {
+    method: 'POST',
+    body: JSON.stringify({ municipality_id: municipalityId, reason }),
+  });
+}
+
+export function forceLogoutUser(userId, reason) {
+  return api(`/superadmin/users/${userId}/force-logout`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function unlockUser(userId, reason) {
+  return api(`/superadmin/users/${userId}/unlock`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
 }
 
 export function getAuditLog(params = {}) {
@@ -488,6 +503,32 @@ export function resetSuperAdminContent(key) {
     method: 'POST',
   });
 }
+export function getHelpFaqs(publicOnly = false) {
+  return api(`/help-faqs${publicOnly ? '?public=1' : ''}`);
+}
+export function createHelpFaq(data) {
+  return api(`/help-faqs`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+export function updateHelpFaq(id, data) {
+  return api(`/help-faqs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+export function deleteHelpFaq(id) {
+  return api(`/help-faqs/${id}`, {
+    method: 'DELETE',
+  });
+}
+export function reorderHelpFaqs(items) {
+  return api(`/help-faqs/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ items }),
+  });
+}
 export function getSuperAdminAnnouncement() {
   return api('/announcement');
 }
@@ -499,9 +540,7 @@ export function putSuperAdminAnnouncement(payload) {
 }
 export function exportRecords(params = {}) {
   const qs = new URLSearchParams(params).toString();
-  return api(`/superadmin/export/records${qs ? `?${qs}` : ''}`, {
-    method: 'GET',
-  });
+  return downloadBlob(`/superadmin/export/records${qs ? `?${qs}` : ''}`);
 }
 export function softDeleteRecord(id, reason) {
   return api(`/superadmin/records/${id}/soft-delete`, {
@@ -529,25 +568,27 @@ export function permanentDeleteRecord(id, confirmText) {
 
 export function exportCsv(type, params = {}) {
   const qs = new URLSearchParams(params).toString();
-  return api(`/superadmin/export/csv/${type}${qs ? `?${qs}` : ''}`, {
-    method: 'GET',
-  });
+  return downloadBlob(`/superadmin/export/csv/${type}${qs ? `?${qs}` : ''}`);
 }
 
-export function downloadBackup() {
-  return fetch(`/api/superadmin/export/backup`, {
+export function downloadBlob(path) {
+  return fetch(`/api${path}`, {
     method: 'GET',
     credentials: 'include',
   }).then(async (res) => {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      const err = new Error(data.error || 'Backup failed');
+      const err = new Error(data.error || 'Download failed');
       err.status = res.status;
       err.data = data;
       throw err;
     }
     return res.blob();
   });
+}
+
+export function downloadBackup() {
+  return downloadBlob(`/superadmin/export/backup`);
 }
 
 export function getSuperAdminHealth() {
@@ -558,6 +599,10 @@ export function runSuperAdminForecast() {
   return api('/superadmin/forecast/run', {
     method: 'POST',
   });
+}
+
+export function getSuperAdminSmtp() {
+  return api('/superadmin/smtp');
 }
 
 export function sendSmtpTest() {

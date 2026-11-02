@@ -1,110 +1,113 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Card } from 'react-bootstrap';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { getPublicContent } from '../../services/dataService';
+import { SkeletonText } from '../Skeleton';
 
 const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 
-// WHAT: Legal document page shown inside the admin/encoder shell.
-//       Fetches content from /api/content/<docType>, falling back to bundled
-//       defaults. Sanitized rendering prevents XSS.
-// WHY: Settings > Legal links to Privacy Policy and Terms & Conditions;
-//      both render in the shell with the sidebar visible.
-export default function LegalDoc({ docType, user }) {
-  const role = user?.role === 'admin' ? 'admin' : 'encoder';
-  const isPrivacy = docType === 'privacy';
-  const label = isPrivacy ? 'Privacy Policy' : 'Terms & Conditions';
+export default function LegalDoc({ docType }) {
+  const [content, setContent] = useState({ privacy: null, terms: null });
+  const [loading, setLoading] = useState({ privacy: true, terms: true });
+  const [active, setActive] = useState(docType === 'terms' ? 'terms' : 'privacy');
 
-  const [content, setContent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const load = useCallback((key) => {
+    setLoading((prev) => ({ ...prev, [key]: true }));
+    getPublicContent(key)
+      .then((data) => {
+        setContent((prev) => ({ ...prev, [key]: data }));
+        setLoading((prev) => ({ ...prev, [key]: false }));
+      })
+      .catch(() => {
+        setLoading((prev) => ({ ...prev, [key]: false }));
+      });
+  }, []);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    getPublicContent(docType)
-      .then((data) => { setContent(data); setLoading(false); })
-      .catch((err) => { setError(err.message || `Could not load ${label}.`); setLoading(false); });
-  }, [docType]);
+  useEffect(() => {
+    load('privacy');
+    load('terms');
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const c = content[active];
+  const title = c?.title || (active === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions');
+  const lastUpdated = c?.last_updated || '30 October 2026';
+  const sections = c?.sections || [];
 
-  if (loading) {
+  const tabs = [
+    { key: 'privacy', label: 'Privacy Policy' },
+    { key: 'terms', label: 'Terms & Conditions' },
+  ];
+
+  if (loading.privacy && loading.terms) {
     return (
-      <div className="settings-page">
-        <div className="settings-header">
-          <div className="settings-header-left">
-            <Link to={`${role === 'admin' ? '/admin' : '/encoder'}/settings/legal`} className="settings-back">
-              <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" />
-              Legal
-            </Link>
-            <span className="settings-breadcrumb" aria-hidden="true">
-              Legal {'>'} {label}
-            </span>
-            <h1 className="settings-page-title">{label}</h1>
+      <main className="settings-section-panel">
+        <div className="settings-section-head">
+          <span className="settings-section-chip" aria-hidden="true">
+            <ShieldCheck size={16} strokeWidth={1.75} />
+          </span>
+          <div>
+            <h2 className="settings-section-title">{title}</h2>
+            <p className="settings-section-sub">Last updated: 30 October 2026</p>
           </div>
         </div>
-        <div className="settings-page-sub" style={{ minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted">Loading {label}…</p>
-        </div>
-      </div>
-    );
-  }
-
-  const title = content?.title || label;
-  const lastUpdated = content?.last_updated || '30 October 2026';
-  const sections = content?.sections || [];
-
-  return (
-    <div className="settings-page">
-      <div className="settings-header">
-        <div className="settings-header-left">
-          <Link to={`${role === 'admin' ? '/admin' : '/encoder'}/settings/legal`} className="settings-back">
-            <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" />
-            Legal
-          </Link>
-          <span className="settings-breadcrumb" aria-hidden="true">
-            Legal {'>'} {label}
-          </span>
-          <h1 className="settings-page-title">{title}</h1>
-        </div>
-      </div>
-
-      <main className="settings-section-panel">
         <Card className="settings-card">
           <Card.Body className="settings-card-body">
-            <span className="support-eyebrow">
-              <ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />
-              {isPrivacy ? 'Data privacy' : 'Terms of use'}
-            </span>
-            <h2 className="settings-section-title">{title}</h2>
-            <p className="settings-page-sub">Last updated: {lastUpdated}</p>
-
-            <div className="settings-legal-content">
-              {sections.map((section, si) => (
-                <div key={si} className="legal-section">
-                  <h3 className="legal-section-title">{section.title || `Section ${si + 1}`}</h3>
-                  {(section.paragraphs || []).map((p, pi) => (
-                    <p key={pi} className="legal-paragraph">{p}</p>
-                  ))}
-                  {(section.bullets || []).length > 0 && (
-                    <ul className="legal-bullets">
-                      {(section.bullets || []).map((b, bi) => (
-                        <li key={bi} className="legal-bullet">{b}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="settings-page-sub" style={{ marginTop: 24 }}>
-              For questions, email:{' '}
-              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
-            </p>
+            <SkeletonText lines={6} lastWidth="75%" />
           </Card.Body>
         </Card>
       </main>
-    </div>
+    );
+  }
+
+  return (
+    <main className="settings-section-panel">
+      <div className="settings-section-head">
+        <span className="settings-section-chip" aria-hidden="true">
+          <ShieldCheck size={16} strokeWidth={1.75} />
+        </span>
+        <div>
+          <h2 className="settings-section-title">{title}</h2>
+          <p className="settings-section-sub">
+            Last updated: {lastUpdated}{c?.version ? ` · v${c.version}${c.effective_date ? ` (effective ${c.effective_date})` : ''}` : ''}
+          </p>
+        </div>
+      </div>
+      <div className="legal-tabs">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            className={`legal-tab ${active === t.key ? 'legal-tab-active' : ''}`}
+            onClick={() => setActive(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <Card className="settings-card">
+        <Card.Body className="settings-card-body">
+          <div className="legal-content">
+            {sections.map((section, si) => (
+              <div key={si} className="legal-section">
+                <h3 className="legal-section-title">{section.title || `Section ${si + 1}`}</h3>
+                {(section.paragraphs || []).map((p, pi) => (
+                  <p key={pi} className="legal-paragraph">{p}</p>
+                ))}
+                {(section.bullets || []).length > 0 && (
+                  <ul className="legal-bullets">
+                    {(section.bullets || []).map((b, bi) => (
+                      <li key={bi} className="legal-bullet">{b}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="legal-contact">
+            For questions, email:{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+          </p>
+        </Card.Body>
+      </Card>
+    </main>
   );
 }

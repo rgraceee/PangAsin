@@ -11,7 +11,7 @@ import ReportImportActions from './ReportImportActions';
 import { prepareProductionRows, rowError } from './reportImportUtils';
 import TablePagination from '../ui/TablePagination';
 
-const PRODUCTION_METHOD_LABELS = {
+export const PRODUCTION_METHOD_LABELS = {
   solar: 'Solar',
   cooked: 'Cooked',
   hybrid: 'Hybrid',
@@ -19,7 +19,7 @@ const PRODUCTION_METHOD_LABELS = {
 
 // WHAT: Maikli at basahin agad ang petsa (hal. "Oct 1, 2026").
 // WHY: ISO strings (2026-10-01) ay mahirap i-scan sa table.
-function formatDate(value) {
+export function formatDate(value) {
   if (!value) return '—';
   const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
@@ -35,7 +35,7 @@ function DetailRow({ label, value }) {
   );
 }
 
-const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) => (
+export const IconAction = ({ onClick, variant, title, ariaLabel, children, disabled }) => (
   <Button
     type="button"
     variant="link"

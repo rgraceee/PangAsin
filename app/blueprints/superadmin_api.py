@@ -4,6 +4,7 @@
 #      pagbabago sa account at monitoring ng lahat ng login at audit events.
 #      Walang role ang makakahanap rito maliban sa superadmin.
 from datetime import datetime, timedelta
+from decimal import Decimal
 from secrets import token_urlsafe
 
 from flask import Blueprint, request, jsonify, current_app
@@ -21,7 +22,7 @@ from app.services.setting_service import get_setting
 from app.services.forecast_service import run_forecast_all_municipalities
 from app.constants import APP_VERSION
 from app.utils import is_not_admin
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, text
 
 superadmin_api_bp = Blueprint("superadmin_api", __name__, url_prefix="/api/superadmin")
 
@@ -649,7 +650,7 @@ def edit_record(record_id):
                     new_val = type(old_val)(new_val)
                 except (TypeError, ValueError):
                     return jsonify({"error": f"Invalid value for {field}."}), 400
-            before[field] = old_val
+            before[field] = float(old_val) if isinstance(old_val, Decimal) else old_val
             if new_val != old_val:
                 setattr(record, field, new_val)
                 changed = True
@@ -663,7 +664,7 @@ def edit_record(record_id):
 
     db.session.add(record)
 
-    after = {f: getattr(record, f) for f in allowed}
+    after = {f: (float(getattr(record, f)) if isinstance(getattr(record, f), Decimal) else getattr(record, f)) for f in allowed}
     log_action(
         "superadmin.record.edit",
         "production_record",
@@ -783,14 +784,23 @@ def export_salt_farmers():
     if err:
         return err
     from app.models.producer import Producer
+    from app.models.barangay import Barangay
 
     municipality_id = request.args.get("municipality_id", type=int)
-    q = Producer.query
+    q = Producer.query.join(Barangay, Barangay.id == Producer.barangay_id, isouter=True)
     if municipality_id:
-        q = q.filter(Producer.municipality_id == municipality_id)
-    q = q.order_by(Producer.municipality_id, Producer.name)
+        q = q.filter(Barangay.municipality_id == municipality_id)
+    q = q.order_by(Barangay.municipality_id, Producer.name)
     rows = [
-        [p.id, p.name, p.age or "", p.sex or "", p.address or "", p.barangay_id or "", p.municipality_id or ""]
+        [
+            p.id,
+            p.name,
+            p.age or "",
+            p.sex or "",
+            p.address or "",
+            p.barangay_id or "",
+            p.barangay.municipality_id if p.barangay else None,
+        ]
         for p in q.all()
     ]
     return _csv_response(
@@ -844,14 +854,14 @@ def export_login_history():
             e.id,
             e.email or "",
             e.success,
-            e.ip_address or "",
+            e.ip or "",
             e.created_at.isoformat() + "Z" if e.created_at else "",
         ]
         for e in q.all()
     ]
     return _csv_response(
         rows,
-        ["id", "email", "success", "ip_address", "created_at"],
+        ["id", "email", "success", "ip", "created_at"],
         f"pangasin-login-history-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}.csv",
     )
 
@@ -863,7 +873,7 @@ def export_backup():
     if err:
         return err
     from datetime import datetime
-    import os, tempfile, shutil
+    import io, os, tempfile, shutil
 
     db_uri = str(db.engine.url)
     filename_base = f"pangasin-backup-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
@@ -904,32 +914,100 @@ def export_backup():
             except OSError:
                 pass
     elif "postgresql" in db_uri:
-        # WHAT: PostgreSQL logical backup via pg_dump.
-        # WHY: Consistent dump without locking the live database.
+        # WHAT: PostgreSQL logical backup via pg_dump, with a SQLAlchemy
+        #       logical-dump fallback when pg_dump is not installed.
+        # WHY: Consistent dump without locking the live database. pg_dump may
+        #      not be present in every deployment, so a SQLAlchemy-based
+        #       logical backup keeps the feature functional.
+        import subprocess
         import subprocess
 
         fd, dst = tempfile.mkstemp(suffix=".sql")
         os.close(fd)
         try:
             env = dict(os.environ)
-            result = subprocess.run(
-                ["pg_dump", db_uri, "-f", dst],
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            if result.returncode != 0:
-                return jsonify({"error": "Database backup failed.", "detail": result.stderr[:500]}), 500
+            pg_dump = current_app.config.get("PG_DUMP_PATH") or shutil.which("pg_dump")
+
+            if pg_dump:
+                result = subprocess.run(
+                    [pg_dump, db_uri, "-f", dst],
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                )
+                if result.returncode != 0:
+                    return jsonify({"error": "Database backup failed.", "detail": result.stderr[:500]}), 500
+                log_action(
+                    "superadmin.export.backup",
+                    "backup",
+                    None,
+                    actor=current_user,
+                    summary=f"{current_user.email} downloaded PostgreSQL database backup.",
+                )
+                db.session.commit()
+                return (
+                    open(dst, "rb").read(),
+                    200,
+                    {
+                        "Content-Type": "application/sql",
+                        "Content-Disposition": f'attachment; filename="{filename_base}.sql"',
+                        "Cache-Control": "no-store",
+                    },
+                )
+
+            # pg_dump is unavailable — fall back to a SQLAlchemy logical backup.
+            from sqlalchemy.schema import CreateTable
+            import app.models  # noqa: F401  ensure all models registered
+
+            buf = io.StringIO()
+            buf.write("-- PangAsin database logical backup\n")
+            buf.write(f"-- Generated: {datetime.utcnow().isoformat()}Z\n")
+            buf.write(f"-- Database: {db_uri.split('@')[-1] if '@' in db_uri else db_uri}\n")
+            buf.write("--\n\n")
+
+            # Reflect all tables via SQLAlchemy metadata.
+            metadata = db.Model.metadata
+            for table_name, table in sorted(metadata.tables.items()):
+                buf.write(f"-- Table: {table_name}\n")
+                buf.write(str(CreateTable(table).compile(db.engine)) + ";\n\n")
+
+                cols = [c.name for c in table.columns]
+                rows = db.session.execute(table.select()).mappings().all()
+                for row in rows:
+                    values = []
+                    for c in cols:
+                        v = row[c]
+                        if v is None:
+                            values.append("NULL")
+                        elif isinstance(v, str):
+                            values.append("'" + str(v).replace("'", "''") + "'")
+                        elif isinstance(v, bytes):
+                            values.append("'" + v.decode("utf-8", errors="replace").replace("'", "''") + "'")
+                        elif isinstance(v, datetime):
+                            values.append("'" + v.isoformat() + "Z'")
+                        elif isinstance(v, bool):
+                            values.append("true" if v else "false")
+                        elif isinstance(v, (int, float, Decimal)):
+                            values.append(str(v))
+                        else:
+                            values.append("'" + str(v).replace("'", "''") + "'")
+                    buf.write(
+                        f"INSERT INTO {table_name} ({', '.join(cols)}) "
+                        f"VALUES ({', '.join(values)});\n"
+                    )
+                buf.write("\n")
+
+            sql = buf.getvalue()
             log_action(
                 "superadmin.export.backup",
                 "backup",
                 None,
                 actor=current_user,
-                summary=f"{current_user.email} downloaded PostgreSQL database backup.",
+                summary=f"{current_user.email} downloaded PostgreSQL database backup (logical dump).",
             )
             db.session.commit()
             return (
-                open(dst, "rb").read(),
+                sql,
                 200,
                 {
                     "Content-Type": "application/sql",
@@ -1014,20 +1092,13 @@ def health():
     elif "postgresql" in db_uri:
         db_type = "PostgreSQL"
         row = db.session.execute(
-            "SELECT pg_size_pretty(pg_database_size(current_database()))"
+            text("SELECT pg_size_pretty(pg_database_size(current_database()))")
         ).scalar()
         db_size = row or "unknown"
     else:
         db_type = db_uri.split("://")[0]
         db_size = "unknown"
 
-    log_action(
-        "superadmin.health.view",
-        "health",
-        None,
-        actor=current_user,
-        summary=f"{current_user.email} viewed system health.",
-    )
     db.session.commit()
 
     return jsonify({

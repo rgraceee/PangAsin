@@ -27,11 +27,13 @@ import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
 import SuperAdminUsers from './components/admin/SuperAdminUsers';
 import SuperAdminAuditLog from './components/admin/SuperAdminAuditLog';
-import SuperAdminHealth from './components/admin/SuperAdminHealth';
+import SuperAdminOverview from './components/admin/SuperAdminOverview';
 import SuperAdminConfig from './components/admin/SuperAdminConfig';
 import SuperAdminRecords from './components/admin/SuperAdminRecords';
 import SuperAdminExport from './components/admin/SuperAdminExport';
 import SuperAdminPolicies from './components/admin/SuperAdminPolicies';
+import SuperAdminAnnouncement from './components/admin/SuperAdminAnnouncement';
+import SuperAdminAbout from './components/admin/SuperAdminAbout';
 import SuperAdminHelp from './components/admin/SuperAdminHelp';
 import RequireSuperAdmin from './components/admin/RequireSuperAdmin';
 import { getMe } from './services/dataService';
@@ -243,15 +245,51 @@ export default function App() {
             </RequireAdmin>
           }
         >
-          <Route index element={<AdminPage user={user} />} />
-          <Route path="users" element={<UsersManagement />} />
-          <Route path="municipalities" element={<Municipalities />} />
-          <Route path="master-list" element={<ProducerMasterList user={user} isAdmin />} />
-          <Route path="validation" element={<ValidationQueue />} />
-          <Route path="data-quality" element={<DataQualityDashboard />} />
-          <Route path="forecast" element={<ForecastDashboard />} />
-          <Route path="forecast/target" element={<TargetEvaluation />} />
-          <Route path="reports" element={<GenerateReports />} />
+          <Route index element={
+            <ErrorBoundary>
+              <AdminPage user={user} />
+            </ErrorBoundary>
+          } />
+          <Route path="users" element={
+            <ErrorBoundary>
+              <UsersManagement />
+            </ErrorBoundary>
+          } />
+          <Route path="municipalities" element={
+            <ErrorBoundary>
+              <Municipalities />
+            </ErrorBoundary>
+          } />
+          <Route path="master-list" element={
+            <ErrorBoundary>
+              <ProducerMasterList user={user} isAdmin />
+            </ErrorBoundary>
+          } />
+          <Route path="validation" element={
+            <ErrorBoundary>
+              <ValidationQueue />
+            </ErrorBoundary>
+          } />
+          <Route path="data-quality" element={
+            <ErrorBoundary>
+              <DataQualityDashboard />
+            </ErrorBoundary>
+          } />
+          <Route path="forecast" element={
+            <ErrorBoundary>
+              <ForecastDashboard />
+            </ErrorBoundary>
+          } />
+          <Route path="forecast/target" element={
+            <ErrorBoundary>
+              <TargetEvaluation />
+            </ErrorBoundary>
+          } />
+          <Route path="reports" element={
+            <ErrorBoundary>
+              <GenerateReports />
+            </ErrorBoundary>
+          } />
           <Route path="settings/*" element={
             <RequireAdmin user={user} isLoading={loading} setUser={setUser}>
               <Settings user={user} />
@@ -296,73 +334,108 @@ export default function App() {
             </RequireAdmin>
           }
         >
-          <Route index element={<Navigate to="health" replace />} />
+          <Route index element={
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminOverview />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
+          } />
+          <Route path="" element={<Navigate to="" replace />} />
           <Route path="accounts" element={<Navigate to="/superadmin/users" replace />} />
-          <Route path="activity" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="activity" element={<Navigate to="/superadmin" replace />} />
           <Route path="users" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminUsers />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminUsers />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="audit-log" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminAuditLog />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminAuditLog />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="records" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminRecords />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminRecords />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="export" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminExport />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminExport />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
-          <Route path="health" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminHealth />
-            </RequireSuperAdmin>
+          <Route path="health" element={<Navigate to="/superadmin" replace />} />
+          <Route path="announcement" element={
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminAnnouncement />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
+          } />
+          <Route path="about" element={
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminAbout />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="config" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminConfig />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminConfig />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="policies" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminPolicies />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminPolicies />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="help" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <SuperAdminHelp />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <SuperAdminHelp />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
-          <Route path="dashboard" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <AdminPage user={user} />
-            </RequireSuperAdmin>
-          } />
+          <Route path="dashboard" element={<Navigate to="/superadmin" replace />} />
           <Route path="forecast" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <ForecastDashboard />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <ForecastDashboard />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="forecast/target" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <TargetEvaluation />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <TargetEvaluation />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="data-quality" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <DataQualityDashboard />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <DataQualityDashboard />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           } />
           <Route path="settings/*" element={
-            <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-              <Settings user={user} />
-            </RequireSuperAdmin>
+            <ErrorBoundary>
+              <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
+                <Settings user={user} />
+              </RequireSuperAdmin>
+            </ErrorBoundary>
           }>
             <Route index element={<Navigate to="account" replace />} />
             <Route path="account" element={<Settings user={user} />} />
@@ -372,7 +445,7 @@ export default function App() {
             <Route path="legal/*" element={<Settings user={user} />} />
             <Route path="about" element={<Settings user={user} />} />
           </Route>
-          <Route path="*" element={<Navigate to="/superadmin/health" replace />} />
+          <Route path="*" element={<Navigate to="/superadmin" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -107,39 +107,121 @@ const CONTENT_DEFAULTS = {
       {
         title: '1. Acceptance of terms',
         paragraphs: [
-          'By accessing or using PangAsin, you agree to these terms and conditions. If you do not agree, you may not use the system.',
+          'By accessing or using PangAsin, you agree to these terms and conditions. If you do not agree, you may not use the system. Continued use of the system after any changes to these terms constitutes acceptance of the revised terms.',
         ],
         bullets: [],
       },
       {
-        title: '2. Use of the system',
+        title: '2. Purpose of PangAsin',
         paragraphs: [
-          'The system is for authorized salt industry monitoring work by the ASIN Center, administrators, and municipal encoders.',
+          'PangAsin is a salt production monitoring, analytics, forecasting, and decision-support system developed by the DOST NICER ASIN Center in partnership with Pangasinan State University. It supports salt industry planning and data-driven decisions for the salt-producing municipalities of Pangasinan.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '3. Authorized access',
+        paragraphs: [
+          'Encoder accounts are intended for authorized municipal data entry and related permitted activities within the municipality assigned to the encoder. Administrator accounts are intended for validation, reporting, and system oversight across municipalities. SuperAdmin accounts are reserved for system governance functions.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '4. Data entry responsibilities',
+        paragraphs: [
+          'Encoders are responsible for submitting accurate and truthful information to the best of their knowledge, selecting the correct municipality and applicable reporting period, and avoiding duplicate, fabricated, or intentionally misleading records. Errors must be corrected through the application\u2019s permitted workflows, and supporting information must be provided when required by the validation process.',
         ],
         bullets: [
-          'Provide accurate and complete information in the records you submit.',
-          'Never share your account or password with another person.',
-          'Report suspected unauthorized access or data loss to the ASIN Center immediately.',
+          'Submit accurate and truthful information in all records.',
+          'Select the correct municipality and reporting period.',
+          'Avoid duplicate, fabricated, or intentionally misleading records.',
+          'Correct errors through the application\u2019s permitted workflows.',
+          'Provide supporting information when required by the validation process.',
         ],
       },
       {
-        title: '3. Data and content',
+        title: '5. Data validation and approval',
         paragraphs: [
-          'The public dashboard shows only summarized, municipality-level production figures. Names and individual records are not shown.',
-        ],
-        bullets: [],
-      },
-      {
-        title: '4. Limitation of liability',
-        paragraphs: [
-          'Forecasts are estimates based on past production records and are not a guarantee of future output. The ASIN Center is not liable for decisions made using the system.',
+          'Submitted records may remain pending until reviewed or approved by authorized personnel. Submitted data must not automatically be treated as validated or officially approved. Approved records are included in production totals, dashboards, forecasts, and reports.',
         ],
         bullets: [],
       },
       {
-        title: '5. Contact',
+        title: '6. Acceptable use',
         paragraphs: [
-          'For questions, contact the PangAsin team at pang.asin26@gmail.com.',
+          'Users must not access the system without authorization, misuse accounts, manipulate records, or attempt to interfere with system operations. Any attempt to bypass role-based access controls or audit logging is prohibited.',
+        ],
+        bullets: [
+          'Do not access the system without authorization.',
+          'Do not share or misuse accounts or credentials.',
+          'Do not manipulate or falsify records.',
+          'Do not interfere with system operations or security controls.',
+        ],
+      },
+      {
+        title: '7. Account security',
+        paragraphs: [
+          'Users must protect their credentials and are responsible for all activity under their account. Suspected unauthorized account activity must be reported to the ASIN Center immediately. Passwords are stored as one-way hashes and are never displayed in plain text.',
+        ],
+        bullets: [
+          'Protect your username and password.',
+          'Do not share your account with another person.',
+          'Report suspected unauthorized access immediately.',
+          'Use strong, unique passwords for your account.',
+        ],
+      },
+      {
+        title: '8. Data ownership and use',
+        paragraphs: [
+          'Submitted information may be used for authorized monitoring, research, analytics, forecasting, reports, and decision support, subject to applicable agreements and laws. The system does not claim ownership of government, municipal, institutional, or third-party data without an established legal basis. Public dashboards show only summarized, municipality-level figures; names and individual records are not shown.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '9. System limitations',
+        paragraphs: [
+          'Forecasts and analytical outputs are decision-support estimates based on past production records. They are not a guarantee of future output and should be interpreted with regard to their limitations and the quality of underlying data.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '10. Confidentiality and privacy',
+        paragraphs: [
+          'Users must handle personal, confidential, and restricted information appropriately and follow the applicable Privacy Policy. Personal data collected by the system is protected under the Data Privacy Act of 2012 (Republic Act No. 10173).',
+        ],
+        bullets: [],
+      },
+      {
+        title: '11. Availability and maintenance',
+        paragraphs: [
+          'Access to the system may occasionally be interrupted for maintenance, updates, or technical issues. The ASIN Center will make reasonable efforts to minimize downtime and provide advance notice where possible.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '12. Violations and access restrictions',
+        paragraphs: [
+          'Unauthorized or improper use of the system may result in appropriate account restrictions, suspension, or administrative action under applicable policies and laws. All actions are recorded in an audit log for review.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '13. Updates to the terms',
+        paragraphs: [
+          'These terms may be revised when necessary. The latest published version will be made available through the application, and continued use after any revision constitutes acceptance of the revised terms.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '14. Contact and responsible office',
+        paragraphs: [
+          'For questions about these terms, contact the ASIN Center, Pangasinan State University, Binmaley, Pangasinan. For privacy questions or requests, email pang.asin26@gmail.com.',
+        ],
+        bullets: [],
+      },
+      {
+        title: '15. Effective date',
+        paragraphs: [
+          'These terms are effective as of 30 October 2026. This version supersedes all prior versions.',
         ],
         bullets: [],
       },

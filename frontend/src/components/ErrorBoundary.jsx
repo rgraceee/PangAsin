@@ -26,9 +26,19 @@ export class ErrorBoundary extends Component {
         <div className="settings-error-boundary" role="alert">
           <h2>Something went wrong</h2>
           <p>
-            We encountered an error while loading the Settings page:{' '}
+            We encountered an error while loading this page:{' '}
             {this.state.error?.message || this.state.error}
           </p>
+          <details className="error-boundary-details">
+            <summary>Show technical details</summary>
+            <pre>{this.state.error?.stack || ''}</pre>
+            {this.state.errorInfo && (
+              <div>
+                <h4>Component stack</h4>
+                <pre>{this.state.errorInfo.componentStack || ''}</pre>
+              </div>
+            )}
+          </details>
           <button
             type="button"
             onClick={() => {

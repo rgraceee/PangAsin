@@ -1372,3 +1372,573 @@
   }
 }
 
+/* ============================================================
+   User Management — shared design (Admin + SuperAdmin)
+   Mirrors Municipality Management: status badges, role badges,
+   and row action buttons.
+   ============================================================ */
+
+/* Role badges — same compact pill style as status badges. */
+.muni-status-badge--role-primary {
+  color: #0d4fa0;
+  background: rgba(21, 101, 200, 0.09);
+}
+.muni-status-badge--role-success {
+  color: #0f6b3d;
+  background: rgba(16, 150, 80, 0.1);
+}
+.muni-status-badge--role-secondary {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+/* Row action button variants for account management. */
+.muni-action-btn--reset {
+  color: #0d4fa0;
+  border-color: #b9cde8;
+  background: #fff;
+}
+.muni-action-btn--reset:hover:not(:disabled) {
+  background: #f3f7fd;
+  border-color: #9bbfd6;
+}
+.muni-action-btn--unlock {
+  color: #9a6700;
+  border-color: #f1d9a6;
+  background: #fffaf0;
+}
+.muni-action-btn--unlock:hover:not(:disabled) {
+  background: #fff4d6;
+  border-color: #e7c47c;
+}
+.muni-action-btn--force {
+  color: #6b7280;
+  border-color: #dbe3ee;
+  background: #fff;
+}
+.muni-action-btn--force:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #cbd5e1;
+}
+.muni-action-btn--municipality {
+  color: #0d4fa0;
+  border-color: #b9cde8;
+  background: #fff;
+}
+.muni-action-btn--municipality:hover:not(:disabled) {
+  background: #f3f7fd;
+  border-color: #9bbfd6;
+}
+
+/* Keep secondary columns readable on narrow screens without crowding. */
+.muni-admin-table .muni-col-secondary {
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+.muni-admin-table .muni-col-secondary.text-nowrap {
+  white-space: nowrap;
+}
+
+/* Audit action badges — color-coded by action tone. */
+.muni-status-badge--action-success {
+  color: #0f6b3d;
+  background: rgba(16, 150, 80, 0.1);
+}
+.muni-status-badge--action-primary {
+  color: #0d4fa0;
+  background: rgba(21, 101, 200, 0.09);
+}
+.muni-status-badge--action-danger {
+  color: #9a3412;
+  background: rgba(154, 52, 18, 0.1);
+}
+.muni-status-badge--action-warning {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.1);
+}
+.muni-status-badge--action-info {
+  color: #1565c8;
+  background: rgba(21, 101, 200, 0.09);
+}
+.muni-status-badge--action-secondary {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+/* Record status badges. */
+.muni-status-badge--status-success {
+  color: #0f6b3d;
+  background: rgba(16, 150, 80, 0.1);
+}
+.muni-status-badge--status-warning {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.1);
+}
+.muni-status-badge--status-danger {
+  color: #9a3412;
+  background: rgba(154, 52, 18, 0.1);
+}
+.muni-status-badge--status-secondary {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+/* SuperAdmin skeleton placeholder surface. */
+.sa-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--ds-card-border);
+  border-radius: var(--ds-card-radius);
+  box-shadow: var(--ds-card-shadow);
+}
+
+/* Audit Log toolbar — count on left, action buttons on right; wraps cleanly on small screens. */
+.sa-log-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.sa-log-toolbar .d-flex.gap-2 {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ============================================================
+   Enhanced SuperAdmin/Admin tables — eye-pleasing, clean, working
+   Applies to Users Management, Records, Config, Policies, Help,
+   Audit Log, Overview tables.
+   ============================================================ */
+
+/* Table header: small, uppercase, subtle background for scannability. */
+.muni-admin-table thead th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #6b7280;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 10px 8px;
+  white-space: nowrap;
+}
+
+/* Table rows: comfortable padding, subtle borders, zebra via bootstrap striped. */
+.muni-admin-table tbody td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  font-size: 0.88rem;
+  color: #374151;
+}
+
+.muni-admin-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+/* Hover row highlight. */
+.muni-admin-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Secondary columns (role, municipality, status, etc.) — muted, consistent width. */
+.muni-admin-table .muni-col-secondary {
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+
+/* Truncate long values cleanly with tooltip title. */
+.muni-admin-table .text-truncate {
+  max-width: 150px;
+}
+
+/* Actions column compact, right-aligned, sticky on narrow screens already handled above. */
+.muni-actions-cell {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+  padding-right: 4px !important;
+}
+
+/* Action buttons: consistent 32px for dense table rows. */
+.muni-admin-table .muni-action-btn {
+  width: 32px;
+  height: 32px;
+  border-width: 1px;
+  border-radius: 7px;
+}
+
+/* Role & status badges: consistent pill sizing, compact padding, clear contrast. */
+.muni-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Badge dot for role badges. */
+.muni-status-badge::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+/* Summary indicators above tables — compact KPI-style chips. */
+.muni-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-size: 0.86rem;
+}
+.muni-summary__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5563;
+}
+.muni-summary__item strong {
+  color: #111827;
+  font-weight: 800;
+}
+.muni-summary__item--active strong {
+  color: #0f6b3d;
+}
+.muni-summary__spacer {
+  flex: 1;
+}
+
+/* Empty state. */
+.muni-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  color: #6b7280;
+  border: 1px dashed #e2e8f0;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+/* Loading badge. */
+.muni-status-badge.muni-status-badge--status-secondary,
+.muni-status-badge.muni-status-badge--action-neutral {
+  font-size: 0.8rem;
+}
+
+/* Audit log expanded detail row styling. */
+.muni-admin-table tbody tr td[colSpan] {
+  padding: 12px 16px;
+  background: #f8fafc;
+}
+
+/* Audit log expanded detail panel — useful for tracing errors. */
+.muni-audit-detail {
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.muni-audit-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+}
+.muni-audit-detail__label {
+  color: #6b7280;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-size: 0.72rem;
+}
+.muni-audit-detail__value {
+  color: #111827;
+}
+.muni-audit-detail__changes {
+  margin-bottom: 8px;
+}
+.muni-audit-detail__changes .muni-audit-detail__label {
+  margin-right: 8px;
+}
+.muni-audit-detail__summary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+
+/* Responsive: stack summary items on small screens. */
+@media (max-width: 640px) {
+  .muni-summary {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .muni-summary__spacer {
+    flex-basis: 100%;
+  }
+}
+
+/* ============================================================
+   SuperAdmin Legal Documents / content editor — clean, structured
+   Scoped to the SuperAdmin Policies page content editor modal.
+   ============================================================ */
+
+/* Modal shell: bounded width/height, scrollable body, sticky header/footer. */
+.content-modal {
+  max-width: 900px;
+}
+.content-modal .modal-dialog {
+  max-width: 900px;
+}
+.content-modal .modal-content {
+  border: 1px solid var(--ds-card-border);
+  border-radius: var(--ds-card-radius);
+  box-shadow: var(--ds-card-shadow);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.content-modal .modal-body {
+  overflow-y: auto;
+  max-height: 70vh;
+  padding: 1.5rem;
+}
+.content-modal .modal-footer {
+  border-top: 1px solid var(--ds-card-border);
+  padding: 1rem 1.5rem;
+}
+
+/* Header area. */
+.content-modal__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 6px;
+}
+.content-modal__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #0d4fa0;
+}
+.content-modal__title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.content-modal__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+.content-modal__subtitle {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Form & intro. */
+.content-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.content-modal__intro {
+  font-size: 0.86rem;
+  color: #4b5563;
+  margin: 0 0 12px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+/* Document title card. */
+.content-doc-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.content-doc-card .card-body {
+  padding: 1rem 1.25rem;
+}
+
+/* Sections list. */
+.content-section-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.content-section-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.content-section-card .card-body {
+  padding: 1rem 1.25rem;
+}
+.content-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.content-section-title-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Blocks (paragraphs / bullets). */
+.content-block {
+  margin-bottom: 10px;
+}
+.content-block-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+.content-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.content-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.content-field-row textarea,
+.content-field-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Buttons. */
+.content-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #0d4fa0;
+  background: #eff7ff;
+  border: 1px solid #b9cde8;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.content-add-btn:hover {
+  background: #dcebff;
+  border-color: #9bbfd6;
+}
+.content-add-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #4b5563;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.content-add-row-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #111827;
+}
+.content-del-btn {
+  color: #9a3412;
+  border-color: #fecaca;
+  background: #fff1f2;
+  padding: 2px 6px;
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.content-del-btn:hover {
+  background: #ffe4e6;
+  border-color: #fca5a5;
+}
+
+/* Empty state. */
+.content-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  color: #6b7280;
+  border: 1px dashed #e2e8f0;
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+/* FAQ editor item. */
+.content-faq-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+}
+
+/* About editor intro. */
+.content-doc-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: #4b5563;
+}
+
+/* Footer action grouping. */
+.content-modal__footer-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Responsive: shrink modal on small screens. */
+@media (max-width: 640px) {
+  .content-modal .modal-dialog {
+    max-width: calc(100vw - 24px);
+    margin: 1.15rem auto;
+  }
+  .content-modal .modal-body {
+    max-height: 60vh;
+    padding: 1rem;
+  }
+}
+
+

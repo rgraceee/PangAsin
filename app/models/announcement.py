@@ -16,13 +16,18 @@ class Announcement(db.Model):
     ends_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
 
+    def _fmt(self, v):
+        if v is None:
+            return None
+        return v.isoformat() + "Z" if hasattr(v, "isoformat") else str(v)
+
     def serialize(self):
         return {
             "id": self.id,
             "message": self.message,
             "level": self.level,
             "active": self.active,
-            "starts_at": self.starts_at.isoformat() + "Z" if self.starts_at else None,
-            "ends_at": self.ends_at.isoformat() + "Z" if self.ends_at else None,
-            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
+            "starts_at": self._fmt(self.starts_at),
+            "ends_at": self._fmt(self.ends_at),
+            "updated_at": self._fmt(self.updated_at),
         }

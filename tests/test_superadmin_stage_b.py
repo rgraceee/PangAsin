@@ -473,3 +473,155 @@ def test_announcement_api_superadmin_only(app, admin_client):
     assert AuditLog.query.filter_by(action="superadmin.announcement.update").count() >= 1
 
 
+# ------------------------------------------------------- superadmin overview ----
+
+def test_superadmin_health_endpoint(app):
+    app.config["RATE_LIMIT_ENABLED"] = False
+    sa = _superadmin_client(app)
+    r = sa.get("/api/superadmin/health")
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    body = r.get_json()
+    for key in ("pending_validations", "failed_logins_24h", "db_size", "last_forecast_run",
+                "last_approved_update", "users_by_role", "db_type", "app_version"):
+        assert key in body, f"missing health key {key}: {body}"
+
+
+# ------------------------------------------------------- settings roundtrip ----
+
+def test_superadmin_settings_roundtrip(app):
+    app.config["RATE_LIMIT_ENABLED"] = False
+    sa = _superadmin_client(app)
+    r = sa.get("/api/settings")
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    settings = r.get_json()
+    assert isinstance(settings, dict)
+    assert "min_password_length" in settings
+
+    # valid change persisted
+    assert sa.put("/api/settings/min_password_length", json={"value": 8}).status_code == 200
+    got = sa.get("/api/settings").get_json()["min_password_length"]
+    assert got["value"] == 8
+
+    # validation: out of range -> 400, never 500
+    rr = sa.put("/api/settings/min_password_length", json={"value": 1})
+    assert rr.status_code == 400, rr.get_data(as_text=True)[:200]
+
+
+# ------------------------------------------------------- announcement roundtrip --
+
+def test_superadmin_announcement_roundtrip(app):
+    app.config["RATE_LIMIT_ENABLED"] = False
+    sa = _superadmin_client(app)
+    assert sa.get("/api/announcement").status_code == 200
+    r = sa.put("/api/announcement", json={
+        "message": "SuperAdmin test banner",
+        "level": "warning",
+        "active": True,
+        "starts_at": "2026-11-02T00:00:00",
+        "ends_at": "2026-12-01T00:00:00",
+    })
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    body = r.get_json()
+    assert body["message"] == "SuperAdmin test banner"
+    assert body["level"] == "warning"
+    assert body["active"] is True
+    assert AuditLog.query.filter_by(action="superadmin.announcement.update").count() >= 1
+
+
+# ------------------------------------------------------- FAQ CRUD --------------
+
+def test_superadmin_faq_crud_and_reorder(app):
+    app.config["RATE_LIMIT_ENABLED"] = False
+    sa = _superadmin_client(app)
+
+    # validation: missing question/answer -> 400, never 500
+    r = sa.post("/api/help-faqs", json={"question": "", "answer": ""})
+    assert r.status_code == 400, r.get_data(as_text=True)[:200]
+
+    # create
+    r = sa.post("/api/help-faqs", json={"question": "Q1?", "answer": "A1", "category": "General", "sort_order": 2})
+    assert r.status_code == 201, r.get_data(as_text=True)[:200]
+    f1 = r.get_json()
+    assert f1["question"] == "Q1?" and f1["category"] == "General"
+
+    # create second
+    r = sa.post("/api/help-faqs", json={"question": "Q2?", "answer": "A2", "category": "About", "sort_order": 1})
+    assert r.status_code == 201
+    f2 = r.get_json()
+
+    # public list returns only active
+    rp = app.test_client().get("/api/help-faqs?public=1")
+    assert rp.status_code == 200
+    public_ids = {f["id"] for f in rp.get_json()["faqs"]}
+    assert f1["id"] in public_ids and f2["id"] in public_ids
+
+    # full list
+    rl = sa.get("/api/help-faqs")
+    assert rl.status_code == 200
+    assert any(f["id"] == f1["id"] for f in rl.get_json()["faqs"])
+
+    # update
+    r = sa.put(f"/api/help-faqs/{f1['id']}", json={"question": "Q1 edited?", "active": False})
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    assert r.get_json()["question"] == "Q1 edited?"
+    assert r.get_json()["active"] is False
+    assert AuditLog.query.filter_by(action="superadmin.help_faq.update").count() >= 1
+
+    # public list now excludes the deactivated one
+    rp = app.test_client().get("/api/help-faqs?public=1")
+    assert f1["id"] not in {f["id"] for f in rp.get_json()["faqs"]}
+
+    # reorder
+    r = sa.put("/api/help-faqs/reorder", json={"items": [
+        {"id": f1["id"], "sort_order": 0},
+        {"id": f2["id"], "sort_order": 1},
+    ]})
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    # bad item -> 400 not 500
+    r = sa.put("/api/help-faqs/reorder", json={"items": [{"id": 999999, "sort_order": 0}]})
+    assert r.status_code == 400, r.get_data(as_text=True)[:200]
+
+    # delete
+    r = sa.delete(f"/api/help-faqs/{f2['id']}")
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    assert r.get_json()["deleted"] is True
+    assert AuditLog.query.filter_by(action="superadmin.help_faq.delete").count() >= 1
+
+
+# ------------------------------------------------------- content versioning -----
+
+def test_superadmin_content_version_increments(app):
+    app.config["RATE_LIMIT_ENABLED"] = False
+    sa = _superadmin_client(app)
+    r = sa.put("/api/content/privacy", json={"title": "Privacy Policy v2", "sections": []})
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    body = r.get_json()
+    assert body["title"] == "Privacy Policy v2"
+    assert body["version"] >= 1
+    assert body["effective_date"]
+    # public GET surfaces version
+    rp = app.test_client().get("/api/content/privacy")
+    assert rp.status_code == 200
+    assert rp.get_json()["version"] >= 1
+
+
+# ------------------------------------------------------- users & audit read -----
+
+def test_superadmin_users_and_audit_read(app):
+    app.config["RATE_LIMIT_ENABLED"] = False
+    _create_user("superadmin", "sa2@example.com")
+    _create_user("encoder", "enc2@example.com", status="active")
+    sa = _superadmin_client(app)
+
+    r = sa.get("/api/superadmin/users")
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    body = r.get_json()
+    assert "users" in body and "total" in body
+
+    r = sa.get("/api/superadmin/audit-log")
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    body = r.get_json()
+    assert "entries" in body and "total" in body
+
+
+

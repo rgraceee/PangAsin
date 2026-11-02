@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'react-bootstrap';
+import { Alert, Badge, Card, Table } from 'react-bootstrap';
 import { useOutletContext } from 'react-router-dom';
-import { Boxes, CheckCircle, ClipboardList, Clock } from 'lucide-react';
+import { Boxes, CheckCircle, ClipboardList, Clock, Pencil } from 'lucide-react';
 import {
   getEncoderBarangays,
   getEncoderMonths,
@@ -16,6 +16,7 @@ import RecordsTable from './RecordsTable';
 import ProductionRecordForm from './ProductionRecordForm';
 import { formatMT } from '../../utils/volumeFormat';
 import { STATUS_OPTIONS } from '../../constants/labels';
+import { SkeletonList } from '../Skeleton';
 
 const DEFAULT_PER_PAGE = 10;
 
@@ -206,6 +207,77 @@ export default function ProductionRecordsPage() {
           info="Approved records in the current filter."
         />
       </KpiGrid>
+
+      {/* Pending Review section — newest submissions first, above the full table. */}
+      <Card className="encoder-card admin-card mb-4">
+        <Card.Header className="master-toolbar">
+          <h2 className="h6 mb-0"><Clock size={16} className="me-2" />Pending Review</h2>
+          <div className="master-toolbar__actions">
+            <Badge bg="light" text="dark">{totals.pending.toLocaleString()} awaiting approval</Badge>
+            <span className="small text-muted">Newest submission first</span>
+          </div>
+        </Card.Header>
+        <Card.Body className="p-0">
+          {loading && (
+            <div className="text-center py-4"><SkeletonList rows={3} cols={6} /></div>
+          )}
+          {totals.pending === 0 && (
+            <div className="chart-empty py-4">
+              <span className="muni-empty-chip">No pending records</span>
+              No production records awaiting approval.
+            </div>
+          )}
+          {totals.pending > 0 && (
+            <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
+              <thead>
+                <tr>
+                  <th>Record Period</th>
+                  <th className="text-end">Volume (MT)</th>
+                  <th>Method</th>
+                  <th className="text-end">Area per Bed</th>
+                  <th className="text-end">Salt Beds</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th className="text-nowrap" aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {records
+                  .filter((r) => r.status === 'pending')
+                  .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+                  .slice(0, 5)
+                  .map((r) => {
+                    const date = r.record_date ? new Date(`${String(r.record_date).slice(0, 10)}T00:00:00`) : null;
+                    const methodLabel = (() => {
+                      switch (r.production_method) {
+                        case 'solar': return 'Solar';
+                        case 'cooked': return 'Cooked';
+                        case 'hybrid': return 'Hybrid';
+                        default: return r.production_method ?? '—';
+                      }
+                    })();
+                    return (
+                      <tr key={r.id}>
+                        <td>{date ? date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
+                        <td className="text-end">{formatMT(r.production_volume_mt)}</td>
+                        <td>{methodLabel}</td>
+                        <td className="text-end">{r.area_per_salt_bed != null ? `${r.area_per_salt_bed} m²` : '—'}</td>
+                        <td className="text-end">{r.num_salt_beds?.toLocaleString()}</td>
+                        <td><Badge bg="warning" text="dark">Pending</Badge></td>
+                        <td>{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</td>
+                        <td className="text-nowrap text-end">
+                          <button type="button" className="btn btn-link btn-sm p-1 text-primary" onClick={() => openEdit(r.id)} title="Edit" aria-label="Edit pending record">
+                            <Pencil size={14} strokeWidth={2} aria-hidden="true" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </Table>
+          )}
+        </Card.Body>
+      </Card>
 
       <RecordsTable
         user={user}

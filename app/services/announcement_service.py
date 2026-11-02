@@ -9,6 +9,14 @@ from datetime import datetime
 from sqlalchemy import or_
 
 
+def _parse_dt(value):
+    if value is None or isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    return value
+
+
 def get_active_announcement():
     """Return the currently active announcement, or None.
 
@@ -49,8 +57,8 @@ def set_announcement(message, level, active, starts_at, ends_at, actor):
     row.message = message or ""
     row.level = level
     row.active = bool(active)
-    row.starts_at = starts_at
-    row.ends_at = ends_at
+    row.starts_at = _parse_dt(starts_at)
+    row.ends_at = _parse_dt(ends_at)
     row.updated_at = datetime.utcnow()
 
     log_action(

@@ -319,6 +319,10 @@ def get_content(key):
         if isinstance(data, dict) and isinstance(default, dict):
             for k, v in default.items():
                 data.setdefault(k, v)
+        # Surface row-level versioning for legal documents.
+        if isinstance(data, dict):
+            data["version"] = row.version
+            data["effective_date"] = row.effective_date.isoformat() + "Z" if row.effective_date else None
         return data
     return _default_for(key)
 
@@ -349,6 +353,11 @@ def set_content(key, data, actor):
     if not row:
         row = SiteContent(key=key)
         db.session.add(row)
+    # Auto-increment version and set effective date for legal documents.
+    if key in ("privacy", "terms"):
+        row.version = (row.version or 1) + 1
+        row.effective_date = datetime.utcnow()
+
     before = row.data
     row.data = data
     row.updated_by = getattr(actor, "id", None) if actor else None

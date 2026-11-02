@@ -104,3 +104,35 @@ export function SkeletonPage() {
     </div>
   );
 }
+
+export function SkeletonPageHeader() {
+  return (
+    <div className="skeleton-page-header">
+      <SkeletonBlock width="40%" height={20} />
+      <SkeletonBlock width="70%" height={12} />
+    </div>
+  );
+}
+
+export function SkeletonTable({ rows = 5 }) {
+  return (
+    <div className="skeleton-table">
+      <div className="skeleton-table-head">
+        <SkeletonBlock width="20%" height={13} />
+        <SkeletonBlock width="25%" height={13} />
+        <SkeletonBlock width="25%" height={13} />
+        <SkeletonBlock width="15%" height={13} />
+        <SkeletonBlock width="15%" height={13} />
+      </div>
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="skeleton-table-row">
+          <SkeletonBlock width="15%" height={12} />
+          <SkeletonBlock width="20%" height={12} />
+          <SkeletonBlock width="25%" height={12} />
+          <SkeletonBlock width="20%" height={12} />
+          <SkeletonBlock width="20%" height={12} />
+        </div>
+      ))}
+    </div>
+  );
+}

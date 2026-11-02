@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Card } from 'react-bootstrap';
 import {
   Settings as SettingsIcon,
@@ -77,13 +77,16 @@ export default function Settings({ user }) {
     const parts = location.pathname.split('/');
     const last = parts[parts.length - 1];
     const valid = SECTIONS.map((s) => s.id);
-    setSection(valid.includes(last) ? last : 'account');
+    const isLegal = /\/legal\/(privacy|terms)(\/|$)/.test(location.pathname);
+    setSection(valid.includes(last) ? last : (isLegal ? 'legal-subpage' : 'account'));
   }, [location.pathname]);
 
   const role = user?.role === 'encoder' ? 'encoder' : 'admin';
   const isSuperAdmin = user?.role === 'superadmin';
-  const homePath = role === 'admin' ? '/admin' : '/encoder';
-  const isEncoder = role === 'encoder';
+const homePath = role === 'admin' ? '/admin' : '/encoder';
+const legalBase = `${homePath}/settings/legal`;
+const isLegalSubPage = /\/legal\/(privacy|terms)(\/|$)/.test(location.pathname);
+const isEncoder = role === 'encoder';
   const roleFaq = isSuperAdmin
     ? (() => {
         const map = { faq_admin: adminFaq, faq_encoder: encoderFaq, faq_public: publicFaq };
@@ -312,7 +315,7 @@ export default function Settings({ user }) {
         )}
 
         {/* Legal */}
-        {section === 'legal' && (
+        {location.pathname === legalBase ? (
           <>
             <SectionHead icon={Archive} title="Legal" subtitle="Privacy and terms" />
             <Card className="settings-card">
@@ -320,7 +323,7 @@ export default function Settings({ user }) {
                 <ul className="settings-legal-list">
                   <li>
                     <div className="settings-legal-row">
-                      <a href="/privacy" className="settings-legal-link">
+                      <Link to={`${legalBase}/privacy`} className="settings-legal-link">
                         <span className="settings-link-icon" aria-hidden="true">
                           <Archive size={14} strokeWidth={1.5} />
                         </span>
@@ -329,7 +332,7 @@ export default function Settings({ user }) {
                           <div className="settings-link-desc">How PangAsin collects, uses, and protects your data.</div>
                         </div>
                         <span className="settings-link-chevron" aria-hidden="true">›</span>
-                      </a>
+                      </Link>
                       {isSuperAdmin && (
                         <button
                           type="button"
@@ -344,7 +347,7 @@ export default function Settings({ user }) {
                   </li>
                   <li>
                     <div className="settings-legal-row">
-                      <a href="/privacy" className="settings-legal-link">
+                      <Link to={`${legalBase}/terms`} className="settings-legal-link">
                         <span className="settings-link-icon" aria-hidden="true">
                           <Archive size={14} strokeWidth={1.5} />
                         </span>
@@ -353,7 +356,7 @@ export default function Settings({ user }) {
                           <div className="settings-link-desc">Terms of use for the PangAsin dashboard.</div>
                         </div>
                         <span className="settings-link-chevron" aria-hidden="true">›</span>
-                      </a>
+                      </Link>
                       {isSuperAdmin && (
                         <button
                           type="button"
@@ -368,12 +371,14 @@ export default function Settings({ user }) {
                   </li>
                 </ul>
                 <p className="settings-legal-note">
-                  Terms &amp; Conditions shares the Privacy Policy page until a separate terms page is published.
+                  Each document opens in its own view. Use the Back button to return to Legal.
                 </p>
               </Card.Body>
             </Card>
           </>
-        )}
+        ) : isLegalSubPage ? (
+          <Outlet />
+        ) : null}
 
         {/* About */}
         {section === 'about' && (
@@ -417,9 +422,9 @@ export default function Settings({ user }) {
       {/* Content editor modals (SuperAdmin only) */}
       {isSuperAdmin && editContent && (
         <ContentEditor
-          key={editContent}
+          contentKey={editContent}
           defaultContent={CONTENT_DEFAULTS[editContent]}
-          open
+          open={editContent !== null}
           onClose={() => setEditContent(null)}
         />
       )}

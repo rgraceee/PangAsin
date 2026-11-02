@@ -18,6 +18,7 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.site_content import SiteContent
 from app.models.system_setting import SystemSetting
 from app.models.announcement import Announcement
+from app.models.help_faq import HelpFaq
 
 __all__ = [
     "Municipality",
@@ -40,4 +41,5 @@ __all__ = [
     "SiteContent",
     "SystemSetting",
     "Announcement",
+    "HelpFaq",
 ]

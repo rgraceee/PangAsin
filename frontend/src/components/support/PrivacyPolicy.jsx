@@ -66,7 +66,9 @@ export default function PrivacyPolicy() {
           Data privacy
         </span>
         <h1 className="support-title">{title}</h1>
-        <p className="support-updated">Last updated: {lastUpdated}</p>
+        <p className="support-updated">
+          Last updated: {lastUpdated}{content?.version ? ` · v${content.version}${content.effective_date ? ` (effective ${content.effective_date})` : ''}` : ''}
+        </p>
 
         <p className="support-lead">
           {(sections[0]?.paragraphs?.[0]) ||

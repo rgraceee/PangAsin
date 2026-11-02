@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, ListGroup, Modal } from 'react-bootstrap';
+import { Alert, Card, Modal } from 'react-bootstrap';
 import { getSuperAdminContent } from '../../services/dataService';
 import ContentEditor from './ContentEditor';
 import CONTENT_DEFAULTS from './contentDefaults';
 import { useToast } from '../Toast';
 import PageHeader from './PageHeader';
-import { FileText, Users, ExternalLink } from 'lucide-react';
+import { FileText, Users, ExternalLink, Edit3 } from 'lucide-react';
+import { SkeletonTable } from '../Skeleton';
 
 const POLICIES = [
   { key: 'privacy', label: 'Privacy Policy', icon: <FileText size={16} strokeWidth={2} />, desc: 'How PangAsin collects, uses, and protects personal data.' },
@@ -87,75 +88,78 @@ export default function SuperAdminPolicies() {
     return <div className="text-muted small">Preview not available for this content type.</div>;
   };
 
-  if (loading) return <PageHeader title="Policies" subtitle="Edit Privacy Policy, Terms &amp; Conditions, and About content" />;
-
   return (
-    <div className="content-page">
-      <PageHeader title="Policies" subtitle="Edit Privacy Policy, Terms &amp; Conditions, and About content" />
+    <>
+      <PageHeader id="superadmin-policies" variant="clean" title="Policies" subtitle="Edit Privacy Policy, Terms &amp; Conditions, and About content" />
       {error && <Alert variant="danger">{error}</Alert>}
-      <Card className="policies-card">
-        <ListGroup className="list-group-flush">
-          {POLICIES.map((p) => {
-            const data = contents[p.key];
-            const lastUpdated = data?.last_updated ? `Last updated: ${data.last_updated}` : 'Not yet saved';
-            return (
-              <ListGroup.Item key={p.key} className="policy-item d-flex justify-content-between align-items-start">
-                <div className="policy-info">
-                  <div className="d-flex align-items-center mb-1">
-                    {p.icon}
-                    <span className="ms-2 fw-bold">{p.label}</span>
-                  </div>
-                  <div className="text-muted small">{p.desc}</div>
-                  <div className="text-muted smaller mt-1">{lastUpdated}</div>
-                </div>
-                <div className="d-flex gap-2">
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    onClick={() => setPreviewKey(p.key)}
-                    disabled={loading}
-                  >
-                    <ExternalLink size={14} strokeWidth={2} aria-hidden="true" /> Preview
-                  </Button>
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    onClick={() => setEditKey(p.key)}
-                    disabled={loading}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              </ListGroup.Item>
-            );
-          })}
-        </ListGroup>
-      </Card>
+      {loading ? (
+        <SkeletonTable rows={3} />
+      ) : (
+        <Card className="encoder-card admin-card">
+          <Card.Body>
+            <table className="table mb-0 encoder-table admin-table muni-admin-table">
+              <thead>
+                <tr>
+                  <th className="muni-col-secondary">Policy</th>
+                  <th className="text-muted small">Last updated</th>
+                  <th aria-label="Actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {POLICIES.map((p) => {
+                  const data = contents[p.key];
+                  const lastUpdated = data?.last_updated ? `Last updated: ${data.last_updated}` : 'Not yet saved';
+                  const versionLine = data?.version ? `v${data.version}${data.effective_date ? ` · effective ${data.effective_date}` : ''}` : '';
+                  return (
+                    <tr key={p.key}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          {p.icon}
+                          <span className="fw-bold">{p.label}</span>
+                        </div>
+                        <div className="text-muted small">{p.desc}</div>
+                        <div className="text-muted small mt-1">{lastUpdated}{versionLine ? ` | ${versionLine}` : ''}</div>
+                      </td>
+                      <td className="muni-col-secondary text-nowrap small">{versionLine || '—'}</td>
+                      <td className="text-nowrap">
+                        <div className="muni-row-actions" role="group" aria-label={`Actions for ${p.label}`}>
+                          <button type="button" className="muni-action-btn muni-action-btn--edit" onClick={() => { setPreviewKey(p.key); setEditKey(null); }} disabled={loading} title={`Preview ${p.label}`} aria-label={`Preview ${p.label}`}>
+                            <ExternalLink size={12} strokeWidth={2} aria-hidden="true" />
+                          </button>
+                          <button type="button" className="muni-action-btn muni-action-btn--edit" onClick={() => { setEditKey(p.key); setPreviewKey(null); }} disabled={loading} title={`Edit ${p.label}`} aria-label={`Edit ${p.label}`}>
+                            <Edit3 size={12} strokeWidth={2} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card.Body>
+        </Card>
+      )}
 
       {/* Edit modal */}
       {editKey && (
-        <Modal show={editKey !== null} onHide={() => setEditKey(null)} centered>
-          <ContentEditor
-            key={editKey}
-            defaultContent={CONTENT_DEFAULTS[editKey]}
-            open={editKey !== null}
-            onClose={() => setEditKey(null)}
-          />
-        </Modal>
+        <ContentEditor
+          contentKey={editKey}
+          defaultContent={CONTENT_DEFAULTS[editKey]}
+          open={editKey !== null}
+          onClose={() => setEditKey(null)}
+        />
       )}
 
       {/* Preview modal */}
       {previewKey && (
-        <Modal show={previewKey !== null} onHide={() => setPreviewKey(null)} centered size="lg">
-          <Modal.Header closeButton closeLabel="Close preview">
-            <Modal.Title>{POLICIES.find((p) => p.key === previewKey)?.label}</Modal.Title>
-          </Modal.Header>
+        <Modal show={previewKey !== null} onHide={() => setPreviewKey(null)} centered size="lg" dialogClassName="muni-modal">
+          <Modal.Header closeButton closeLabel="Close preview" className="muni-modal__header"><Modal.Title className="muni-modal__title">{POLICIES.find((p) => p.key === previewKey)?.label}</Modal.Title></Modal.Header>
           <Modal.Body>{renderPreview(previewKey)}</Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setPreviewKey(null)}>Close</Button>
+          <Modal.Footer className="muni-modal__footer-actions">
+            <button type="button" className="ui-btn-primary" onClick={() => setPreviewKey(null)}>Close</button>
           </Modal.Footer>
         </Modal>
       )}
-    </div>
+    </>
   );
 }

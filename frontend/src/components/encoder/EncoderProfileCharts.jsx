@@ -33,7 +33,16 @@ export default function EncoderProfileCharts({
     },
   }]), [statistics]);
 
-  const { total, age, sex } = profile;
+  const { total, age, sex: sexAll } = profile;
+  /* WHAT: Gender Distribution must show only Male and Female — remove "Other".
+     WHY: the task requires the chart to display only two gender categories.
+     Missing/unspecified gender data is excluded rather than misclassified. */
+  const sexFiltered = sexAll.filter((row) => row.key === 'male' || row.key === 'female');
+  const sexTotal = sexFiltered.reduce((sum, row) => sum + row.value, 0);
+  const sex = sexFiltered.map((row) => ({
+    ...row,
+    pct: sexTotal > 0 ? (row.value / sexTotal) * 100 : 0,
+  }));
   const scopeLabel = barangayName || 'All barangays';
   const ageCovered = age.reduce((sum, row) => sum + row.value, 0);
   const missingAge = Math.max(total - ageCovered, 0);

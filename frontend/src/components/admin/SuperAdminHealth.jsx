@@ -1,18 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Alert } from 'react-bootstrap';
+import { Alert, Card, Table } from 'react-bootstrap';
 import { Activity, Users, Clock, AlertCircle, Database, Play } from 'lucide-react';
 import { getSuperAdminHealth, runSuperAdminForecast } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
 import PageHeader from './PageHeader';
 import ErrorBoundary from '../ErrorBoundary';
+import KpiCard from '../ui/KpiCard';
+import KpiGrid from '../ui/KpiGrid';
 
-const KPI = ({ icon: Icon, value, label, variant = 'text-muted' }) => (
-  <div className="kpi-tile">
-    <div className="kpi-icon"><Icon size={20} strokeWidth={2} /></div>
-    <div className="kpi-value">{value}</div>
-    <div className="kpi-label">{label}</div>
-  </div>
+const KPI = ({ icon: Icon, title, value, unit, tone = 'default', badge }) => (
+  <KpiCard icon={Icon} title={title} value={value} unit={unit} tone={tone} badge={badge} />
 );
 
 export default function SuperAdminHealth() {
@@ -35,6 +33,9 @@ export default function SuperAdminHealth() {
 
   useEffect(() => { load(); }, [load]);
 
+  const usersByRole = stats.users_by_role || {};
+  const totalUsers = Object.values(usersByRole).reduce((a, b) => a + b, 0);
+
   const handleRunForecast = async () => {
     const ok = await confirmAction({
       title: 'Run forecast for all municipalities?',
@@ -54,69 +55,53 @@ export default function SuperAdminHealth() {
 
   return (
     <ErrorBoundary>
-      <PageHeader id="superadmin-health" title="System Health" subtitle="SuperAdmin system overview" />
+      <PageHeader id="superadmin-health" variant="clean" title="System Health" subtitle="SuperAdmin system overview" />
       {error && <Alert variant="danger">{error}</Alert>}
       <Card className="encoder-card admin-card">
         <Card.Body>
-          <div className="row g-3 mb-3">
-            <div className="col-md-2">
-              <KPI icon={Activity} value={stats.last_forecast_run || '—'} label="Last forecast run" />
-            </div>
-            <div className="col-md-2">
-              <KPI icon={Clock} value={stats.last_approved_update || '—'} label="Last approved data update" />
-            </div>
-            <div className="col-md-2">
-              <KPI icon={AlertCircle} value={stats.pending_validations ?? 0} label="Pending validations" />
-            </div>
-            <div className="col-md-2">
-              <KPI icon={Users} value={Object.values(stats.users_by_role || {}).reduce((a, b) => a + b, 0)} label="Users (all roles)" />
-            </div>
-            <div className="col-md-2">
-              <KPI icon={AlertCircle} value={stats.failed_logins_24h ?? 0} label="Failed logins (24h)" />
-            </div>
-            <div className="col-md-2">
-              <KPI icon={Database} value={stats.db_type || '—'} label="Database" />
-            </div>
-          </div>
+          <KpiGrid columns={5}>
+            <KPI icon={Activity} title="Last forecast run" value={stats.last_forecast_run || '—'} tone="default" />
+            <KPI icon={Clock} title="Last approved data update" value={stats.last_approved_update || '—'} tone="default" />
+            <KPI icon={AlertCircle} title="Pending validations" value={stats.pending_validations ?? 0} tone={stats.pending_validations ? 'bad' : 'default'} badge={stats.pending_validations ?? 0} />
+            <KPI icon={Users} title="Users (all roles)" value={totalUsers} tone="default" />
+            <KPI icon={AlertCircle} title="Failed logins (24h)" value={stats.failed_logins_24h ?? 0} tone={stats.failed_logins_24h ? 'bad' : 'default'} badge={stats.failed_logins_24h ?? 0} />
+          </KpiGrid>
           <div className="row g-3 mb-3">
             <div className="col-md-4">
-              <div className="kpi-tile">
-                <div className="kpi-icon"><Database size={20} strokeWidth={2} /></div>
-                <div className="kpi-value">{stats.db_size || '—'}</div>
-                <div className="kpi-label">Database size</div>
-              </div>
+              <KPI icon={Database} title="Database size" value={stats.db_size || '—'} tone="default" />
             </div>
             <div className="col-md-4">
-              <div className="kpi-tile">
-                <div className="kpi-icon"><Activity size={20} strokeWidth={2} /></div>
-                <div className="kpi-value">{stats.app_version || '—'}</div>
-                <div className="kpi-label">App version</div>
-              </div>
+              <KPI icon={Activity} title="App version" value={stats.app_version || '—'} tone="default" />
             </div>
             <div className="col-md-4">
               <div className="d-grid">
-                <Button
-                  variant="outline-primary"
+                <button
+                  type="button"
+                  className="ui-btn-outline ui-btn--sm w-100"
                   onClick={handleRunForecast}
                   disabled={forecastRunning}
-                  className="w-100"
                 >
                   <Play size={16} strokeWidth={2} aria-hidden="true" />
                   {forecastRunning ? 'Running forecast…' : 'Run forecast now'}
-                </Button>
+                </button>
               </div>
             </div>
           </div>
           <div className="row g-3">
-            {Object.entries(stats.users_by_role || {}).map(([role, count]) => (
+            {Object.entries(usersByRole).map(([role, count]) => (
               <div key={role} className="col-md-3">
-                <div className="kpi-tile">
-                  <div className="kpi-icon"><Users size={20} strokeWidth={2} /></div>
-                  <div className="kpi-value">{count}</div>
-                  <div className="kpi-label">{role.charAt(0).toUpperCase() + role.slice(1)}</div>
-                </div>
+                <KPI icon={Users} title={role.charAt(0).toUpperCase() + role.slice(1)} value={count} tone="default" />
               </div>
             ))}
+          </div>
+          <div className="row g-3">
+            <div className="col-md-4">
+              <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+                <tbody>
+                  <tr><td className="fw-medium">Database type</td><td>{stats.db_type || '—'}</td></tr>
+                </tbody>
+              </Table>
+            </div>
           </div>
         </Card.Body>
       </Card>

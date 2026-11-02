@@ -12,6 +12,8 @@ class SiteContent(db.Model):
 
     key = db.Column(db.String(length=100), primary_key=True, nullable=False)
     data = db.Column(db.JSON, nullable=False, server_default="{}")
+    version = db.Column(db.Integer, nullable=False, default=1)
+    effective_date = db.Column(db.DateTime, nullable=True)
     updated_by = db.Column(db.Integer, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
 
@@ -19,6 +21,8 @@ class SiteContent(db.Model):
         return {
             "key": self.key,
             "data": self.data or {},
+            "version": self.version,
+            "effective_date": self.effective_date.isoformat() + "Z" if self.effective_date else None,
             "updated_by": self.updated_by,
             "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }
