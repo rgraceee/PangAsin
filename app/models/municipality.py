@@ -13,6 +13,7 @@ class Municipality(db.Model):
     longitude = db.Column(db.Numeric(9, 6), nullable=False)
     geojson_ref = db.Column(db.String(255), nullable=True)
     status = db.Column(db.Enum("active", "inactive", name="municipality_status_enum"), default="active", nullable=False)
+    is_salt_producing = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

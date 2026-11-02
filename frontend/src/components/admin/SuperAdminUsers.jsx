@@ -7,36 +7,18 @@ import {
 } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
-import { SkeletonList } from '../Skeleton';
 import PageHeader from './PageHeader';
 import TablePagination from '../ui/TablePagination';
-import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
-import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
-import { Plus, ShieldAlert, Lock, LogOut, Key, RefreshCw, User, Mail, Building2, Clock } from 'lucide-react';
+import { Plus, ShieldAlert, Lock, LogOut, Key, RefreshCw } from 'lucide-react';
 
 const PER_PAGE = 25;
 const REASON_MIN = 10;
 
-const ROLE_TONE = { admin: 'primary', encoder: 'success', superadmin: 'secondary' };
-
-function roleBadge(role) {
-  const tone = ROLE_TONE[role] || 'secondary';
-  const label = role.charAt(0).toUpperCase() + role.slice(1);
-  return <span className={`muni-status-badge muni-status-badge--role-${tone}`}>{label}</span>;
-}
-
-function statusBadge(status) {
-  const active = status === 'active';
-  return (
-    <span className={`muni-status-badge muni-status-badge--${active ? 'active' : 'inactive'}`}>
-      {active ? 'Active' : 'Inactive'}
-    </span>
-  );
-}
+const ROLE_CHIPS = { admin: 'primary', encoder: 'success', superadmin: 'secondary' };
+const STATUS_CHIPS = { active: 'success', inactive: 'secondary', locked: 'danger' };
 
 export default function SuperAdminUsers() {
   const { toastSuccess } = useToast();
-  const { activeNames } = useMunicipalityDirectory();
   const [users, setUsers] = useState([]);
   const [munis, setMunis] = useState([]);
   const [filters, setFilters] = useState({ role: '', status: '', municipality_id: '' });
@@ -45,7 +27,7 @@ export default function SuperAdminUsers() {
   const [perPage, setPerPage] = useState(PER_PAGE);
   const [openCreate, setOpenCreate] = useState(false);
   const [openAction, setOpenAction] = useState(null);
-  const [actionForm, setActionForm] = useState({ kind: '', targetUser: null, reason: '', municipality_id: '' });
+  const [actionForm, setActionForm] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [tempPassword, setTempPassword] = useState(null);
@@ -57,9 +39,9 @@ export default function SuperAdminUsers() {
     const params = { page, per_page: perPage, ...filters };
     getSuperAdminUsers(params)
       .then((r) => {
-        const list = Array.isArray(r.users) ? r.users : [];
+        const list = r.users || [];
         setUsers(list);
-        setPage(Math.min(page, Math.ceil((Number(r.total) || 0) / perPage) || 1));
+        setPage(Math.min(page, Math.ceil((r.total || 0) / perPage) || 1));
         setLoading(false);
       })
       .catch((err) => { setError(err.message || 'Could not load users.'); setLoading(false); });
@@ -110,18 +92,18 @@ export default function SuperAdminUsers() {
     if (!reason || reason.length < REASON_MIN) { setError(`Reason must be at least ${REASON_MIN} characters.`); return; }
     setSubmitting(true);
     try {
+      let resetResult = null;
       if (kind === 'deactivate') await deactivateUser(targetUser.id, reason);
       else if (kind === 'reactivate') await reactivateUser(targetUser.id, reason);
-      else if (kind === 'reset') {
-        const resetResult = await resetSuperAdminPassword(targetUser.id, reason);
-        if (resetResult && resetResult.temporary_password) {
-          setTempPassword(resetResult.temporary_password);
-          setOpenTemp(true);
-        }
-      } else if (kind === 'unlock') await unlockUser(targetUser.id, reason);
+      else if (kind === 'reset') resetResult = await resetSuperAdminPassword(targetUser.id, reason);
+      else if (kind === 'unlock') await unlockUser(targetUser.id, reason);
       else if (kind === 'force-logout') await forceLogoutUser(targetUser.id, reason);
       else if (kind === 'municipality') await changeUserMunicipality(targetUser.id, municipality_id || null, reason);
       setOpenAction(false);
+      if (resetResult && resetResult.temporary_password) {
+        setTempPassword(resetResult.temporary_password);
+        setOpenTemp(true);
+      }
       toastSuccess(`${kind.replace('-', ' ')} done.`, 'Action complete');
       load();
     } catch (err) {
@@ -207,8 +189,6 @@ export default function SuperAdminUsers() {
 
   const hasFilter = Boolean(filters.role || filters.status || filters.municipality_id);
   const total = users.length;
-  const activeCount = users.filter((u) => u.status === 'active').length;
-  const inactiveCount = users.filter((u) => u.status === 'inactive').length;
   const pageStart = (page - 1) * perPage;
   const paged = users.slice(pageStart, pageStart + perPage);
 
@@ -220,19 +200,13 @@ export default function SuperAdminUsers() {
         className="ui-pageheader--admin"
         title="User Management"
         subtitle="Every account across the system. SuperAdmin only."
-        art={(
-          <MunicipalityMapArt
-            mode="province"
-            activeNames={activeNames}
-            selectableNames={[]}
-          />
-        )}
       >
         <div className="muni-header-actions">
-          <button type="button" className="ui-btn-primary" onClick={openCreateForm}>
-            <Plus size={16} aria-hidden="true" />
-            Add account
-          </button>
+          <div className="admin-page-hero-control">
+            <button type="button" className="ui-btn-primary ui-btn--sm" onClick={openCreateForm}>
+              <Plus size={15} strokeWidth={2} aria-hidden="true" /> Add account
+            </button>
+          </div>
           <div className="admin-page-hero-control">
             <label className="admin-page-hero-field" htmlFor="sa-role">Role</label>
             <select id="sa-role" className="form-select admin-page-hero-select" name="role" value={filters.role} onChange={handleFilter}>
@@ -263,136 +237,87 @@ export default function SuperAdminUsers() {
 
       <Card className="encoder-card admin-card">
         <Card.Body>
-          <div className="muni-summary">
-            <span className="muni-summary__item">
-              <strong>{total}</strong> total
-            </span>
-            <span className="muni-summary__item muni-summary__item--active">
-              <strong>{activeCount}</strong> active
-            </span>
-            <span className="muni-summary__item">
-              <strong>{inactiveCount}</strong> inactive
-            </span>
-            <span className="muni-summary__spacer" />
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <span className="text-muted small">{total} account{total === 1 ? '' : 's'}</span>
+            {hasFilter && (
+              <button type="button" className="ui-btn-outline ui-btn--sm" onClick={() => { setPage(1); setFilters({ role: '', status: '', municipality_id: '' }); }}>
+                Clear filters
+              </button>
+            )}
           </div>
-
           {error && <Alert variant="danger">{error}</Alert>}
-          {loading && <div className="text-center py-2"><SkeletonList rows={6} cols={6} /></div>}
+          {loading && <div className="text-center py-2"><span className="muni-status-badge muni-status-badge--status-secondary">Loading…</span></div>}
           {!loading && total === 0 && (
             <div className="muni-empty-state">
-              <p className="mb-2">
-                {hasFilter ? 'No accounts match the current filter.' : 'No accounts yet.'}
-              </p>
+              <p className="mb-2">{hasFilter ? 'No accounts match the current filter.' : 'No accounts yet.'}</p>
             </div>
           )}
           {!loading && total > 0 && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table">
+            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table superadmin-user-table">
               <thead>
                 <tr>
-                  <th>Account</th>
-                  <th>Email</th>
-                  <th className="muni-col-secondary">Role</th>
-                  <th className="muni-col-secondary">Municipality</th>
-                  <th>Status</th>
+                  <th className="muni-col-secondary text-nowrap">Name</th>
+                  <th className="muni-col-secondary text-nowrap">Email</th>
+                  <th className="muni-col-secondary text-nowrap">Role</th>
+                  <th className="muni-col-secondary text-nowrap">Municipality</th>
+                  <th className="muni-col-secondary text-nowrap">Status</th>
                   <th className="muni-col-secondary text-nowrap">Last login</th>
-                  <th className="muni-col-secondary text-nowrap">Failed logins</th>
-                  <th aria-label="Actions"></th>
+                  <th className="muni-col-secondary text-nowrap">ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {paged.map((u) => (
                   <tr key={u.id}>
-                    <td className="fw-medium">
-                      <div className="d-flex align-items-center gap-2">
-                        <User size={13} strokeWidth={2} className="text-muted" aria-hidden="true" />
-                        <span title={u.name || ''}>{u.name}</span>
-                      </div>
+                    <td className="text-truncate" title={u.name}>
+                      <span>{u.name}</span>
                     </td>
-                    <td className="text-truncate" title={u.email || ''}>
-                      <div className="d-flex align-items-center gap-1">
-                        <Mail size={12} strokeWidth={2} className="text-muted" aria-hidden="true" />
-                        <span>{u.email}</span>
-                      </div>
+                    <td className="text-truncate" title={u.email}>
+                      <span>{u.email}</span>
                     </td>
-                    <td className="muni-col-secondary">{roleBadge(u.role)}</td>
-                    <td className="muni-col-secondary text-truncate" title={u.municipality_name || ''}>
-                      <div className="d-flex align-items-center gap-1">
-                        <Building2 size={12} strokeWidth={2} className="text-muted" aria-hidden="true" />
-                        <span>{u.municipality_name || '—'}</span>
-                      </div>
+                    <td>
+                      <span className={`muni-status-badge muni-status-badge--role-${ROLE_CHIPS[u.role] || 'secondary'}`}>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</span>
                     </td>
-                    <td>{statusBadge(u.status)}</td>
-                    <td className="muni-col-secondary text-nowrap small">
-                      <div className="d-flex align-items-center gap-1">
-                        <Clock size={11} strokeWidth={2} className="text-muted" aria-hidden="true" />
-                        <span>{u.last_login ? new Date(u.last_login).toLocaleString() : '—'}</span>
-                      </div>
+                    <td className="text-truncate" title={u.municipality_name || ''}>
+                      <span>{u.municipality_name || '—'}</span>
                     </td>
-                    <td className="muni-col-secondary text-nowrap small">
-                      <span className={`muni-status-badge muni-status-badge--${u.failed_login_count && u.failed_login_count > 0 ? 'danger' : 'secondary'}`}>{u.failed_login_count ?? 0}</span>
+                    <td>
+                      <span className={`muni-status-badge muni-status-badge--status-${STATUS_CHIPS[u.status] || 'secondary'}`}>{u.status.charAt(0).toUpperCase() + u.status.slice(1)}</span>
+                    </td>
+                    <td className="text-nowrap small">
+                      {u.last_login ? new Date(u.last_login).toLocaleString() : '—'}
                     </td>
                     <td className="muni-actions-cell">
-                      <div className="muni-row-actions" role="group" aria-label={`Actions for ${u.name}`}>
-                        {u.status === 'active' && (
-                          <button
-                            type="button"
-                            className="muni-action-btn muni-action-btn--deactivate"
-                            onClick={() => handleDeactivate(u)}
-                            title={`Deactivate ${u.name}`}
-                            aria-label={`Deactivate ${u.name}`}
-                          >
-                            <ShieldAlert size={12} strokeWidth={2} aria-hidden="true" />
-                          </button>
-                        )}
-                        {u.status !== 'active' && u.status !== 'locked' && (
-                          <button
-                            type="button"
-                            className="muni-action-btn muni-action-btn--activate"
-                            onClick={() => handleReactivate(u)}
-                            title={`Reactivate ${u.name}`}
-                            aria-label={`Reactivate ${u.name}`}
-                          >
-                            <RefreshCw size={12} strokeWidth={2} aria-hidden="true" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="muni-action-btn muni-action-btn--reset"
-                          onClick={() => handleResetPassword(u)}
-                          title={`Reset password ${u.name}`}
-                          aria-label={`Reset password ${u.name}`}
-                        >
-                          <Key size={12} strokeWidth={2} aria-hidden="true" />
+                      <div className="muni-row-actions superadmin-user-actions" role="group" aria-label={`Actions for ${u.name}`}>
+                        {/* Slot 1: Reset Password */}
+                        <button type="button" className="muni-action-btn muni-action-btn--reset" onClick={() => handleResetPassword(u)} title={`Reset password ${u.name}`} aria-label={`Reset password ${u.name}`}>
+                          <Key size={16} strokeWidth={2} aria-hidden="true" />
                         </button>
-                        {u.locked_until && (
-                          <button
-                            type="button"
-                            className="muni-action-btn muni-action-btn--unlock"
-                            onClick={() => handleUnlock(u)}
-                            title={`Unlock ${u.name}`}
-                            aria-label={`Unlock ${u.name}`}
-                          >
-                            <Lock size={12} strokeWidth={2} aria-hidden="true" />
+                        {/* Slot 2: Account Status (Deactivate / Reactivate) */}
+                        {u.status === 'active' ? (
+                          <button type="button" className="muni-action-btn muni-action-btn--deactivate" onClick={() => handleDeactivate(u)} title={`Deactivate ${u.name}`} aria-label={`Deactivate ${u.name}`}>
+                            <ShieldAlert size={16} strokeWidth={2} aria-hidden="true" />
+                          </button>
+                        ) : (
+                          <button type="button" className="muni-action-btn muni-action-btn--activate" onClick={() => handleReactivate(u)} title={`Reactivate ${u.name}`} aria-label={`Reactivate ${u.name}`}>
+                            <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="muni-action-btn muni-action-btn--force"
-                          onClick={() => handleForceLogout(u)}
-                          title={`Force logout ${u.name}`}
-                          aria-label={`Force logout ${u.name}`}
-                        >
-                          <LogOut size={12} strokeWidth={2} aria-hidden="true" />
+                        {/* Slot 3: Force Logout */}
+                        <button type="button" className="muni-action-btn muni-action-btn--force" onClick={() => handleForceLogout(u)} title={`Force logout ${u.name}`} aria-label={`Force logout ${u.name}`}>
+                          <LogOut size={16} strokeWidth={2} aria-hidden="true" />
                         </button>
-                        {u.role === 'encoder' && (
-                          <button
-                            type="button"
-                            className="muni-action-btn muni-action-btn--municipality"
-                            onClick={() => handleChangeMunicipality(u)}
-                            title={`Change municipality ${u.name}`}
-                            aria-label={`Change municipality ${u.name}`}
-                          >
-                            <Building2 size={12} strokeWidth={2} aria-hidden="true" />
+                        {/* Slot 4: Account Management */}
+                        {u.role === 'encoder' ? (
+                          <button type="button" className="muni-action-btn muni-action-btn--municipality" onClick={() => handleChangeMunicipality(u)} title={`Change municipality ${u.name}`} aria-label={`Change municipality ${u.name}`}>
+                            <ShieldAlert size={16} strokeWidth={2} aria-hidden="true" />
+                          </button>
+                        ) : u.locked_until ? (
+                          <button type="button" className="muni-action-btn muni-action-btn--unlock" onClick={() => handleUnlock(u)} title={`Unlock ${u.name}`} aria-label={`Unlock ${u.name}`}>
+                            <Lock size={16} strokeWidth={2} aria-hidden="true" />
+                          </button>
+                        ) : (
+                          <button type="button" className="muni-action-btn muni-action-btn--reset" disabled title="No additional action available" aria-label="No additional action available">
+                            <Lock size={16} strokeWidth={2} aria-hidden="true" style={{opacity: 0.4}} />
                           </button>
                         )}
                       </div>
@@ -404,29 +329,23 @@ export default function SuperAdminUsers() {
           )}
           {!loading && total > 0 && (
             <div className="px-3 pb-3">
-              <TablePagination
-                page={page}
-                pages={Math.ceil(total / perPage) || 1}
-                total={total}
-                perPage={perPage}
-                onPageChange={setPage}
-                onPerPageChange={setPerPage}
-                itemLabel="accounts"
-              />
+              <TablePagination page={page} pages={Math.ceil(total / perPage) || 1} total={total} perPage={perPage} onPageChange={setPage} onPerPageChange={setPerPage} itemLabel="accounts" />
             </div>
           )}
         </Card.Body>
       </Card>
 
       <Modal show={openCreate} onHide={() => setOpenCreate(false)} centered dialogClassName="muni-modal" aria-labelledby="sa-create-title">
-        <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header"><Modal.Title id="sa-create-title" className="muni-modal__title">Create account</Modal.Title></Modal.Header>
+        <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header">
+          <Modal.Title id="sa-create-title" className="muni-modal__title">Create account</Modal.Title>
+        </Modal.Header>
         <Form onSubmit={handleCreate} className="muni-modal-form">
           <Modal.Body>
             {error && <Alert variant="danger">{error}</Alert>}
-            <Form.Group className="mb-3"><Form.Label>Name <span className="muni-required">*</span></Form.Label><Form.Control value={actionForm.name} onChange={(e) => setActionForm({ ...actionForm, name: e.target.value })} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Email <span className="muni-required">*</span></Form.Label><Form.Control type="email" value={actionForm.email} onChange={(e) => setActionForm({ ...actionForm, email: e.target.value })} required /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Role <span className="muni-required">*</span></Form.Label><Form.Select value={actionForm.role} onChange={(e) => setActionForm({ ...actionForm, role: e.target.value })} required><option value="admin">Admin</option><option value="encoder">Encoder</option><option value="superadmin">SuperAdmin</option></Form.Select></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Municipality {actionForm.role === 'encoder' && <span className="muni-required">*</span>}</Form.Label><Form.Select value={actionForm.municipality_id} onChange={(e) => setActionForm({ ...actionForm, municipality_id: e.target.value })}><option value="">Select municipality…</option>{munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Form.Select></Form.Group>
+            <Form.Group className="mb-3"><Form.Label>Name <span className="text-danger">*</span></Form.Label><Form.Control value={actionForm.name} onChange={(e) => setActionForm({ ...actionForm, name: e.target.value })} required /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label>Email <span className="text-danger">*</span></Form.Label><Form.Control type="email" value={actionForm.email} onChange={(e) => setActionForm({ ...actionForm, email: e.target.value })} required /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label>Role <span className="text-danger">*</span></Form.Label><Form.Select value={actionForm.role} onChange={(e) => setActionForm({ ...actionForm, role: e.target.value })} required><option value="admin">Admin</option><option value="encoder">Encoder</option></Form.Select></Form.Group>
+            <Form.Group className="mb-3"><Form.Label>Municipality {actionForm.role === 'encoder' && <span className="text-danger">*</span>}</Form.Label><Form.Select value={actionForm.municipality_id} onChange={(e) => setActionForm({ ...actionForm, municipality_id: e.target.value })}><option value="">Select municipality…</option>{munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Form.Select></Form.Group>
             <Form.Text className="text-muted">A temporary password is generated and shown once after creation.</Form.Text>
           </Modal.Body>
           <Modal.Footer className="muni-modal__footer-actions">
@@ -437,14 +356,16 @@ export default function SuperAdminUsers() {
       </Modal>
 
       <Modal show={openAction} onHide={() => setOpenAction(false)} centered dialogClassName="muni-modal" aria-labelledby="sa-action-title">
-        <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header"><Modal.Title id="sa-action-title" className="muni-modal__title">{actionForm.kind ? actionForm.kind.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Action'}</Modal.Title></Modal.Header>
+        <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header">
+          <Modal.Title id="sa-action-title" className="muni-modal__title">{actionForm.kind ? actionForm.kind.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Action'}</Modal.Title>
+        </Modal.Header>
         <Form onSubmit={(e) => { e.preventDefault(); runAction(); }} className="muni-modal-form">
           <Modal.Body>
             {error && <Alert variant="danger">{error}</Alert>}
             <p className="text-muted">Reason is required and will be recorded in the audit log.</p>
-            <Form.Group className="mb-3"><Form.Label>Reason <span className="muni-required">*</span></Form.Label><Form.Control as="textarea" id="sa-reason" rows={3} value={actionForm.reason} onChange={(e) => setActionForm({ ...actionForm, reason: e.target.value })} required /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label>Reason <span className="text-danger">*</span></Form.Label><Form.Control as="textarea" id="sa-reason" rows={3} value={actionForm.reason} onChange={(e) => setActionForm({ ...actionForm, reason: e.target.value })} required /></Form.Group>
             {actionForm.kind === 'municipality' && (
-              <Form.Group className="mb-3"><Form.Label>New municipality <span className="muni-required">*</span></Form.Label><Form.Select value={actionForm.municipality_id} onChange={(e) => setActionForm({ ...actionForm, municipality_id: e.target.value })} required><option value="">Select municipality…</option>{munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Form.Select></Form.Group>
+              <Form.Group className="mb-3"><Form.Label>New municipality <span className="text-danger">*</span></Form.Label><Form.Select value={actionForm.municipality_id} onChange={(e) => setActionForm({ ...actionForm, municipality_id: e.target.value })} required><option value="">Select municipality…</option>{munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Form.Select></Form.Group>
             )}
             <Form.Text className="text-muted">Generated passwords are shown once and cannot be recovered.</Form.Text>
           </Modal.Body>

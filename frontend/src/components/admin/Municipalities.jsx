@@ -20,6 +20,7 @@ import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
 import PageHeader from './PageHeader';
 import LocationPicker from './LocationPicker';
+import MunicipalityBoundaryMap from './MunicipalityBoundaryMap';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 import usePagination from '../../hooks/usePagination';
@@ -30,12 +31,20 @@ import {
   normalizeMunicipalityName,
 } from '../../utils/municipalityGeo';
 import { previewEncoderEmail } from '../../utils/encoderEmail';
+import {
+  findMunicipalityBoundary,
+  boundaryToCoordinates,
+  boundaryToBounds,
+  listAllMunicipalities,
+} from '../../utils/boundaryUtils';
+import { useMunicipalityBoundary } from '../../hooks/useMunicipalityBoundary';
 
 const EMPTY_CREATE = {
   name: '',
   latitude: '',
   longitude: '',
   status: 'active',
+  is_salt_producing: true,
   barangays: [],
 };
 
@@ -81,30 +90,8 @@ function validateMunicipalityForm(form, { municipalities = [], excludeId = null 
     errors.name = 'A municipality with this name already exists.';
   }
 
-  const latitude = String(form.latitude ?? '').trim();
-  const longitude = String(form.longitude ?? '').trim();
-
-  if (!latitude) {
-    errors.latitude = 'Latitude is required.';
-  } else {
-    const lat = Number(latitude);
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-      errors.latitude = 'Latitude must be between -90 and 90.';
-    } else if (countDecimals(latitude) > 6) {
-      errors.latitude = 'Latitude must have at most 6 decimal places.';
-    }
-  }
-
-  if (!longitude) {
-    errors.longitude = 'Longitude is required.';
-  } else {
-    const lng = Number(longitude);
-    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
-      errors.longitude = 'Longitude must be between -180 and 180.';
-    } else if (countDecimals(longitude) > 6) {
-      errors.longitude = 'Longitude must have at most 6 decimal places.';
-    }
-  }
+  // Latitude/longitude are auto-computed from the boundary; no manual validation needed.
+  // Status is validated by the segmented toggle (always has a value).
 
   return errors;
 }
@@ -427,9 +414,24 @@ export default function Municipalities() {
   const [createForm, setCreateForm] = useState(EMPTY_CREATE);
   const [createError, setCreateError] = useState(null);
   const [createTouched, setCreateTouched] = useState({});
-  const [createGeojson, setCreateGeojson] = useState(null);
   const [saving, setSaving] = useState(false);
   const createNameRef = useRef(null);
+
+  // WHAT: Boundary retrieval state for the Add Municipality modal.
+  // WHY: Automatic boundary lookup replaces manual lat/lng entry and file upload.
+  const [createSelectedName, setCreateSelectedName] = useState('');
+  const [createComboboxOpen, setCreateComboboxOpen] = useState(false);
+  const [createComboboxHighlight, setCreateComboboxHighlight] = useState(-1);
+  const createComboboxOptionsRef = useRef([]);
+  const {
+    status: boundaryStatus,
+    coordinates: boundaryCoordinates,
+    bounds: boundaryBounds,
+    errorMessage: boundaryErrorMessage,
+    retrieve: retrieveBoundary,
+    clear: clearBoundary,
+    hasBoundary,
+  } = useMunicipalityBoundary();
 
   const [showEdit, setShowEdit] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -529,7 +531,6 @@ export default function Municipalities() {
     () => previewEncoderEmail(createForm.name),
     [createForm.name],
   );
-  const createWarning = useMemo(() => coordinateWarning(createForm), [createForm]);
   const editWarning = useMemo(() => coordinateWarning(editForm), [editForm]);
 
   // WHAT: Live validation — laging kinokompute, pero ang error lang ng
@@ -593,6 +594,83 @@ export default function Municipalities() {
 
   const clearMapSelection = () => setSelectedMapName('');
 
+  // WHAT: Combobox handlers for the Add Municipality municipality selector.
+  // WHY: Searchable dropdown na nagpa-resolve ng boundary automatically kapag
+  //      napili ang munisipyo.
+  const createComboboxOptions = useMemo(() => listAllMunicipalities(), []);
+
+  const filterCreateOptions = useCallback((query) => {
+    const q = normalizeMunicipalityName(query);
+    if (!q) return createComboboxOptions;
+    return createComboboxOptions.filter((opt) =>
+      normalizeMunicipalityName(opt.name).includes(q),
+    );
+  }, [createComboboxOptions]);
+
+  const openCreateCombobox = () => setCreateComboboxOpen(true);
+  const closeCreateCombobox = () => setCreateComboboxOpen(false);
+
+  const selectCreateMunicipality = (name) => {
+    setCreateSelectedName(name);
+    setCreateForm((prev) => ({ ...prev, name }));
+    setCreateComboboxOpen(false);
+    setCreateComboboxHighlight(-1);
+    retrieveBoundary(name);
+  };
+
+  const handleCreateComboboxChange = (event) => {
+    const value = event.target.value;
+    setCreateSelectedName(value);
+    setCreateForm((prev) => ({ ...prev, name: value }));
+    setCreateComboboxOpen(true);
+    setCreateComboboxHighlight(-1);
+  };
+
+  const handleCreateComboboxKeyDown = (event) => {
+    const options = filterCreateOptions(createSelectedName);
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setCreateComboboxOpen(true);
+      setCreateComboboxHighlight((prev) =>
+        prev >= options.length - 1 ? 0 : prev + 1,
+      );
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setCreateComboboxOpen(true);
+      setCreateComboboxHighlight((prev) =>
+        prev <= 0 ? options.length - 1 : prev - 1,
+      );
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (createComboboxOpen && createComboboxHighlight >= 0) {
+        selectCreateMunicipality(options[createComboboxHighlight].name);
+      } else if (createComboboxOpen) {
+        selectCreateMunicipality(options[0]?.name || createSelectedName);
+      }
+    } else if (event.key === 'Escape') {
+      setCreateComboboxOpen(false);
+    }
+  };
+
+  // Auto-retrieve boundary when the typed name exactly matches a known municipality.
+  useEffect(() => {
+    if (!createSelectedName.trim()) return;
+    const exact = createComboboxOptions.find((opt) => opt.name === createSelectedName);
+    if (exact) {
+      retrieveBoundary(createSelectedName);
+    }
+  }, [createSelectedName, createComboboxOptions, retrieveBoundary]);
+
+  // Auto-fill coordinates into create form when boundary is ready.
+  useEffect(() => {
+    if (!boundaryCoordinates) return;
+    setCreateForm((prev) => ({
+      ...prev,
+      latitude: boundaryCoordinates.latitude,
+      longitude: boundaryCoordinates.longitude,
+    }));
+  }, [boundaryCoordinates]);
+
   const updateCreateField = (field, value) => {
     setCreateForm((prev) => ({ ...prev, [field]: value }));
   };
@@ -605,48 +683,55 @@ export default function Municipalities() {
     setCreateForm(EMPTY_CREATE);
     setCreateError(null);
     setCreateTouched({});
-    setCreateGeojson(null);
+    setCreateSelectedName('');
+    setCreateComboboxOpen(false);
+    setCreateComboboxHighlight(-1);
+    clearBoundary();
     setShowCreate(true);
   };
 
   const closeCreate = () => {
     if (saving) return;
     setShowCreate(false);
+    clearBoundary();
   };
 
   const handleCreate = async (event) => {
     event.preventDefault();
     setCreateError(null);
+
+    // Boundary must be ready before submission.
+    if (!hasBoundary || !boundaryCoordinates) {
+      markAllTouched(createValidation, setCreateTouched);
+      setCreateError('Please select a municipality and wait for its boundary to load.');
+      createNameRef.current?.focus();
+      return;
+    }
+
     if (!createValid) {
       markAllTouched(createValidation, setCreateTouched);
       setCreateError('Please fix the highlighted fields.');
-      const firstInvalid = ['name', 'latitude', 'longitude']
+      const firstInvalid = ['name', 'status']
         .find((field) => createValidation[field]);
       document.getElementById(`muni-create-${firstInvalid}`)?.focus();
       return;
     }
+
     const barangays = createForm.barangays;
 
     setSaving(true);
     try {
       const response = await createAdminMunicipality({
         name: createForm.name,
-        latitude: createForm.latitude,
-        longitude: createForm.longitude,
+        latitude: boundaryCoordinates.latitude,
+        longitude: boundaryCoordinates.longitude,
         status: createForm.status,
+        is_salt_producing: createForm.is_salt_producing,
         barangays,
       });
 
-      let uploadWarning = null;
-      if (createGeojson && response.municipality?.id) {
-        try {
-          await uploadAdminMunicipalityGeojson(response.municipality.id, createGeojson);
-        } catch (err) {
-          uploadWarning = err.data?.errors?.join(' ') || err.message;
-        }
-      }
-
       setShowCreate(false);
+      clearBoundary();
       await load();
       await refreshDirectory();
       setCredentials({
@@ -655,14 +740,10 @@ export default function Municipalities() {
       });
       setCopied(false);
       setShowCredentials(true);
-      if (uploadWarning) {
-        toastError(`Municipality added, but the boundary was not saved: ${uploadWarning}`);
-      } else {
-        toastSuccess(
-          `${response.municipality?.name || createForm.name} has been added.`,
-          'Municipality added',
-        );
-      }
+      toastSuccess(
+        `${response.municipality?.name || createForm.name} has been added.`,
+        'Municipality added',
+      );
     } catch (err) {
       const message = err.data?.errors
         ? err.data.errors.join(' ')
@@ -681,6 +762,7 @@ export default function Municipalities() {
       latitude: municipality.latitude ?? '',
       longitude: municipality.longitude ?? '',
       status: municipality.status,
+      is_salt_producing: municipality.is_salt_producing ?? false,
       barangays: [],
     });
     setEditError(null);
@@ -712,6 +794,7 @@ export default function Municipalities() {
       latitude: editForm.latitude,
       longitude: editForm.longitude,
       status: editForm.status,
+      is_salt_producing: editForm.is_salt_producing,
     };
     if (editForm.barangays.length) payload.barangays = editForm.barangays;
 
@@ -1183,32 +1266,73 @@ export default function Municipalities() {
             {createError && <Alert variant="danger">{createError}</Alert>}
 
             <FormSection
-              title="Identity"
-              hint="The encoder email and GeoJSON reference are derived from this name."
+              title="Municipality Identity"
+              hint="Select a municipality. Its boundary, encoder email, and reference coordinates are derived automatically."
             >
               <Form.Group>
-                <Form.Label htmlFor="muni-create-name">
-                  Municipality name <span className="muni-required" aria-hidden="true">*</span>
+                <Form.Label htmlFor="muni-create-combobox">
+                  Municipality <span className="muni-required" aria-hidden="true">*</span>
                 </Form.Label>
-                <Form.Control
-                  id="muni-create-name"
-                  ref={createNameRef}
-                  autoFocus
-                  value={createForm.name}
-                  onChange={(event) => updateCreateField('name', event.target.value)}
-                  onBlur={() => markCreateTouched('name')}
-                  maxLength={100}
-                  placeholder="e.g. San Fabian or Alaminos City"
-                  isInvalid={Boolean(createErrors.name)}
-                  aria-required="true"
-                  aria-invalid={Boolean(createErrors.name)}
-                  aria-describedby={`muni-create-name-help${createErrors.name ? ' muni-create-name-error' : ''}`}
-                />
-                <FieldError id="muni-create-name-error">{createErrors.name}</FieldError>
-                <Form.Text id="muni-create-name-help" className="text-muted">
-                  Letters, digits, spaces, periods, hyphens, and apostrophes. Leading “City of ”
-                  and trailing “ City” are ignored in the slug.
-                </Form.Text>
+                <div className="muni-combobox-wrapper" role="none">
+                  <input
+                    id="muni-create-combobox"
+                    ref={createNameRef}
+                    autoFocus
+                    value={createSelectedName}
+                    onChange={handleCreateComboboxChange}
+                    onBlur={() => markCreateTouched('name')}
+                    onKeyDown={handleCreateComboboxKeyDown}
+                    onFocus={openCreateCombobox}
+                    maxLength={100}
+                    placeholder="Type or select a municipality…"
+                    isInvalid={Boolean(createErrors.name)}
+                    aria-required="true"
+                    aria-invalid={Boolean(createErrors.name)}
+                    aria-expanded={createComboboxOpen}
+                    aria-controls="muni-create-combobox-list"
+                    aria-autocomplete="list"
+                    aria-describedby={`muni-create-name-help${createErrors.name ? ' muni-create-name-error' : ''} muni-create-combobox-hint`}
+                  />
+                  <FieldError id="muni-create-name-error">{createErrors.name}</FieldError>
+                  <Form.Text id="muni-create-name-help" className="text-muted">
+                    Letters, digits, spaces, periods, hyphens, and apostrophes. Leading “City of ”
+                    and trailing “ City” are ignored in the slug.
+                  </Form.Text>
+                  {createComboboxOpen && (
+                    <ul
+                      id="muni-create-combobox-list"
+                      role="listbox"
+                      aria-label="Municipality suggestions"
+                      className="muni-combobox-list"
+                    >
+                      {filterCreateOptions(createSelectedName).map((opt, idx) => (
+                        <li
+                          key={opt.key}
+                          role="option"
+                          id={`muni-create-option-${idx}`}
+                          aria-selected={createComboboxHighlight === idx}
+                          className={`muni-combobox-option${
+                            createComboboxHighlight === idx ? ' muni-combobox-option--active' : ''
+                          }`}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            selectCreateMunicipality(opt.name);
+                          }}
+                        >
+                          {opt.name}
+                        </li>
+                      ))}
+                      {filterCreateOptions(createSelectedName).length === 0 && (
+                        <li role="option" className="muni-combobox-option muni-combobox-option--empty">
+                          No matching municipality
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                  <Form.Text id="muni-create-combobox-hint" className="text-muted d-block mt-1">
+                    Search or pick from the list. Boundary and coordinates load automatically after selection.
+                  </Form.Text>
+                </div>
               </Form.Group>
 
               <div className={`muni-email-preview${createEmailPreview ? '' : ' muni-email-preview--empty'}`}>
@@ -1216,7 +1340,7 @@ export default function Municipalities() {
                   <KeyRound size={13} aria-hidden="true" />
                   Encoder email preview
                 </span>
-                <code>{createEmailPreview || 'Add a name with letters or digits'}</code>
+                <code>{createEmailPreview || 'Select a municipality to preview'}</code>
                 <span className="muni-email-preview__hint">
                   Created automatically when you save. The temporary password is shown once.
                 </span>
@@ -1234,84 +1358,85 @@ export default function Municipalities() {
                   deactivated.
                 </Form.Text>
               </Form.Group>
+
+              <Form.Group className="mt-3">
+                <div className="form-label">Salt-producing municipality</div>
+                <input
+                  id="muni-create-is-salt-producing"
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={Boolean(createForm.is_salt_producing)}
+                  onChange={(event) => updateCreateField('is_salt_producing', event.target.checked)}
+                  onBlur={() => markCreateTouched('is_salt_producing')}
+                  aria-describedby="muni-create-is-salt-producing-help"
+                />
+                <Form.Text id="muni-create-is-salt-producing-help" className="text-muted d-block mt-1">
+                  Only salt-producing municipalities appear on the public map and dashboard.
+                  Leave unchecked if this area does not produce salt.
+                </Form.Text>
+              </Form.Group>
             </FormSection>
 
             <FormSection
               title="Location"
-              hint="Required. Type coordinates or click the map; the pin returns 6-decimal values."
+              hint="The municipality's geographic boundary and reference coordinates are retrieved automatically."
             >
-              <Row className="g-3">
-                <Col md={6}>
-                  <Form.Group>
-                    <Form.Label htmlFor="muni-create-latitude">
-                      Latitude <span className="muni-required" aria-hidden="true">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      id="muni-create-latitude"
-                      type="number"
-                      inputMode="decimal"
-                      step="0.000001"
-                      min={-90}
-                      max={90}
-                      value={createForm.latitude}
-                      onChange={(event) => updateCreateField('latitude', event.target.value)}
-                      onBlur={() => markCreateTouched('latitude')}
-                      isInvalid={Boolean(createErrors.latitude)}
-                      aria-required="true"
-                      aria-invalid={Boolean(createErrors.latitude)}
-                      aria-describedby={`muni-create-latitude-help${createErrors.latitude ? ' muni-create-latitude-error' : ''}`}
-                    />
-                    <FieldError id="muni-create-latitude-error">{createErrors.latitude}</FieldError>
-                    <Form.Text id="muni-create-latitude-help" className="text-muted">
-                      −90 to 90, up to 6 decimal places.
-                    </Form.Text>
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group>
-                    <Form.Label htmlFor="muni-create-longitude">
-                      Longitude <span className="muni-required" aria-hidden="true">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      id="muni-create-longitude"
-                      type="number"
-                      inputMode="decimal"
-                      step="0.000001"
-                      min={-180}
-                      max={180}
-                      value={createForm.longitude}
-                      onChange={(event) => updateCreateField('longitude', event.target.value)}
-                      onBlur={() => markCreateTouched('longitude')}
-                      isInvalid={Boolean(createErrors.longitude)}
-                      aria-required="true"
-                      aria-invalid={Boolean(createErrors.longitude)}
-                      aria-describedby={`muni-create-longitude-help${createErrors.longitude ? ' muni-create-longitude-error' : ''}`}
-                    />
-                    <FieldError id="muni-create-longitude-error">{createErrors.longitude}</FieldError>
-                    <Form.Text id="muni-create-longitude-help" className="text-muted">
-                      −180 to 180, up to 6 decimal places.
-                    </Form.Text>
-                  </Form.Group>
-                </Col>
-              </Row>
-
-              <div className="mt-3">
-                <LocationPicker
-                  height={260}
-                  latitude={createForm.latitude}
-                  longitude={createForm.longitude}
-                  onChange={(latitude, longitude) => setCreateForm((prev) => ({
-                    ...prev,
-                    latitude: String(latitude),
-                    longitude: String(longitude),
-                  }))}
-                />
+              <div className="muni-boundary-status">
+                {boundaryStatus === 'retrieving' && (
+                  <div className="muni-boundary-status--loading" role="status" aria-live="polite">
+                    <Loader2 size={14} aria-hidden="true" />
+                    Retrieving municipality boundary…
+                  </div>
+                )}
+                {boundaryStatus === 'success' && (
+                  <div className="muni-boundary-status--success" role="status" aria-live="polite">
+                    Boundary retrieved successfully.
+                  </div>
+                )}
+                {boundaryStatus === 'unavailable' && (
+                  <div className="muni-boundary-status--error" role="alert" aria-live="assertive">
+                    Boundary data unavailable. {boundaryErrorMessage}
+                    <button
+                      type="button"
+                      className="muni-boundary-retry"
+                      onClick={() => retrieveBoundary(createSelectedName)}
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
+                {boundaryStatus === 'error' && (
+                  <div className="muni-boundary-status--error" role="alert" aria-live="assertive">
+                    Unable to retrieve boundary. {boundaryErrorMessage}
+                    <button
+                      type="button"
+                      className="muni-boundary-retry"
+                      onClick={() => retrieveBoundary(createSelectedName)}
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {createWarning && (
-                <div className="muni-form-warning" role="status">
-                  <AlertTriangle size={14} aria-hidden="true" />
-                  {createWarning}
+              <MunicipalityBoundaryMap
+                bounds={boundaryBounds}
+                coordinates={boundaryCoordinates}
+                height={300}
+                loading={boundaryStatus === 'retrieving'}
+                error={boundaryStatus === 'error' || boundaryStatus === 'unavailable'}
+              />
+
+              {boundaryCoordinates && (
+                <div className="muni-auto-coords" role="status" aria-live="polite">
+                  <MapPin size={12} aria-hidden="true" />
+                  <span className="muni-auto-coords__label">Reference coordinates</span>
+                  <code>
+                    {boundaryCoordinates.latitude}, {boundaryCoordinates.longitude}
+                  </code>
+                  <span className="muni-auto-coords__note">
+                    Auto-computed from the municipality boundary polygon.
+                  </span>
                 </div>
               )}
             </FormSection>
@@ -1330,35 +1455,21 @@ export default function Municipalities() {
                 A municipality can be created with zero barangays and no production data.
               </div>
             </FormSection>
-
-            <FormSection
-              title="Boundary"
-              hint="Optional GeoJSON Polygon or MultiPolygon, up to 5 MB."
-            >
-              <Form.Control
-                type="file"
-                accept=".json,.geojson,application/json,application/geo+json"
-                onChange={(event) => setCreateGeojson(event.target.files?.[0] || null)}
-              />
-              <Form.Text className="text-muted">
-                Stored as <code>geojson/&lt;slug&gt;.json</code>.
-                {' '}
-                {createGeojson ? `Selected: ${createGeojson.name}` : 'No file selected.'}
-              </Form.Text>
-            </FormSection>
           </Modal.Body>
           <Modal.Footer className="muni-modal__footer">
-            <span className={`muni-modal__footer-note${createValid ? ' is-ready' : ''}`}>
-              {createValid
+            <span className={`muni-modal__footer-note${createValid && hasBoundary ? ' is-ready' : ''}`}>
+              {createValid && hasBoundary
                 ? 'Ready to save.'
-                : 'Complete the required fields to enable saving.'}
+                : !hasBoundary
+                  ? 'Select a municipality and wait for its boundary to load.'
+                  : 'Complete the required fields to enable saving.'}
             </span>
             <div className="muni-modal__footer-actions">
               <button type="button" className="ui-btn-outline" onClick={closeCreate} disabled={saving}>Cancel</button>
               <button
                 type="submit"
                 className="ui-btn-primary"
-                disabled={saving || !createValid}
+                disabled={saving || !createValid || !hasBoundary}
               >
                 {saving ? (
                   <>
@@ -1446,6 +1557,22 @@ export default function Municipalities() {
                   className={editStatusClassName(editForm, editing)}
                 >
                   {editStatusMessage(editForm, editing)}
+                </Form.Text>
+              </Form.Group>
+
+              <Form.Group className="mt-3">
+                <div className="form-label">Salt-producing municipality</div>
+                <input
+                  id="muni-edit-is-salt-producing"
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={Boolean(editForm.is_salt_producing)}
+                  onChange={(event) => updateEditField('is_salt_producing', event.target.checked)}
+                  onBlur={() => markEditTouched('is_salt_producing')}
+                  aria-describedby="muni-edit-is-salt-producing-help"
+                />
+                <Form.Text id="muni-edit-is-salt-producing-help" className="text-muted d-block mt-1">
+                  Only salt-producing municipalities appear on the public map and dashboard.
                 </Form.Text>
               </Form.Group>
             </FormSection>

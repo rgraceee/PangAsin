@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card } from 'react-bootstrap';
 import { MapPin } from 'lucide-react';
 import L from 'leaflet';
 import geojson from '../data/pangasinan_municipalities.json';
 import geojsonAll from '../data/pangasinan_municipalities_all.json';
-import { getMunicipalityProduction, getDemographicsByMunicipality } from '../services/dataService';
+import { getMunicipalityProduction, getDemographicsByMunicipality, loadPublicDashboardData } from '../services/dataService';
 import { greenScale, GREEN_LIGHT, GREEN_DARK } from '../theme/colors';
 import { buildMapDetailCard, createMapDetailPopup, openMapDetailPopup } from '../utils/mapDetailCard';
 import { addLightBasemap, buildProvinceMaskRings, addProvinceMask, NON_PRODUCING_FILL, NON_PRODUCING_BORDER } from '../utils/mapLayers';
@@ -20,7 +20,7 @@ export default function MunicipalityMapSection() {
   const geoJsonLayerRef = useRef(null);
   const detailOpenRef = useRef(false);
 
-  const sorted = useMemo(() => getMunicipalityProduction(), []);
+  const [sorted, setSorted] = useState(() => getMunicipalityProduction());
   const values = sorted.map((m) => m.productionMT);
   const total = values.reduce((s, v) => s + (v || 0), 0);
   const min = values.length ? Math.min(...values) : 0;
@@ -29,6 +29,12 @@ export default function MunicipalityMapSection() {
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
+
+    // Ensure the dashboard cache is fresh before reading production data,
+    // so newly added municipalities appear on the map with full overlay.
+    loadPublicDashboardData().then(() => {
+      setSorted(getMunicipalityProduction());
+    });
 
     const mapSorted = getMunicipalityProduction();
     const byName = Object.fromEntries(mapSorted.map((m) => [normName(m.name), m]));
@@ -69,30 +75,11 @@ export default function MunicipalityMapSection() {
       if (detailPopup.isOpen()) detailPopup.close();
     });
 
-    const contextFeatures = geojsonAll.features.filter(
-      (f) => !producingNames.has(normName(f.properties.shapeName || f.properties.name || ''))
-    );
+    const contextFeatures = [];
 
-    L.geoJSON(contextFeatures, {
-      style: {
-        fillColor: NON_PRODUCING_FILL,
-        fillOpacity: 0.6,
-        weight: 1.2,
-        opacity: 0.85,
-        color: NON_PRODUCING_BORDER,
-      },
-      onEachFeature: (feature, layer) => {
-        const label = prettyName(feature.properties.shapeName || feature.properties.name || '');
-        layer.bindTooltip(
-          `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
-          { sticky: true, direction: 'right', offset: [12, 0] }
-        );
-      },
-    }).addTo(map);
-
-    geoJsonLayerRef.current = L.geoJSON(geojson, {
+    geoJsonLayerRef.current = L.geoJSON(geojsonAll, {
       style: (feature) => {
-        const m = byName[normName(feature.properties.name)];
+        const m = byName[normName(feature.properties.shapeName || feature.properties.name || '')];
         return {
           fillColor: m ? greenScale(m.productionMT, min, max) : NON_PRODUCING_FILL,
           weight: 1.5,
@@ -102,7 +89,7 @@ export default function MunicipalityMapSection() {
         };
       },
       onEachFeature: (feature, layer) => {
-        const m = byName[normName(feature.properties.name)];
+        const m = byName[normName(feature.properties.shapeName || feature.properties.name || '')];
         if (m) {
           const rank = mapSorted.findIndex((x) => normName(x.name) === normName(m.name)) + 1;
           const share = total > 0 ? (m.productionMT / total) * 100 : 0;

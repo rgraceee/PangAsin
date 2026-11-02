@@ -142,6 +142,7 @@ function activeIdFromPath(pathname) {
   if (pathname === '/admin/municipalities') return 'municipalities';
   if (pathname === '/admin/master-list') return 'master-list';
   if (pathname === '/admin/municipalities') return 'municipalities';
+  if (pathname === '/admin/validation') return 'validation';
   if (pathname === '/admin/users') return 'users';
   return 'dashboard';
 }
@@ -187,7 +188,7 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
             {user?.role !== 'superadmin' && (
               <>
                 <SectionLabel collapsed={collapsed}>Main</SectionLabel>
-                {MAIN_ITEMS.filter((item) => item.id !== 'validation').map((item) => {
+                {MAIN_ITEMS.map((item) => {
                   // SuperAdmin routes live under /superadmin/* instead of /admin/*.
                   const path = user?.role === 'superadmin'
                     ? item.path.replace('/admin', '/superadmin')

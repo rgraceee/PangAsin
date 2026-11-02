@@ -334,7 +334,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         )}
       </KpiGrid>
 
-      {!adminView && pendingEntries.length > 0 && (
+      {!adminView && (
         <Card className="encoder-card admin-card mb-4">
           <Card.Header className="master-toolbar">
             <h2 className="h6 mb-0"><Clock size={16} className="me-2" />Pending Review</h2>
@@ -346,9 +346,14 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           <Card.Body className="p-0">
             {pendingLoading ? (
               <div className="text-center py-4"><SkeletonList rows={3} cols={6} /></div>
+            ) : pendingEntries.length === 0 ? (
+              <div className="chart-empty py-4">
+                <span className="muni-empty-chip">No pending records</span>
+                No salt farmers awaiting approval.
+              </div>
             ) : (
               <Table responsive hover className="mb-0 encoder-table admin-table ui-records-table">
-                <thead><tr><th>Salt Farmer</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Status</th><th>Submitted</th></tr></thead>
+                <thead><tr><th>Salt Farmer</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Status</th><th>Submitted</th><th className="text-nowrap" aria-label="Actions"></th></tr></thead>
                 <tbody>{pendingPage.map((entry) => (
                   <tr key={entry.id}>
                     <td className="fw-semibold">{entry.name}</td>
@@ -359,6 +364,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
                       <Badge bg="warning" text="dark">Pending</Badge>
                     </td>
                     <td>{entry.submittedAt ? new Date(entry.submittedAt).toLocaleDateString() : '—'}</td>
+                    <td className="text-nowrap text-end"></td>
                   </tr>
                 ))}</tbody>
               </Table>

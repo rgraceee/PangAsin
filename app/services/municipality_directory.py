@@ -9,8 +9,10 @@ from app.models.municipality import Municipality
 
 
 def active_municipalities():
-    """Every active municipality, ordered by name."""
-    return Municipality.query.filter_by(status="active").order_by(Municipality.name).all()
+    """Every active, salt-producing municipality, ordered by name."""
+    return Municipality.query.filter_by(
+        status="active", is_salt_producing=True
+    ).order_by(Municipality.name).all()
 
 
 def active_municipality_ids():
@@ -18,19 +20,26 @@ def active_municipality_ids():
 
 
 def active_municipality_ids_subquery():
-    """Scalar subquery of active ids, for filtering other tables in one round trip."""
-    return select(Municipality.id).where(Municipality.status == "active")
+    """Scalar subquery of active, salt-producing ids, for filtering other tables in one round trip."""
+    return select(Municipality.id).where(
+        Municipality.status == "active",
+        Municipality.is_salt_producing == True,
+    )
 
 
 def active_municipality_count():
-    return Municipality.query.filter_by(status="active").count()
+    return Municipality.query.filter_by(
+        status="active", is_salt_producing=True
+    ).count()
 
 
 def is_active_municipality(municipality_id):
     if municipality_id is None:
         return False
     return (
-        Municipality.query.filter_by(id=municipality_id, status="active").first()
+        Municipality.query.filter_by(
+            id=municipality_id, status="active", is_salt_producing=True
+        ).first()
         is not None
     )
 

@@ -167,6 +167,15 @@ def _validate_status(value, errors, default="active"):
     return value
 
 
+def _validate_is_salt_producing(value, errors):
+    if value is None:
+        return False
+    if not isinstance(value, bool):
+        errors.append("is_salt_producing must be true or false.")
+        return False
+    return value
+
+
 def _validate_payload(data, *, creating):
     if not isinstance(data, dict):
         raise MunicipalityValidationError(["Request body must be a JSON object."])
@@ -197,6 +206,11 @@ def _validate_payload(data, *, creating):
         if (creating or "barangays" in data)
         else None
     )
+    is_salt_producing = (
+        _validate_is_salt_producing(data.get("is_salt_producing"), errors)
+        if (creating or "is_salt_producing" in data)
+        else None
+    )
 
     if errors:
         raise MunicipalityValidationError(errors)
@@ -207,6 +221,7 @@ def _validate_payload(data, *, creating):
         "longitude": longitude,
         "status": status,
         "barangays": barangays if barangays is not None else [],
+        "is_salt_producing": is_salt_producing if is_salt_producing is not None else False,
     }
 
 
@@ -294,6 +309,7 @@ def serialize_municipality(municipality, encoder_count=None, record_count=None, 
     return {
         "id": municipality.id,
         "name": municipality.name,
+        "is_salt_producing": municipality.is_salt_producing,
         "status": municipality.status,
         "latitude": float(municipality.latitude) if municipality.latitude is not None else None,
         "longitude": float(municipality.longitude) if municipality.longitude is not None else None,
@@ -339,6 +355,7 @@ def create_municipality(data):
         longitude=payload["longitude"],
         geojson_ref=geojson_ref,
         status=payload["status"],
+        is_salt_producing=payload["is_salt_producing"],
     )
     encoder = None
     temporary_password = None
@@ -416,6 +433,7 @@ def _municipality_snapshot(municipality, barangays=None):
     # WHY: The ORM object mutates in place, so the before-value must be copied.
     return {
         "name": municipality.name,
+        "is_salt_producing": municipality.is_salt_producing,
         "status": municipality.status,
         "latitude": float(municipality.latitude) if municipality.latitude is not None else None,
         "longitude": float(municipality.longitude) if municipality.longitude is not None else None,
@@ -475,6 +493,14 @@ def _apply_status_change(municipality, payload):
     return len(encoders)
 
 
+def _apply_is_salt_producing_change(municipality, payload):
+    # WHAT: Apply the is_salt_producing flag on update.
+    # WHY: Only salt-producing municipalities appear in public views and maps.
+    if payload["is_salt_producing"] is None:
+        return
+    municipality.is_salt_producing = payload["is_salt_producing"]
+
+
 def _move_boundary_file(old_geojson_ref, new_geojson_ref):
     # WHAT: Keep an uploaded boundary attached to the municipality after a rename.
     # WHY: geojson_ref follows the new slug, so the stored file must move too or
@@ -508,6 +534,7 @@ def update_municipality(municipality, data):
 
     new_barangays = _new_barangay_names(municipality, payload)
     _apply_name_change(municipality, payload)
+    _apply_is_salt_producing_change(municipality, payload)
 
     if payload["latitude"] is not None:
         municipality.latitude = payload["latitude"]

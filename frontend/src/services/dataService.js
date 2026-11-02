@@ -27,6 +27,15 @@ export async function loadPublicDashboardData() {
   return data;
 }
 
+export function invalidateDashboardCache() {
+  dashboardCache = {
+    municipalities: [],
+    production: { provinceTotalMT: 0, records: [] },
+    demographics: { provinceWide: {}, byMunicipality: {} },
+    supplyDemand: null,
+  };
+}
+
 export function getMunicipalityProduction() {
   /* WHAT: Number() coercion dahil string ang productionMT mula sa API.
      WHY: kung hindi, nagko-concatenate ang reduce at NaN ang percentageOfTotal. */

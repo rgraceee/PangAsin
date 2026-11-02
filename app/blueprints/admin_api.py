@@ -115,8 +115,9 @@ def list_municipalities():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
+    municipalities = municipality_service.list_municipalities_with_summaries()
     return jsonify({
-        "municipalities": municipality_service.list_municipalities_with_summaries(),
+        "municipalities": municipalities,
     })
 
 
@@ -1182,21 +1183,25 @@ def get_dashboard_stats():
 
     by_municipality = (
         db.session.query(
-            ProductionRecord.municipality_id,
-            Municipality.name,
-            func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
-            func.count(ProductionRecord.id).label("record_count"),
-            func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
-            func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
-            func.sum(ProductionRecord.registered_producers).label("total_registered"),
-            func.sum(ProductionRecord.male_producers).label("total_male"),
-            func.sum(ProductionRecord.female_producers).label("total_female"),
+            Municipality.id.label("municipality_id"),
+            Municipality.name.label("name"),
+            func.coalesce(func.sum(ProductionRecord.production_volume_mt), 0).label("total_volume"),
+            func.coalesce(func.count(ProductionRecord.id), 0).label("record_count"),
+            func.coalesce(func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed), 0).label("total_area"),
+            func.coalesce(func.sum(ProductionRecord.num_salt_beds), 0).label("total_beds"),
+            func.coalesce(func.sum(ProductionRecord.registered_producers), 0).label("total_registered"),
+            func.coalesce(func.sum(ProductionRecord.male_producers), 0).label("total_male"),
+            func.coalesce(func.sum(ProductionRecord.female_producers), 0).label("total_female"),
         )
-        .join(Municipality, Municipality.id == ProductionRecord.municipality_id)
-        .filter(ProductionRecord.status == "approved")
+        .outerjoin(
+            ProductionRecord,
+            (ProductionRecord.municipality_id == Municipality.id)
+            & (ProductionRecord.status == "approved"),
+        )
         .filter(Municipality.status == "active")
-        .filter(*scope_conditions(ProductionRecord.municipality_id))
-        .group_by(ProductionRecord.municipality_id, Municipality.name)
+        .filter(Municipality.is_salt_producing == True)
+        .filter(*scope_conditions(Municipality.id))
+        .group_by(Municipality.id, Municipality.name)
         .all()
     )
 

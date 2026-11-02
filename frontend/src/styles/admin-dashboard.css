@@ -1296,6 +1296,173 @@
   background: currentColor;
 }
 
+/* ============================================================
+   Add Municipality — searchable combobox
+   ============================================================ */
+.muni-combobox-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.muni-combobox-wrapper input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  border: 1px solid #ced4da;
+  border-radius: 10px;
+  background: #fff;
+  outline: 0;
+}
+
+.muni-combobox-wrapper input:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.muni-combobox-wrapper input.is-invalid {
+  border-color: #dc3545;
+}
+
+.muni-combobox-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #ced4da;
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.muni-combobox-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: #374151;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.muni-combobox-option:last-child {
+  border-bottom: 0;
+}
+
+.muni-combobox-option--active {
+  background: #eff7ff;
+  color: #0d4fa0;
+  font-weight: 600;
+}
+
+.muni-combobox-option--empty {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-align: center;
+  cursor: not-allowed;
+}
+
+.muni-combobox-option:hover:not(.muni-combobox-option--active) {
+  background: #f8fafc;
+}
+
+/* ============================================================
+   Add Municipality — boundary status + map
+   ============================================================ */
+.muni-boundary-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.muni-boundary-status--loading {
+  color: #0d4fa0;
+  background: #eff7ff;
+  border: 1px solid #b9cde8;
+}
+
+.muni-boundary-status--success {
+  color: #0f6b3d;
+  background: #f4fbf7;
+  border: 1px solid #9fd4b4;
+}
+
+.muni-boundary-status--error {
+  color: #b42318;
+  background: #fef3f2;
+  border: 1px solid #e9a7a1;
+}
+
+.muni-boundary-retry {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #b42318;
+  border: 1px solid #e9a7a1;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.muni-boundary-retry:hover {
+  background: #fef3f2;
+}
+
+.muni-boundary-status .Loader2 {
+  color: #0d4fa0;
+}
+
+/* ============================================================
+   Add Municipality — auto-computed coordinates
+   ============================================================ */
+.muni-auto-coords {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.muni-auto-coords__label {
+  font-weight: 600;
+  color: #111827;
+}
+
+.muni-auto-coords code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: #0d4fa0;
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+}
+
+.muni-auto-coords__note {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
 @media (max-width: 767.98px) {
   .muni-row-actions {
     gap: 5px;
@@ -1939,6 +2106,28 @@
     max-height: 60vh;
     padding: 1rem;
   }
+}
+
+/* ============================================================
+   SuperAdmin User Management — fixed 4-button action group
+   Every account row has exactly 4 action-button slots, same
+   order, same alignment. Disabled placeholders fill unavailable
+   slots so the layout never shifts between rows.
+   ============================================================ */
+.superadmin-user-actions {
+  gap: 8px !important;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.superadmin-user-table .muni-action-btn {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.superadmin-user-table .muni-actions-cell {
+  width: 200px;
+  min-width: 200px;
 }
 
 

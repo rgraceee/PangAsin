@@ -358,33 +358,9 @@ function MunicipalityMap({ muniData, selectedName }) {
       if (detailPopup.isOpen()) detailPopup.close();
     });
 
-    const contextFeatures = geojsonAll.features.filter(
-      (f) => !producingNames.has(normName(f.properties.shapeName || f.properties.name || '')),
-    );
-
-    /* WHAT: Non-producing na bayan = context outline + pangalan (walang datos).
-       WHY: labeling lahat ng 48 bayan para makita ang buong lalawigan, gaya
-            ng dating (Sep 18) admin map. */
-    L.geoJSON(contextFeatures, {
-      style: {
-        fillColor: NON_PRODUCING_FILL,
-        fillOpacity: 0.6,
-        weight: 1.2,
-        opacity: 0.85,
-        color: NON_PRODUCING_BORDER,
-      },
-      onEachFeature: (feature, layer) => {
-        const label = prettyName(feature.properties.shapeName || feature.properties.name || '');
-        layer.bindTooltip(
-          `<div style="min-width:170px"><strong>${label}</strong><br/><span style="font-size:0.85rem;color:#6B7280">No production data recorded yet</span></div>`,
-          { sticky: true, direction: 'auto', offset: [0, -8] },
-        );
-      },
-    }).addTo(map);
-
-    geoJsonLayerRef.current = L.geoJSON(geojson, {
+    geoJsonLayerRef.current = L.geoJSON(geojsonAll, {
       style: (feature) => {
-        const m = municipalityDataRef.current[normName(feature.properties.name)];
+        const m = municipalityDataRef.current[normName(feature.properties.shapeName || feature.properties.name || '')];
         const { min: currentMin, max: currentMax } = mapScaleRef.current;
         return {
           fillColor: m ? greenScale(m.volumeMT, currentMin, currentMax) : NON_PRODUCING_FILL,
@@ -395,7 +371,7 @@ function MunicipalityMap({ muniData, selectedName }) {
         };
       },
       onEachFeature: (feature, layer) => {
-        const municipalityKey = normName(feature.properties.name);
+        const municipalityKey = normName(feature.properties.shapeName || feature.properties.name || '');
         const m = municipalityDataRef.current[municipalityKey];
         if (!m) return;
 
@@ -430,10 +406,8 @@ function MunicipalityMap({ muniData, selectedName }) {
             const target = e.target;
             geoJsonLayerRef.current.resetStyle(target);
 
-            /* WHAT: Kung ang layer na ito ang napiling muni, ibalik ang highlight.
-               WHY: ang resetStyle ay nagwawala sa highlight kapag na-hover ito. */
             const selKey = selectedNameRef.current ? normName(selectedNameRef.current) : '';
-            if (selKey && normName(target.feature?.properties?.name) === selKey) {
+            if (selKey && normName(target.feature?.properties?.shapeName || target.feature?.properties?.name || '') === selKey) {
               target.setStyle({ fillColor: BRAND.ocean, fillOpacity: 0.96, weight: 3, color: '#ffffff', opacity: 1 });
             }
 

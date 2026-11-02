@@ -15,6 +15,7 @@ def _municipality(name, status="active", latitude=16.0, longitude=120.0):
         latitude=latitude,
         longitude=longitude,
         status=status,
+        is_salt_producing=True,
         geojson_ref=f"geojson/{name.lower().replace(' ', '')}.json",
     )
     db.session.add(municipality)
