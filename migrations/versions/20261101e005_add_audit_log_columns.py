@@ -22,22 +22,29 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        "audit_logs",
-        sa.Column("old_value", sa.JSON(), nullable=True),
-    )
-    op.add_column(
-        "audit_logs",
-        sa.Column("new_value", sa.JSON(), nullable=True),
-    )
-    op.add_column(
-        "audit_logs",
-        sa.Column("reason", sa.String(length=500), nullable=True),
-    )
-    op.add_column(
-        "audit_logs",
-        sa.Column("user_agent", sa.String(length=255), nullable=True),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing = {c["name"] for c in inspector.get_columns("audit_logs")}
+    if "old_value" not in existing:
+        op.add_column(
+            "audit_logs",
+            sa.Column("old_value", sa.JSON(), nullable=True),
+        )
+    if "new_value" not in existing:
+        op.add_column(
+            "audit_logs",
+            sa.Column("new_value", sa.JSON(), nullable=True),
+        )
+    if "reason" not in existing:
+        op.add_column(
+            "audit_logs",
+            sa.Column("reason", sa.String(length=500), nullable=True),
+        )
+    if "user_agent" not in existing:
+        op.add_column(
+            "audit_logs",
+            sa.Column("user_agent", sa.String(length=255), nullable=True),
+        )
 
 
 def downgrade():

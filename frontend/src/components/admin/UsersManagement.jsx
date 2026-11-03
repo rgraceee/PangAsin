@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Card, Table, Modal, Form } from 'react-bootstrap';
 import {
-  getAdminUsers, getAdminMunicipalities, updateAdminUser, resetSuperAdminPassword,
+  getAdminUsers, getAdminPasswordResetStats,
+  getAdminMunicipalities, updateAdminUser, resetSuperAdminPassword,
 } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
@@ -37,6 +38,7 @@ export default function UsersManagement() {
   const { activeNames } = useMunicipalityDirectory();
   const [users, setUsers] = useState([]);
   const [munis, setMunis] = useState([]);
+  const [resetStats, setResetStats] = useState({ total: 0, last_7_days: 0, failed: 0, used: 0 });
   const [filters, setFilters] = useState({ role: '', status: '', municipality_id: '' });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -62,6 +64,16 @@ export default function UsersManagement() {
         setLoading(false);
       })
       .catch((err) => { setError(err.message || 'Could not load users.'); setLoading(false); });
+    getAdminPasswordResetStats()
+      .then((r) => {
+        setResetStats({
+          total: Number(r.total || 0),
+          last_7_days: Number(r.last_7_days || 0),
+          failed: Number(r.failed || 0),
+          used: Number(r.used || 0),
+        });
+      })
+      .catch(() => { setResetStats({ total: 0, last_7_days: 0, failed: 0, used: 0 }); });
   }, [page, perPage, filters]);
 
   useEffect(() => {
@@ -196,6 +208,23 @@ export default function UsersManagement() {
           </div>
         </div>
       </PageHeader>
+
+      <Card className="encoder-card admin-card">
+        <Card.Body>
+          <div className="muni-summary">
+            <span className="muni-summary__item">
+              <strong>{resetStats.total}</strong> reset requests
+            </span>
+            <span className="muni-summary__item muni-summary__item--active">
+              <strong>{resetStats.last_7_days}</strong> last 7 days
+            </span>
+            <span className="muni-summary__item muni-summary__item--failed">
+              <strong>{resetStats.failed}</strong> failed emails
+            </span>
+            <span className="muni-summary__spacer" />
+          </div>
+        </Card.Body>
+      </Card>
 
       <Card className="encoder-card admin-card">
         <Card.Body>

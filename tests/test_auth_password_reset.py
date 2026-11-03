@@ -53,8 +53,10 @@ def test_reset_request_is_generic_and_stores_only_a_hash(
     known = _request_reset(client, "encoder@example.com")
     assert known.status_code == 200
     assert known.get_json() == unknown.get_json()
-    assert len(sent) == 1
+    assert len(sent) == 2
     assert sent[0]["to"] == "encoder@example.com"
+    assert sent[1]["to"] == "pang.asin26@gmail.com"
+    assert "Password reset requested for Test Encoder" in sent[1]["subject"]
 
     raw_token = _extract_token(sent)
     stored = PasswordResetToken.query.one()

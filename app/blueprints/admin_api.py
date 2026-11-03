@@ -13,6 +13,7 @@ from app.models.barangay import Barangay
 from app.models.municipality import Municipality
 from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.models.user import User
+from app.models.password_reset_request import PasswordResetRequest
 from app.models.demand_benchmark import DemandBenchmark
 from app.models.audit_log import AuditLog
 from app.extensions import db
@@ -478,6 +479,34 @@ def admin_reset_password(user_id):
             ),
         }
     )
+
+
+@admin_api_bp.route("/users/password-reset-stats", methods=["GET"])
+@login_required
+def admin_password_reset_stats():
+    # WHAT: Admin-only stats for password-reset requests and email delivery.
+    # WHY: Powers the stats card on the User Management page.
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+
+    now = datetime.utcnow()
+    seven_days_ago = now - timedelta(days=7)
+
+    total = PasswordResetRequest.query.count()
+    last_7_days = PasswordResetRequest.query.filter(
+        PasswordResetRequest.requested_at >= seven_days_ago
+    ).count()
+    failed = PasswordResetRequest.query.filter_by(email_status="failed").count()
+    used = PasswordResetRequest.query.filter(
+        PasswordResetRequest.used_at.isnot(None)
+    ).count()
+
+    return jsonify({
+        "total": total,
+        "last_7_days": last_7_days,
+        "failed": failed,
+        "used": used,
+    })
 
 
 @admin_api_bp.route("/records", methods=["GET"])

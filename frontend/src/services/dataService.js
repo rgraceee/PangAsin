@@ -321,6 +321,10 @@ export function getAdminUsers(params = {}) {
   return api(`/admin/users${qs ? `?${qs}` : ''}`);
 }
 
+export function getAdminPasswordResetStats() {
+  return api('/admin/users/password-reset-stats');
+}
+
 export function updateAdminUser(id, payload) {
   return api(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
 }

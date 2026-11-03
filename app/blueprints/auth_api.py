@@ -8,6 +8,7 @@ from flask import Blueprint, request, jsonify, session, current_app, render_temp
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models.user import User
 from app.models.password_reset_token import PasswordResetToken
+from app.models.password_reset_request import PasswordResetRequest
 from app.models.login_events import LoginEvent
 from app.constants import MAX_MONTHLY_VOLUME_MT
 from app.extensions import db
@@ -248,6 +249,15 @@ def password_reset_request():
         )
         db.session.add(token)
 
+        # WHAT: Log every reset request for admin auditing.
+        # WHY: Admin needs a record of each attempt and email delivery status.
+        request_log = PasswordResetRequest(
+            user_id=sendable_user.id,
+            requested_at=now,
+            email_status="failed",
+        )
+        db.session.add(request_log)
+
     log_action(
         "auth.password.reset_request",
         "user",
@@ -281,16 +291,61 @@ def password_reset_request():
             }
             html = render_template("emails/password_reset.html", **context)
             text = render_template("emails/password_reset.txt", **context)
-            # WHAT: send_email never raises; it logs SMTP failures.
+            # WHAT: send_email never raises; it logs SMTP failures and returns True/False.
             # WHY: The public response must stay generic and must not crash.
-            send_email(
+            encoder_sent = send_email(
                 sendable_user.email,
                 email_subject,
                 html,
                 text,
             )
+
+            # WHAT: Send a notification copy to the configured admin inbox.
+            # WHY: Admin can monitor password-reset activity and verify delivery.
+            notify_email = current_app.config.get(
+                "RESET_NOTIFY_EMAIL", "pang.asin26@gmail.com"
+            )
+            notify_context = {
+                **context,
+                "encoder_email": sendable_user.email,
+                "requested_at": now.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            }
+            notify_html = render_template(
+                "emails/password_reset_notify.html", **notify_context
+            )
+            notify_text = render_template(
+                "emails/password_reset_notify.txt", **notify_context
+            )
+            notify_sent = send_email(
+                notify_email,
+                f"Password reset requested for {sendable_user.name}",
+                notify_html,
+                notify_text,
+            )
+
+            # WHAT: Record whether both emails were delivered.
+            # WHY: The admin stats card surfaces delivery failures.
+            request_log = PasswordResetRequest.query.filter_by(
+                user_id=sendable_user.id, used_at=None
+            ).order_by(PasswordResetRequest.requested_at.desc()).first()
+            if request_log is not None:
+                request_log.email_status = (
+                    "sent" if (encoder_sent and notify_sent) else "failed"
+                )
+                db.session.add(request_log)
+                db.session.commit()
         except Exception:
             current_app.logger.exception("Could not prepare password reset email.")
+            try:
+                request_log = PasswordResetRequest.query.filter_by(
+                    user_id=sendable_user.id, used_at=None
+                ).order_by(PasswordResetRequest.requested_at.desc()).first()
+                if request_log is not None:
+                    request_log.email_status = "failed"
+                    db.session.add(request_log)
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     return jsonify({"message": GENERIC_RESET_MESSAGE})
 
@@ -372,6 +427,15 @@ def confirm_password_reset():
     # WHY: Mawawalan ng bisa ang lahat ng existing sessions ng account.
     user.session_version = (user.session_version or 0) + 1
     token.used_at = now
+    request_log = (
+        PasswordResetRequest.query.filter_by(
+            user_id=user.id, used_at=None
+        )
+        .order_by(PasswordResetRequest.requested_at.desc())
+        .first()
+    )
+    if request_log is not None:
+        request_log.used_at = now
     PasswordResetToken.query.filter(
         PasswordResetToken.user_id == user.id,
         PasswordResetToken.id != token.id,
