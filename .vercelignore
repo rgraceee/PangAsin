@@ -1,0 +1,25 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+tests/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local database
+*.db
+*.sqlite3
+
+# Generated report files (regenerated on demand)
+app/static/reports/*.pdf
+app/static/reports/*.docx

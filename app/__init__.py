@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, session
 from flask_login import current_user, logout_user
+from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import Config
 from app.models.user import User
 from app.extensions import db, migrate, login_manager, mail
@@ -8,6 +9,13 @@ from app.extensions import db, migrate, login_manager, mail
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # WHAT: Trust the single proxy in front of the app (Vercel, Render, nginx).
+    # WHY: Without this, request.remote_addr is the proxy's IP, so login and
+    #      password-reset rate limits would be shared by every client. Werkzeug
+    #      leaves remote_addr untouched when the forwarded headers are absent,
+    #      so local development behavior does not change.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     db.init_app(app)
     migrate.init_app(app, db)

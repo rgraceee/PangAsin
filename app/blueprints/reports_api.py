@@ -18,6 +18,13 @@ reports_api_bp = Blueprint("reports_api", __name__, url_prefix="/api/admin/repor
 
 
 def _reports_dir():
+    # WHAT: Prefer an explicit writable directory when the host provides one.
+    # WHY: Serverless hosts (Vercel) mount the project read-only; only /tmp is
+    #      writable, so set REPORTS_DIR=/tmp/reports there. Local installs keep
+    #      the existing app/static/reports location.
+    configured = os.environ.get("REPORTS_DIR")
+    if configured:
+        return configured
     return os.path.join(current_app.root_path, "static", "reports")
 
 
