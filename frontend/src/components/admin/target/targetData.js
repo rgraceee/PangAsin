@@ -105,3 +105,74 @@ export function buildYearTimeline({
   }
   return rows;
 }
+
+/* Current approved supply followed by each real forecast point in the selected horizon. */
+export function buildProjectionTimeline({
+  lastRecordMonth, ytdTotal, forecastLabels, monthlyForecasts,
+  forecastLower, forecastUpper, annualTarget,
+}) {
+  const baseline = Number(ytdTotal) || 0;
+  const target = Number(annualTarget) || 0;
+  const baselineLabel = lastRecordMonth
+    ? `Current supply (Jan-${MONTH_SHORT[Number(lastRecordMonth.slice(5, 7)) - 1]} ${lastRecordMonth.slice(0, 4)})`
+    : 'Current supply';
+  const rows = [{
+    label: baselineLabel,
+    recorded: baseline,
+    forecast: null,
+    value: baseline,
+    isRecorded: true,
+    isForecast: false,
+    cumRecorded: baseline,
+    cumForecast: 0,
+    cumTotal: baseline,
+    cumTarget: target,
+    cumLower: baseline,
+    cumUpper: baseline,
+  }];
+  let cumulative = baseline;
+  let lowerCumulative = baseline;
+  let upperCumulative = baseline;
+  let hasLower = false;
+  let hasUpper = false;
+
+  (forecastLabels || []).forEach((label, index) => {
+    const rawForecast = monthlyForecasts?.[index];
+    const forecast = Number(rawForecast);
+    if (rawForecast === null || rawForecast === undefined || !Number.isFinite(forecast)) return;
+    cumulative += forecast;
+    const rawLower = forecastLower?.[index];
+    const rawUpper = forecastUpper?.[index];
+    const lower = Number(rawLower);
+    const upper = Number(rawUpper);
+    if (rawLower !== null && rawLower !== undefined && Number.isFinite(lower)) {
+      lowerCumulative += lower;
+      hasLower = true;
+    }
+    if (rawUpper !== null && rawUpper !== undefined && Number.isFinite(upper)) {
+      upperCumulative += upper;
+      hasUpper = true;
+    }
+    const year = Number(label.slice(0, 4));
+    const month = Number(label.slice(5, 7));
+    rows.push({
+      label: Number.isInteger(year) && month >= 1 && month <= 12
+        ? monthLabel(year, month)
+        : label,
+      recorded: null,
+      forecast,
+      value: forecast,
+      lower: rawLower !== null && rawLower !== undefined && Number.isFinite(lower) ? lower : null,
+      upper: rawUpper !== null && rawUpper !== undefined && Number.isFinite(upper) ? upper : null,
+      isRecorded: false,
+      isForecast: true,
+      cumRecorded: baseline,
+      cumForecast: cumulative - baseline,
+      cumTotal: cumulative,
+      cumTarget: target,
+      cumLower: hasLower ? lowerCumulative : null,
+      cumUpper: hasUpper ? upperCumulative : null,
+    });
+  });
+  return rows;
+}

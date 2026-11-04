@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getAdminMunicipalities, evaluateTarget } from '../../../services/dataService';
 import useMunicipalityDirectory from '../../../hooks/useMunicipalityDirectory';
 import { useToast } from '../../Toast';
-import { buildYearTimeline, fmtMT } from './targetData';
-import { addRequiredPace, buildSummary } from './targetSummaryData';
+import { buildProjectionTimeline, buildYearTimeline, fmtMT } from './targetData';
+import { addRequiredPace, buildProjectionSummary } from './targetSummaryData';
 import { buildMunicipalityRows } from './targetMuniData';
 
 export default function useTargetEvaluation() {
@@ -79,26 +79,37 @@ export default function useTargetEvaluation() {
     [timeline, results],
   );
 
+  const projection = useMemo(() => {
+    if (!results) return [];
+    return buildProjectionTimeline({
+      lastRecordMonth: results.last_record_month,
+      ytdTotal: results.ytd_approved_total,
+      forecastLabels: results.forecast_labels,
+      monthlyForecasts: results.monthly_forecasts,
+      forecastLower: results.forecast_lower,
+      forecastUpper: results.forecast_upper,
+      annualTarget: results.annual_target,
+    });
+  }, [results]);
+
   const summary = useMemo(() => {
     if (!results) return null;
-    return buildSummary({
-      rows: paced,
+    return buildProjectionSummary({
+      rows: projection,
       annualTarget: results.annual_target,
-      target: results.annual_target,
-      ytdTotal: results.ytd_approved_total,
     });
-  }, [paced, results]);
+  }, [projection, results]);
 
   const muniRows = useMemo(
     () => buildMunicipalityRows(results?.municipality_breakdown || []),
     [results],
   );
 
-  const partial = results && results.forecast_months_in_year < results.months_remaining_in_year
-    ? { covered: results.forecast_months_in_year, remaining: results.months_remaining_in_year }
+  const partial = results && results.forecast_labels.length < results.forecast_horizon
+    ? { covered: results.forecast_labels.length, remaining: results.forecast_horizon }
     : null;
 
-  const noForecast = Boolean(results) && results.forecast_months_in_year === 0;
+  const noForecast = Boolean(results) && results.forecast_labels.length === 0;
 
   const sanity = useMemo(() => {
     if (!summary || !summary.annualTarget || !summary.projected) return null;
@@ -128,6 +139,6 @@ export default function useTargetEvaluation() {
     forecastHorizon, setForecastHorizon,
     splitMethod, setSplitMethod,
     loading, results, error, runEvaluation,
-    paced, summary, muniRows, partial, noForecast, sanity, paceNote, scopeName,
+    paced, projection, summary, muniRows, partial, noForecast, sanity, paceNote, scopeName,
   };
 }

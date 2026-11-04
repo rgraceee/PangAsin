@@ -17,7 +17,7 @@ export const DONUT_COLORS = [
   '#F7C16A',
 ];
 
-function DonutTooltip({ active, payload }) {
+function DonutTooltip({ active, payload, scopeLabel }) {
   if (!active || !payload || payload.length === 0) return null;
   const row = payload[0].payload || {};
   if (!row.name) return null;
@@ -28,7 +28,7 @@ function DonutTooltip({ active, payload }) {
         <span>Production</span><b>{fmtNumber(row.value)} MT</b>
       </div>
       <div className="ct-row">
-        <span>Share of province</span><b>{fmtPct(row.share)}</b>
+        <span>Share of {scopeLabel}</span><b>{fmtPct(row.share)}</b>
       </div>
     </div>
   );
@@ -43,6 +43,8 @@ export default function MuniShareDonut({
   tooltip: TooltipComp = DonutTooltip,
   colorMap,
   showLegend = true,
+  scopeLabel = 'province',
+  entityLabel = 'municipality',
 }) {
   const [innerActive, setInnerActive] = useState(null);
   const active = activeName !== undefined ? activeName : innerActive;
@@ -87,7 +89,7 @@ export default function MuniShareDonut({
   const aria = slices.map((row) => `${row.name}: ${fmtPct(row.share)}`).join('; ');
 
   return (
-    <div className="muni-share-donut" role="img" aria-label={`Donut chart of each municipality's share of provincial salt production. ${aria}.`}>
+    <div className="muni-share-donut" role="img" aria-label={`Donut chart of each ${entityLabel}'s share of ${scopeLabel} production. ${aria}.`}>
       <div className="public-donut" style={{ height }} aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -113,7 +115,7 @@ export default function MuniShareDonut({
                 />
               ))}
             </Pie>
-            <Tooltip content={<TooltipComp />} />
+            <Tooltip content={<TooltipComp scopeLabel={scopeLabel} />} />
           </PieChart>
         </ResponsiveContainer>
         <div className="public-donut-center" aria-hidden="true">

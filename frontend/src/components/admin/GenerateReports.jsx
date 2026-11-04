@@ -70,6 +70,7 @@ const TIME_MODES = [
 const FORMAT_OPTIONS = [
   { id: 'pdf', label: 'PDF' },
   { id: 'docx', label: 'Word' },
+  { id: 'excel', label: 'Excel' },
 ];
 
 const PAGE_SIZE = 8;
@@ -80,6 +81,10 @@ const DATA_SECTIONS = [
   ['by_barangay', 'By Barangay'],
   ['monthly_trend', 'Monthly Trend'],
   ['runs', 'Forecast Runs'],
+  ['outlook', 'Municipality Outlook'],
+  ['pangasinan', 'Pangasinan'],
+  ['philippines', 'Philippines'],
+  ['sector_demand_by_scope', 'Sector Demand Breakdown'],
   ['producers', 'Salt Farmer Entries'],
   ['environment_reports', 'Environment Reports'],
 ];
@@ -147,11 +152,23 @@ function SortableTh({ label, column, activeKey, direction, onSort }) {
 const SORT_ACCESSORS = {
   report: reportTypeLabel,
   scope: reportScopeLabel,
-  period: (r) => r.date_range_start || '',
+  period: (r) => `${r.date_range_start || ''} ${r.date_range_end || ''}`,
   format: (r) => r.format || '',
   requester: (r) => r.requester_name || '',
   created_at: (r) => r.created_at || '',
 };
+
+function reportDateSearchValues(value) {
+  if (!value) return [];
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return [String(value)];
+  return [
+    String(value),
+    formatDateTime(value),
+    date.toLocaleString('en-US', { month: 'short' }),
+    date.toLocaleString('en-US', { month: 'long' }),
+  ];
+}
 
 export default function GenerateReports() {
   const { toastSuccess, toastError } = useToast();
@@ -169,6 +186,8 @@ export default function GenerateReports() {
   const [barangaysByMuni, setBarangaysByMuni] = useState({});
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reportLoadError, setReportLoadError] = useState(null);
+  const [configurationError, setConfigurationError] = useState(null);
   const [creating, setCreating] = useState(false);
   const [showReports, setShowReports] = useState(false);
   const [error, setError] = useState(null);
@@ -186,16 +205,26 @@ export default function GenerateReports() {
 
   const invalidRange = Boolean(startDate && endDate && startDate > endDate);
 
-  const loadReports = () => {
-    getReports()
-      .then((res) => setReports(res.reports || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const loadReports = async () => {
+    setLoading(true);
+    setReportLoadError(null);
+    try {
+      const res = await getReports();
+      setReports(res.reports || []);
+    } catch (err) {
+      setReportLoadError(err.message || 'Could not load generated reports. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     Promise.all([
-      getAdminMunicipalities().then((res) => setMunicipalities(res.municipalities || [])).catch(() => []),
+      getAdminMunicipalities()
+        .then((res) => setMunicipalities(res.municipalities || []))
+        .catch((err) => {
+          setConfigurationError(err.message || 'Could not load the municipality list.');
+        }),
       getAdminStats()
         .then((stats) => {
           const map = {};
@@ -204,7 +233,9 @@ export default function GenerateReports() {
           });
           setBarangaysByMuni(map);
         })
-        .catch(() => {}),
+        .catch((err) => {
+          setConfigurationError(err.message || 'Could not load barangay options.');
+        }),
       getAdminMonths()
         .then((res) => {
           const seen = new Set();
@@ -216,7 +247,9 @@ export default function GenerateReports() {
           setYears(ys.sort().reverse());
           if (ys.length > 0) setYear(ys[0]);
         })
-        .catch(() => {}),
+        .catch((err) => {
+          setConfigurationError(err.message || 'Could not load available report years.');
+        }),
     ]);
     loadReports();
   }, []);
@@ -362,16 +395,38 @@ export default function GenerateReports() {
 
   const previewTables = useMemo(() => {
     if (!previewData) return [];
-    return DATA_SECTIONS
-      .filter(([key]) => previewData[key] && previewData[key].length > 0)
-      .map(([key, label]) => ({ key, label, rows: previewData[key] }));
+    return DATA_SECTIONS.flatMap(([key, label]) => {
+      if (key === 'sector_demand_by_scope') {
+        const rows = Object.entries(previewData[key] || {}).flatMap(([scopeName, sectors]) => (
+          (sectors || []).map((sector) => ({ scope: scopeName, ...sector }))
+        ));
+        return rows.length ? [{ key, label, rows }] : [];
+      }
+      if (key === 'pangasinan' || key === 'philippines') {
+        const scopeData = previewData[key];
+        return scopeData && Object.keys(scopeData).length
+          ? [{ key, label: key === 'pangasinan' ? 'Pangasinan' : 'Philippines', rows: [scopeData] }]
+          : [];
+      }
+      return previewData[key]?.length ? [{ key, label, rows: previewData[key] }] : [];
+    });
   }, [previewData]);
 
   const summaryLines = useMemo(() => {
     if (!previewData) return [];
-    return SUMMARY_LINES
+    const lines = SUMMARY_LINES
       .map(([label, key, fmt]) => (previewData[key] != null ? { label, value: fmt(previewData[key]) } : null))
       .filter(Boolean);
+    if (previewData.pangasinan?.demand_volume_mt != null) {
+      lines.push({ label: 'Pangasinan demand', value: `${previewData.pangasinan.demand_volume_mt} Metric Tons (MT)` });
+    }
+    if (previewData.pangasinan?.local_production_mt != null) {
+      lines.push({ label: 'Pangasinan production', value: `${previewData.pangasinan.local_production_mt} Metric Tons (MT)` });
+    }
+    if (previewData.philippines?.demand_volume_mt != null) {
+      lines.push({ label: 'Philippines demand', value: `${previewData.philippines.demand_volume_mt} Metric Tons (MT)` });
+    }
+    return lines;
   }, [previewData]);
 
   const previewScopeLabel = currentReport ? reportScopeLabel(currentReport) : '';
@@ -384,11 +439,17 @@ export default function GenerateReports() {
       const haystack = [
         reportTypeLabel(r, TYPE_LABEL),
         r.report_type,
+        reportScopeLabel(r),
         r.municipality_name,
         r.barangay_name,
+        formatDateRange(r.date_range_start, r.date_range_end),
+        r.date_range_start,
+        r.date_range_end,
+        formatLabel(r.format),
+        r.format,
         r.requester_name,
         r.status,
-        r.format,
+        ...reportDateSearchValues(r.created_at),
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(term);
     });
@@ -531,16 +592,15 @@ export default function GenerateReports() {
 
             <div className="report-generate-group">
               <div
-                className={`te-segmented te-segmented--${format === 'pdf' ? 'pdf' : 'word'}`}
+                className="report-format-options"
                 role="group"
                 aria-label="Export format"
               >
-                <span className="te-segmented__thumb" aria-hidden="true" />
                 {FORMAT_OPTIONS.map((option) => (
                   <button
                     key={option.id}
                     type="button"
-                    className={`te-segmented__option${format === option.id ? ' is-active' : ''}`}
+                    className={`report-format-option${format === option.id ? ' is-active' : ''}`}
                     aria-pressed={format === option.id}
                     onClick={() => setFormat(option.id)}
                   >
@@ -607,10 +667,15 @@ export default function GenerateReports() {
           )}
 
           {error && <Alert variant="danger" className="report-form-error" role="alert">{error}</Alert>}
+          {configurationError && (
+            <Alert variant="danger" className="report-form-error" role="alert">
+              {configurationError}
+            </Alert>
+          )}
 
           <p className="report-filter-hint">
             <Info size={14} strokeWidth={2} aria-hidden="true" />
-            <span>Reports are built from approved records, then downloaded as PDF or Word.</span>
+            <span>Reports are built from approved records and can be downloaded as PDF, Word, or Excel.</span>
           </p>
 
           <p className="visually-hidden" role="status" aria-live="polite">
@@ -691,6 +756,14 @@ export default function GenerateReports() {
                   >
                     <Download size={18} strokeWidth={2.2} aria-hidden="true" />Download Word (.docx) file
                   </a>
+                  <a
+                    className="report-dl-btn report-dl-btn--excel"
+                    href={getReportDownloadUrl(currentReport.id, 'excel')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Download size={18} strokeWidth={2.2} aria-hidden="true" />Download Excel (.xlsx) file
+                  </a>
                 </div>
               </>
             )}
@@ -726,7 +799,14 @@ export default function GenerateReports() {
           </button>
         </Card.Header>
         <Card.Body id="generated-reports-body">
-          {!showReports ? (
+          {reportLoadError ? (
+            <Alert variant="danger" className="mb-0" role="alert">
+              <strong>Could not load generated reports.</strong> {reportLoadError}
+              <button type="button" className="ui-btn-outline report-clear-btn" onClick={loadReports}>
+                Retry
+              </button>
+            </Alert>
+          ) : !showReports ? (
             <div className="report-empty-state">
               <span className="report-empty-icon" aria-hidden="true"><EyeOff size={22} strokeWidth={1.8} /></span>
               <strong>Reports are hidden</strong>
@@ -750,7 +830,7 @@ export default function GenerateReports() {
                     id="report-search"
                     type="search"
                     className="form-control"
-                    placeholder="Search report, scope, or requester"
+                    placeholder="Search all columns: report, scope, period, format, requester, date"
                     value={reportSearch}
                     onChange={(e) => setReportSearch(e.target.value)}
                   />
@@ -765,6 +845,7 @@ export default function GenerateReports() {
                     <option value="">All formats</option>
                     <option value="pdf">PDF</option>
                     <option value="docx">Word (DOCX)</option>
+                    <option value="excel">Excel (XLSX)</option>
                   </Form.Select>
                 </div>
                 <span className="report-table-count" aria-live="polite">
@@ -851,6 +932,18 @@ export default function GenerateReports() {
                                     onClick={(e) => { if (!generated) e.preventDefault(); }}
                                   >
                                     <Download size={14} strokeWidth={2.2} aria-hidden="true" />Word
+                                  </a>
+                                  <a
+                                    className={`ui-btn-outline ui-btn--sm report-row-btn${generated ? '' : ' is-disabled'}`}
+                                    href={generated ? getReportDownloadUrl(r.id, 'excel') : undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={`Download Excel for ${reportTypeLabel(r, TYPE_LABEL)} report`}
+                                    aria-disabled={!generated}
+                                    tabIndex={generated ? undefined : -1}
+                                    onClick={(e) => { if (!generated) e.preventDefault(); }}
+                                  >
+                                    <Download size={14} strokeWidth={2.2} aria-hidden="true" />Excel
                                   </a>
                                   <button
                                     type="button"

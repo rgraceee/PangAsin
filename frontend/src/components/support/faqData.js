@@ -109,7 +109,7 @@ export const adminFaq = [
     items: [
       {
         q: 'How do I use forecasts and Target Evaluation?',
-        a: 'Open Forecasting from the sidebar to select a municipality and view its production trajectory and outlook — adjust the historical period or horizon to update the projection. Open Target Evaluation from the sidebar to compare recorded production against the target; read the notes under each chart when explaining results to stakeholders.',
+        a: 'Open Forecasting from the sidebar to select a municipality and view its production trajectory and outlook — adjust the historical period or horizon to update the projection. Open Target Evaluation, enter the annual demand target, and choose a forecast horizon to compare approved production to date plus predicted supply with the target. The cumulative chart shows whether the target is reached and the projected gap at the end of the selected horizon.',
       },
     ],
   },
@@ -118,7 +118,7 @@ export const adminFaq = [
     items: [
       {
         q: 'How do I check data quality?',
-        a: 'Open Data Quality from the sidebar to find gaps in records before publishing figures. Check the active filters first if totals look stale, since each dashboard keeps its own period.',
+        a: 'Open Data Integrity from the sidebar to find gaps in records before publishing figures. Check the selected year and month range first if totals look stale.',
       },
     ],
   },

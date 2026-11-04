@@ -13,9 +13,11 @@ from app.models.environment_report import EnvironmentReport
 from app.models.municipality import Municipality
 from app.models.barangay import Barangay
 from app.models.demand_benchmark import DemandBenchmark
+from app.models.municipality_production import MunicipalityMonthlyProduction
+from app.services.municipality_directory import active_municipality_ids_subquery
+from app.services.sector_demand import build_sector_demand_by_scope
 from app.models.forecast import ForecastRun
 from app.services.production_aggregates import _monthly_aggregates
-from app.constants import SECTOR_DEMAND
 
 
 def _volume_mt(value):
@@ -425,8 +427,41 @@ def build_data_quality_data():
 def build_supply_demand_data():
     provincial = DemandBenchmark.query.filter_by(geographic_scope="provincial").order_by(DemandBenchmark.year.desc()).first()
     national = DemandBenchmark.query.filter_by(geographic_scope="national").order_by(DemandBenchmark.year.desc()).first()
-    local_total_mt = db.session.query(func.sum(ProductionRecord.production_volume_mt)).filter(ProductionRecord.status == "approved").scalar() or 0
-    local_mt = round(float(local_total_mt), 3)
+    latest_production_year = db.session.query(
+        func.max(MunicipalityMonthlyProduction.production_year)
+    ).filter(
+        MunicipalityMonthlyProduction.municipality_id.in_(
+            active_municipality_ids_subquery()
+        )
+    ).scalar()
+    local_year = provincial.year if provincial else latest_production_year
+    local_total_kg = 0
+    if local_year is not None:
+        local_total_kg = db.session.query(
+            func.coalesce(func.sum(MunicipalityMonthlyProduction.production_kg), 0)
+        ).filter(
+            MunicipalityMonthlyProduction.production_year == local_year,
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            ),
+        ).scalar()
+    local_mt = round(float(local_total_kg or 0) / 1000, 3)
+    provincial_demand = float(provincial.demand_volume) if provincial else 0
+    national_demand = float(national.demand_volume) if national else 0
+    national_production = float(national.local_production or 0) if national else 0
+    national_imports = float(national.import_volume or 0) if national else 0
+    sector_demand_by_scope = build_sector_demand_by_scope({
+        "national": {
+            "demand": national_demand,
+            "supply": national_production + national_imports,
+            "production": national_production,
+        },
+        "provincial": {
+            "demand": provincial_demand,
+            "supply": local_mt,
+            "production": local_mt,
+        },
+    })
 
     def scope(row):
         if row is None:
@@ -444,11 +479,11 @@ def build_supply_demand_data():
         "pangasinan": {
             "year": provincial.year if provincial else datetime.utcnow().year,
             "demand_volume_mt": round(float(provincial.demand_volume), 3) if provincial else None,
-            "local_production_mt": local_mt if local_mt > 0 else (round(float(provincial.local_production), 3) if provincial and provincial.local_production else None),
+            "local_production_mt": local_mt,
             "source": provincial.source_name if provincial else None,
         },
         "philippines": scope(national),
-        "sector_demand": SECTOR_DEMAND,
+        "sector_demand_by_scope": sector_demand_by_scope,
     }
 
 
@@ -505,6 +540,7 @@ def build_report_data(report_type, municipality_id=None, barangay_id=None, start
 # WHY: Raw field keys (e.g. production_mt) are code names, not labels. Keep this
 #      map in sync with DISPLAY_HEADERS in frontend/src/constants/labels.js.
 DISPLAY_HEADERS = {
+    "id": "ID",
     "municipality": "Municipality",
     "barangay": "Barangay",
     "barangay_id": "Barangay",
@@ -559,7 +595,28 @@ DISPLAY_HEADERS = {
     "local_production_mt": "Local Production (Metric Tons (MT))",
     "import_volume_mt": "Import Volume (Metric Tons (MT))",
     "source": "Source",
+    "scope": "Scope",
+    "sector": "Sector",
+    "percentage": "Percentage (%)",
+    "demand_mt": "Demand (Metric Tons (MT))",
+    "supply_mt": "Supply (Metric Tons (MT))",
 }
+
+
+def _sector_demand_rows(data):
+    rows = []
+    for scope, sectors in (data.get("sector_demand_by_scope") or {}).items():
+        rows.extend({"scope": scope, **sector} for sector in sectors)
+    return rows
+
+
+def _supply_demand_scope_rows(data):
+    rows = []
+    for scope in ("pangasinan", "philippines"):
+        details = data.get(scope)
+        if details:
+            rows.append({"scope": scope, **details})
+    return rows
 
 
 def _humanize(key):
@@ -644,6 +701,14 @@ def write_excel(data, filepath):
     if "environment_reports" in data and isinstance(data["environment_reports"], list):
         sheet = wb.create_sheet("Environment Reports")
         sheet_from_rows(sheet, data["environment_reports"])
+    sector_rows = _sector_demand_rows(data)
+    if sector_rows:
+        sheet = wb.create_sheet("Sector Demand")
+        sheet_from_rows(sheet, sector_rows)
+    scope_rows = _supply_demand_scope_rows(data)
+    if scope_rows:
+        sheet = wb.create_sheet("Supply and Demand")
+        sheet_from_rows(sheet, scope_rows)
 
     for extra in (
         "total_production_mt",
@@ -674,6 +739,8 @@ def write_excel(data, filepath):
 
 
 def write_pdf(data, filepath):
+    from xml.sax.saxutils import escape
+
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -696,11 +763,17 @@ def write_pdf(data, filepath):
         ("Monthly Trend", "monthly_trend"),
         ("Forecast Runs", "runs"),
         ("Municipality Outlook", "outlook"),
+        ("Supply and Demand by Scope", "supply_demand_scope"),
+        ("Sector Demand Breakdown", "sector_demand_by_scope"),
         ("Salt Farmer Entries", "producers"),
         ("Environment Reports", "environment_reports"),
     ]
     for title, key in table_sections:
         rows = data.get(key)
+        if key == "supply_demand_scope":
+            rows = _supply_demand_scope_rows(data)
+        elif key == "sector_demand_by_scope":
+            rows = _sector_demand_rows(data)
         if not rows:
             continue
         story.append(Paragraph(title, h_style))
@@ -708,8 +781,13 @@ def write_pdf(data, filepath):
         if not flat:
             continue
         headers = list(flat[0].keys())
-        body = [[Paragraph(str(_cell_value(row.get(h, ""))), small_style) for h in headers] for row in flat]
-        tbl = Table([[Paragraph(_display_header(h), small_style) for h in headers]] + body, repeatRows=1)
+        body = [
+            [Paragraph(escape(str(_cell_value(row.get(h, "")))), small_style) for h in headers]
+            for row in flat
+        ]
+        tbl = Table([
+            [Paragraph(escape(_display_header(h)), small_style) for h in headers]
+        ] + body, repeatRows=1)
         tbl.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1565C8")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -798,11 +876,17 @@ def write_docx(data, filepath):
         ("Monthly Trend", "monthly_trend"),
         ("Forecast Runs", "runs"),
         ("Municipality Outlook", "outlook"),
+        ("Supply and Demand by Scope", "supply_demand_scope"),
+        ("Sector Demand Breakdown", "sector_demand_by_scope"),
         ("Salt Farmer Entries", "producers"),
         ("Environment Reports", "environment_reports"),
     ]
     for title, key in table_sections:
         rows = data.get(key)
+        if key == "supply_demand_scope":
+            rows = _supply_demand_scope_rows(data)
+        elif key == "sector_demand_by_scope":
+            rows = _sector_demand_rows(data)
         if not rows:
             continue
         add_table(title, _flatten_rows(rows))

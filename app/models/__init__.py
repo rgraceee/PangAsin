@@ -4,6 +4,7 @@ from app.models.user import User
 from app.models.production_record import ProductionRecord
 from app.models.forecast import ForecastRun, ForecastPoint
 from app.models.demand_benchmark import DemandBenchmark
+from app.models.sector_demand_setting import SectorDemandSetting
 from app.models.report import Report
 from app.models.environment_report import EnvironmentReport
 from app.models.producer_report import ProducerReport, ProducerReportEntry
@@ -16,6 +17,7 @@ from app.models.audit_log import AuditLog
 from app.models.login_events import LoginEvent
 from app.models.password_reset_token import PasswordResetToken
 from app.models.password_reset_request import PasswordResetRequest
+from app.models.email_change_token import EmailChangeToken
 from app.models.site_content import SiteContent
 from app.models.system_setting import SystemSetting
 from app.models.announcement import Announcement
@@ -29,6 +31,7 @@ __all__ = [
     "ForecastRun",
     "ForecastPoint",
     "DemandBenchmark",
+    "SectorDemandSetting",
     "Report",
     "EnvironmentReport",
     "ProducerReport",
@@ -40,6 +43,7 @@ __all__ = [
     "LoginEvent",
     "PasswordResetToken",
     "PasswordResetRequest",
+    "EmailChangeToken",
     "SiteContent",
     "SystemSetting",
     "Announcement",

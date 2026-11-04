@@ -1,4 +1,4 @@
-// WHAT: "Municipality Details" as a sortable, plain-white table.
+// WHAT: Municipality- or barangay-level details as a sortable table.
 // WHY: the numbers were left-aligned with three decimals and the header showed
 //      a literal "m\u00B2". Rows are sorted on click and numbers are right-aligned
 //      with tabular figures; the table itself stays neutral so the data reads
@@ -9,7 +9,6 @@ import MuniCard, { MuniChip } from './MuniCard';
 import { fmtInt, fmtMT } from './municipalityData';
 
 const COLUMNS = [
-  { key: 'name', label: 'Municipality', align: 'left' },
   { key: 'volumeMT', label: 'Production (Metric Tons (MT))', align: 'right' },
   { key: 'producers', label: 'Salt Farmers', align: 'right' },
   { key: 'beds', label: 'Salt beds', align: 'right' },
@@ -17,8 +16,16 @@ const COLUMNS = [
   { key: 'records', label: 'Approved Records', align: 'right' },
 ];
 
-export default function MuniDetailsTable({ rows, scopeLabel }) {
+export default function MuniDetailsTable({
+  rows,
+  scopeLabel,
+  entityLabel = 'municipality',
+}) {
   const [sort, setSort] = useState({ key: 'volumeMT', dir: 'desc' });
+  const columns = [
+    { key: 'name', label: entityLabel === 'barangay' ? 'Barangay' : 'Municipality', align: 'left' },
+    ...COLUMNS,
+  ];
 
   const sorted = useMemo(() => {
     const list = [...rows];
@@ -40,15 +47,17 @@ export default function MuniDetailsTable({ rows, scopeLabel }) {
   return (
     <MuniCard
       icon={ArrowUpDown}
-      title="Municipality Details"
-      sub="Production volume from municipality data; other fields retain their operational sources"
+      title={`${entityLabel === 'barangay' ? 'Barangay' : 'Municipality'} Details`}
+      sub={entityLabel === 'barangay'
+        ? 'Approved production metrics by barangay; distinct farmer counts from the master list'
+        : 'Production volume from municipality data; other fields retain their operational sources'}
       chips={<MuniChip label={scopeLabel} meta />}
     >
       <div className="muni-table-wrap">
         <table className="muni-table">
           <thead>
             <tr>
-              {COLUMNS.map((col) => {
+              {columns.map((col) => {
                 const active = sort.key === col.key;
                 return (
                   <th

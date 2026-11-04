@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, ContactRound, Users, Map,
-  ScrollText, Settings, Activity, Sliders, FileText,
+  ScrollText, Settings, Sliders, FileText, Scale,
 } from 'lucide-react';
 import { getAdminStats } from '../../services/dataService';
 import {
@@ -12,7 +12,7 @@ import {
 const MAIN_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
   { id: 'validation', label: 'Validation Queue', icon: ClipboardCheck, path: '/admin/validation' },
-  { id: 'data-quality', label: 'Data Quality', icon: DatabaseCheck, path: '/admin/data-quality' },
+  { id: 'data-quality', label: 'Data Integrity', icon: DatabaseCheck, path: '/admin/data-quality' },
 ];
 
 const FORECAST_GROUP = {
@@ -29,6 +29,7 @@ const MANAGE_ITEMS = [
   { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
   { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/admin/master-list' },
   { id: 'municipalities', label: 'Municipalities', icon: Map, path: '/admin/municipalities' },
+  { id: 'demand-benchmarks', label: 'Demand Benchmarks', icon: Scale, path: '/admin/demand-benchmarks' },
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
 
@@ -44,6 +45,7 @@ export const HIDDEN_FROM_SUPERADMIN_ROUTES = [
   '/admin/reports',
   '/admin/master-list',
   '/admin/municipalities',
+  '/admin/demand-benchmarks',
   '/admin/users',
   '/admin/audit-logs',
   '/superadmin/accounts',
@@ -140,6 +142,7 @@ function activeIdFromPath(pathname) {
   if (pathname === '/admin/reports') return 'reports';
   if (pathname === '/admin/master-list') return 'master-list';
   if (pathname === '/admin/municipalities') return 'municipalities';
+  if (pathname === '/admin/demand-benchmarks') return 'demand-benchmarks';
   if (pathname === '/admin/master-list') return 'master-list';
   if (pathname === '/admin/municipalities') return 'municipalities';
   if (pathname === '/admin/validation') return 'validation';

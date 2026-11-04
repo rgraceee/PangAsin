@@ -39,6 +39,7 @@ export default function MuniProductionCard({
   rows = [],
   methodRows = [],
   methodTotal = 0,
+  entityLabel = 'municipality',
 }) {
   const [view, setView] = useState('bar');
   const thumbRef = useRef(null);
@@ -67,11 +68,11 @@ export default function MuniProductionCard({
   const effectiveView = methodDisabled && view === 'method' ? 'bar' : view;
 
   const sub = effectiveView === 'bar'
-    ? 'Total volume (MT) per municipality, ranked.'
+    ? `Total production volume (MT) per ${entityLabel}, ranked.`
     : 'Share of production by method in the selected period.';
 
   const note = effectiveView === 'bar' && topRow
-    ? `Top municipality: ${topRow.name} · ${topShare.toFixed(1)}% of total production.`
+    ? `Top ${entityLabel}: ${topRow.name} · ${topShare.toFixed(1)}% of total production.`
     : effectiveView === 'method' && topMethod
       ? `Top method: ${topMethod.name} · ${topMethodShare.toFixed(1)}% of total production.`
       : null;
@@ -103,7 +104,11 @@ export default function MuniProductionCard({
             <BarChart2 size={16} strokeWidth={2} />
           </span>
           <div>
-            <h5 className="admin-card-head-title">Production by Municipality</h5>
+            <h5 className="admin-card-head-title">
+              {effectiveView === 'method'
+                ? 'Production by Method'
+                : `Production by ${entityLabel.charAt(0).toUpperCase()}${entityLabel.slice(1)}`}
+            </h5>
             <p className="admin-card-head-sub">{sub}</p>
           </div>
         </div>
@@ -117,7 +122,7 @@ export default function MuniProductionCard({
               aria-pressed={effectiveView === 'bar'}
               onClick={() => setView('bar')}
             >
-              <BarChart2 size={13} strokeWidth={2} aria-hidden="true" /> Municipality
+              <BarChart2 size={13} strokeWidth={2} aria-hidden="true" /> {entityLabel.charAt(0).toUpperCase()}{entityLabel.slice(1)}
             </button>
             <button
               type="button"
@@ -178,7 +183,7 @@ export default function MuniProductionCard({
                     axisLine={false}
                     interval={0}
                   />
-                  <Tooltip content={<ProductionTooltip />} />
+                  <Tooltip content={<ProductionTooltip sourceLabel={entityLabel === 'barangay' ? 'Approved production records for the selected period.' : 'Municipality production dataset.'} />} />
                   <Bar
                     dataKey="volumeMT"
                     name="Production"

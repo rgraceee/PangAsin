@@ -1,9 +1,7 @@
 # WHAT: The Data Quality service — one place that computes everything the admin
 #       Data Quality page shows.
-# WHY: The page must only display what the database really contains, so the
-#      scoring, the thresholds and the cell states are computed here with a few
-#      grouped queries (no per-row queries in a loop) and shipped to the UI, so
-#      the browser never re-computes a score of its own.
+# WHY: Reporting completeness and cell states are computed here with grouped
+#      queries, so the browser only displays values from the database.
 from datetime import date, datetime
 
 from sqlalchemy import func
@@ -21,17 +19,6 @@ DATA_START = date(2023, 1, 1)
 # WHY: The page offers exactly 6 and 12 months; anything else falls back to
 #      the 12-month default so an unknown window cannot widen the report.
 DATA_QUALITY_RANGES = (6, 12)
-
-# WHAT: The thresholds and weights used to score a municipality.
-# WHY: Defined once and shipped with every response, so the UI can never
-#      hardcode a different number than the one used to score.
-THRESHOLDS = {
-    "ok": 85,
-    "watch": 70,
-    "stale_months": 3,
-    "w_reporting": 0.6,
-    "w_fields": 0.4,
-}
 
 # WHAT: The nine required fields of a production record, with plain-language labels.
 # WHY: The admin is not a data engineer — "Area per salt bed" is clearer than
@@ -64,9 +51,9 @@ def _month_key(value: date) -> str:
 def _month_window(end: date, count) -> list:
     """Return the "YYYY-MM" keys of the window, oldest first.
 
-    `count` is the number of months back from the current month (6, 12).
+    `count` is the number of months back from the end month (6, 12).
     `count=None` means the whole history: every month from DATA_START up to
-    the current month. The window always ends on the current month and never
+    the end month. The window never
     starts before DATA_START.
     """
     if count is None:
@@ -87,24 +74,13 @@ def _month_window(end: date, count) -> list:
     return months
 
 
-def _status_for(score: float, behind_months: int) -> str:
-    """Return the worse of the score-based and the staleness-based status."""
-    ok_at = THRESHOLDS["ok"]
-    watch_at = THRESHOLDS["watch"]
-    stale_at = THRESHOLDS["stale_months"]
-    if score < watch_at or behind_months >= 2 * stale_at:
-        return "critical"
-    if score < ok_at or behind_months >= stale_at:
-        return "watch"
-    return "ok"
-
-
-def _empty_payload(months: list, current_month: str) -> dict:
+def _empty_payload(months: list, current_month: str, selected_year: int) -> dict:
     return {
         "months": months,
+        "available_years": list(range(DATA_START.year, date.today().year + 1)),
+        "selected_year": selected_year,
         "current_month": current_month,
         "expected_months": 0,
-        "thresholds": THRESHOLDS,
         "kpis": {
             "field_pct": 0.0,
             "reporting_pct": 0.0,
@@ -212,11 +188,9 @@ def _municipality_quality(
     pending_by,
     field_by_muni,
     pending_by_muni,
-    w_reporting,
-    w_fields,
 ):
     # WHAT: Build one municipality's Data Quality row.
-    # WHY: Reporting, fields, staleness and pending backlog must share the
+    # WHY: Reporting, fields and pending backlog must share the
     #      same window and the same grouped query results.
     cells = _month_states(
         municipality.id, months, current_month, approved_by, pending_by
@@ -231,12 +205,6 @@ def _municipality_quality(
         else 0.0
     )
 
-    behind_months = 0
-    for month in reversed(expected_months):
-        if cells[month] == STATE_REPORTED:
-            break
-        behind_months += 1
-
     last_reported = None
     for month in months:
         if cells[month] == STATE_REPORTED:
@@ -250,7 +218,6 @@ def _municipality_quality(
         fields[key] = round(100.0 * present / approved_rows, 1) if approved_rows else 0.0
     field_pct = round(sum(fields.values()) / len(REQUIRED_FIELDS), 1)
 
-    score = round(w_reporting * reporting_pct + w_fields * field_pct, 1)
     pending_row = pending_by_muni.get(municipality.id)
 
     return {
@@ -259,14 +226,11 @@ def _municipality_quality(
         "cells": cells,
         "reporting_pct": reporting_pct,
         "field_pct": field_pct,
-        "score": score,
-        "behind_months": behind_months,
         "last_reported": last_reported,
         "pending_count": int(pending_row.pending_count) if pending_row else 0,
         "oldest_pending_at": (
             pending_row.oldest_submitted.isoformat() if pending_row and pending_row.oldest_submitted else None
         ),
-        "status": _status_for(score, behind_months),
         "reported_months": reported_months,
         "expected_months": len(expected_months),
         "approved_records": approved_rows,
@@ -289,24 +253,29 @@ def _province_field_summary(field_rows):
     return province_fields, total_approved
 
 
-def build_data_quality(range_months=12) -> dict:
+def build_data_quality(range_months=12, year=None) -> dict:
     """Build the whole Data Quality payload for the admin page.
 
     `range_months` is 6 or 12 for a look-back window, or "all"/None for
-    the whole history since data gathering started.
+    the whole history since data gathering started. The window ends in `year`.
     """
     today = date.today()
+    selected_year = today.year if year is None else int(year)
+    if selected_year < DATA_START.year or selected_year > today.year:
+        selected_year = today.year
+    window_end = date(selected_year, today.month if selected_year == today.year else 12, 1)
     current_month = _month_key(today)
     count = None if range_months is None or str(range_months).lower() == "all" else int(range_months)
-    months = _month_window(today, count)
-    # WHY: The current month is still in progress, so it is never "expected".
-    expected_months = [m for m in months if m < current_month]
+    months = _month_window(window_end, count)
+    # Keep the whole selected window in the denominator so the displayed
+    # completion count matches the chosen 6- or 12-month period.
+    expected_months = months
 
     municipalities = (
         Municipality.query.filter_by(status="active").order_by(Municipality.name).all()
     )
     if not municipalities:
-        return _empty_payload(months, current_month)
+        return _empty_payload(months, current_month, selected_year)
 
     muni_ids = [m.id for m in municipalities]
 
@@ -314,8 +283,6 @@ def build_data_quality(range_months=12) -> dict:
     field_rows, field_by_muni = _field_counts(muni_ids)
     pending_by_muni = _pending_counts(muni_ids)
 
-    w_reporting = THRESHOLDS["w_reporting"]
-    w_fields = THRESHOLDS["w_fields"]
     results = [
         _municipality_quality(
             municipality,
@@ -326,8 +293,6 @@ def build_data_quality(range_months=12) -> dict:
             pending_by,
             field_by_muni,
             pending_by_muni,
-            w_reporting,
-            w_fields,
         )
         for municipality in municipalities
     ]
@@ -347,7 +312,7 @@ def build_data_quality(range_months=12) -> dict:
         if total_expected_cells else 0.0
     )
 
-    behind = [row for row in results if row["status"] != "ok"]
+    behind = [row for row in results if row["reporting_pct"] < 100]
     reviewable = [row for row in behind if row["pending_count"] > 0]
     pending_total = sum(row["pending_count"] for row in results)
     oldest_pending = min(
@@ -358,13 +323,14 @@ def build_data_quality(range_months=12) -> dict:
     if oldest_pending:
         oldest_pending_days = max(0, (today - datetime.fromisoformat(oldest_pending).date()).days)
 
-    results.sort(key=lambda row: (row["score"], row["name"].lower()))
+    results.sort(key=lambda row: (row["reporting_pct"], row["name"].lower()))
 
     return {
         "months": months,
+        "available_years": list(range(DATA_START.year, today.year + 1)),
+        "selected_year": selected_year,
         "current_month": current_month,
         "expected_months": len(expected_months),
-        "thresholds": THRESHOLDS,
         "kpis": {
             "field_pct": field_pct,
             "reporting_pct": reporting_pct,

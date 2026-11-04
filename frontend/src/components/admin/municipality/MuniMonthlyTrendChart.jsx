@@ -11,7 +11,7 @@ import { getAdminDescriptive } from '../../../services/dataService';
 import {
   AXIS_TICK_FONT, CHART_ANIMATION, CHART_GRID, compactNumberFormatter,
 } from '../../ui/chartTheme';
-import MuniCard, { MuniChip } from './MuniCard';
+import MuniCard from './MuniCard';
 import { TrendTooltip } from './municipalityTooltips';
 import { SkeletonChart } from '../../Skeleton';
 
@@ -29,9 +29,22 @@ function labelMonth(key) {
 
 export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) {
   const [range, setRange] = useState('all');
-  const [state, setState] = useState({ loading: true, error: null, data: [] });
+  const [yearSelection, setYearSelection] = useState({
+    municipalityId: municipalityId ?? null,
+    year: '',
+  });
+  const [state, setState] = useState({
+    loading: true,
+    error: null,
+    data: [],
+    availableYears: [],
+    selectedYear: '',
+  });
   const thumbRef = useRef(null);
   const optionRefs = useRef({});
+  const selectedYear = yearSelection.municipalityId === (municipalityId ?? null)
+    ? yearSelection.year
+    : '';
 
   const positionThumb = useCallback(() => {
     const thumb = thumbRef.current;
@@ -53,10 +66,16 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
 
   useEffect(() => {
     let alive = true;
-    setState({ loading: true, error: null, data: [] });
+    setState((current) => ({
+      ...current,
+      loading: true,
+      error: null,
+      data: [],
+    }));
 
-    const params = { months: 24, source: 'municipality_production' };
+    const params = { months: 12, source: 'municipality_production' };
     if (municipalityId) params.municipality_id = Number(municipalityId);
+    if (selectedYear) params.year = selectedYear;
 
     getAdminDescriptive(params)
       .then((res) => {
@@ -66,15 +85,34 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
           label: labelMonth(r.month),
           value: r.total_mt ?? 0,
         }));
-        setState({ loading: false, error: null, data: rows });
+        const availableYears = (res?.available_years || []).map(String);
+        const responseYear = res?.selected_year ? String(res.selected_year) : '';
+        setState({
+          loading: false,
+          error: null,
+          data: rows,
+          availableYears,
+          selectedYear: responseYear,
+        });
+        if (!selectedYear && responseYear) {
+          setYearSelection({
+            municipalityId: municipalityId ?? null,
+            year: responseYear,
+          });
+        }
       })
       .catch((err) => {
         if (!alive) return;
-        setState({ loading: false, error: err?.message || 'Failed to load the monthly trend.', data: [] });
+        setState((current) => ({
+          ...current,
+          loading: false,
+          error: err?.message || 'Failed to load the monthly trend.',
+          data: [],
+        }));
       });
 
     return () => { alive = false; };
-  }, [municipalityId]);
+  }, [municipalityId, selectedYear]);
 
   const sliced = useMemo(() => {
     if (range === 'all') return state.data;
@@ -94,17 +132,33 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
   }), [sliced]);
 
   const scopeLabel = selectedMuni || 'Pangasinan';
-  const rangeLabel = range === 'all'
-    ? `All ${state.data.length} month${state.data.length === 1 ? '' : 's'}`
-    : `Last ${range} months`;
   const tickGap = range === '6' ? 64 : 96;
+  const displayYear = selectedYear || state.selectedYear;
+  const selectYear = (year) => {
+    setRange('all');
+    setYearSelection({ municipalityId: municipalityId ?? null, year });
+  };
 
   return (
     <MuniCard
       icon={Activity}
       title="Monthly Production Trend"
-      sub={`${scopeLabel} · ${rangeLabel}`}
-      chips={<MuniChip label={rangeLabel} meta />}
+      sub={`${scopeLabel} · ${displayYear || 'Yearly view'}`}
+      chips={(
+        <label className="muni-year-filter">
+          <span>Year</span>
+          <select
+            aria-label="Production trend year"
+            value={displayYear}
+            onChange={(event) => selectYear(event.target.value)}
+            disabled={state.loading || state.availableYears.length === 0}
+          >
+            {state.availableYears.map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </label>
+      )}
       caption="Each point is a month in the municipality production dataset. Month-over-month compares with the previous month in view."
     >
       <div className="admin-prod-view" role="group" aria-label="Production trend range">

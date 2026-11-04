@@ -1,14 +1,17 @@
 # WHAT: Authentication endpoints (login, logout, current user info).
 # WHY: Session-based login gamit ang flask_login; dito tinitingnan ang role ng user.
 import hashlib
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify, session, current_app, render_template
 from flask_login import login_user, logout_user, login_required, current_user
+from sqlalchemy.exc import IntegrityError
 from app.models.user import User
 from app.models.password_reset_token import PasswordResetToken
 from app.models.password_reset_request import PasswordResetRequest
+from app.models.email_change_token import EmailChangeToken
 from app.models.login_events import LoginEvent
 from app.constants import MAX_MONTHLY_VOLUME_MT
 from app.extensions import db
@@ -21,7 +24,7 @@ auth_api_bp = Blueprint("auth_api", __name__, url_prefix="/api/auth")
 GENERIC_RESET_MESSAGE = (
     "If that email is registered, a reset link has been sent."
 )
-
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 def _hash_reset_token(raw_token):
     # WHAT: SHA-256 hash ng high-entropy reset token.
@@ -214,6 +217,174 @@ def change_password():
         return jsonify({"error": "Could not update the password. Please try again."}), 500
 
     return jsonify({"message": "Password updated successfully."})
+
+
+@auth_api_bp.route("/email-change-request", methods=["POST"])
+@login_required
+def request_email_change():
+    data = request.get_json(silent=True) or {}
+    new_email = str(data.get("email") or "").strip().lower()
+    current_password = data.get("current_password") or ""
+
+    if not new_email or len(new_email) > 150 or not EMAIL_PATTERN.fullmatch(new_email):
+        return jsonify({"error": "Enter a valid email address."}), 400
+    if not current_password or not current_user.check_password(current_password):
+        return jsonify({"error": "Current password is incorrect."}), 400
+    if new_email == current_user.email.strip().lower():
+        return jsonify({"error": "Enter a different email address."}), 400
+    if User.query.filter(
+        db.func.lower(User.email) == new_email,
+        User.id != current_user.id,
+    ).first():
+        return jsonify({
+            "error": "This email address is already associated with an account."
+        }), 409
+
+    now = datetime.utcnow()
+    raw_token = secrets.token_urlsafe(32)
+    expiry_minutes = current_app.config.get("EMAIL_CHANGE_TOKEN_MINUTES", 30)
+    EmailChangeToken.query.filter_by(
+        user_id=current_user.id,
+        used_at=None,
+    ).update({"used_at": now}, synchronize_session=False)
+    email_token = EmailChangeToken(
+        user_id=current_user.id,
+        current_email=current_user.email,
+        new_email=new_email,
+        token_hash=_hash_reset_token(raw_token),
+        expires_at=now + timedelta(minutes=expiry_minutes),
+        created_at=now,
+    )
+    db.session.add(email_token)
+    frontend_url = current_app.config.get(
+        "FRONTEND_URL", "http://localhost:5000"
+    ).rstrip("/")
+    confirmation_url = f"{frontend_url}/confirm-email-change?token={raw_token}"
+    html = render_template(
+        "emails/email_change_verification.html",
+        user_name=current_user.name,
+        confirmation_url=confirmation_url,
+        expiry_minutes=expiry_minutes,
+    )
+    text = render_template(
+        "emails/email_change_verification.txt",
+        user_name=current_user.name,
+        confirmation_url=confirmation_url,
+        expiry_minutes=expiry_minutes,
+    )
+    safe_log_action(
+        "auth.email.change_request",
+        "user",
+        current_user.id,
+        summary="Email address change requested.",
+        actor=current_user,
+        details={"new_email": new_email},
+    )
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Could not save email change request audit event.")
+        return jsonify({"error": "Could not process the email change. Please try again."}), 500
+
+    if not send_email(
+        new_email,
+        "Confirm your PangAsin email address",
+        html,
+        text,
+    ):
+        email_token.used_at = datetime.utcnow()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Could not revoke undelivered email change token.")
+        return jsonify({
+            "error": "Could not send the verification email. Please try again later."
+        }), 502
+
+    return jsonify({
+        "message": f"A verification link was sent to {new_email}. "
+        f"It expires in {expiry_minutes} minutes."
+    })
+
+
+@auth_api_bp.route("/email-change/confirm", methods=["POST"])
+def confirm_email_change():
+    data = request.get_json(silent=True) or {}
+    raw_token = str(data.get("token") or "").strip()
+    if not raw_token:
+        return jsonify({"error": "This verification link is invalid or expired."}), 400
+
+    now = datetime.utcnow()
+    email_token = (
+        EmailChangeToken.query.filter_by(token_hash=_hash_reset_token(raw_token))
+        .with_for_update()
+        .first()
+    )
+    if email_token is None or email_token.used_at is not None or email_token.is_expired(now):
+        return jsonify({"error": "This verification link is invalid or expired."}), 400
+
+    user = email_token.user
+    new_email = email_token.new_email.strip().lower()
+    if (
+        user is None
+        or user.status != "active"
+        or user.email != email_token.current_email
+        or not new_email
+        or len(new_email) > 150
+        or not EMAIL_PATTERN.fullmatch(new_email)
+    ):
+        return jsonify({
+            "error": "This verification link is no longer valid. Request a new one."
+        }), 400
+    if (
+        user.role == "encoder"
+        and user.municipality_id is not None
+        and (user.municipality is None or user.municipality.status != "active")
+    ):
+        return jsonify({
+            "error": "This municipality is inactive. Contact your administrator."
+        }), 403
+    if User.query.filter(
+        db.func.lower(User.email) == new_email,
+        User.id != user.id,
+    ).first():
+        return jsonify({
+            "error": "This email address is already associated with an account."
+        }), 409
+
+    user.email = new_email
+    email_token.used_at = now
+    EmailChangeToken.query.filter(
+        EmailChangeToken.user_id == user.id,
+        EmailChangeToken.used_at.is_(None),
+        EmailChangeToken.id != email_token.id,
+    ).update({"used_at": now}, synchronize_session=False)
+    safe_log_action(
+        "auth.email.change",
+        "user",
+        user.id,
+        summary="Email address changed after verification.",
+        actor=user,
+        details={"email": new_email},
+    )
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({
+            "error": "This email address is already associated with an account."
+        }), 409
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Could not save verified email address.")
+        return jsonify({"error": "Could not update the email address. Please try again."}), 500
+
+    return jsonify({
+        "message": "Your email address has been verified and updated.",
+        "email": user.email,
+    })
 
 
 @auth_api_bp.route("/password-reset-request", methods=["POST"])

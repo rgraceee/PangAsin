@@ -72,7 +72,8 @@ def _report_download_name(report, ext):
     else:
         period = "All-records"
 
-    name = f"{label}_{scope}_{period}.{ext}"
+    extension = {"excel": "xlsx"}.get(ext, ext)
+    name = f"{label}_{scope}_{period}.{extension}"
     return name.replace(" ", "_")
 
 
@@ -150,7 +151,8 @@ def create_report():
         )
         # Deterministic name per report+format so the download endpoint can
         # always find/regenerate it and delete_report can clean it up.
-        final_name = f"report_{report.id}.{fmt}"
+        extension = os.path.splitext(filename)[1].lstrip(".")
+        final_name = f"report_{report.id}.{extension}"
         final_path = os.path.join(_reports_dir(), final_name)
         if os.path.abspath(_filepath) != os.path.abspath(final_path):
             os.replace(_filepath, final_path)
@@ -210,8 +212,8 @@ def get_report(report_id):
                 report.date_range_start,
                 report.date_range_end,
             )
-        except Exception:  # noqa: BLE001
-            data = None
+        except Exception as exc:  # noqa: BLE001
+            return jsonify({"error": f"Could not load report preview: {exc}"}), 500
     return jsonify({"report": report.serialize(), "data": data})
 
 
@@ -227,7 +229,8 @@ def download_report(report_id):
         return jsonify({"error": f"Invalid format. Must be one of: {', '.join(REPORT_FORMATS)}"}), 400
 
     os.makedirs(_reports_dir(), exist_ok=True)
-    filepath = os.path.join(_reports_dir(), f"report_{report.id}.{fmt}")
+    extension = {"excel": "xlsx"}.get(fmt, fmt)
+    filepath = os.path.join(_reports_dir(), f"report_{report.id}.{extension}")
     if not os.path.exists(filepath):
         try:
             _filename, tmp_path, _data = generate_report_file(
@@ -258,7 +261,7 @@ def delete_report(report_id):
 
     report = Report.query.get_or_404(report_id)
 
-    for ext in ("pdf", "docx"):
+    for ext in ("pdf", "docx", "xlsx", "excel"):
         filepath = os.path.join(_reports_dir(), f"report_{report.id}.{ext}")
         if os.path.exists(filepath):
             try:
@@ -267,7 +270,10 @@ def delete_report(report_id):
                 pass
     if report.file_url:
         legacy = os.path.join(_reports_dir(), os.path.basename(report.file_url))
-        if legacy != os.path.join(_reports_dir(), f"report_{report.id}.pdf") and legacy != os.path.join(_reports_dir(), f"report_{report.id}.docx"):
+        if legacy not in {
+            os.path.join(_reports_dir(), f"report_{report.id}.{ext}")
+            for ext in ("pdf", "docx", "xlsx", "excel")
+        }:
             try:
                 if os.path.exists(legacy):
                     os.remove(legacy)

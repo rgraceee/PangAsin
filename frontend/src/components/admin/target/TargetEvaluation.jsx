@@ -24,7 +24,7 @@ export default function TargetEvaluation() {
         variant="clean"
         className="ui-pageheader--admin ui-pageheader--no-map"
         title="Target Evaluation"
-        subtitle={`Will ${t.scopeName} reach its annual target, and where does it fall short? Evaluation year ${evaluationYear}.`}
+        subtitle={`Will current and predicted supply for ${t.scopeName} meet its annual target within the selected forecast horizon? Evaluation year ${evaluationYear}.`}
       >
         <TargetForm
           selectedMuni={t.selectedMuni}
@@ -62,10 +62,10 @@ export default function TargetEvaluation() {
           />
 
           <TargetPaceChart
-            rows={t.paced}
+            rows={t.projection}
             annualTarget={t.results.annual_target}
             reachedMonth={t.summary.reachedMonth}
-            yearEndGap={t.summary.gap}
+            horizonGap={t.summary.gap}
           />
 
           <div className="te-gap" />
@@ -100,8 +100,9 @@ export default function TargetEvaluation() {
             <span className="te-empty-icon"><Lightbulb size={26} strokeWidth={1.5} /></span>
             <h5 className="te-empty-title">Set a target to see if it is reachable</h5>
             <p className="te-empty-text">
-              Choose a municipality, type the annual production target in metric tons and pick a forecast horizon.
-              You will get the projected year-end, the gap to target, the month-by-month pace and - for the whole
+              Choose a municipality, type the annual demand target in metric tons and pick a forecast horizon.
+              You will see current production plus the forecasted supply over that horizon, its gap to target,
+              the month-by-month pace and - for the whole
               province - which municipalities have to carry it. Nothing is saved; you can re-run it as often as you like.
             </p>
           </Card.Body>

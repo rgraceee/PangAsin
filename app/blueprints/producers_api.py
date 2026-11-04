@@ -11,7 +11,7 @@ from app.models.producer import Producer
 
 
 producers_api_bp = Blueprint("producers_api", __name__, url_prefix="/api/producers")
-ALLOWED_SEXES = {"Male", "Female", "Other"}
+ALLOWED_SEXES = {"Male", "Female"}
 AGE_BANDS = ("18-30", "31-40", "41-50", "51-60", "61+")
 AGE_GROUPS = ("under30", "30to44", "45to59", "60plus")
 
@@ -125,7 +125,7 @@ def list_producers():
 
     sex = (request.args.get("sex") or "").strip()
     if sex and sex not in ALLOWED_SEXES:
-        return jsonify({"error": "sex must be Male, Female, or Other."}), 400
+        return jsonify({"error": "sex must be Male or Female."}), 400
     age_group = (request.args.get("age_group") or "").strip()
     if age_group and age_group not in AGE_GROUPS:
         return jsonify({"error": f"age_group must be one of: {', '.join(AGE_GROUPS)}."}), 400
@@ -214,7 +214,7 @@ def create_producer():
     if not address or len(address) > 255:
         errors.append("Address is required and must be 255 characters or fewer.")
     if sex not in ALLOWED_SEXES:
-        errors.append("Sex must be Male, Female, or Other.")
+        errors.append("Sex must be Male or Female.")
     raw_age = data.get("age")
     try:
         if isinstance(raw_age, bool) or isinstance(raw_age, float) and not raw_age.is_integer():
@@ -282,7 +282,7 @@ def update_producer(producer_id):
             producer.address = address
     if "sex" in data:
         if data["sex"] not in ALLOWED_SEXES:
-            errors.append("Sex must be Male, Female, or Other.")
+            errors.append("Sex must be Male or Female.")
         else:
             producer.sex = data["sex"]
     if "age" in data:

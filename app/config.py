@@ -83,6 +83,13 @@ class Config:
     PASSWORD_RESET_RATE_WINDOW = int(
         os.environ.get("PASSWORD_RESET_RATE_WINDOW", "3600")
     )
+    EMAIL_CHANGE_RATE_LIMIT = int(os.environ.get("EMAIL_CHANGE_RATE_LIMIT", "5"))
+    EMAIL_CHANGE_RATE_WINDOW = int(
+        os.environ.get("EMAIL_CHANGE_RATE_WINDOW", "3600")
+    )
+    EMAIL_CHANGE_TOKEN_MINUTES = int(
+        os.environ.get("EMAIL_CHANGE_TOKEN_MINUTES", "30")
+    )
 
 
 class DevelopmentConfig(Config):

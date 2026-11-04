@@ -5,7 +5,7 @@
 //      size, and the four cell states (reported / waiting / missing / in
 //      progress) are told apart by fill AND by pattern, not by colour alone.
 import React, { useMemo } from 'react';
-import { monthShortLabel, formatMonth, cellTitle, statusWord } from './dqData';
+import { monthShortLabel, formatMonth, cellTitle } from './dqData';
 
 function yearGroups(months) {
   const groups = [];
@@ -27,7 +27,6 @@ export default function DqHeatmap({ data, selectedId, onSelect }) {
   const { months = [], municipalities = [] } = data;
   const groups = useMemo(() => yearGroups(months), [months]);
   const sumColumn = months.length + 2;
-  const scoreColumn = months.length + 3;
 
   return (
     <div className="dq-heat-scroll" tabIndex={0} aria-label="Reporting by month, scroll sideways for more months">
@@ -53,10 +52,10 @@ export default function DqHeatmap({ data, selectedId, onSelect }) {
           Reported %
         </div>
         <div
-          className="dq-heat-sum-head"
-          style={{ gridColumn: scoreColumn, gridRow: '1 / span 2' }}
+          className="dq-heat-completed-head"
+          style={{ gridColumn: sumColumn + 1, gridRow: '1 / span 2' }}
         >
-          Score
+          Completed
         </div>
         {months.map((month, index) => (
           <div
@@ -76,9 +75,12 @@ export default function DqHeatmap({ data, selectedId, onSelect }) {
               className={`dq-heat-name${selectedId === municipality.id ? ' is-selected' : ''}`}
               onClick={() => onSelect(municipality.id)}
               aria-pressed={selectedId === municipality.id}
-              title={`${municipality.name} - ${statusWord(municipality.status)}. Select to see this municipality's field completeness.`}
+              title={`${municipality.name}: ${municipality.reporting_pct}% reported (${municipality.reported_months}/${municipality.expected_months} months). Select to see this municipality's field completeness.`}
             >
-              <span className={`dq-dot dq-dot--${municipality.status}`} aria-hidden="true" />
+              <span
+                className={`dq-dot ${municipality.reporting_pct === 100 ? 'dq-dot--complete' : 'dq-dot--incomplete'}`}
+                aria-hidden="true"
+              />
               {municipality.name}
             </button>
             {months.map((month) => {
@@ -98,10 +100,10 @@ export default function DqHeatmap({ data, selectedId, onSelect }) {
               {municipality.reporting_pct}%
             </div>
             <div
-              className={`dq-heat-score dq-heat-score--${municipality.status}`}
-              title={`${municipality.name}: score ${municipality.score} - ${statusWord(municipality.status)}`}
+              className="dq-heat-completed"
+              title={`${municipality.name}: ${municipality.reported_months}/${municipality.expected_months} months completed`}
             >
-              {municipality.score}
+              {municipality.reported_months}/{municipality.expected_months} months
             </div>
           </React.Fragment>
         ))}

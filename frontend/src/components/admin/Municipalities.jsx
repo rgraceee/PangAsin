@@ -11,6 +11,7 @@ import {
   deleteAdminMunicipality,
   deleteAdminMunicipalityGeojson,
   getAdminMunicipalities,
+  getAdminMunicipalityBarangays,
   renameAdminBarangay,
   updateAdminMunicipality,
   uploadAdminMunicipalityGeojson,
@@ -414,8 +415,10 @@ export default function Municipalities() {
   const [createForm, setCreateForm] = useState(EMPTY_CREATE);
   const [createError, setCreateError] = useState(null);
   const [createTouched, setCreateTouched] = useState({});
+  const [barangayLookup, setBarangayLookup] = useState({ status: 'idle', count: 0 });
   const [saving, setSaving] = useState(false);
   const createNameRef = useRef(null);
+  const barangayLookupRequest = useRef(0);
 
   // WHAT: Boundary retrieval state for the Add Municipality modal.
   // WHY: Automatic boundary lookup replaces manual lat/lng entry and file upload.
@@ -612,18 +615,20 @@ export default function Municipalities() {
 
   const selectCreateMunicipality = (name) => {
     setCreateSelectedName(name);
-    setCreateForm((prev) => ({ ...prev, name }));
+    setCreateForm((prev) => ({ ...prev, name, barangays: [] }));
     setCreateComboboxOpen(false);
     setCreateComboboxHighlight(-1);
+    setBarangayLookup({ status: 'loading', count: 0 });
     retrieveBoundary(name);
   };
 
   const handleCreateComboboxChange = (event) => {
     const value = event.target.value;
     setCreateSelectedName(value);
-    setCreateForm((prev) => ({ ...prev, name: value }));
+    setCreateForm((prev) => ({ ...prev, name: value, barangays: [] }));
     setCreateComboboxOpen(true);
     setCreateComboboxHighlight(-1);
+    setBarangayLookup({ status: value.trim() ? 'loading' : 'idle', count: 0 });
   };
 
   const handleCreateComboboxKeyDown = (event) => {
@@ -661,6 +666,42 @@ export default function Municipalities() {
     }
   }, [createSelectedName, createComboboxOptions, retrieveBoundary]);
 
+  useEffect(() => {
+    if (!showCreate) return undefined;
+
+    const name = createForm.name.trim();
+    const requestId = ++barangayLookupRequest.current;
+    if (!name) {
+      setBarangayLookup({ status: 'idle', count: 0 });
+      return () => { barangayLookupRequest.current += 1; };
+    }
+
+    setBarangayLookup({ status: 'loading', count: 0 });
+    const timeout = setTimeout(() => {
+      getAdminMunicipalityBarangays(name)
+        .then((response) => {
+          if (requestId !== barangayLookupRequest.current) return;
+          const names = response.barangays || [];
+          setCreateForm((prev) => (
+            prev.name.trim() === name ? { ...prev, barangays: names } : prev
+          ));
+          setBarangayLookup({ status: 'loaded', count: names.length });
+        })
+        .catch((err) => {
+          if (requestId !== barangayLookupRequest.current) return;
+          setBarangayLookup({
+            status: err.status === 404 ? 'not-found' : 'error',
+            count: 0,
+          });
+        });
+    }, 250);
+
+    return () => {
+      clearTimeout(timeout);
+      barangayLookupRequest.current += 1;
+    };
+  }, [createForm.name, showCreate]);
+
   // Auto-fill coordinates into create form when boundary is ready.
   useEffect(() => {
     if (!boundaryCoordinates) return;
@@ -683,6 +724,7 @@ export default function Municipalities() {
     setCreateForm(EMPTY_CREATE);
     setCreateError(null);
     setCreateTouched({});
+    setBarangayLookup({ status: 'idle', count: 0 });
     setCreateSelectedName('');
     setCreateComboboxOpen(false);
     setCreateComboboxHighlight(-1);
@@ -705,6 +747,11 @@ export default function Municipalities() {
       markAllTouched(createValidation, setCreateTouched);
       setCreateError('Please select a municipality and wait for its boundary to load.');
       createNameRef.current?.focus();
+      return;
+    }
+
+    if (barangayLookup.status === 'loading') {
+      setCreateError('Wait for the municipality barangay list to finish loading.');
       return;
     }
 
@@ -946,6 +993,16 @@ export default function Municipalities() {
     const encoderCopy = encoderCount
       ? `This also removes its ${encoderCount} encoder account${encoderCount === 1 ? '' : 's'}.`
       : 'No encoder account is linked.';
+    const confirmed = await confirmAction({
+      title: `Delete ${municipality.name}?`,
+      text: `Are you sure you want to delete this? ${encoderCopy}`,
+      confirmText: 'Yes',
+      cancelText: 'No',
+      danger: true,
+      icon: 'trash',
+    });
+    if (!confirmed) return;
+
     const typed = await promptText({
       title: `Delete ${municipality.name}?`,
       text: `${encoderCopy} This action cannot be undone.`,
@@ -1443,8 +1500,29 @@ export default function Municipalities() {
 
             <FormSection
               title="Barangays"
-              hint="Optional, up to 100. Names are de-duplicated case-insensitively."
+              hint="The official Pangasinan PSGC list is loaded automatically. Names remain editable; up to 100 are allowed."
             >
+              {barangayLookup.status === 'loading' && (
+                <div className="text-muted small mb-2" role="status" aria-live="polite">
+                  <Loader2 size={13} className="muni-spin me-1" aria-hidden="true" />
+                  Fetching barangays from the bundled PSGC list…
+                </div>
+              )}
+              {barangayLookup.status === 'loaded' && (
+                <div className="text-muted small mb-2" role="status" aria-live="polite">
+                  {barangayLookup.count} PSGC barangay{barangayLookup.count === 1 ? '' : 's'} populated automatically. You can edit the list below.
+                </div>
+              )}
+              {barangayLookup.status === 'not-found' && (
+                <div className="text-muted small mb-2" role="status" aria-live="polite">
+                  No barangay list matched this name. Enter barangays manually if needed.
+                </div>
+              )}
+              {barangayLookup.status === 'error' && (
+                <div className="text-danger small mb-2" role="alert">
+                  Could not load the PSGC barangay list. Try again or enter barangays manually.
+                </div>
+              )}
               <BarangayTagInput
                 value={createForm.barangays}
                 onChange={(names) => setCreateForm((prev) => ({ ...prev, barangays: names }))}
@@ -1469,7 +1547,7 @@ export default function Municipalities() {
               <button
                 type="submit"
                 className="ui-btn-primary"
-                disabled={saving || !createValid || !hasBoundary}
+                disabled={saving || !createValid || !hasBoundary || barangayLookup.status === 'loading'}
               >
                 {saving ? (
                   <>

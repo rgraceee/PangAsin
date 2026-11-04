@@ -420,7 +420,17 @@ export default function Login({ onLogin }) {
                 BS Information Technology, Major in Data Analytics,
                 Pangasinan State University
               </p>
-              <p className="login-footer-meta">Built for the ASIN Center</p>
+              <p className="login-footer-meta">
+                Built for the{' '}
+                <a
+                  href="https://asincenter.psu.edu.ph/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="login-footer-contact-link"
+                >
+                  ASIN Center
+                </a>
+              </p>
             </div>
           </div>
 

@@ -8,14 +8,13 @@
   --dq-brown: var(--p-brown, #504020);
   --dq-ok: #1E9E6A;
   --dq-watch: #F09A28;
-  --dq-critical: #D64545;
   --dq-text: #17233B;
   --dq-muted: #6C757D;
   --dq-line: #E7EAEF;
   --dq-cell-w: 18px;
   --dq-cell-h: 22px;
   --dq-sum-w: 96px;
-  --dq-score-w: 78px;
+  --dq-completed-w: 110px;
 }
 
 .dq-page.is-refreshing .dq-refreshable {
@@ -70,7 +69,7 @@
     minmax(128px, max-content)
     repeat(var(--dq-cols, 36), minmax(26px, 1fr))
     var(--dq-sum-w)
-    var(--dq-score-w);
+    var(--dq-completed-w);
   gap: 3px;
   align-items: center;
   width: 100%;
@@ -167,17 +166,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-.dq-heat-score {
+.dq-heat-completed {
   text-align: right;
-  padding-right: 2px;
+  padding-right: 4px;
   font-size: 12.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.dq-heat-score--ok { color: var(--dq-ok); }
-.dq-heat-score--watch { color: #B7791F; }
-.dq-heat-score--critical { color: var(--dq-critical); }
+.dq-heat-completed-head {
+  text-align: right;
+  padding-right: 4px;
+  color: var(--dq-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
 .dq-dot {
   width: 9px;
@@ -186,9 +191,8 @@
   flex-shrink: 0;
 }
 
-.dq-dot--ok { background: var(--dq-ok); }
-.dq-dot--watch { background: var(--dq-watch); }
-.dq-dot--critical { background: var(--dq-critical); }
+.dq-dot--complete { background: var(--dq-ok); }
+.dq-dot--incomplete { background: var(--dq-watch); }
 
 .dq-legend {
   display: flex;
@@ -220,15 +224,6 @@
 .dq-legend-swatch--missing { background: #FAE1E1; border-color: #E5ACAC; }
 .dq-legend-swatch--current { background: #F4F6F9; border: 1px dashed #BAC4D1; }
 
-.dq-formula {
-  margin: 12px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--dq-muted);
-}
-
-.dq-formula b { color: var(--dq-text); }
-
 /* ===== Field completeness ===== */
 
 .dq-field {
@@ -259,9 +254,6 @@
   border-radius: 999px;
   background: var(--dq-ok);
 }
-
-.dq-field-fill--watch { background: var(--dq-watch); }
-.dq-field-fill--critical { background: var(--dq-critical); }
 
 .dq-field-value {
   text-align: right;
@@ -315,13 +307,13 @@
   .dq-field-label { font-size: 12.5px; }
 }
 
-/* WHAT: On a phone the pinned score columns would eat the month cells, so the
+/* WHAT: On a phone the summary columns would eat the month cells, so they
         summary columns scroll with the grid again.
    WHY: The month pattern is the point of the heatmap on a small screen; the
         numbers are already in the KPI cards and the Needs attention list. */
 @media (max-width: 767.98px) {
   .dq-heat-sum,
-  .dq-heat-score,
+  .dq-heat-completed,
   .dq-heat-sum-head {
     position: static;
   }

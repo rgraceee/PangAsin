@@ -17,10 +17,10 @@ export function PaceTooltip({ active, payload }) {
       {hasValue ? (
         <>
           <div className="te-tooltip-row">
-            <span>Production to date</span><b>{fmtMT(d.cumTotal)} Metric Tons (MT)</b>
+            <span>Cumulative supply</span><b>{fmtMT(d.cumTotal)} Metric Tons (MT)</b>
           </div>
           <div className="te-tooltip-row">
-            <span>Target to date</span><b>{fmtMT(d.cumTarget)} Metric Tons (MT)</b>
+            <span>Demand target</span><b>{fmtMT(d.cumTarget)} Metric Tons (MT)</b>
           </div>
           <div className="te-tooltip-row">
             <span>Gap</span><b>{fmtSignedMT(d.cumTotal - d.cumTarget)} Metric Tons (MT)</b>

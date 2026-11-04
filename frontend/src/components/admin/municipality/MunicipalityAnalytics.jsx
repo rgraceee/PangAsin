@@ -18,9 +18,12 @@ import MuniMonthlyTrendChart from './MuniMonthlyTrendChart';
 
 import MuniDetailsTable from './MuniDetailsTable';
 import {
-  scopeRows, normaliseProduction, normaliseMasterList, normaliseMethods, fmtInt, fmtMT,
+  scopeRows, normaliseProduction, normaliseBarangayProduction,
+  normaliseMasterList, normaliseBarangayMasterList, normaliseMethods, fmtInt, fmtMT,
 
-  buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows} from './municipalityData';
+  buildRegisteredRows, buildMethodRows, buildProfile, buildTableRows,
+  buildBarangayTableRows,
+} from './municipalityData';
 
 
 export default function MunicipalityAnalytics() {
@@ -67,15 +70,32 @@ export default function MunicipalityAnalytics() {
     const scope = scopeRows(production, selectedMuni);
     const masterScope = scopeRows(masterList, selectedMuni);
     const methodScope = scopeRows(methods, selectedMuni);
-    const masterTotal = masterScope.reduce((sum, m) => sum + (m.producers || 0), 0);
+    const selectedMunicipality = scope[0];
+    const barangayProduction = selectedMunicipality
+      ? normaliseBarangayProduction(selectedMunicipality.by_barangay)
+      : [];
+    const chartScope = selectedMuni ? barangayProduction : scope;
+    const barangayMasterList = normaliseBarangayMasterList(
+      data.master_list_by_barangay,
+    );
+    const chartMasterScope = selectedMuni ? barangayMasterList : masterScope;
+    const masterTotal = chartMasterScope.reduce(
+      (sum, m) => sum + (m.producers || 0),
+      0,
+    );
     return {
       scope,
+      chartScope,
+      entityLabel: selectedMuni ? 'barangay' : 'municipality',
       scopeLabel: selectedMuni || 'Pangasinan',
-      registeredRows: buildRegisteredRows(masterScope),
+      registeredRows: buildRegisteredRows(chartMasterScope),
       registeredTotal: masterTotal,
       method: buildMethodRows(methodScope),
-      profile: buildProfile(masterScope),
-      tableRows: buildTableRows(scope, masterList),
+      profile: buildProfile(chartMasterScope),
+      tableRows: selectedMuni
+        ? buildBarangayTableRows(chartScope, chartMasterScope)
+        : buildTableRows(scope, masterList),
+      tableEntityLabel: selectedMuni ? 'barangay' : 'municipality',
       totalProduction: scope.reduce((sum, m) => sum + (m.volumeMT || 0), 0),
     };
   }, [data, selectedMuni]);
@@ -154,21 +174,34 @@ export default function MunicipalityAnalytics() {
       <Row className="align-items-stretch g-3 mb-3">
         <Col lg={7} md={12}>
           <MuniProductionCard
-            rows={view.scope}
+            rows={view.chartScope}
             methodRows={view.method.rows}
             methodTotal={view.method.total}
+            entityLabel={view.entityLabel}
           />
         </Col>
         <Col lg={5} md={12}>
-          <MuniShareDonutCard rows={view.scope} selectedMuni={selectedMuni} />
+          <MuniShareDonutCard
+            rows={view.chartScope}
+            selectedMuni={view.entityLabel === 'barangay' ? selectedMuni : ''}
+          />
         </Col>
       </Row>
 
-      <MuniDetailsTable rows={view.tableRows} scopeLabel={view.scopeLabel} />
+      <MuniDetailsTable
+        rows={view.tableRows}
+        scopeLabel={view.scopeLabel}
+        entityLabel={view.tableEntityLabel}
+      />
 
       <Row className="g-3 mb-3">
         <Col lg={12} md={12}>
-          <MuniProfileChart profile={view.profile} registeredRows={view.registeredRows} registeredTotal={view.registeredTotal} />
+          <MuniProfileChart
+            profile={view.profile}
+            registeredRows={view.registeredRows}
+            registeredTotal={view.registeredTotal}
+            entityLabel={view.entityLabel}
+          />
         </Col>
       </Row>
 

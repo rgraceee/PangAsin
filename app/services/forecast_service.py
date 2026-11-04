@@ -1120,9 +1120,9 @@ def _year_projection(
     forecast_upper,
     monthly_targets,
 ):
-    # WHAT: Year-end view: approved records so far plus in-year forecast.
+    # WHAT: Current-year approved production and forecast context.
     # WHY: The evaluation year comes from the latest approved record, never a
-    #      hardcoded year.
+    #      hardcoded year; the current-year approved total is the projection baseline.
     last_record_month = _last_month_with_data(
         municipality_id, source="production"
     )
@@ -1245,8 +1245,18 @@ def evaluate_target(
         calendar_months,
     )
 
-    total_target = sum(monthly_targets)
-    total_projected = sum(forecast_values) if forecast_values else 0.0
+    # Compare demand with current year-to-date production plus the complete
+    # selected forecast horizon, not with forecast production alone.
+    projection = _year_projection(
+        municipality_id,
+        forecast_labels,
+        forecast_values,
+        forecast_lower,
+        forecast_upper,
+        monthly_targets,
+    )
+    total_target = float(annual_target)
+    total_projected = projection["ytd_approved_total"] + sum(forecast_values)
     variance = total_projected - total_target
     variance_pct = (variance / total_target * 100.0) if total_target > 0 else 0.0
     achievable = variance >= 0
@@ -1300,14 +1310,6 @@ def evaluate_target(
     scope_intro = f"This evaluation is {scope_note}."
 
     # --- Evaluation year (never hardcoded) ---------------------------------
-    projection = _year_projection(
-        municipality_id,
-        forecast_labels,
-        forecast_values,
-        forecast_lower,
-        forecast_upper,
-        monthly_targets,
-    )
     evaluation_year = projection["evaluation_year"]
     last_record_month = projection["last_record_month"]
     months_remaining_in_year = projection["months_remaining_in_year"]
@@ -1329,8 +1331,9 @@ def evaluate_target(
     sign = "+" if variance >= 0 else ""
     narrative = (
         f"{scope_intro} {monthly_avg_note} "
-        f"The projected total is {total_projected:,.2f} Metric Tons (MT), which is {sign}{variance:,.2f} Metric Tons (MT) ({sign}{variance_pct:.1f}%) "
-        f"{'above' if variance >= 0 else 'below'} the annual target. "
+        f"Current production plus the selected forecast horizon projects {total_projected:,.2f} Metric Tons (MT), "
+        f"which is {sign}{variance:,.2f} Metric Tons (MT) ({sign}{variance_pct:.1f}%) "
+        f"{'above' if variance >= 0 else 'below'} the demand target. "
         f"{trend_note} {seasonal_note} "
         f"Overall, this target looks {'achievable' if achievable else 'challenging'}. "
         + " ".join(recommendations)

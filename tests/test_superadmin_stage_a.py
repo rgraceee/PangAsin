@@ -28,12 +28,12 @@ def test_superadmin_api_allows_only_superadmin(app, admin_client):
     _create_user("superadmin", "superadmin@example.com")
     superadmin_id = User.query.filter_by(role="superadmin").one().id
 
-    assert admin_client.get("/api/superadmin/users").status_code == 403
+    assert admin_client.get("/api/superadmin/users").status_code == 404
 
     encoder = app.test_client()
     create_encoder(email="encoder-guard@example.com", password="pass1234")
     assert _login(encoder, "encoder-guard@example.com", "pass1234").status_code == 200
-    assert encoder.get("/api/superadmin/users").status_code == 403
+    assert encoder.get("/api/superadmin/users").status_code == 404
 
     superadmin = app.test_client()
     assert _login(superadmin, "superadmin@example.com", "pass1234").status_code == 200
@@ -74,7 +74,10 @@ def test_force_logout_invalidates_existing_session(app, client):
     assert client.get("/api/auth/me").status_code == 200
 
     superadmin = _superadmin_client(app)
-    response = superadmin.post(f"/api/superadmin/users/{user.id}/force-logout")
+    response = superadmin.post(
+        f"/api/superadmin/users/{user.id}/force-logout",
+        json={"reason": "Security incident response"},
+    )
     assert response.status_code == 200
 
     expired = client.get("/api/auth/me")
@@ -134,7 +137,10 @@ def test_superadmin_cannot_deactivate_self_or_last_active_superadmin(app):
     assert self_response.status_code == 400
 
     other = _create_user("superadmin", "second-superadmin@example.com")
-    assert superadmin.post(f"/api/superadmin/users/{other.id}/deactivate").status_code == 200
+    assert superadmin.post(
+        f"/api/superadmin/users/{other.id}/deactivate",
+        json={"reason": "Duplicate administrator account"},
+    ).status_code == 200
 
     last = superadmin.post(f"/api/superadmin/users/{me.id}/deactivate")
     assert last.status_code == 400

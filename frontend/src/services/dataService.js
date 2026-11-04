@@ -60,23 +60,30 @@ export function getSupplyDemand(scope) {
   }
   const pa = sd.pangasinan || {};
   return {
-    labels: ['Pangasinan Supply', 'Demand Benchmark'],
+    labels: ['Pangasinan Supply', 'Pangasinan Demand Benchmark'],
     values: [pa.localSupply || 0, pa.demandBenchmark || 0],
     unit: 'Metric Tons (MT)',
     period: pa.localSupplyPeriod || null,
     note: pa.localSupplyPeriod
-      ? `Workbook-derived production data for ${pa.localSupplyPeriod.start} through ${pa.localSupplyPeriod.end}; compared with an annual demand benchmark.`
-      : 'No municipality production period is available.',
+      ? `Pangasinan municipality production for ${pa.year} (${pa.localSupplyPeriod.start} through ${pa.localSupplyPeriod.end}); compared with the annual local demand benchmark.`
+      : `No Pangasinan production records are available for ${pa.year}.`,
   };
 }
 
-export function getSectorDemand() {
-  const sector = (dashboardCache.supplyDemand && dashboardCache.supplyDemand.sectorDemand) || {};
-  const total = Object.values(sector).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-  return Object.entries(sector).map(([key, value]) => ({
-    sector: key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
-    value,
-    percentage: total > 0 ? (value / total) * 100 : 0,
+export function getSectorDemand(scope = 'national') {
+  const apiScope = scope === 'philippines'
+    ? 'national'
+    : scope === 'pangasinan'
+      ? 'provincial'
+      : scope;
+  const sector = dashboardCache.supplyDemand?.sectorDemandByScope?.[apiScope] || [];
+  return sector.map((item) => ({
+    id: item.id,
+    sector: item.name,
+    value: Number(item.demand_mt) || 0,
+    percentage: Number(item.percentage) || 0,
+    supply: Number(item.supply_mt) || 0,
+    production: Number(item.production_mt) || 0,
   }));
 }
 
@@ -145,6 +152,20 @@ export function changePassword(currentPassword, newPassword) {
   return api('/auth/change-password', {
     method: 'POST',
     body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+}
+
+export function requestEmailChange(email, currentPassword) {
+  return api('/auth/email-change-request', {
+    method: 'POST',
+    body: JSON.stringify({ email, current_password: currentPassword }),
+  });
+}
+
+export function confirmEmailChange(token) {
+  return apiNoAuth('/api/auth/email-change/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
   });
 }
 
@@ -230,6 +251,11 @@ export function getAdminMe() {
 
 export function getAdminMunicipalities() {
   return api('/admin/municipalities');
+}
+
+export function getAdminMunicipalityBarangays(name) {
+  const qs = new URLSearchParams({ name }).toString();
+  return api(`/admin/municipality-barangays?${qs}`);
 }
 
 /* WHAT: Shared, cached active-municipality directory for filters and maps.
@@ -329,6 +355,27 @@ export function updateAdminUser(id, payload) {
   return api(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
+export function deactivateAdminUser(id, reason) {
+  return api(`/admin/users/${id}/deactivate`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function reactivateAdminUser(id, reason) {
+  return api(`/admin/users/${id}/reactivate`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function resetAdminUserPassword(id, reason) {
+  return api(`/admin/users/${id}/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
 export function getAdminRecords(params = {}) {
   const qs = new URLSearchParams(params).toString();
   return api(`/admin/records${qs ? `?${qs}` : ''}`);
@@ -372,6 +419,20 @@ export function getDataQuality(params = {}) {
 
 export function getAdminSupplyDemand() {
   return api('/admin/supply-demand');
+}
+
+export function updateAdminDemandBenchmark(payload) {
+  return api('/admin/supply-demand/benchmarks', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminSectorDemandSettings(payload) {
+  return api('/admin/supply-demand/sectors', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getAdminTrends(params = {}) {
@@ -623,4 +684,3 @@ export function sendSmtpTest() {
     method: 'POST',
   });
 }
-

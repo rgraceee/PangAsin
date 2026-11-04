@@ -42,3 +42,5 @@ app/static/reports/*.xlsx
 app/static/reports/*.pdf
 .vercel
 .env*
+
+.vercel

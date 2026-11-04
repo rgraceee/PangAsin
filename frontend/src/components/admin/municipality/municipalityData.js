@@ -77,6 +77,7 @@ export function normaliseProduction(rows) {
     area: m.total_area_sqm || 0,
     records: m.record_count || 0,
     productionMonths: m.production_month_count || 0,
+    by_barangay: m.by_barangay || [],
   }));
 }
 
@@ -87,6 +88,28 @@ export function normaliseMasterList(rows) {
     producers: m.producers || 0,
     age_bands: m.age_bands || {},
     sex: m.sex || {},
+  }));
+}
+
+export function normaliseBarangayMasterList(rows) {
+  return (rows || []).map((row) => ({
+    id: row.barangay_id,
+    name: row.barangay,
+    producers: row.producers || 0,
+    age_bands: row.age_bands || {},
+    sex: row.sex || {},
+  }));
+}
+
+export function normaliseBarangayProduction(rows) {
+  return (rows || []).map((row) => ({
+    id: row.barangay_id,
+    name: row.barangay,
+    volumeMT: row.total_volume_mt || 0,
+    beds: row.total_salt_beds || 0,
+    area: row.total_area_sqm || 0,
+    records: row.record_count || 0,
+    producers: row.total_registered_producers || 0,
   }));
 }
 
@@ -163,4 +186,28 @@ export function buildTableRows(scope, masterList) {
     ...m,
     producers: masterById.has(m.id) ? masterById.get(m.id).producers || 0 : 0,
   }));
+}
+
+/* Barangay details combine period-scoped approved production with the
+   all-time distinct farmer registry, matching the neighboring charts. */
+export function buildBarangayTableRows(productionRows, masterList) {
+  const rowsById = new Map();
+  (productionRows || []).forEach((row) => {
+    rowsById.set(row.id, { ...row, producers: 0 });
+  });
+  (masterList || []).forEach((row) => {
+    const existing = rowsById.get(row.id);
+    rowsById.set(row.id, {
+      ...(existing || {
+        id: row.id,
+        name: row.name,
+        volumeMT: 0,
+        beds: 0,
+        area: 0,
+        records: 0,
+      }),
+      producers: row.producers || 0,
+    });
+  });
+  return [...rowsById.values()];
 }

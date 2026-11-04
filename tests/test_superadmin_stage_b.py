@@ -66,15 +66,17 @@ def test_superadmin_endpoints_403_for_admin_and_encoder(app, admin_client):
     enc = app.test_client()
     assert _login(enc, "enc@example.com", "pass1234").status_code == 200
 
-    # SuperAdmin-only endpoints must refuse admin and encoder.
+    # SuperAdmin-only API routes are hidden from admin and encoder accounts.
     for path in [
         "/api/superadmin/users",
         "/api/superadmin/audit-log",
         "/api/superadmin/export/records",
-        "/api/settings",
     ]:
-        assert admin_client.get(path).status_code == 403, f"admin {path}"
-        assert enc.get(path).status_code == 403, f"encoder {path}"
+        assert admin_client.get(path).status_code == 404, f"admin {path}"
+        assert enc.get(path).status_code == 404, f"encoder {path}"
+
+    assert admin_client.get("/api/settings").status_code == 403
+    assert enc.get("/api/settings").status_code == 403
 
     # Privacy GET stays public; PUT is superadmin-only.
     assert admin_client.get("/api/content/privacy").status_code == 200
@@ -113,7 +115,7 @@ def test_admin_user_management_encoders_only(app, admin_client):
 def test_audit_log_api_superadmin_only(app, admin_client):
     app.config["RATE_LIMIT_ENABLED"] = False
     _create_user("superadmin", "sa@example.com")
-    assert admin_client.get("/api/superadmin/audit-log").status_code == 403
+    assert admin_client.get("/api/superadmin/audit-log").status_code == 404
 
     sa = _superadmin_client(app)
     assert sa.get("/api/superadmin/audit-log").status_code == 200
@@ -252,11 +254,11 @@ def test_content_put_superadmin_only(app, admin_client):
     r = sa.put("/api/content/privacy", json=payload)
     assert r.status_code == 200
     assert r.get_json()["title"] == "Privacy Policy"
-    assert r.get_json()["last_updated"] == "1 November 2026"
+    assert r.get_json()["last_updated"].endswith(" November 2026")
 
     # Persistence: GET returns the updated value.
     got = sa.get("/api/content/privacy").get_json()
-    assert got["last_updated"] == "1 November 2026"
+    assert got["last_updated"] == r.get_json()["last_updated"]
 
     # Validation: missing title.
     r2 = sa.put("/api/content/privacy", json={"title": ""})
@@ -333,7 +335,10 @@ def test_superadmin_user_deactivate_reactivate(app):
     enc = next(u for u in users if u["email"] == "enc@example.com")
     enc_id = enc["id"]
 
-    r = sa.post(f"/api/superadmin/users/{enc_id}/deactivate")
+    r = sa.post(
+        f"/api/superadmin/users/{enc_id}/deactivate",
+        json={"reason": "Encoder account no longer needed"},
+    )
     assert r.status_code == 200
 
     # Check the specific user is now inactive
@@ -341,7 +346,10 @@ def test_superadmin_user_deactivate_reactivate(app):
     enc_after = next(u for u in users if u["id"] == enc_id)
     assert enc_after["status"] == "inactive"
 
-    r = sa.post(f"/api/superadmin/users/{enc_id}/reactivate")
+    r = sa.post(
+        f"/api/superadmin/users/{enc_id}/reactivate",
+        json={"reason": "Encoder account restored"},
+    )
     assert r.status_code == 200
 
     users = sa.get("/api/superadmin/users?role=encoder").get_json()["users"]
@@ -363,7 +371,10 @@ def test_superadmin_user_reset_password(app):
     users = sa.get("/api/superadmin/users?role=encoder").get_json()["users"]
     enc_id = users[0]["id"]
 
-    r = sa.post(f"/api/superadmin/users/{enc_id}/reset-password")
+    r = sa.post(
+        f"/api/superadmin/users/{enc_id}/reset-password",
+        json={"reason": "User requested a password reset"},
+    )
     assert r.status_code == 200
     data = r.get_json()
     assert "temporary_password" in data
@@ -385,11 +396,17 @@ def test_superadmin_user_force_logout_unlock(app):
     users = sa.get("/api/superadmin/users?role=encoder").get_json()["users"]
     enc_id = users[0]["id"]
 
-    r = sa.post(f"/api/superadmin/users/{enc_id}/force-logout")
+    r = sa.post(
+        f"/api/superadmin/users/{enc_id}/force-logout",
+        json={"reason": "Ending all existing sessions"},
+    )
     assert r.status_code == 200
     assert AuditLog.query.filter_by(action="superadmin.user.force_logout").count() >= 1
 
-    r = sa.post(f"/api/superadmin/users/{enc_id}/unlock")
+    r = sa.post(
+        f"/api/superadmin/users/{enc_id}/unlock",
+        json={"reason": "Account lockout was reviewed"},
+    )
     assert r.status_code == 200
     assert AuditLog.query.filter_by(action="superadmin.user.unlock").count() >= 1
 
@@ -413,7 +430,13 @@ def test_superadmin_user_change_municipality(app):
     users = sa.get("/api/superadmin/users?role=encoder").get_json()["users"]
     enc_id = users[0]["id"]
 
-    r = sa.post(f"/api/superadmin/users/{enc_id}/municipality", json={"municipality_id": muni2_id})
+    r = sa.post(
+        f"/api/superadmin/users/{enc_id}/municipality",
+        json={
+            "municipality_id": muni2_id,
+            "reason": "Encoder reassigned to another municipality",
+        },
+    )
     assert r.status_code == 200
     assert r.get_json()["user"]["municipality_id"] == muni2_id
     assert AuditLog.query.filter_by(action="superadmin.user.change_municipality").count() >= 1
@@ -443,7 +466,7 @@ def test_superadmin_user_pagination_and_filters(app):
 def test_login_events_api_superadmin_only(app, admin_client):
     app.config["RATE_LIMIT_ENABLED"] = False
     _create_user("superadmin", "sa@example.com")
-    assert admin_client.get("/api/superadmin/login-events").status_code == 403
+    assert admin_client.get("/api/superadmin/login-events").status_code == 404
 
     sa = _superadmin_client(app)
     r = sa.get("/api/superadmin/login-events")
@@ -622,6 +645,5 @@ def test_superadmin_users_and_audit_read(app):
     assert r.status_code == 200, r.get_data(as_text=True)[:200]
     body = r.get_json()
     assert "entries" in body and "total" in body
-
 
 

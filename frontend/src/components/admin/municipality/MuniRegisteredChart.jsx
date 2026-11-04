@@ -13,7 +13,13 @@ import {
   AXIS_TICK_FONT, BAR_RADIUS, CHART_GRID, VALUE_LABEL_FONT, compactNumberFormatter, useChartMotion,
 } from '../../ui/chartTheme';
 
-export default function MuniRegisteredChart({ rows, total, bare = false, animate = true }) {
+export default function MuniRegisteredChart({
+  rows,
+  total,
+  entityLabel = 'municipality',
+  bare = false,
+  animate = true,
+}) {
   const [activeIndex, setActiveIndex] = useState(null);
   const motion = useChartMotion('registered-farmers', animate);
 
@@ -24,7 +30,7 @@ export default function MuniRegisteredChart({ rows, total, bare = false, animate
   const chart = (
     <>
       {data.length === 0 ? (
-        <div className="muni-empty"><span className="muni-empty-chip">No data</span>No salt farmer records for the selected municipalities.</div>
+        <div className="muni-empty"><span className="muni-empty-chip">No data</span>No salt farmer records for the selected {entityLabel}s.</div>
       ) : (
         <div className="muni-chart muni-chart--bars">
           <ResponsiveContainer width="100%" height="100%">
@@ -110,7 +116,7 @@ export default function MuniRegisteredChart({ rows, total, bare = false, animate
   if (bare) return chart;
 
   return (
-    <MuniCard icon={Users} title="Registered Salt Farmers by Municipality" sub="Distinct salt farmers in the master list, ranked" chips={<><MuniChip label={`${fmtInt(total)} salt farmers`} meta /></>} caption="The master list holds the registered salt farmers. Production reports log the same people again each month, so they are not counted here.">
+    <MuniCard icon={Users} title={`Registered Salt Farmers by ${entityLabel.charAt(0).toUpperCase()}${entityLabel.slice(1)}`} sub={`Distinct salt farmers by ${entityLabel} in the master list, ranked`} chips={<><MuniChip label={`${fmtInt(total)} salt farmers`} meta /></>} caption="The master list holds the registered salt farmers. Production reports log the same people again each month, so they are not counted here.">
       {chart}
     </MuniCard>
   );

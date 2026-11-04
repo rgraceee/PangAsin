@@ -1,15 +1,12 @@
 // WHAT: "Field completeness" - how often each required field was filled in,
 //       province-wide or for one selected municipality.
-// WHY: Nine bars all at 100% tells the admin nothing, so only the fields that
-//      are below the threshold are shown by default; the rest are one click
-//      away. The threshold and the field labels come from the API.
+// WHY: Incomplete fields are shown first, while fully completed fields remain
+//      available on demand.
 import React, { useState } from 'react';
 import { Collapse } from 'react-bootstrap';
 import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
-import { toneForPercent } from './dqData';
-
 export default function DqFieldCompleteness({ data, selectedId, onShowProvince }) {
-  const { fields = [], municipalities = [], thresholds } = data;
+  const { fields = [], municipalities = [] } = data;
   const [open, setOpen] = useState(false);
 
   const selected = municipalities.find((municipality) => municipality.id === selectedId);
@@ -20,8 +17,8 @@ export default function DqFieldCompleteness({ data, selectedId, onShowProvince }
     pct: selected ? (source[field.key] ?? 0) : field.pct,
   }));
 
-  const below = rows.filter((row) => row.pct < thresholds.ok).sort((a, b) => a.pct - b.pct);
-  const rest = rows.filter((row) => row.pct >= thresholds.ok).sort((a, b) => a.pct - b.pct);
+  const below = rows.filter((row) => row.pct < 100).sort((a, b) => a.pct - b.pct);
+  const rest = rows.filter((row) => row.pct === 100).sort((a, b) => a.label.localeCompare(b.label));
   const scopeLabel = selected ? selected.name : 'Pangasinan (all municipalities)';
 
   const renderRow = (row) => (
@@ -29,7 +26,7 @@ export default function DqFieldCompleteness({ data, selectedId, onShowProvince }
       <span className="dq-field-label">{row.label}</span>
       <span className="dq-field-bar">
         <span
-          className={`dq-field-fill dq-field-fill--${toneForPercent(row.pct, thresholds)}`}
+          className="dq-field-fill"
           style={{ width: `${Math.max(0, Math.min(100, row.pct))}%` }}
         />
       </span>
@@ -52,7 +49,7 @@ export default function DqFieldCompleteness({ data, selectedId, onShowProvince }
 
       {below.length === 0 ? (
         <p className="dq-calm">
-          All {fields.length} required fields are at least {thresholds.ok}% filled.
+          All {fields.length} required fields are complete.
         </p>
       ) : (
         <div>{below.map(renderRow)}</div>

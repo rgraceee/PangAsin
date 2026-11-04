@@ -272,8 +272,10 @@ export const PAGE_TARGET_CHECK = "Target check";
 // WHY: Raw field keys (e.g. production_mt) are code names, not labels. Keep this
 //      map in sync with DISPLAY_HEADERS in app/services/report_service.py.
 export const DISPLAY_HEADERS = {
+  id: "ID",
   municipality: "Municipality",
   barangay: "Barangay",
+  scope: "Scope",
   barangay_id: "Barangay",
   record_date: "Record Date",
   production_volume_mt: "Production Volume (Metric Tons (MT))",
@@ -326,6 +328,10 @@ export const DISPLAY_HEADERS = {
   local_production_mt: "Local Production (Metric Tons (MT))",
   import_volume_mt: "Import Volume (Metric Tons (MT))",
   source: "Source",
+  sector: "Sector",
+  percentage: "Percentage (%)",
+  demand_mt: "Demand (Metric Tons (MT))",
+  supply_mt: "Supply (Metric Tons (MT))",
 };
 
 function humanize(key) {

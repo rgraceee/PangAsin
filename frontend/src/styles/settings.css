@@ -193,6 +193,33 @@
   line-height: 1.5;
 }
 
+.settings-account-email-form {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.settings-account-email-form h3 {
+  margin: 0 0 6px;
+  color: var(--ui-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-account-email-form .settings-form-control {
+  padding-right: 12px;
+}
+
+.settings-success {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #b7dfc2;
+  border-radius: 8px;
+  background: #effaf2;
+  color: #176b32;
+  font-size: 13px;
+}
+
 /* ---------- Security ---------- */
 .settings-security-form {
   display: flex;

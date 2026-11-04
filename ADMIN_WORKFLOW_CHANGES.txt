@@ -1,0 +1,182 @@
+PangAsin Admin, Dashboard, and Demand Changes
+Date: 2026-11-04
+
+Summary
+-------
+This document records the requested admin workflow, account, dashboard, and
+supply-and-demand changes, including the database migrations applied for
+configurable sector demand.
+
+Admin Workflows
+---------------
+1. Adding a municipality automatically populates its barangays from the bundled
+   PSGC barangay CSV reference data; manual barangay entry is not required.
+2. Municipality deletion opens a confirmation dialog with the requested text,
+   "Are you sure you want to delete this?", and Yes/No choices.
+3. The Validation Queue Select All checkbox has a more visible outline. Its
+   action icons were also refreshed.
+4. Salt Farmer Master List search has an explicit Search action, supports Enter
+   to submit and clearing the search, and does not issue a request on every
+   keystroke.
+5. Admins can deactivate and reactivate user accounts. Deactivation is recorded
+   with a reason.
+
+Account Email and Password Recovery
+-----------------------------------
+1. Newly provisioned encoder accounts can replace their placeholder email with
+   a valid address through an email-change verification flow.
+2. The encoder can change the temporary password after signing in.
+3. Forgot Password sends a reset link to the account's verified email address.
+4. Email-change verification tokens are stored as hashes and are one-time,
+   expiring tokens.
+
+Admin Dashboard and Municipality Analytics
+------------------------------------------
+1. When the dashboard filter is set to Pangasinan/all municipalities, charts
+   continue to present municipality-level data.
+2. When one municipality is selected, the dashboard charts switch to that
+   municipality's barangay-level data. The map was intentionally left unchanged.
+3. Municipality Details switches to barangay rows for a single selected
+   municipality, including barangay production and registry information.
+4. Monthly Production Trend has a year selector populated from available
+   production years. Selecting a year loads that year's monthly series.
+
+Demand Benchmarks and Sector Breakdown
+--------------------------------------
+1. Admins can manage demand benchmarks from a dedicated Demand Benchmark
+   Settings page in the admin sidebar, above User Management.
+2. Benchmark settings are separated by Philippines (national) and Pangasinan
+   (provincial) scope. The year is selected from a dropdown.
+3. Pangasinan local supply is calculated from production recorded for the
+   selected year and is not manually editable in the benchmark form.
+4. Imports are not an editable benchmark-form field. Existing national import
+   data is retained for supply calculations.
+5. Local demand and supply are labeled with the Pangasinan scope where shown.
+6. Demand values used by the dashboard, analytics, public supply-and-demand
+   views, and reports are calculated from the configured benchmark for the
+   applicable scope and year.
+7. Admins can add, edit, and remove sector demand allocations independently for
+   Philippines and Pangasinan. Sector percentages are capped at 100 percent per
+   scope.
+8. Each sector's demand, supply, and produced amounts are calculated from its
+   percentage of the applicable scope's benchmark and supply data. National
+   supply includes domestic production and imports; Pangasinan supply is based
+   on annual local production.
+9. The rightmost supply/demand KPI displays the amount of salt still needed to
+   meet demand, calculated as max(demand - produced, 0), instead of a shortage
+   status label.
+10. Removed hard-coded sector demand reference values; public charts and report
+    generation use configured benchmark-based sector allocations.
+11. Sector settings show the Household, Food Processing, Industry, Agriculture,
+    and Others rows for both scopes by default. Each row has an explicit Remove
+    action, custom sectors can still be added, and all current edits/removals
+    are submitted together when the scope is saved.
+12. Household is initialized to 40% for both scopes. Existing national shares
+    for Food Processing (26.33%), Industry (17.55%), and Agriculture (9.30%)
+    remain unchanged. Others is a read-only residual that automatically fills
+    any unused percentage; it is recalculated when sectors are edited/added/
+    removed and is never manually allocated by the admin.
+13. The dashboard's Salt Needed and Total Production KPI percentages now use
+    complementary shares of those two displayed amounts, so together they
+    always total 100% when their combined amount is positive.
+14. Sector saves now use the successful PUT response directly rather than
+    issuing a second settings request immediately afterward. This prevents a
+    successful save from being reported as failed if the follow-up refresh
+    fails. Expired and insufficient admin sessions now show specific errors.
+
+Database Changes
+----------------
+The user approved applying the initial pending Alembic revisions to the
+configured Supabase database; the later sector-default revisions were also
+applied to implement the requested sector behavior:
+1. 20261104e001 creates the email_change_tokens table and its indexes.
+2. 20261104e002 creates sector_demand_settings and seeds national sector
+   percentages derived from the previous sector mix:
+   - Household: 46.81%
+   - Food Processing: 26.33%
+   - Industry: 17.55%
+   - Agriculture: 9.30%
+3. 20261104e003 seeds the missing sector categories for Philippines and
+   Pangasinan, including Others. Provincial shares and the new Others share
+   start at 0%; existing sector values are left unchanged.
+4. 20261104e004 changes Household to 40% for both scopes and sets Others to the
+   remainder after all other configured sectors.
+
+All listed migrations were applied to Supabase. Verification confirmed the
+database is at revision 20261104e004; national shares are Household 40%, Food
+Processing 26.33%, Industry 17.55%, Agriculture 9.30%, and Others 6.82%.
+Pangasinan starts with Household 40%, the other named sectors 0%, and Others
+60%.
+
+Post-upgrade verification confirmed:
+- Alembic revision is 20261104e004.
+- email_change_tokens exists and contained zero rows at verification time.
+- sector_demand_settings contains all five sectors for both scopes with the
+  percentages listed above.
+- No production history or demand benchmark records were modified; the sector
+  settings were updated as requested.
+
+Verification
+------------
+Earlier admin workflow UI checks were performed on an isolated test instance:
+- Selecting Agno populated 17 barangays automatically.
+- The municipality delete dialog showed the requested wording and Yes/No
+  buttons; choosing No kept the municipality.
+- The Validation Queue checkbox outline and action icons rendered.
+- Master List search returned a matching test farmer and showed an empty state
+  for a non-matching query.
+- Benchmark editing and user deactivation/reactivation were verified.
+- The disposable SQLite database and temporary test server were removed after
+  those checks.
+
+For the demand/sector changes:
+- Focused backend tests: 13 passed.
+- Frontend tests: 29 passed.
+- Sector settings UI interaction tests: 3 passed, including editing multiple
+  sectors, removing a row, adding a custom sector, and saving the scope.
+- Sector settings save/error UI tests: 4 passed.
+- Dashboard KPI percentage tests cover complementary rounding, a zero
+  shortfall, and an empty pair.
+- The sector percentage migration was tested on disposable SQLite data before
+  application to Supabase.
+- Sector default migration was tested on a disposable SQLite database before
+  applying it to Supabase.
+- Production frontend build and Python compile check passed.
+- Focused lint passed for the new/changed UI. AdminDashboard has existing
+  unused-variable lint findings; its focused check disabled only that rule.
+- Full backend suite: 94 passed and 13 failed in unrelated iteration-3 audit
+  and superadmin tests.
+- git diff --check passed.
+- A live admin browser check of the latest demand/sector UI was not completed.
+
+Key Files
+---------
+- app/data/pangasinan_barangays.csv
+- app/blueprints/admin_api.py
+- app/blueprints/analytics_api.py
+- app/blueprints/auth_api.py
+- app/blueprints/public_api.py
+- app/models/email_change_token.py
+- app/models/sector_demand_setting.py
+- app/services/sector_demand.py
+- app/services/report_service.py
+- migrations/versions/20261104e001_email_change_tokens.py
+- migrations/versions/20261104e002_sector_demand_settings.py
+- migrations/versions/20261104e003_seed_sector_demand_defaults.py
+- migrations/versions/20261104e004_household_share_and_other_remainder.py
+- frontend/src/utils/demandKpiPercentages.js
+- frontend/src/App.jsx
+- frontend/src/components/admin/AdminDashboard.jsx
+- frontend/src/components/admin/AdminSidebar.jsx
+- frontend/src/components/admin/DemandBenchmarkSettings.jsx
+- frontend/src/components/admin/SupplyDemandAnalytics.jsx
+- frontend/src/components/admin/UsersManagement.jsx
+- frontend/src/components/admin/ValidationQueue.jsx
+- frontend/src/components/admin/Municipalities.jsx
+- frontend/src/components/admin/municipality/
+- frontend/src/components/ProducerMasterList.jsx
+- frontend/src/components/SupplyDemandSection.jsx
+- frontend/src/services/dataService.js
+- tests/test_admin_benchmark_and_account_management.py
+- tests/test_auth_email_change.py
+- ADMIN_WORKFLOW_CHANGES.txt

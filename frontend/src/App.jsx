@@ -4,6 +4,7 @@ import GuestDashboard from './components/GuestDashboard';
 import Login from './components/Login';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
+import ConfirmEmailChange from './components/ConfirmEmailChange';
 import ChangePassword from './components/ChangePassword';
 import EncoderLayout from './components/encoder/EncoderLayout';
 import EncoderDashboard from './components/encoder/EncoderDashboard';
@@ -13,6 +14,7 @@ import RequireAdmin from './components/admin/RequireAdmin';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminPage from './components/admin/AdminPage';
 import UsersManagement from './components/admin/UsersManagement';
+import DemandBenchmarkSettings from './components/admin/DemandBenchmarkSettings';
 import Municipalities from './components/admin/Municipalities';
 import ForecastDashboard from './components/admin/ForecastDashboard';
 import TargetEvaluation from './components/admin/target/TargetEvaluation';
@@ -46,6 +48,7 @@ const ROUTE_TITLES = {
   '/login': 'Sign In',
   '/forgot-password': 'Forgot Password',
   '/reset-password': 'Reset Password',
+  '/confirm-email-change': 'Confirm Email Address',
   '/privacy': 'Privacy Policy',
   '/terms': 'Terms & Conditions',
   '/help': 'Help Center',
@@ -54,6 +57,7 @@ const ROUTE_TITLES = {
   '/encoder': 'Encoder Dashboard',
   '/admin': 'Executive Dashboard',
   '/admin/users': 'User Management',
+  '/admin/demand-benchmarks': 'Demand Benchmark Settings',
   '/admin/municipalities': 'Municipality Management',
   '/change-password': 'Change Password',
   '/admin/master-list': 'Salt Farmer Master List',
@@ -61,7 +65,7 @@ const ROUTE_TITLES = {
   '/encoder/production-records': 'Production Records',
   '/encoder/environment-records': 'Environment Records',
   '/admin/validation': 'Validation Queue',
-  '/admin/data-quality': 'Data Quality',
+  '/admin/data-quality': 'Data Integrity (Completeness)',
   '/admin/forecast': 'Forecasting',
   '/admin/forecast/target': 'Target Evaluation',
   '/admin/reports': 'Generate Reports',
@@ -178,6 +182,14 @@ export default function App() {
         )} />
         <Route path="/forgot-password" element={<ErrorBoundary><ForgotPassword /></ErrorBoundary>} />
         <Route path="/reset-password" element={<ErrorBoundary><ResetPassword /></ErrorBoundary>} />
+        <Route
+          path="/confirm-email-change"
+          element={(
+            <ErrorBoundary>
+              <ConfirmEmailChange setUser={setUser} />
+            </ErrorBoundary>
+          )}
+        />
         <Route path="/privacy" element={<ErrorBoundary><PrivacyPolicy /></ErrorBoundary>} />
         <Route path="/terms" element={<ErrorBoundary><LegalDoc docType="terms" /></ErrorBoundary>} />
         <Route
@@ -253,6 +265,11 @@ export default function App() {
           <Route path="users" element={
             <ErrorBoundary>
               <UsersManagement />
+            </ErrorBoundary>
+          } />
+          <Route path="demand-benchmarks" element={
+            <ErrorBoundary>
+              <DemandBenchmarkSettings />
             </ErrorBoundary>
           } />
           <Route path="municipalities" element={

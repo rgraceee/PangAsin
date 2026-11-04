@@ -204,25 +204,31 @@ def _municipality_share_rows(per_municipality, municipality_names):
     return rows
 
 
-def _production_descriptive(municipality_id, months):
+def _production_descriptive(municipality_id, months, selected_year=None):
     """Return descriptive history for the source-labeled production dataset."""
-    latest = (
+    latest_query = (
         MunicipalityMonthlyProduction.query
         .filter(
             MunicipalityMonthlyProduction.municipality_id.in_(
                 active_municipality_ids_subquery()
             )
         )
-        .order_by(
-            MunicipalityMonthlyProduction.production_year.desc(),
-            MunicipalityMonthlyProduction.production_month.desc(),
-        )
-        .first()
     )
+    if municipality_id is not None:
+        latest_query = latest_query.filter(
+            MunicipalityMonthlyProduction.municipality_id == municipality_id
+        )
+    latest = latest_query.order_by(
+        MunicipalityMonthlyProduction.production_year.desc(),
+        MunicipalityMonthlyProduction.production_month.desc(),
+    ).first()
     if latest is None:
         return jsonify({
             "scope": "all_municipalities" if municipality_id is None else municipality_id,
             "data_source": "municipality_production",
+            "filters": {"months": months, "year": selected_year},
+            "available_years": [],
+            "selected_year": selected_year,
             "kpis": {"latest_record_month": None},
             "history": {
                 "months_with_data": 0,
@@ -234,8 +240,6 @@ def _production_descriptive(municipality_id, months):
             "seasonal_pattern": [],
         })
 
-    latest_month = date(latest.production_year, latest.production_month, 1)
-    end = add_months(latest_month, 1)
     all_rows_query = MunicipalityMonthlyProduction.query.filter(
         MunicipalityMonthlyProduction.production_year <= latest.production_year
     ).filter(
@@ -270,6 +274,7 @@ def _production_descriptive(municipality_id, months):
     }
     by_municipality = _municipality_share_rows(per_municipality, municipality_names)
 
+    available_years = sorted(year_totals, reverse=True)
     this_year = latest.production_year
     last_year = this_year - 1
     last_year_total = year_totals.get(last_year, 0.0)
@@ -279,11 +284,11 @@ def _production_descriptive(municipality_id, months):
         if last_year_total
         else None
     )
-    series_start = month_start_offset(latest_month, -(months - 1))
+    effective_year = selected_year or this_year
     series_rows = [
         {"month": label, "total_mt": round(value, 3)}
         for label, value in zip(all_labels, all_values)
-        if series_start <= date(int(label[:4]), int(label[5:7]), 1) < end
+        if int(label[:4]) == effective_year
     ]
     best_month = (
         max(zip(all_labels, all_values), key=lambda item: item[1])[0]
@@ -302,7 +307,13 @@ def _production_descriptive(municipality_id, months):
     return jsonify({
         "scope": "all_municipalities" if municipality_id is None else municipality_id,
         "data_source": "municipality_production",
-        "filters": {"months": months, "production_method": None},
+        "filters": {
+            "months": months,
+            "year": effective_year,
+            "production_method": None,
+        },
+        "available_years": available_years,
+        "selected_year": effective_year,
         "kpis": {
             "total_recorded_mt": round(sum(all_values), 3),
             "this_year_mt": round(this_year_total, 3),
@@ -579,7 +590,14 @@ def descriptive():
             return jsonify({
                 "error": "Production-method filters are unavailable for this production dataset."
             }), 400
-        return _production_descriptive(municipality_id, months)
+        raw_year = request.args.get("year")
+        try:
+            selected_year = int(raw_year) if raw_year else None
+        except ValueError:
+            return jsonify({"error": "year must be a valid integer."}), 400
+        if selected_year is not None and not 1 <= selected_year <= 9999:
+            return jsonify({"error": "year must be between 1 and 9999."}), 400
+        return _production_descriptive(municipality_id, months, selected_year)
     if source != "approved_records":
         return jsonify({"error": "source must be approved_records or municipality_production."}), 400
 

@@ -49,6 +49,36 @@
 .muni-card-head-left { display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
 .muni-card-head-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
+.muni-year-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--muni-muted);
+  border: 1px solid var(--muni-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.muni-year-filter:focus-within {
+  border-color: var(--muni-ocean);
+  box-shadow: 0 0 0 3px rgba(21, 101, 200, 0.12);
+}
+
+.muni-year-filter select {
+  min-width: 58px;
+  padding: 4px 16px 4px 2px;
+  color: var(--muni-navy);
+  border: 0;
+  outline: 0;
+  background-color: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
 .muni-card-head-icon {
   display: inline-flex;
   align-items: center;

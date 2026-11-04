@@ -1,7 +1,5 @@
-// WHAT: "Cumulative Pace" - recorded production plus the forecast as one
-//       continuous line against the seasonal target path.
-// WHY: it answers "will we reach the target, and if not, where do we fall
-//       short?" in a single picture, with the forecast's own range as a band.
+// WHAT: Cumulative approved supply plus each forecast month against demand.
+// WHY: it answers whether supply reaches the target within the selected horizon.
 import { useState } from 'react';
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -16,7 +14,7 @@ import TargetCard from './TargetCard';
 const NAVY = 'var(--te-navy)';
 const GOLD = 'var(--te-gold)';
 
-export default function TargetPaceChart({ rows, annualTarget, reachedMonth, yearEndGap }) {
+export default function TargetPaceChart({ rows, annualTarget, reachedMonth, horizonGap }) {
   const [width, setWidth] = useState(0);
   const narrow = width > 0 && width < 560;
   const firstForecast = rows.find((r) => r.isForecast);
@@ -28,25 +26,25 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, year
   }));
   const gapNote = !rows.length
     ? 'No production or forecast data is available for this target.'
-    : yearEndGap == null
-      ? 'No projected year-end gap is available for this target.'
-      : yearEndGap >= 0
-        ? `Projected year-end is ${fmtMT(yearEndGap)} Metric Tons (MT) above the ${fmtMT(annualTarget)} Metric Tons (MT) target.`
-        : `Projected year-end is ${fmtMT(Math.abs(yearEndGap))} Metric Tons (MT) below the ${fmtMT(annualTarget)} Metric Tons (MT) target.`;
+    : horizonGap == null
+      ? 'No projected supply gap is available for this target.'
+      : horizonGap >= 0
+        ? `Projected supply after the selected horizon is ${fmtMT(horizonGap)} Metric Tons (MT) above the ${fmtMT(annualTarget)} Metric Tons (MT) demand target.`
+        : `Projected supply after the selected horizon is ${fmtMT(Math.abs(horizonGap))} Metric Tons (MT) below the ${fmtMT(annualTarget)} Metric Tons (MT) demand target.`;
 
   return (
     <TargetCard
       icon={ChartNoAxesColumnIncreasing}
-      title="Target path vs production"
-      sub="Recorded production against the seasonal target path; the dashed line is the target."
+      title="Projected cumulative supply vs demand"
+      sub="Approved supply to date plus monthly forecasts, compared with the full demand target."
       chips={(
         <>
-          <span className="te-chip"><span className="te-chip-swatch" style={{ background: NAVY }} />Production to date</span>
-          <span className="te-chip"><span className="te-chip-swatch" style={{ background: GOLD }} />Target path</span>
-          <span className="te-chip"><span className="te-chip-swatch te-chip-swatch--soft" style={{ background: 'var(--te-gold-soft)' }} />Expected range</span>
+          <span className="te-chip"><span className="te-chip-swatch" style={{ background: NAVY }} />Cumulative supply</span>
+          <span className="te-chip"><span className="te-chip-swatch" style={{ background: GOLD }} />Demand target</span>
+          <span className="te-chip"><span className="te-chip-swatch te-chip-swatch--soft" style={{ background: 'var(--te-gold-soft)' }} />Forecast range</span>
         </>
       )}
-      caption={`The target path spreads the ${fmtMT(annualTarget)} Metric Tons (MT) annual target across the months by season, so wet months are not judged against a flat share. Forecast months beyond the evaluation year are not part of this target.`}
+      caption={`Current supply is the sum of approved production records from January through the latest reported month (${fmtMT(rows[0]?.cumTotal ?? 0)} Metric Tons (MT)). Each forecast month is added to that starting supply; the dashed line is the full ${fmtMT(annualTarget)} Metric Tons (MT) demand target.`}
     >
       <div className="te-chart" style={{ height: 320 }}>
           <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>
@@ -105,7 +103,7 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, year
                 connectNulls={false}
                 isAnimationActive={false}
               />
-              <PaceMarkers rows={rows} reachedMonth={reachedMonth} yearEndGap={yearEndGap} narrow={narrow} />
+              <PaceMarkers rows={rows} reachedMonth={reachedMonth} horizonGap={horizonGap} narrow={narrow} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

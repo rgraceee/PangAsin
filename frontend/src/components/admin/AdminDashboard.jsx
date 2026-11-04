@@ -17,6 +17,7 @@ import { SkeletonCards, SkeletonChart } from '../Skeleton';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import DashboardFilters, { useDashboardFilters } from './DashboardFilters';
 import { fmtMT } from '../../utils/volumeFormat';
+import { getDemandKpiPercentages } from '../../utils/demandKpiPercentages';
 
 const normName = (name) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(city|of|municipality)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -165,10 +166,14 @@ export default function AdminDashboard({ user }) {
   const localSupplyMT = supplyDemand?.pangasinan?.local_production;
   const supplyPeriod = supplyDemand?.pangasinan?.local_supply_period;
   const demandYear = supplyDemand?.pangasinan?.year;
-  const supplyDemandGap = demandBenchmark && localSupplyMT != null
-    ? localSupplyMT - demandBenchmark
+  const hasSupplyDemandTarget = demandBenchmark > 0 && localSupplyMT != null;
+  const supplyDemandShortfall = hasSupplyDemandTarget
+    ? Math.max(demandBenchmark - localSupplyMT, 0)
     : null;
-  const supplyDemandLabel = supplyDemandGap == null ? 'N/A' : (supplyDemandGap >= 0 ? 'Surplus' : 'Shortage');
+  const { shortfall: shortfallPercentage, production: productionPercentage } = getDemandKpiPercentages(
+    supplyDemandShortfall,
+    totalVolumeMT,
+  );
   const supplySourceNote = supplyPeriod
     ? `Pangasinan-wide comparison, unaffected by dashboard filters. Supply uses Adjusted_Estimates.xlsx from ${supplyPeriod.start} to ${supplyPeriod.end}; demand is the ${demandYear} annual benchmark.`
     : 'Municipality production data is not available for the supply comparison.';
@@ -219,18 +224,23 @@ export default function AdminDashboard({ user }) {
                     sa municipality + period filter ang iba.) */}
             <KpiCard
               icon={Scale}
-              title="Province-wide Balance"
-              value={supplyDemandGap == null ? null : Math.round(Math.abs(supplyDemandGap) * 100) / 100}
-              unit={supplyDemandGap == null ? undefined : 'Metric Tons (MT)'}
-              badge={supplyDemandLabel === 'N/A' ? undefined : { text: supplyDemandLabel, tone: supplyDemandGap >= 0 ? 'good' : 'bad' }}
-              supporting={demandBenchmark ? `vs ${fmtMT(demandBenchmark)} Metric Tons (MT) demand benchmark` : 'No demand benchmark available'}
+              title="Salt Needed to Meet Demand"
+              value={supplyDemandShortfall == null ? null : Math.round(supplyDemandShortfall * 100) / 100}
+              unit={supplyDemandShortfall == null
+                ? undefined
+                : `Metric Tons (MT) · ${shortfallPercentage}%`}
+              supporting={supplyDemandShortfall == null
+                ? 'No Pangasinan demand benchmark available'
+                : supplyDemandShortfall > 0
+                  ? `Still needed to meet the ${demandYear} Pangasinan target`
+                  : `The ${demandYear} Pangasinan demand target is met`}
               info={supplySourceNote}
             />
             <KpiCard
               icon={Boxes}
               title="Total Production"
               value={totalVolumeMT}
-              unit="Metric Tons (MT)"
+              unit={`Metric Tons (MT)${productionPercentage == null ? '' : ` · ${productionPercentage}%`}`}
               supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
               info="Source: Adjusted_Estimates.xlsx."
             />

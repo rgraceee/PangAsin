@@ -124,10 +124,10 @@ export default function SupplyDemandSection() {
   const data = useMemo(() => getSupplyDemand(scope), [scope]);
   const sectorData = useMemo(
     () =>
-      [...getSectorDemand()]
+      [...getSectorDemand(scope)]
         .filter((s) => Number(s.value) > 0)
         .sort((a, b) => b.value - a.value),
-    []
+    [scope]
   );
 
   const isPhilippines = scope === 'philippines';
@@ -159,9 +159,9 @@ export default function SupplyDemandSection() {
             : (label === 'Domestic Supply'
               ? 'Salt produced by local salt farmers'
               : 'Salt sourced from imports'))
-          : (label === 'Demand Benchmark'
+          : (label === 'Pangasinan Demand Benchmark'
             ? 'Annual salt demand benchmark for Pangasinan'
-            : data.note),
+            : (label === 'Pangasinan Supply' ? 'Salt produced in Pangasinan' : data.note)),
       };
     });
 
@@ -194,15 +194,15 @@ export default function SupplyDemandSection() {
       const coverage = pctOf(supply, demand);
       const gap = supply - demand;
       chips = [
-        { label: 'Production data (12 months)', value: fmtMT(supply) },
-        { label: 'Demand benchmark', value: fmtMT(demand) },
+        { label: 'Local supply (Pangasinan)', value: fmtMT(supply) },
+        { label: 'Local demand (Pangasinan)', value: fmtMT(demand) },
         {
           label: gap >= 0 ? 'Surplus' : 'Shortage',
           value: fmtMT(Math.abs(gap)),
         },
       ];
       captionText =
-        `Pangasinan's production data${data.period ? ` (${data.period.start} to ${data.period.end})` : ''} `
+        `Pangasinan local supply${data.period ? ` (${data.period.start} to ${data.period.end})` : ''} `
         + `of ${fmtMT(supply)} is ${coverage == null ? '—' : fmtPct(coverage)} of the annual local demand benchmark `
         + `of ${fmtMT(demand)}`
         + (gap >= 0 ? ' — a surplus against the benchmark.' : ' — a shortfall against the benchmark.');
@@ -233,11 +233,10 @@ export default function SupplyDemandSection() {
      WHY: Isang lugar lang ang eksaktong numero (bar label = Metric Tons (MT), chip = %),
           at hindi nauubos ang espasyo ng bar. */
   const sectorRows = useMemo(() => {
-    const total = sectorData.reduce((sum, s) => sum + (Number(s.value) || 0), 0);
     return sectorData.map((s, index) => ({
       sector: s.sector,
       value: Number(s.value) || 0,
-      percentage: total > 0 ? (s.value / total) * 100 : 0,
+      percentage: s.percentage,
       color: CATEGORY_RAMP[index % CATEGORY_RAMP.length],
     }));
   }, [sectorData]);
@@ -247,14 +246,8 @@ export default function SupplyDemandSection() {
   const sectorCaption = useMemo(() => {
     if (sectorRows.length === 0) return 'No sector demand benchmark available yet.';
     const top = sectorRows[0];
-    const second = sectorRows[1];
-    const total = sectorRows.reduce((sum, s) => sum + s.value, 0);
-    const lead = `${top.sector} is the largest tracked end use at ${fmtMT(top.value)} (${fmtPct(top.percentage)} of tracked demand)`;
-    const follow = second
-      ? `, followed by ${second.sector} (${fmtPct(second.percentage)}).`
-      : '.';
-    return `${lead}${follow} Tracked demand totals ${fmtMT(total)}.`;
-  }, [sectorRows]);
+    return `${top.sector} is ${fmtPct(top.percentage)} of the current ${isPhilippines ? 'Philippines' : 'Pangasinan'} demand target (${fmtMT(top.value)}). Sector amounts update with the admin-set demand benchmark.`;
+  }, [sectorRows, isPhilippines]);
 
   // WHAT: Plain-text na buod para sa screen readers.
   const supplyAria = rows.map((r) => `${r.name}: ${fmtMT(r.value)}`).join('; ');
@@ -380,12 +373,14 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Demand by Sector</h5>
-                  <p className="fc-card-sub">Each slice is an end-use sector’s share of national salt demand.</p>
+                  <p className="fc-card-sub">
+                    Sector shares are configured by the admin and calculated from the current {isPhilippines ? 'Philippines' : 'Pangasinan'} demand target.
+                  </p>
                 </div>
               </div>
               <div className="fc-card-head-right">
                 <span className="reference-tag">
-                  <Info size={12} strokeWidth={2} /> Reference data &mdash; not live
+                  <Info size={12} strokeWidth={2} /> Admin-configured shares
                 </span>
               </div>
             </Card.Header>
@@ -393,7 +388,7 @@ export default function SupplyDemandSection() {
               {sectorRows.length === 0 ? (
                 <div className="chart-empty">
                   <span className="chart-empty-chip">No data</span>
-                  No sector demand reference data available yet.
+                  No sector allocations have been configured for {isPhilippines ? 'the Philippines' : 'Pangasinan'} yet.
                 </div>
               ) : (
                 <>

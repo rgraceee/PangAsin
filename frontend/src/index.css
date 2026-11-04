@@ -1101,6 +1101,10 @@ body {
   overflow: hidden;
 }
 
+.public-dashboard-footer {
+  margin-inline: calc(-1 * clamp(16px, 2vw, 32px));
+}
+
 .login-footer > .Container {
   max-width: 1200px;
 }
@@ -1237,8 +1241,37 @@ body {
   line-height: 1.6;
 }
 
+.login-footer-policy .login-footer-signin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 4px;
+  padding: 8px 14px;
+  border: 1px solid var(--p-gold);
+  border-radius: 8px;
+  background: var(--p-gold);
+  color: var(--p-navy);
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.login-footer-policy .login-footer-signin:hover {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: var(--p-navy);
+  text-decoration: none;
+}
+
+.login-footer-policy .login-footer-signin:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .login-footer-contact-link {
+  .login-footer-contact-link,
+  .login-footer-policy .login-footer-signin {
     transition: none;
   }
 }
@@ -3470,7 +3503,7 @@ body {
   grid-column: 4 / 6;
 }
 
-/* WHAT: PDF/Word segmented control sa tabi ng Generate button. */
+/* WHAT: PDF/Word/Excel format options beside the Generate button. */
 .report-generate-group {
   display: flex;
   align-items: flex-end;
@@ -3479,8 +3512,37 @@ body {
   min-width: 0;
 }
 
-.report-generate-group .te-segmented {
+.report-format-options {
+  display: inline-flex;
+  align-items: stretch;
+  height: 38px;
+  padding: 3px;
+  border: 1px solid var(--ui-guide);
+  border-radius: var(--ui-radius-input);
+  background: var(--ui-surface);
   flex: 0 0 auto;
+}
+
+.report-format-option {
+  min-width: 62px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: calc(var(--ui-radius-input) - 2px);
+  background: transparent;
+  color: var(--ui-text-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-format-option.is-active {
+  background: var(--ui-accent-dark);
+  color: #fff;
+}
+
+.report-format-option:focus-visible {
+  outline: 2px solid var(--ui-accent-dark);
+  outline-offset: 2px;
 }
 
 .report-generate-btn {
@@ -3585,11 +3647,11 @@ body {
     align-items: stretch;
   }
 
-  .report-generate-group .te-segmented {
+  .report-generate-group .report-format-options {
     width: 100%;
   }
 
-  .report-generate-group .te-segmented__option {
+    .report-generate-group .report-format-option {
     flex: 1 1 0;
   }
 
@@ -3863,6 +3925,12 @@ body {
   background: #EAF1FE;
   border: 1px solid #C9DAFB;
   color: #1D4ED8;
+}
+
+.report-format-badge--excel {
+  background: #EAF7EE;
+  border: 1px solid #B7E2C3;
+  color: #18743B;
 }
 
 .report-format-badge--other {
@@ -4216,6 +4284,18 @@ body {
 
 .report-dl-btn--word:hover {
   background-color: #1d4ed8;
+}
+
+.report-dl-btn--excel {
+  background-color: #188038;
+}
+
+.report-dl-btn--excel:focus-visible {
+  outline-color: #137333;
+}
+
+.report-dl-btn--excel:hover {
+  background-color: #137333;
 }
 
 .report-dl-btn--sm {
@@ -4823,9 +4903,58 @@ body {
 
 .vq-check-col .form-check-input {
   margin: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #667085;
   cursor: pointer;
+}
+
+.vq-check-col .form-check-input:checked {
+  border-color: #1565c8;
+}
+
+.vq-check-col .form-check-input:focus-visible {
+  outline: 2px solid rgba(21, 101, 200, 0.4);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
 .vq-check-col .form-check-input:disabled {
   cursor: not-allowed;
+}
+
+.master-search-form {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.master-search-form .ui-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.master-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-surface);
+  transform: translateY(-50%);
+}
+
+.master-search-control .master-search-form {
+  position: relative;
+}
+
+.master-search-control .master-search-input {
+  padding-right: 38px;
 }

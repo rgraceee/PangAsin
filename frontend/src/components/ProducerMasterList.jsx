@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Alert, Badge, Card, OverlayTrigger, Spinner, Table, Tooltip } from 'react-bootstrap';
-import { CalendarDays, Clock, Pencil, Plus, Search, Trash2, Users, ContactRound } from 'lucide-react';
+import { CalendarDays, Clock, Pencil, Plus, Search, Trash2, Users, ContactRound, X } from 'lucide-react';
 import { createProducer, deleteProducer, getEncoderProducerReports, getProducers, updateProducer } from '../services/dataService';
 import { confirmDelete } from '../services/feedback';
 import { useToast } from './Toast';
@@ -19,7 +19,7 @@ import usePagination from '../hooks/usePagination';
 
 const EMPTY_FORM = { name: '', age: '', sex: '', address: '', barangay_id: '' };
 
-const SEX_OPTIONS = ['Male', 'Female', 'Other'];
+const SEX_OPTIONS = ['Male', 'Female'];
 
 const AGE_GROUPS = [
   { value: 'under30', label: 'Under 30' },
@@ -53,6 +53,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   const { toastSuccess, toastError } = useToast();
   const [filters, setFilters] = useState({ municipality_id: '', barangay_id: '', sex: '', age_group: '' });
   const [adminSearch, setAdminSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [rows, setRows] = useState([]);
   const [statistics, setStatistics] = useState({ total: 0, male: 0, female: 0, other: 0, average_age: null, by_barangay: [] });
   const [municipalities, setMunicipalities] = useState([]);
@@ -111,7 +112,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
     const params = { page, per_page: perPage };
     if (adminView && filters.municipality_id) params.municipality_id = filters.municipality_id;
     if (filters.barangay_id) params.barangay_id = filters.barangay_id;
-    if (adminView && adminSearch.trim()) params.q = adminSearch.trim();
+    if (adminView && appliedSearch) params.q = appliedSearch;
     /* WHAT: Sex at Age group ay server-side na.
        WHY: kapag page lang ang nasa browser, hindi tama ang filter kung
             i-filter pa ito sa isang page. */
@@ -144,11 +145,32 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
   /* WHAT: Bagong filter o search = balik sa unang page. */
   useEffect(() => {
     setPage(1);
-  }, [filters.municipality_id, filters.barangay_id, filters.sex, filters.age_group, adminSearch, adminView]);
+  }, [filters.municipality_id, filters.barangay_id, filters.sex, filters.age_group, appliedSearch, adminView]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const search = adminSearch.trim();
+      setAppliedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [adminSearch]);
 
   useEffect(() => {
     load();
-  }, [filters.municipality_id, filters.barangay_id, filters.sex, filters.age_group, adminSearch, adminView, page, perPage]);
+  }, [filters.municipality_id, filters.barangay_id, filters.sex, filters.age_group, appliedSearch, adminView, page, perPage]);
+
+  const submitAdminSearch = (event) => {
+    event.preventDefault();
+    setPage(1);
+    setAppliedSearch(adminSearch.trim());
+  };
+
+  const clearAdminSearch = () => {
+    setAdminSearch('');
+    setAppliedSearch('');
+    setPage(1);
+  };
 
   const handleAdd = async (event) => {
     event.preventDefault();
@@ -256,12 +278,33 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         compact={!adminView}
       >
         {adminView && (
-          <div className="admin-page-hero-control">
+          <div className="admin-page-hero-control master-search-control">
             <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
-            <div className="ui-search">
-              <Search size={16} className="ui-search-icon" aria-hidden="true" />
-              <input id="master-search" type="search" className="form-control admin-page-hero-input" name="q" value={adminSearch} onChange={(event) => setAdminSearch(event.target.value)} placeholder="Search" />
-            </div>
+            <form className="master-search-form" role="search" onSubmit={submitAdminSearch}>
+              <div className="ui-search">
+                <Search size={16} className="ui-search-icon" aria-hidden="true" />
+                <input
+                  id="master-search"
+                  type="search"
+                  className="form-control admin-page-hero-input master-search-input"
+                  name="q"
+                  value={adminSearch}
+                  onChange={(event) => setAdminSearch(event.target.value)}
+                  placeholder="Search salt farmers"
+                />
+              </div>
+              {(adminSearch || appliedSearch) && (
+                <button
+                  type="button"
+                  className="ui-btn-text master-search-clear"
+                  onClick={clearAdminSearch}
+                  aria-label="Clear salt farmer search"
+                  title="Clear search"
+                >
+                  <X size={15} aria-hidden="true" />
+                </button>
+              )}
+            </form>
           </div>
         )}
         {adminView && (
@@ -280,22 +323,24 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             {barangays.map((item) => <option key={item.id} value={item.id}>{item.name}{adminView ? ` · ${item.municipality}` : ''}</option>)}
           </select>
         </div>
-        {!adminView && (
+        {(
           <>
             <div className="admin-page-hero-control">
               <label className="admin-page-hero-field" htmlFor="master-sex">Sex</label>
               <select id="master-sex" className="form-select admin-page-hero-select" name="sex" value={filters.sex} onChange={updateFilter}>
-                <option value="">All</option>
+                <option value="">All sexes</option>
                 {SEX_OPTIONS.map((sex) => <option key={sex} value={sex}>{sex}</option>)}
               </select>
             </div>
-            <div className="admin-page-hero-control">
-              <label className="admin-page-hero-field" htmlFor="master-age-group">Age group</label>
-              <select id="master-age-group" className="form-select admin-page-hero-select" name="age_group" value={filters.age_group} onChange={updateFilter}>
-                <option value="">All ages</option>
-                {AGE_GROUPS.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
-              </select>
-            </div>
+            {!adminView && (
+              <div className="admin-page-hero-control">
+                <label className="admin-page-hero-field" htmlFor="master-age-group">Age group</label>
+                <select id="master-age-group" className="form-select admin-page-hero-select" name="age_group" value={filters.age_group} onChange={updateFilter}>
+                  <option value="">All ages</option>
+                  {AGE_GROUPS.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
+                </select>
+              </div>
+            )}
           </>
         )}
       </PageHeader>
@@ -313,7 +358,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           icon={ContactRound}
           title="Gender Distribution"
           value={`${statistics.male.toLocaleString()} / ${statistics.female.toLocaleString()}`}
-          supporting={`Male / Female${statistics.other > 0 ? ` · Other: ${statistics.other.toLocaleString()}` : ''}`}
+          supporting="Male / Female"
           info="Registered salt farmers by sex — male / female."
         />
         <KpiCard
@@ -561,7 +606,6 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
                 <option value="">Select</option>
                 <option>Female</option>
                 <option>Male</option>
-                <option>Other</option>
               </select>
             </ReportField>
           </div>

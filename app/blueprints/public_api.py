@@ -14,11 +14,11 @@ from app.models.municipality import Municipality
 from app.models.production_record import ProductionRecord
 from app.models.producer_report import ProducerReport, ProducerReportEntry
 from app.models.demand_benchmark import DemandBenchmark
+from app.services.sector_demand import build_sector_demand_by_scope
 from app.models.municipality_production import (
     MunicipalityMonthlyProduction,
     MunicipalitySaltBedData,
 )
-from app.services.forecast_service import _monthly_aggregates
 from app.services.municipality_directory import (
     active_municipalities,
     active_municipality_ids_subquery,
@@ -352,30 +352,38 @@ def _supply_demand():
         .first()
     )
     latest_month = _latest_production_month()
-    if latest_month is None:
-        pangasinan_local_mt = 0.0
-        supply_start = None
-        supply_end = None
-    else:
-        supply_start = _month_with_offset(latest_month, -11)
-        supply_end = _month_with_offset(latest_month, 1) - timedelta(days=1)
-        _, monthly_values, _ = _monthly_aggregates(
-            None,
-            supply_start,
-            supply_end,
-            source="production",
+    supply_year = (
+        provincial.year
+        if provincial
+        else latest_month.year if latest_month else datetime.utcnow().year
+    )
+    annual_production = (
+        db.session.query(
+            func.coalesce(func.sum(MunicipalityMonthlyProduction.production_kg), 0),
+            func.min(MunicipalityMonthlyProduction.production_month),
+            func.max(MunicipalityMonthlyProduction.production_month),
         )
-        pangasinan_local_mt = sum(monthly_values)
+        .filter(
+            MunicipalityMonthlyProduction.production_year == supply_year,
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            ),
+        )
+        .one()
+    )
+    pangasinan_local_mt = float(annual_production[0] or 0) / 1000
+    supply_start_month = annual_production[1]
+    supply_end_month = annual_production[2]
     pangasinan = {
         "localSupply": round(float(pangasinan_local_mt), 3),
         "demandBenchmark": float(provincial.demand_volume) if provincial else None,
-        "year": provincial.year if provincial else datetime.utcnow().year,
+        "year": supply_year,
         "localSupplyPeriod": (
             {
-                "start": f"{supply_start.year:04d}-{supply_start.month:02d}",
-                "end": f"{latest_month.year:04d}-{latest_month.month:02d}",
+                "start": f"{supply_year:04d}-{supply_start_month:02d}",
+                "end": f"{supply_year:04d}-{supply_end_month:02d}",
             }
-            if latest_month
+            if supply_start_month is not None
             else None
         ),
         "dataSource": "municipality_production",
@@ -386,16 +394,24 @@ def _supply_demand():
         "imports": float(national.import_volume) if national and national.import_volume is not None else None,
         "year": national.year if national else None,
     }
-    sector_demand = {
-        "household": 320000.0,
-        "foodProcessing": 180000.0,
-        "industry": 120000.0,
-        "agriculture": 63608.0,
-    }
+    national_production = philippines["domesticSupply"] or 0
+    national_imports = philippines["imports"] or 0
+    sector_demand_by_scope = build_sector_demand_by_scope({
+        "national": {
+            "demand": philippines["demand"] or 0,
+            "supply": national_production + national_imports,
+            "production": national_production,
+        },
+        "provincial": {
+            "demand": pangasinan["demandBenchmark"] or 0,
+            "supply": pangasinan_local_mt,
+            "production": pangasinan_local_mt,
+        },
+    })
     return {
         "philippines": philippines,
         "pangasinan": pangasinan,
-        "sectorDemand": sector_demand,
+        "sectorDemandByScope": sector_demand_by_scope,
         "asOfDate": (
             f"{latest_month.strftime('%B %Y')}" if latest_month else None
         ),

@@ -47,7 +47,7 @@ export default function TargetMonthlyChart({ rows, paceNote }) {
           )}
         </>
       )}
-      caption="Solid outline = approved records, dashed outline = forecast. Bars are zero-based so a short bar really is short. Forecast months past the evaluation year are not part of this target."
+      caption="Calendar-year detail: solid outline = approved records, dashed outline = forecast. Bars are zero-based so a short bar really is short; the cumulative chart above includes the full selected forecast horizon."
     >
       <div className="te-chart" style={{ height: 300 }}>
           <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>

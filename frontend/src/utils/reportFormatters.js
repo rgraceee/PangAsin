@@ -65,12 +65,14 @@ export function formatLabel(format) {
   if (!format) return '\u2014';
   if (format === 'docx') return 'DOCX';
   if (format === 'pdf') return 'PDF';
+  if (format === 'excel') return 'Excel';
   return String(format).toUpperCase();
 }
 
 export function formatBadgeClass(format) {
   if (format === 'pdf') return 'report-format-badge--pdf';
   if (format === 'docx') return 'report-format-badge--docx';
+  if (format === 'excel') return 'report-format-badge--excel';
   return 'report-format-badge--other';
 }
 
@@ -79,8 +81,10 @@ export function formatBadgeClass(format) {
 // matched nothing (e.g. no records in that year/barangay).
 export function dataHasRows(data) {
   if (!data) return false;
-  const sectionKeys = ['municipalities', 'by_municipality', 'by_barangay', 'monthly_trend', 'runs', 'producers', 'environment_reports'];
+  const sectionKeys = ['municipalities', 'by_municipality', 'by_barangay', 'monthly_trend', 'runs', 'outlook', 'producers', 'environment_reports'];
   if (sectionKeys.some((k) => Array.isArray(data[k]) && data[k].length > 0)) return true;
+  if (data.sector_demand_by_scope && Object.values(data.sector_demand_by_scope).some((rows) => Array.isArray(rows) && rows.length > 0)) return true;
+  if (['pangasinan', 'philippines'].some((key) => data[key] && Object.keys(data[key]).length > 0)) return true;
   const scalarKeys = ['total_production_mt', 'total_registered_producers', 'total_projected'];
   return scalarKeys.some((k) => typeof data[k] === 'number' && data[k] > 0);
 }

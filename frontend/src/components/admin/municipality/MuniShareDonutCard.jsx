@@ -26,10 +26,10 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
   const topRow = list[0];
   const topShare = total > 0 ? (topRow.volumeMT / total) * 100 : 0;
   const hasData = list.length > 0 && total > 0;
-  const singleMuni = Boolean(selectedMuni);
+  const entityLabel = selectedMuni ? 'barangay' : 'municipality';
 
   const note = topRow
-    ? `Top municipality: ${topRow.name} · ${topShare.toFixed(1)}% of total production.`
+    ? `Top ${entityLabel}: ${topRow.name} · ${topShare.toFixed(1)}% of ${selectedMuni ? `${selectedMuni} approved production` : 'provincial production'}.`
     : null;
 
   return (
@@ -40,23 +40,20 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
             <PieGlyph size={16} strokeWidth={2} />
           </span>
           <div>
-            <h5 className="admin-card-head-title">Share of Provincial Production</h5>
+            <h5 className="admin-card-head-title">
+              Share of {selectedMuni ? 'Barangay' : 'Provincial'} Production
+            </h5>
             <p className="admin-card-head-sub">
-              Each slice is a municipality&apos;s share of the total production in the selected period.
+              Each slice is a {entityLabel}&apos;s share of the {selectedMuni ? 'selected municipality' : 'provincial'} total.
             </p>
           </div>
         </div>
       </Card.Header>
       <Card.Body>
-        {singleMuni ? (
-          <div className="admin-prod-empty" style={{ minHeight: CHART_HEIGHT + 40 }}>
-            <span className="admin-prod-empty-chip">Single municipality</span>
-            Select all municipalities to see shares
-          </div>
-        ) : !hasData ? (
+        {!hasData ? (
           <div className="admin-prod-empty">
             <span className="admin-prod-empty-chip">No data</span>
-            No production records for the selected municipalities.
+            No production records for the selected {entityLabel}s.
           </div>
         ) : (
           <>
@@ -70,6 +67,8 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
               centerLabel="Total"
               showLegend={false}
               colorMap={MUNICIPALITY_COLORS}
+              scopeLabel={selectedMuni || 'province'}
+              entityLabel={entityLabel}
             />
             {note && <p className="admin-prod-note">{note}</p>}
           </>

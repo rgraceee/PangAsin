@@ -5,6 +5,7 @@ from app.models.barangay import Barangay
 from app.models.municipality import Municipality
 from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.models.production_record import ProductionRecord
+from app.models.producer import Producer
 from app.models.user import User
 from tests.conftest import create_encoder
 
@@ -97,6 +98,138 @@ def test_admin_stats_filters_by_active_municipality_slug(admin_client):
     assert body["total_salt_beds"] == 10
     assert body["total_registered_producers"] == 2
     assert body["record_count"] == 1
+
+
+def test_admin_stats_returns_barangay_chart_data_for_selected_municipality(
+    admin_client,
+):
+    bolinao = _municipality("Bolinao")
+    other = _municipality("Anda")
+    poblacion = _barangay(bolinao, "Poblacion")
+    luciente = _barangay(bolinao, "Luciente 1st")
+    _approved_record(bolinao, poblacion, volume_mt=25)
+    _approved_record(other, _barangay(other), volume_mt=100)
+    db.session.add(
+        Producer(
+            barangay_id=poblacion.id,
+            name="Poblacion Farmer",
+            age=35,
+            sex="Female",
+        )
+    )
+    db.session.add(
+        Producer(
+            barangay_id=luciente.id,
+            name="Luciente Farmer",
+            age=45,
+            sex="Male",
+        )
+    )
+    db.session.commit()
+
+    response = admin_client.get(
+        "/api/admin/stats?source=approved_records"
+        "&municipality=bolinao&year=2026&month=1"
+    )
+
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    municipality = body["by_municipality"][0]
+    assert municipality["municipality_name"] == "Bolinao"
+    assert municipality["by_barangay"] == [{
+        "barangay_id": poblacion.id,
+        "barangay": "Poblacion",
+        "total_volume_mt": 25.0,
+        "record_count": 1,
+        "total_area_sqm": 10.0,
+        "total_salt_beds": 10,
+        "total_registered_producers": 2,
+    }]
+    assert body["master_list_by_barangay"] == [
+        {
+            "barangay_id": luciente.id,
+            "barangay": "Luciente 1st",
+            "municipality_id": bolinao.id,
+            "producers": 1,
+            "age_bands": {
+                "18-30": 0,
+                "31-40": 0,
+                "41-50": 1,
+                "51-60": 0,
+                "61+": 0,
+            },
+            "sex": {"male": 1, "female": 0, "other": 0},
+        },
+        {
+            "barangay_id": poblacion.id,
+            "barangay": "Poblacion",
+            "municipality_id": bolinao.id,
+            "producers": 1,
+            "age_bands": {
+                "18-30": 0,
+                "31-40": 1,
+                "41-50": 0,
+                "51-60": 0,
+                "61+": 0,
+            },
+            "sex": {"male": 0, "female": 1, "other": 0},
+        },
+    ]
+
+
+def test_descriptive_production_trend_can_select_a_year(admin_client):
+    bolinao = _municipality("Bolinao")
+    anda = _municipality("Anda")
+    _monthly_production(bolinao, kg=100_000, year=2024, month=12)
+    _monthly_production(bolinao, kg=250_000, year=2025, month=1)
+    _monthly_production(bolinao, kg=350_000, year=2025, month=12)
+    _monthly_production(bolinao, kg=400_000, year=2026, month=2)
+    _monthly_production(anda, kg=800_000, year=2023, month=7)
+
+    response = admin_client.get(
+        "/api/admin/analytics/descriptive"
+        f"?source=municipality_production&municipality_id={bolinao.id}&year=2025"
+    )
+
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    assert body["available_years"] == [2026, 2025, 2024]
+    assert body["selected_year"] == 2025
+    assert body["filters"]["year"] == 2025
+    assert body["monthly_series"] == [
+        {"month": "2025-01", "total_mt": 250.0},
+        {"month": "2025-12", "total_mt": 350.0},
+    ]
+
+
+def test_descriptive_production_trend_defaults_to_latest_year_in_scope(admin_client):
+    bolinao = _municipality("Bolinao")
+    anda = _municipality("Anda")
+    _monthly_production(bolinao, kg=100_000, year=2024, month=2)
+    _monthly_production(anda, kg=500_000, year=2026, month=3)
+
+    response = admin_client.get(
+        "/api/admin/analytics/descriptive"
+        f"?source=municipality_production&municipality_id={bolinao.id}"
+    )
+
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    assert body["available_years"] == [2024]
+    assert body["selected_year"] == 2024
+    assert body["monthly_series"] == [
+        {"month": "2024-02", "total_mt": 100.0},
+    ]
+
+
+def test_descriptive_production_trend_rejects_invalid_year(admin_client):
+    response = admin_client.get(
+        "/api/admin/analytics/descriptive"
+        "?source=municipality_production&year=not-a-year"
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "year must be a valid integer."
 
 
 def test_admin_stats_rejects_unknown_municipality_slug(admin_client):

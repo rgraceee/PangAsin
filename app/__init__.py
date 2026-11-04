@@ -100,6 +100,25 @@ def create_app(config_class=Config):
             )
             allowed = email_allowed and ip_allowed
             retry_after = max(email_retry, ip_retry)
+        elif (
+            request.path == "/api/auth/email-change-request"
+            and request.method == "POST"
+        ):
+            limit = app.config.get("EMAIL_CHANGE_RATE_LIMIT", 5)
+            window = app.config.get("EMAIL_CHANGE_RATE_WINDOW", 3600)
+            user_id = session.get("user_id")
+            user_allowed, user_retry = limiter.hit(
+                f"email-change:user:{user_id or request.remote_addr}",
+                limit,
+                window,
+            )
+            ip_allowed, ip_retry = limiter.hit(
+                f"email-change:ip:{request.remote_addr}",
+                limit,
+                window,
+            )
+            allowed = user_allowed and ip_allowed
+            retry_after = max(user_retry, ip_retry)
         elif request.path.startswith("/api/admin/") and request.method in (
             "POST",
             "PUT",
@@ -138,7 +157,10 @@ def create_app(config_class=Config):
         # WHAT: Public ang password-reset endpoints kahit may lumang session.
         # WHY: Kapag na-invalidate na ang session, kailangan pa ring makapasok
         #      sa reset link at makapag-set ng bagong password.
-        if request.path.startswith("/api/auth/password-reset"):
+        if request.path.startswith("/api/auth/password-reset") or (
+            request.path == "/api/auth/email-change/confirm"
+            and request.method == "POST"
+        ):
             return None
 
         # WHAT: Gamitin ang session['user_id'] direktso dahil ang

@@ -32,7 +32,7 @@ export function TrendTooltip({ active, payload }) {
   );
 }
 
-export function ProductionTooltip({ active, payload }) {
+export function ProductionTooltip({ active, payload, sourceLabel = 'Municipality production dataset.' }) {
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload || {};
   return (
@@ -44,7 +44,7 @@ export function ProductionTooltip({ active, payload }) {
       <div className="muni-tooltip-row">
         <span>Share of total</span><b>{fmtPct(d.share)}</b>
       </div>
-      <div className="muni-tooltip-source">Municipality production dataset.</div>
+      <div className="muni-tooltip-source">{sourceLabel}</div>
     </div>
   );
 }

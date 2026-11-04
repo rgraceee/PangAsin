@@ -39,26 +39,6 @@ export function formatTimestamp(value) {
   });
 }
 
-/* WHAT: The tone of a score, using the thresholds the API sent.
-   WHY: The browser must not carry its own cut-offs; the API is the only
-        place that decides what "ok" means. */
-export function toneForScore(score, thresholds) {
-  if (!thresholds) return 'ok';
-  if (score >= thresholds.ok) return 'ok';
-  if (score >= thresholds.watch) return 'watch';
-  return 'critical';
-}
-
-export function toneForPercent(pct, thresholds) {
-  return toneForScore(pct, thresholds);
-}
-
 export function cellTitle(name, month, state) {
   return `${name}, ${formatMonth(month)}: ${STATE_TEXT[state] || state}`;
-}
-
-export function statusWord(status) {
-  if (status === 'critical') return 'Needs urgent attention';
-  if (status === 'watch') return 'Needs attention';
-  return 'On track';
 }

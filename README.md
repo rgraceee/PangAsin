@@ -1,4 +1,5 @@
 # PangAsin
+py -3.11 run.py
 
 Salt production monitoring, forecasting, and decision support system for the ASIN Center (Pangasinan State University, DOST NICER Program).
 
@@ -82,12 +83,22 @@ never put the normal Gmail password in `.env`.
 
 The public request response is always generic, whether or not the email exists.
 SMTP failures are written to the Flask log without exposing provider details.
+Newly created encoder accounts initially use a municipality-based placeholder
+email. After signing in and completing the required first-login password change
+(later changes are available under **Settings → Security**), the encoder can
+open **Settings → Account**, submit a real email address and current password,
+then confirm the link delivered to that inbox.
+The existing address remains active until confirmation; subsequent forgot-
+password requests are sent to the verified address. Email-change links expire
+after 30 minutes. Configure the SMTP values above for verification and password
+reset messages to be delivered.
 
 ## Municipality Management (Admin)
 
 Admins add and maintain municipalities from **Admin → Municipalities**. The database is the source of truth; the app no longer assumes a fixed list of seven municipalities.
 
 - **Add Municipality** requires a name, latitude, and longitude. Barangays are optional (up to 100 per municipality), so a municipality can be created with zero barangays and no production data. Coordinates can be typed or picked on the embedded map.
+- Selecting a recognized Pangasinan municipality in **Add Municipality** automatically loads its barangays from the bundled PSGC reference CSV. The list is editable before saving; unrecognized names can still be entered manually. The snapshot is based on the [PSGC API](https://psgc.gitlab.io/api/) and was refreshed on 4 Nov 2026.
 - An encoder account is created automatically:
   - Email: `{slug}.encoder@pangasin.gov.ph`.
   - Display name: `Encoder - {Municipality Name}`.
@@ -101,6 +112,9 @@ Admins add and maintain municipalities from **Admin → Municipalities**. The da
 - **Boundary upload:** admins can upload a GeoJSON `Polygon`/`MultiPolygon` (up to 5 MB) for a municipality. Files are validated and stored as `app/static/geojson/{slug}.json`; the edit dialog can also remove the uploaded file. Municipalities without an uploaded or bundled match fall back to a latitude/longitude marker.
 - **Hard delete:** deleting a municipality requires typing its name. If production data exists, a second explicit confirmation is required; the delete then removes the municipality, its barangays, encoder accounts, production records, reports, forecasts, producers, and related rows.
 - **Audit log:** every municipality, barangay, account, boundary, and sign-in change is recorded under **Admin → Audit Log**. The trail stores the actor, action, entity, summary, IP address, and timestamp.
+- **Supply and demand benchmarks:** admins can edit annual national and Pangasinan benchmark values from **Supply & Demand Analytics**. Demand, local-supply benchmark, imports, source, and year are saved with an audit entry; the live Pangasinan supply chart remains based on production records.
+- **Encoder account access:** admins can deactivate and reactivate encoder accounts from **User Management**. The action requires an audit reason, invalidates the encoder's existing session, and requires the municipality to be active before reactivation.
+- **Municipality deletion:** a Yes/No confirmation asks “Are you sure you want to delete this?” before the existing name-entry and dependent-data confirmations.
 - **Rate limiting:** sign-in attempts are limited per IP + email and admin write requests per user. Exceeding a limit returns `429` with a `Retry-After` header. Limits are configurable with `LOGIN_RATE_LIMIT`, `LOGIN_RATE_WINDOW`, `ADMIN_WRITE_RATE_LIMIT`, and `ADMIN_WRITE_RATE_WINDOW`; set `RATE_LIMIT_ENABLED=0` to disable the limiter.
 
 Apply the migration before using the page:

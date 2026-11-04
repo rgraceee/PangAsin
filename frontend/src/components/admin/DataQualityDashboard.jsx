@@ -1,10 +1,7 @@
-// WHAT: The admin Data Quality page - what is complete, what is missing, and
+// WHAT: The admin Data Integrity page - what is complete, what is missing, and
 //       what the admin should do next.
-// WHY: The old page contradicted itself (a 100% score next to red bars), showed
-//      "82.9% %", hid pending records behind "missing", and only listed
-//      problems. Every number here comes from the API, and every panel says
-//      where its numbers come from. The header and the KPI cards follow the
-//      Dashboard's design language so both pages feel like one product.
+// WHY: Reporting percentages and month counts should make the actual report
+//      coverage easy to scan.
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Card } from 'react-bootstrap';
 import {
@@ -17,26 +14,15 @@ import KpiGrid from '../ui/KpiGrid';
 import PageHeader from './PageHeader';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import DqHeatmap from './data-quality/DqHeatmap';
-import { STATE_LEGEND, formatMonth, formatTimestamp, toneForPercent } from './data-quality/dqData';
+import { STATE_LEGEND, formatTimestamp } from './data-quality/dqData';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
 import './data-quality/dataQuality.css';
 
 const RANGE_OPTIONS = [
-  { value: 'all', label: 'All months' },
-  { value: 6, label: 'Last 6 months' },
-  { value: 12, label: 'Last 12 months' },
+  { value: 'all', label: 'All' },
+  { value: 6, label: '6 months' },
+  { value: 12, label: '12 months' },
 ];
-
-/* WHAT: The status of a KPI card, shown as the small text badge the Dashboard
-   uses (e.g. "Surplus" on the Supply-Demand card).
-   WHY: One visual language for status across the admin - the card shell, the
-        badge slot and the good / warn / bad tones all come from the shared
-        components, so the Data Quality cards look like the Dashboard's. */
-function statusBadge(tone) {
-  if (tone === 'critical') return { text: 'Critical', tone: 'bad' };
-  if (tone === 'watch') return { text: 'Watch', tone: 'warn' };
-  return { text: 'On track', tone: 'good' };
-}
 
 export default function DataQualityDashboard() {
   const [data, setData] = useState(null);
@@ -44,13 +30,14 @@ export default function DataQualityDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [range, setRange] = useState(12);
+  const [year, setYear] = useState(new Date().getFullYear());
   const [selectedId, setSelectedId] = useState(null);
   const { activeNames } = useMunicipalityDirectory();
 
-  const load = useCallback((value) => {
+  const load = useCallback((value, selectedYear) => {
     setRefreshing(true);
     setError(null);
-    getDataQuality({ months: value })
+    getDataQuality({ months: value, year: selectedYear })
       .then((payload) => {
         setData(payload);
         setLoading(false);
@@ -64,8 +51,8 @@ export default function DataQualityDashboard() {
   }, []);
 
   useEffect(() => {
-    load(range);
-  }, [range, load]);
+    load(range, year);
+  }, [range, year, load]);
 
   if (loading && !data) {
     return (
@@ -86,13 +73,13 @@ export default function DataQualityDashboard() {
         <Alert variant="danger" className="d-flex flex-column align-items-start gap-2">
           <div className="d-flex align-items-center gap-2">
             <AlertTriangle size={18} strokeWidth={2} aria-hidden="true" />
-            <strong>We could not load the data quality report.</strong>
+            <strong>We could not load the data integrity report.</strong>
           </div>
           <span style={{ fontSize: 13 }}>
             {error.message || 'The request failed.'} Please check that the server is running and that
             you are still signed in, then try again.
           </span>
-          <button type="button" className="ui-btn-outline ui-btn--sm" onClick={() => load(range)}>
+          <button type="button" className="ui-btn-outline ui-btn--sm" onClick={() => load(range, year)}>
             Try again
           </button>
         </Alert>
@@ -102,21 +89,18 @@ export default function DataQualityDashboard() {
 
   if (!data) return null;
 
-  const { kpis, thresholds, fields, municipalities } = data;
-  const behind = municipalities.filter((municipality) => municipality.status !== 'ok');
-  const worstBehind = behind.some((municipality) => municipality.status === 'critical')
-    ? 'critical' : (behind.length ? 'watch' : 'ok');
-  const pendingTone = kpis.pending_total > 0 ? 'watch' : 'ok';
+  const { kpis, fields, municipalities } = data;
+  const behind = municipalities.filter((municipality) => municipality.reporting_pct < 100);
   /* WHY: The supporting line has to stand on its own - it names who is behind
      when there is nothing to review, and says what a review would unlock. */
   const reviewNote = kpis.review_clearable_count > 0
     ? `${kpis.review_clearable_count} of them can move forward once the waiting records are reviewed.`
     : (behind.length ? `Behind: ${behind.map((m) => m.name).join(', ')}.` : 'Every municipality is on track.');
   const rangeLabel = range === 'all'
-    ? `Since ${formatMonth(data.months[0])}`
-    : `Last ${range} months`;
+    ? `All months · ${year}`
+    : `${range} months · ${year}`;
 
-  const headerActions = null;
+  const years = data.available_years || [year];
 
   return (
     <div className={`admin-dashboard-page dq-page${refreshing ? ' is-refreshing' : ''}`} aria-busy={refreshing}>
@@ -124,12 +108,24 @@ export default function DataQualityDashboard() {
         id="admin-data-quality"
         variant="clean"
         className="ui-pageheader--admin"
-        title="Data Quality"
+        title="Data Integrity (Completeness)"
         subtitle="How complete the records are, and which months still have no report."
-        actions={headerActions}
         art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       >
-        <div className="dq-range-pills d-flex flex-row gap-2 flex-nowrap align-items-center">
+        <div className="dq-range-pills d-flex flex-row gap-2 flex-wrap align-items-center">
+          <label className="visually-hidden" htmlFor="dq-year">Year</label>
+          <select
+            id="dq-year"
+            className="form-select"
+            aria-label="Year"
+            style={{ width: 120 }}
+            value={year}
+            onChange={(event) => setYear(Number(event.target.value))}
+          >
+            {years.map((optionYear) => (
+              <option key={optionYear} value={optionYear}>{optionYear}</option>
+            ))}
+          </select>
           {RANGE_OPTIONS.map((option) => (
             <button
               key={option.value}
@@ -149,7 +145,6 @@ export default function DataQualityDashboard() {
             icon={ClipboardCheck}
             title="Waiting for review"
             value={kpis.pending_total}
-            badge={statusBadge(pendingTone)}
             supporting={kpis.pending_total > 0
               ? `The oldest has been waiting ${kpis.oldest_pending_days} day${kpis.oldest_pending_days === 1 ? '' : 's'}.`
               : 'Nothing is waiting for review.'}
@@ -160,25 +155,22 @@ export default function DataQualityDashboard() {
             title="Months reported"
             value={kpis.reporting_pct}
             unit="%"
-            badge={statusBadge(toneForPercent(kpis.reporting_pct, thresholds))}
-            supporting={`${kpis.municipality_count} municipalities over ${data.expected_months} completed months`}
-            info="Share of municipality-months that have at least one approved record. The month in progress is not counted."
+            supporting={`${kpis.municipality_count} municipalities · ${data.expected_months} months in this period`}
+            info="Share of municipality-months in the selected window that have at least one approved record."
           />
           <KpiCard
             icon={AlertTriangle}
             title="Municipalities behind"
             value={kpis.behind_count}
             unit={`of ${kpis.municipality_count}`}
-            badge={statusBadge(worstBehind)}
             supporting={reviewNote}
-            info="Municipalities whose score or reporting gap means they need attention. The list below shows exactly which ones and what to do."
+            info="Municipalities with at least one month without an approved report in this period."
           />
           <KpiCard
             icon={BadgeCheck}
             title="Fields filled in"
             value={kpis.field_pct}
             unit="%"
-            badge={statusBadge(toneForPercent(kpis.field_pct, thresholds))}
             supporting={`Across all ${fields.length} required fields`}
             info="Share of the required fields that are filled in on approved records. A value of 0 is a valid answer; an empty field is not."
           />
@@ -206,11 +198,6 @@ export default function DataQualityDashboard() {
                 </span>
               ))}
             </div>
-            <p className="dq-formula">
-              Score = {thresholds.w_reporting} &times; months reported + {thresholds.w_fields} &times; fields filled in.
-              A score of <b>{thresholds.ok}</b> or more is on track, below <b>{thresholds.watch}</b> needs urgent attention,
-              and <b>{thresholds.stale_months}</b> months without a report is already a problem.
-            </p>
           </Card.Body>
         </Card>
 

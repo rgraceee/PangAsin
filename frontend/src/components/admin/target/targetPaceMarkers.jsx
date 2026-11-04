@@ -1,12 +1,12 @@
-// WHAT: The annotations on the Cumulative Pace chart: where the forecast
-//       starts, the month the target is reached, and the year-end shortfall.
+// WHAT: The annotations on the cumulative supply chart: forecast start,
+//       target reach, and the end-of-horizon gap.
 // WHY: they are the chart's answer, so they live together and are easy to
 //       place (and to shorten on a narrow chart).
 
 import { ReferenceLine, ReferenceDot } from 'recharts';
 import { fmtMT } from './targetData';
 
-export default function PaceMarkers({ rows, reachedMonth, yearEndGap, narrow }) {
+export default function PaceMarkers({ rows, reachedMonth, horizonGap, narrow }) {
   const firstForecast = rows.find((r) => r.isForecast);
   const lastRow = rows[rows.length - 1];
   const reached = rows.find((r) => r.label === reachedMonth);
@@ -50,8 +50,8 @@ export default function PaceMarkers({ rows, reachedMonth, yearEndGap, narrow }) 
             strokeWidth={1.5}
             label={{
               value: narrow
-                ? `Shortfall ${fmtMT(Math.abs(yearEndGap))} Metric Tons (MT)`
-                : `Year-end shortfall ${fmtMT(Math.abs(yearEndGap))} Metric Tons (MT)`,
+                ? `Shortfall ${fmtMT(Math.abs(horizonGap))} Metric Tons (MT)`
+                : `Horizon shortfall ${fmtMT(Math.abs(horizonGap))} Metric Tons (MT)`,
               position: narrow ? 'insideTopLeft' : 'insideBottomRight',
               fontSize: 12,
               fontWeight: 700,

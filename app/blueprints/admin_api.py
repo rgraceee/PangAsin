@@ -3,8 +3,10 @@
 # WHY: Lahat ng admin actions ay nasa isang lugar, may iisang is_not_admin guard.
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
+import csv
 import os
 from secrets import token_urlsafe
+from decimal import Decimal, InvalidOperation
 from app.models.production_record import ProductionRecord
 from app.models.environment_report import EnvironmentReport
 from app.models.producer_report import ProducerReport, ProducerReportEntry
@@ -15,6 +17,7 @@ from app.models.municipality_production import MunicipalityMonthlyProduction
 from app.models.user import User
 from app.models.password_reset_request import PasswordResetRequest
 from app.models.demand_benchmark import DemandBenchmark
+from app.models.sector_demand_setting import SectorDemandSetting
 from app.models.audit_log import AuditLog
 from app.extensions import db
 from datetime import datetime, date, timedelta
@@ -30,7 +33,11 @@ from app.services.municipality_service import (
     MunicipalityValidationError,
 )
 from app.services.municipality_directory import active_municipality_ids_subquery
-from app.constants import AGE_BUCKET_FIELDS, SECTOR_DEMAND, SECTOR_DEMAND_NOTE
+from app.constants import AGE_BUCKET_FIELDS
+from app.services.sector_demand import (
+    build_sector_demand_by_scope,
+    serialize_sector_settings_by_scope,
+)
 from app.status_constants import ALLOWED_STATUSES
 from app.utils import is_not_admin, is_not_admin_only
 
@@ -119,6 +126,38 @@ def list_municipalities():
     municipalities = municipality_service.list_municipalities_with_summaries()
     return jsonify({
         "municipalities": municipalities,
+    })
+
+
+@admin_api_bp.route("/municipality-barangays", methods=["GET"])
+@login_required
+def municipality_barangays():
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+
+    name = (request.args.get("name") or "").strip()
+    key = municipality_service.slugify(name)
+    if not key:
+        return jsonify({"error": "A municipality name is required."}), 400
+
+    csv_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "data",
+        "pangasinan_barangays.csv",
+    )
+    with open(csv_path, encoding="utf-8-sig", newline="") as source:
+        matches = [
+            row for row in csv.DictReader(source)
+            if municipality_service.slugify(row["municipality_name"]) == key
+        ]
+
+    if not matches:
+        return jsonify({"error": "No Pangasinan barangay list was found for this municipality."}), 404
+
+    return jsonify({
+        "municipality_name": matches[0]["municipality_name"],
+        "barangays": [row["barangay_name"] for row in matches],
+        "source": "PSGC",
     })
 
 
@@ -416,6 +455,127 @@ def get_user(user_id):
     if not user or user.role == "superadmin":
         return jsonify({"error": "User not found."}), 404
     return jsonify(_serialize_admin_user(user))
+
+
+@admin_api_bp.route("/users/<int:user_id>", methods=["PATCH"])
+@login_required
+def update_admin_user(user_id):
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+
+    user = db.session.get(User, user_id)
+    if not user or user.role != "encoder":
+        return jsonify({"error": "Encoder not found."}), 404
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"errors": ["Request body must be a JSON object."]}), 400
+    errors = []
+    if "status" in data:
+        errors.append("Use the deactivate or reactivate action to change account status.")
+    if not any(field in data for field in ("name", "municipality_id")):
+        errors.append("At least one editable field is required.")
+
+    name = None
+    if "name" in data:
+        if not isinstance(data["name"], str) or not data["name"].strip():
+            errors.append("name is required.")
+        elif len(data["name"].strip()) > 150:
+            errors.append("name must be at most 150 characters.")
+        else:
+            name = data["name"].strip()
+
+    municipality = None
+    if "municipality_id" in data:
+        municipality_id = data["municipality_id"]
+        if isinstance(municipality_id, bool) or not isinstance(municipality_id, int):
+            errors.append("municipality_id must identify an active municipality.")
+        else:
+            municipality = db.session.get(Municipality, municipality_id)
+            if municipality is None or municipality.status != "active":
+                errors.append("municipality_id must identify an active municipality.")
+
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    old_municipality_id = user.municipality_id
+    old_name = user.name
+    if name is not None:
+        user.name = name
+    if municipality is not None:
+        user.municipality_id = municipality.id
+    db.session.commit()
+
+    log_action(
+        "admin.user.update",
+        "user",
+        user.id,
+        actor=current_user,
+        summary=f"{current_user.email} updated encoder {user.email}.",
+        details={
+            "old_name": old_name,
+            "new_name": user.name,
+            "old_municipality_id": old_municipality_id,
+            "new_municipality_id": user.municipality_id,
+        },
+    )
+    db.session.commit()
+    return jsonify(_serialize_admin_user(user))
+
+
+def _set_encoder_status(user_id, target_status):
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if len(reason) < 10:
+        return jsonify({"error": "Reason is required (at least 10 characters)."}), 400
+
+    user = db.session.get(User, user_id)
+    if not user or user.role != "encoder":
+        return jsonify({"error": "Encoder not found."}), 404
+    if user.status == target_status:
+        return jsonify({"error": f"This encoder account is already {target_status}."}), 409
+    if (
+        target_status == "active"
+        and user.municipality is not None
+        and user.municipality.status != "active"
+    ):
+        return jsonify({
+            "error": "Reactivate the encoder's municipality before reactivating this account."
+        }), 400
+
+    user.status = target_status
+    user.session_version = (user.session_version or 0) + 1
+    user.failed_login_count = 0
+    user.locked_until = None
+    db.session.commit()
+
+    action = "deactivate" if target_status == "inactive" else "reactivate"
+    log_action(
+        f"admin.user.{action}",
+        "user",
+        user.id,
+        actor=current_user,
+        summary=f"{current_user.email} {action}d encoder {user.email}.",
+        reason=reason,
+        details={"email": user.email, "role": user.role},
+    )
+    db.session.commit()
+    return jsonify({"message": f"{user.name} has been {target_status}."})
+
+
+@admin_api_bp.route("/users/<int:user_id>/deactivate", methods=["POST"])
+@login_required
+def admin_deactivate_user(user_id):
+    return _set_encoder_status(user_id, "inactive")
+
+
+@admin_api_bp.route("/users/<int:user_id>/reactivate", methods=["POST"])
+@login_required
+def admin_reactivate_user(user_id):
+    return _set_encoder_status(user_id, "active")
 
 
 @admin_api_bp.route("/users", methods=["POST"])
@@ -993,6 +1153,41 @@ def _producer_master_list(municipality_id, municipality_names):
     ]
 
 
+def _producer_master_list_by_barangay(municipality_id):
+    master_by_barangay = {}
+    rows = (
+        db.session.query(
+            Barangay.id,
+            Barangay.name,
+            Barangay.municipality_id,
+            Producer.age,
+            Producer.sex,
+        )
+        .join(Producer, Producer.barangay_id == Barangay.id)
+        .filter(Barangay.municipality_id.in_(active_municipality_ids_subquery()))
+        .filter(*_stats_scope_conditions(Barangay.municipality_id, municipality_id))
+        .all()
+    )
+    for barangay_id, name, row_municipality_id, age, sex in rows:
+        bucket = master_by_barangay.setdefault(barangay_id, {
+            "barangay_id": barangay_id,
+            "barangay": name,
+            "municipality_id": row_municipality_id,
+            "producers": 0,
+            "age_bands": {band: 0 for band in _AGE_BANDS},
+            "sex": {"male": 0, "female": 0, "other": 0},
+        })
+        bucket["producers"] += 1
+        if age is not None:
+            bucket["age_bands"][_age_band_for(age)] += 1
+        bucket["sex"][{"Male": "male", "Female": "female"}.get(sex, "other")] += 1
+
+    return sorted(
+        master_by_barangay.values(),
+        key=lambda item: item["barangay"].lower(),
+    )
+
+
 def _production_methods_by_municipality(municipality_id, municipality_names):
     # WHAT: Sum approved production volume per method and municipality.
     # WHY: The method panel uses all approved records, not a rolling window.
@@ -1242,17 +1437,42 @@ def get_dashboard_stats():
             func.sum(ProductionRecord.production_volume_mt).label("total_volume"),
             func.count(ProductionRecord.id).label("record_count"),
             func.sum(ProductionRecord.num_salt_beds * ProductionRecord.area_per_salt_bed).label("total_area"),
+            func.sum(ProductionRecord.num_salt_beds).label("total_beds"),
             func.sum(ProductionRecord.registered_producers).label("total_registered"),
         )
         .join(Barangay, Barangay.id == ProductionRecord.barangay_id)
         .filter(ProductionRecord.status == "approved")
+        .filter(ProductionRecord.deleted_at.is_(None))
         .filter(
             ProductionRecord.municipality_id.in_(active_municipality_ids_subquery())
         )
         .filter(*scope_conditions(ProductionRecord.municipality_id))
         .group_by(ProductionRecord.municipality_id, ProductionRecord.barangay_id, Barangay.name)
-        .all()
     )
+    year = request.args.get("year", type=int)
+    month = request.args.get("month", type=int)
+    if year is not None:
+        by_barangay = by_barangay.filter(
+            func.extract("year", ProductionRecord.record_date) == year
+        )
+    if month is not None:
+        by_barangay = by_barangay.filter(
+            func.extract("month", ProductionRecord.record_date) == month
+        )
+    start_raw = request.args.get("start")
+    end_raw = request.args.get("end")
+    try:
+        if start_raw and end_raw:
+            start_date = datetime.strptime(start_raw, "%Y-%m-%d").date()
+            end_date = datetime.strptime(end_raw, "%Y-%m-%d").date()
+            by_barangay = by_barangay.filter(
+                ProductionRecord.record_date >= start_date,
+                ProductionRecord.record_date <= end_date,
+            )
+    except ValueError:
+        # The source parser below returns the user-facing date validation error.
+        pass
+    by_barangay = by_barangay.all()
     by_barangay_by_muni = {}
     for row in by_barangay:
         by_barangay_by_muni.setdefault(row.municipality_id, []).append({
@@ -1261,6 +1481,7 @@ def get_dashboard_stats():
             "total_volume_mt": float(row.total_volume or 0),
             "record_count": row.record_count,
             "total_area_sqm": float(row.total_area or 0),
+            "total_salt_beds": int(row.total_beds or 0),
             "total_registered_producers": int(row.total_registered or 0),
         })
 
@@ -1387,6 +1608,9 @@ def get_dashboard_stats():
     master_list_by_municipality = _producer_master_list(
         selected_municipality_id, municipality_names
     )
+    master_list_by_barangay = _producer_master_list_by_barangay(
+        selected_municipality_id
+    )
 
     # --- Production method split over ALL approved records -----------------
     # WHY: the panel sits next to all-time tables, so it must use the same
@@ -1425,6 +1649,7 @@ def get_dashboard_stats():
         "pending_validation_count": pending_validation_count,
         "by_municipality": municipality_stats,
         "master_list_by_municipality": master_list_by_municipality,
+        "master_list_by_barangay": master_list_by_barangay,
         "production_methods_mt": production_methods_mt,
         "environment_by_municipality": sorted(
             environment_by_muni.values(), key=lambda item: item["municipality_name"].lower(),
@@ -1436,9 +1661,8 @@ def get_dashboard_stats():
 @login_required
 def data_quality():
     # WHAT: Serve the whole Data Quality payload in one response.
-    # WHY: The page must show only what the database really contains, so every
-    #      score, cell state and threshold is computed in the service and sent
-    #      along - the browser never guesses a number of its own.
+    # WHY: Reporting percentages and monthly states are computed once in the
+    #      service, so the browser only renders the selected window.
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
@@ -1456,59 +1680,102 @@ def data_quality():
         if range_months not in DATA_QUALITY_RANGES:
             range_months = 12
 
-    return jsonify(build_data_quality(range_months))
+    raw_year = request.args.get("year")
+    try:
+        selected_year = int(raw_year) if raw_year else None
+    except (TypeError, ValueError):
+        selected_year = None
+
+    return jsonify(build_data_quality(range_months, selected_year))
 
 
-# National-level sector demand breakdown (reference data, MT). Not stored in the
-# demand_benchmarks table (which holds annual supply/demand figures); served here
-# as a labeled reference constant for the sector breakdown visualisation.
 @admin_api_bp.route("/supply-demand", methods=["GET"])
 @login_required
 def supply_demand():
     if is_not_admin():
         return jsonify({"error": "Admin access only."}), 403
 
-    provincial = DemandBenchmark.query.filter_by(geographic_scope="provincial").order_by(DemandBenchmark.year.desc()).first()
-    national = DemandBenchmark.query.filter_by(geographic_scope="national").order_by(DemandBenchmark.year.desc()).first()
-
-    latest_production_month = _last_month_with_data(
-        None, source="production"
+    benchmarks = (
+        DemandBenchmark.query
+        .order_by(DemandBenchmark.year.desc(), DemandBenchmark.id.desc())
+        .all()
     )
-    local_supply_period = None
-    local_production_mt = None
-    if latest_production_month:
-        months = _month_block(latest_production_month, 12)
-        _, monthly_totals = _production_month_totals(months)
-        local_production_mt = round(sum(monthly_totals.values()), 3)
-        start_year = int(months[0][:4])
-        end_year = int(months[-1][:4])
-        synthetic_months = {
-            f"{row.production_year:04d}-{row.production_month:02d}"
-            for row in MunicipalityMonthlyProduction.query.filter(
-                MunicipalityMonthlyProduction.is_synthetic.is_(True),
-                MunicipalityMonthlyProduction.production_year >= start_year,
-                MunicipalityMonthlyProduction.production_year <= end_year,
-            ).filter(
-                MunicipalityMonthlyProduction.municipality_id.in_(
-                    active_municipality_ids_subquery()
+    provincial_benchmarks = [
+        row for row in benchmarks if row.geographic_scope == "provincial"
+    ]
+    national_benchmarks = [
+        row for row in benchmarks if row.geographic_scope == "national"
+    ]
+    provincial = provincial_benchmarks[0] if provincial_benchmarks else None
+    national = national_benchmarks[0] if national_benchmarks else None
+
+    annual_supply_rows = (
+        db.session.query(
+            MunicipalityMonthlyProduction.production_year,
+            func.sum(MunicipalityMonthlyProduction.production_kg).label("production_kg"),
+            func.min(MunicipalityMonthlyProduction.production_month).label("first_month"),
+            func.max(MunicipalityMonthlyProduction.production_month).label("last_month"),
+            func.max(
+                db.case(
+                    (MunicipalityMonthlyProduction.is_synthetic.is_(True), 1),
+                    else_=0,
                 )
-            ).all()
+            ).label("includes_synthetic"),
+        )
+        .filter(
+            MunicipalityMonthlyProduction.municipality_id.in_(
+                active_municipality_ids_subquery()
+            )
+        )
+        .group_by(MunicipalityMonthlyProduction.production_year)
+        .all()
+    )
+    local_supply_by_year = {
+        int(row.production_year): round(float(row.production_kg or 0) / 1000, 3)
+        for row in annual_supply_rows
+    }
+    supply_period_by_year = {
+        int(row.production_year): {
+            "start": f"{row.production_year:04d}-{row.first_month:02d}",
+            "end": f"{row.production_year:04d}-{row.last_month:02d}",
+            "includes_synthetic": bool(row.includes_synthetic),
         }
-        local_supply_period = {
-            "start": months[0],
-            "end": months[-1],
-            "includes_synthetic": any(month in synthetic_months for month in months),
-        }
+        for row in annual_supply_rows
+    }
+    available_years = sorted(
+        set(local_supply_by_year)
+        | {int(row.year) for row in benchmarks}
+        | {datetime.utcnow().year},
+        reverse=True,
+    )
+    selected_year = provincial.year if provincial else (
+        max(local_supply_by_year) if local_supply_by_year else datetime.utcnow().year
+    )
+    local_production_mt = local_supply_by_year.get(int(selected_year), 0.0)
+    local_supply_period = supply_period_by_year.get(int(selected_year))
 
     pangasinan = {
-        "year": provincial.year if provincial else datetime.utcnow().year,
-        "demand_volume": float(provincial.demand_volume) if provincial else None,
+        "year": selected_year,
+        "demand_volume": (
+            float(provincial.demand_volume)
+            if provincial and provincial.year == selected_year else None
+        ),
         "local_production": local_production_mt,
         "local_supply_period": local_supply_period,
         "data_source": "municipality_production",
-        "import_volume": float(provincial.import_volume) if provincial and provincial.import_volume is not None else None,
-        "source_name": provincial.source_name if provincial else None,
+        "source_name": (
+            provincial.source_name
+            if provincial and provincial.year == selected_year else None
+        ),
     }
+
+    def serialize_benchmark(row):
+        serialized = _serialize_demand_benchmark(row)
+        if serialized and row.geographic_scope == "provincial":
+            serialized["local_production"] = local_supply_by_year.get(
+                int(row.year), 0.0
+            )
+        return serialized
 
     philippines = {
         "year": national.year if national else None,
@@ -1517,13 +1784,290 @@ def supply_demand():
         "import_volume": float(national.import_volume) if national and national.import_volume is not None else None,
         "source_name": national.source_name if national else None,
     }
+    national_production = philippines["local_production"] or 0
+    national_imports = philippines["import_volume"] or 0
+    sector_totals = {
+        "national": {
+            "demand": philippines["demand_volume"] or 0,
+            "supply": national_production + national_imports,
+            "production": national_production,
+        },
+        "provincial": {
+            "demand": pangasinan["demand_volume"] or 0,
+            "supply": local_production_mt,
+            "production": local_production_mt,
+        },
+    }
 
     return jsonify({
         "pangasinan": pangasinan,
         "philippines": philippines,
-        "sector_demand": SECTOR_DEMAND,
-        "sector_demand_note": SECTOR_DEMAND_NOTE,
+        "benchmarks": {
+            "provincial": serialize_benchmark(provincial),
+            "national": _serialize_demand_benchmark(national),
+        },
+        "benchmarks_by_year": {
+            "provincial": [
+                serialize_benchmark(row) for row in provincial_benchmarks
+            ],
+            "national": [
+                _serialize_demand_benchmark(row) for row in national_benchmarks
+            ],
+        },
+        "available_years": available_years,
+        "local_supply_by_year": {
+            str(year): amount for year, amount in local_supply_by_year.items()
+        },
+        "sector_settings_by_scope": serialize_sector_settings_by_scope(),
+        "sector_demand_by_scope": build_sector_demand_by_scope(sector_totals),
+        "sector_demand_note": (
+            "Sector figures are calculated from each scope's current demand benchmark, "
+            "supply, and production using the administrator-configured percentages."
+        ),
     })
+
+
+def _serialize_demand_benchmark(benchmark):
+    if benchmark is None:
+        return None
+    return {
+        "id": benchmark.id,
+        "year": benchmark.year,
+        "geographic_scope": benchmark.geographic_scope,
+        "demand_volume": float(benchmark.demand_volume),
+        "local_production": (
+            float(benchmark.local_production)
+            if benchmark.local_production is not None else None
+        ),
+        "import_volume": (
+            float(benchmark.import_volume)
+            if benchmark.import_volume is not None else None
+        ),
+        "source_name": benchmark.source_name,
+        "source_reference": benchmark.source_reference,
+        "notes": benchmark.notes,
+    }
+
+
+def _parse_benchmark_volume(value, label, errors, *, required=False):
+    if value is None or value == "":
+        if required:
+            errors.append(f"{label} is required.")
+        return None
+    try:
+        volume = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        errors.append(f"{label} must be a number.")
+        return None
+    if not volume.is_finite() or volume < 0:
+        errors.append(f"{label} must be a finite non-negative number.")
+        return None
+    if volume.as_tuple().exponent < -2 or volume >= Decimal("1000000000000"):
+        errors.append(f"{label} must fit a 14-digit value with at most 2 decimal places.")
+        return None
+    return volume
+
+
+@admin_api_bp.route("/supply-demand/sectors", methods=["PUT"])
+@login_required
+def update_sector_demand_settings():
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"errors": ["Request body must be a JSON object."]}), 400
+
+    scope = data.get("geographic_scope")
+    sectors = data.get("sectors")
+    errors = []
+    if scope not in ("national", "provincial"):
+        errors.append("geographic_scope must be national or provincial.")
+    if not isinstance(sectors, list):
+        errors.append("sectors must be an array.")
+    elif len(sectors) > 50:
+        errors.append("At most 50 sectors may be configured per scope.")
+
+    parsed_sectors = []
+    seen_names = set()
+    total_percentage = Decimal("0")
+    if isinstance(sectors, list):
+        for index, sector in enumerate(sectors):
+            if not isinstance(sector, dict):
+                errors.append(f"sectors[{index}] must be an object.")
+                continue
+            name = sector.get("name")
+            if not isinstance(name, str) or not name.strip():
+                errors.append(f"sectors[{index}].name is required.")
+                continue
+            name = name.strip()
+            normalized_name = name.casefold()
+            if len(name) > 100:
+                errors.append(f"sectors[{index}].name must be at most 100 characters.")
+            if normalized_name in seen_names:
+                errors.append("Sector names must be unique within a scope.")
+            seen_names.add(normalized_name)
+
+            percentage_value = sector.get("percentage")
+            try:
+                percentage = Decimal(str(percentage_value).strip())
+            except (InvalidOperation, ValueError, AttributeError):
+                errors.append(f"sectors[{index}].percentage must be a number.")
+                continue
+            if not percentage.is_finite() or percentage < 0 or percentage > 100:
+                errors.append(
+                    f"sectors[{index}].percentage must be between 0 and 100."
+                )
+                continue
+            if percentage.as_tuple().exponent < -2:
+                errors.append(
+                    f"sectors[{index}].percentage must have at most 2 decimal places."
+                )
+                continue
+            if normalized_name != "others":
+                total_percentage += percentage
+                parsed_sectors.append((name, percentage))
+
+    if total_percentage > Decimal("100"):
+        errors.append("The combined sector percentages for a scope must not exceed 100%.")
+    if errors:
+        return jsonify({"errors": errors}), 400
+    parsed_sectors.append(("Others", Decimal("100") - total_percentage))
+
+    old_sectors = (
+        SectorDemandSetting.query
+        .filter_by(geographic_scope=scope)
+        .order_by(SectorDemandSetting.id)
+        .all()
+    )
+    old_value = [
+        {"name": sector.sector_name, "percentage": float(sector.percentage)}
+        for sector in old_sectors
+    ]
+    db.session.query(SectorDemandSetting).filter_by(
+        geographic_scope=scope
+    ).delete(synchronize_session=False)
+    new_sectors = [
+        SectorDemandSetting(
+            geographic_scope=scope,
+            sector_name=name,
+            percentage=percentage,
+        )
+        for name, percentage in parsed_sectors
+    ]
+    db.session.add_all(new_sectors)
+    log_action(
+        "admin.sector_demand.update",
+        "sector_demand_settings",
+        actor=current_user,
+        summary=f"{current_user.email} updated {scope} sector demand allocations.",
+        details={"scope": scope, "sector_count": len(new_sectors)},
+        old_value={"sectors": old_value},
+        new_value={
+            "sectors": [
+                {"name": name, "percentage": float(percentage)}
+                for name, percentage in parsed_sectors
+            ]
+        },
+    )
+    db.session.commit()
+    return jsonify({
+        "geographic_scope": scope,
+        "sectors": serialize_sector_settings_by_scope()[scope],
+    })
+
+
+@admin_api_bp.route("/supply-demand/benchmarks", methods=["PUT"])
+@login_required
+def update_demand_benchmark():
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"errors": ["Request body must be a JSON object."]}), 400
+
+    errors = []
+    scope = data.get("geographic_scope")
+    if scope not in ("national", "provincial"):
+        errors.append("geographic_scope must be national or provincial.")
+
+    year = data.get("year")
+    if isinstance(year, bool) or not isinstance(year, int) or not 1900 <= year <= 2100:
+        errors.append("year must be an integer between 1900 and 2100.")
+
+    demand_volume = _parse_benchmark_volume(
+        data.get("demand_volume"), "demand_volume", errors, required=True
+    )
+    local_production = None
+    if scope == "national":
+        local_production = _parse_benchmark_volume(
+            data.get("local_production"), "local_production", errors
+        )
+    source_name = data.get("source_name")
+    if not isinstance(source_name, str) or not source_name.strip():
+        errors.append("source_name is required.")
+    elif len(source_name.strip()) > 255:
+        errors.append("source_name must be at most 255 characters.")
+
+    source_reference = data.get("source_reference")
+    notes = data.get("notes")
+    for label, value in (("source_reference", source_reference), ("notes", notes)):
+        if value is not None and not isinstance(value, str):
+            errors.append(f"{label} must be a string.")
+        elif isinstance(value, str) and len(value) > 10000:
+            errors.append(f"{label} must be at most 10000 characters.")
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    if scope == "provincial":
+        annual_production_kg = (
+            db.session.query(
+                func.coalesce(
+                    func.sum(MunicipalityMonthlyProduction.production_kg), 0
+                )
+            )
+            .filter(
+                MunicipalityMonthlyProduction.production_year == year,
+                MunicipalityMonthlyProduction.municipality_id.in_(
+                    active_municipality_ids_subquery()
+                ),
+            )
+            .scalar()
+        )
+        local_production = Decimal(str(float(annual_production_kg or 0) / 1000)).quantize(
+            Decimal("0.01")
+        )
+
+    benchmark = (
+        DemandBenchmark.query
+        .filter_by(year=year, geographic_scope=scope)
+        .order_by(DemandBenchmark.id.desc())
+        .first()
+    )
+    if benchmark is None:
+        benchmark = DemandBenchmark(year=year, geographic_scope=scope)
+        db.session.add(benchmark)
+    benchmark.demand_volume = demand_volume
+    benchmark.local_production = local_production
+    benchmark.source_name = source_name.strip()
+    benchmark.source_reference = source_reference.strip() if source_reference else None
+    benchmark.notes = notes.strip() if notes else None
+    db.session.commit()
+
+    log_action(
+        "admin.demand_benchmark.update",
+        "demand_benchmark",
+        benchmark.id,
+        actor=current_user,
+        summary=(
+            f"{current_user.email} updated the {scope} demand benchmark "
+            f"for {year}."
+        ),
+        details={"scope": scope, "year": year},
+    )
+    db.session.commit()
+    return jsonify({"benchmark": _serialize_demand_benchmark(benchmark)})
 
 
 @admin_api_bp.route("/months", methods=["GET"])

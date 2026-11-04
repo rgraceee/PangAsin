@@ -11,7 +11,7 @@ import {
   EyeOff,
   X,
 } from 'lucide-react';
-import { changePassword } from '../services/dataService';
+import { changePassword, requestEmailChange } from '../services/dataService';
 import ContentEditor from './admin/ContentEditor';
 import CONTENT_DEFAULTS from './admin/contentDefaults';
 import { useToast } from './Toast';
@@ -68,6 +68,11 @@ export default function Settings({ user }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [editContent, setEditContent] = useState(null);
   const [selectedFaqKey, setSelectedFaqKey] = useState('faq_admin');
+  const [emailDraft, setEmailDraft] = useState(user?.email || '');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailChangeMessage, setEmailChangeMessage] = useState('');
+  const [emailChangeError, setEmailChangeError] = useState('');
+  const [emailChangeSaving, setEmailChangeSaving] = useState(false);
 
   // WHAT: Derive ang active section mula sa URL pathname
   //       (/admin/settings/account -> account).
@@ -80,6 +85,10 @@ export default function Settings({ user }) {
     const isLegal = /\/legal\/(privacy|terms)(\/|$)/.test(location.pathname);
     setSection(valid.includes(last) ? last : (isLegal ? 'legal-subpage' : 'account'));
   }, [location.pathname]);
+
+  useEffect(() => {
+    setEmailDraft(user?.email || '');
+  }, [user?.email]);
 
   const role = user?.role === 'encoder' ? 'encoder' : 'admin';
   const isSuperAdmin = user?.role === 'superadmin';
@@ -137,6 +146,24 @@ const isEncoder = role === 'encoder';
     }
   };
 
+  const handleEmailChangeRequest = async (event) => {
+    event.preventDefault();
+    setEmailChangeMessage('');
+    setEmailChangeError('');
+    setEmailChangeSaving(true);
+    try {
+      const result = await requestEmailChange(emailDraft.trim(), emailPassword);
+      setEmailChangeMessage(result.message);
+      setEmailPassword('');
+    } catch (err) {
+      const message = err.message || 'Could not send the verification email.';
+      setEmailChangeError(message);
+      toastError(message);
+    } finally {
+      setEmailChangeSaving(false);
+    }
+  };
+
   return (
     <div className="settings-page">
       {/* ===== Section panels ===== */}
@@ -178,8 +205,59 @@ const isEncoder = role === 'encoder';
                   <dt>Email</dt>
                   <dd>{user?.email || '—'}</dd>
                 </dl>
+                <div className="settings-account-email-form">
+                  <h3>Update email address</h3>
+                  <p className="settings-account-note">
+                    We will send a verification link to the new address. Your current
+                    email remains active until you confirm the link.
+                  </p>
+                  {emailChangeError && (
+                    <div className="settings-error" role="alert">{emailChangeError}</div>
+                  )}
+                  {emailChangeMessage && (
+                    <div className="settings-success" role="status">{emailChangeMessage}</div>
+                  )}
+                  <form onSubmit={handleEmailChangeRequest} className="settings-security-form">
+                    <div className="settings-field">
+                      <label className="settings-field-label" htmlFor="account-new-email">
+                        New email address
+                      </label>
+                      <input
+                        id="account-new-email"
+                        type="email"
+                        className="settings-form-control"
+                        autoComplete="email"
+                        value={emailDraft}
+                        onChange={(event) => setEmailDraft(event.target.value)}
+                        maxLength={150}
+                        required
+                      />
+                    </div>
+                    <div className="settings-field">
+                      <label className="settings-field-label" htmlFor="account-current-password">
+                        Current password
+                      </label>
+                      <input
+                        id="account-current-password"
+                        type="password"
+                        className="settings-form-control"
+                        autoComplete="current-password"
+                        value={emailPassword}
+                        onChange={(event) => setEmailPassword(event.target.value)}
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn btn-primary settings-save-btn"
+                      disabled={emailChangeSaving}
+                    >
+                      {emailChangeSaving ? 'Sending verification…' : 'Send verification link'}
+                    </button>
+                  </form>
+                </div>
                 <p className="settings-account-note">
-                  Account details cannot be edited here. Contact your administrator to change your name, email, role, or municipality assignment.
+                  To replace your temporary password, open <Link to={`${homePath}/settings/security`}>Settings → Security</Link>.
                 </p>
               </Card.Body>
             </Card>

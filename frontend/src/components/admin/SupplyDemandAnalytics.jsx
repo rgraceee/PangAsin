@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Row, Col, Card, Alert } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
-import { Boxes, Target, Percent, Info, Scale } from 'lucide-react';
+import { Boxes, Target, Info, Scale } from 'lucide-react';
 import { getAdminSupplyDemand } from '../../services/dataService';
 import { BRAND, STATUS } from '../../theme/colors';
 import KpiCard from '../ui/KpiCard';
@@ -37,12 +37,14 @@ function bulletTooltip({ active, payload }) {
 function bulletCaption(localSupply, demandBenchmark) {
   if (localSupply <= 0 && demandBenchmark <= 0) return null;
   const pct = demandBenchmark > 0 ? Math.round((localSupply / demandBenchmark) * 1000) / 10 : 0;
-  const gap = Math.round(localSupply - demandBenchmark);
-  const verb = gap >= 0 ? 'surplus' : 'shortage';
+  const difference = Math.round(demandBenchmark - localSupply);
+  const amount = Math.abs(difference).toLocaleString();
   return (
     <div className="chart-caption">
       Local supply covers <b>{pct}%</b> of the {demandBenchmark.toLocaleString()} Metric Tons (MT) benchmark
-      {' '}&mdash; a <span className={gap >= 0 ? 'chart-caption-good' : 'chart-caption-bad'}>{Math.abs(gap).toLocaleString()} Metric Tons (MT) {verb}</span>.
+      {' '}&mdash; {difference > 0
+        ? <span className="chart-caption-bad">{amount} Metric Tons (MT) still needed to meet demand</span>
+        : <span className="chart-caption-good">demand met{difference < 0 ? ` with ${amount} Metric Tons (MT) above target` : ''}</span>}.
     </div>
   );
 }
@@ -51,6 +53,7 @@ export default function SupplyDemandAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sectorScope, setSectorScope] = useState('national');
 
   /* WHAT: Rinig kung may naka-filter na munisipalidad sa dashboard.
      WHY: ang supply & demand ay province-wide benchmark; dapat itong ipaalam
@@ -65,10 +68,9 @@ export default function SupplyDemandAnalytics() {
   }, []);
 
   const pangasinan = data?.pangasinan || null;
-  const sectorDemand = data?.sector_demand || {};
-
   const localSupply = pangasinan?.local_production != null ? pangasinan.local_production : 0;
   const demandBenchmark = pangasinan?.demand_volume != null ? pangasinan.demand_volume : 0;
+  const demandShortfall = Math.max(demandBenchmark - localSupply, 0);
   const bulletMax = niceCeil(Math.max(localSupply, demandBenchmark, 1) * 1.15);
 
   const bulletData = useMemo(() => [
@@ -76,14 +78,15 @@ export default function SupplyDemandAnalytics() {
   ], [localSupply]);
 
   const sectorData = useMemo(() => {
-    return Object.entries(sectorDemand)
-      .map(([key, value], i) => ({
-        name: key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
-        value,
+    return (data?.sector_demand_by_scope?.[sectorScope] || [])
+      .map((sector, i) => ({
+        name: sector.name,
+        value: sector.demand_mt,
+        percentage: sector.percentage,
         fill: GRADIENT[i % GRADIENT.length],
       }))
       .sort((a, b) => b.value - a.value);
-  }, [sectorDemand]);
+  }, [data, sectorScope]);
 
   const sectorMax = niceCeil(sectorData.reduce((mx, s) => Math.max(mx, s.value), 0) * 1.05);
 
@@ -103,14 +106,9 @@ export default function SupplyDemandAnalytics() {
   if (error) {
     return <Alert variant="danger">{error}</Alert>;
   }
-  if (!pangasinan || demandBenchmark <= 0) {
+  if (!pangasinan) {
     return <Alert variant="info">No supply/demand benchmark data available yet.</Alert>;
   }
-
-  const sufficiency = localSupply > 0
-    ? Math.round((localSupply / demandBenchmark) * 1000) / 10
-    : 0;
-  const gap = localSupply - demandBenchmark;
 
   const topSector = sectorData.length > 0 ? sectorData[0] : null;
 
@@ -121,8 +119,44 @@ export default function SupplyDemandAnalytics() {
         variant="section"
         icon={Scale}
         title="Supply &amp; Demand Analytics"
-        subtitle="Domestic salt supply compared with demand benchmarks."
+        subtitle="Pangasinan local salt supply compared with the local demand benchmark."
       />
+
+      <Row className="g-3 mb-3" aria-label="Stored supply and demand benchmarks">
+        {[
+          { key: 'provincial', label: 'Pangasinan' },
+          { key: 'national', label: 'Philippines' },
+        ].map(({ key, label }) => {
+          const benchmark = data?.benchmarks?.[key];
+          return (
+            <Col md={6} key={key}>
+              <Card className="encoder-card h-100">
+                <Card.Body>
+                  <div className="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <h6 className="mb-1">{label} stored benchmark</h6>
+                      <div className="text-muted small">
+                        {benchmark ? `${benchmark.year} · ${benchmark.source_name}` : 'No benchmark saved yet'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-wrap gap-3 mt-3 small">
+                    <span>{key === 'provincial' ? 'Local demand (Pangasinan)' : 'National demand (Philippines)'}: <strong>{benchmark ? fmtMT(benchmark.demand_volume) : '—'}</strong> MT</span>
+                    <span>{key === 'provincial' ? 'Local supply (Pangasinan)' : 'Domestic supply (Philippines)'}: <strong>{benchmark?.local_production != null ? fmtMT(benchmark.local_production) : (key === 'provincial' ? fmtMT(localSupply) : '—')}</strong> MT</span>
+                    <span>Imports: <strong>{benchmark?.import_volume != null ? fmtMT(benchmark.import_volume) : '—'}</strong> MT</span>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          );
+        })}
+      </Row>
+
+      {demandBenchmark <= 0 && (
+        <Alert variant="info">
+          No Pangasinan demand benchmark is available yet. Add one from Demand Benchmarks in the admin sidebar.
+        </Alert>
+      )}
 
       {hasMuniFilter && (
         <p className="text-muted small mb-3">
@@ -133,31 +167,35 @@ export default function SupplyDemandAnalytics() {
       <KpiGrid columns={3}>
         <KpiCard
           icon={Boxes}
-          title="Local Supply"
+          title="Local Supply (Pangasinan)"
           value={Math.round(localSupply * 100) / 100}
           unit="Metric Tons (MT)"
           supporting={`Pangasinan production (${pangasinan.year})`}
         />
         <KpiCard
           icon={Target}
-          title="Demand Benchmark"
+          title="Local Demand (Pangasinan)"
           value={Math.round(demandBenchmark * 100) / 100}
           unit="Metric Tons (MT)"
           supporting={`Target demand (${pangasinan.year})`}
         />
         <KpiCard
-          icon={Percent}
-          title="Sufficiency"
-          value={sufficiency}
-          unit="%"
-          supporting={`${gap >= 0 ? 'Surplus' : 'Shortage'} of ${Math.abs(gap).toLocaleString()} Metric Tons (MT)`}
+          icon={Target}
+          title="Salt Needed to Meet Demand"
+          value={demandBenchmark > 0 ? Math.round(demandShortfall * 100) / 100 : null}
+          unit={demandBenchmark > 0 ? 'Metric Tons (MT)' : undefined}
+          supporting={demandBenchmark <= 0
+            ? 'No Pangasinan demand benchmark available'
+            : demandShortfall > 0
+              ? 'Still needed to meet the Pangasinan demand target'
+              : 'Pangasinan demand target met'}
         />
       </KpiGrid>
 
       <Row className="g-3">
         <Col lg={6}>
           <Card className="encoder-card h-100">
-            <Card.Header as="h5">Supply vs Demand (Metric Tons (MT))</Card.Header>
+            <Card.Header as="h5">Pangasinan Supply vs Local Demand (Metric Tons (MT))</Card.Header>
             <Card.Body>
               <div>
                 {/* WHAT: Compact bullet — maliit na height, may benchmark line.
@@ -192,18 +230,40 @@ export default function SupplyDemandAnalytics() {
         </Col>
 
         <Col lg={6}>
-          <Card className="encoder-card h-100 reference-card">
+          <Card className="encoder-card h-100">
             <Card.Header>
               <div className="admin-card-head d-flex align-items-center justify-content-between w-100">
-                <h5 className="admin-card-head-title mb-0">Sector Demand Breakdown</h5>
-                <span className="reference-tag"><Info size={12} strokeWidth={2} /> Reference data &mdash; not live</span>
+                <h5 className="admin-card-head-title mb-0">
+                  Sector Demand Breakdown ({sectorScope === 'national' ? 'Philippines' : 'Pangasinan'})
+                </h5>
+                <div className="d-flex align-items-center gap-2">
+                  <div className="d-flex gap-1" role="group" aria-label="Sector demand scope">
+                    <button
+                      type="button"
+                      className={`ui-btn-text ui-btn--sm${sectorScope === 'national' ? ' is-active' : ''}`}
+                      aria-pressed={sectorScope === 'national'}
+                      onClick={() => setSectorScope('national')}
+                    >
+                      Philippines
+                    </button>
+                    <button
+                      type="button"
+                      className={`ui-btn-text ui-btn--sm${sectorScope === 'provincial' ? ' is-active' : ''}`}
+                      aria-pressed={sectorScope === 'provincial'}
+                      onClick={() => setSectorScope('provincial')}
+                    >
+                      Pangasinan
+                    </button>
+                  </div>
+                  <span className="reference-tag"><Info size={12} strokeWidth={2} /> Admin-configured</span>
+                </div>
               </div>
             </Card.Header>
             <Card.Body>
               {sectorData.length === 0 ? (
                 <div className="chart-empty">
                   <span className="chart-empty-chip">No data</span>
-                  No sector demand reference data available yet.
+                  No sector allocations have been configured for {sectorScope === 'national' ? 'the Philippines' : 'Pangasinan'}.
                 </div>
               ) : (
                 <div>
@@ -240,7 +300,7 @@ export default function SupplyDemandAnalytics() {
                   </div>
                   <div className="chart-caption">
                     {topSector
-                      ? <><b>{topSector.name}</b> is the largest tracked demand sector at <b>{topSector.value.toLocaleString()} Metric Tons (MT)</b>. Figures are reference benchmarks, not live production data.</>
+                      ? <><b>{topSector.name}</b> is allocated <b>{topSector.percentage}%</b> of the selected {sectorScope === 'national' ? 'Philippines' : 'Pangasinan'} demand target ({topSector.value.toLocaleString()} Metric Tons (MT)).</>
                       : <><b>No sector demand data</b> available yet.</>}
                   </div>
                 </div>
@@ -252,6 +312,7 @@ export default function SupplyDemandAnalytics() {
       {data?.sector_demand_note && (
         <p className="text-muted small mt-3 mb-0">{data?.sector_demand_note}</p>
       )}
+
     </div>
   );
 }

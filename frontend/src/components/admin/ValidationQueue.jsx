@@ -8,7 +8,7 @@ import {
 import { useToast } from '../Toast';
 import { SkeletonList } from '../Skeleton';
 import RecordStatusBadge from '../encoder/RecordStatusBadge';
-import { Eye, Check, X } from 'lucide-react';
+import { Eye, CircleCheck, CircleX } from 'lucide-react';
 import IconButton from '../IconButton';
 import { formatMT } from '../../utils/volumeFormat';
 import PageHeader from './PageHeader';
@@ -470,10 +470,10 @@ export default function ValidationQueue() {
               )}
               <div className="vq-bulk-actions">
                 <button type="button" className="ui-btn-primary ui-btn--sm" onClick={() => openBulk('approved')}>
-                  <Check size={15} /> Approve selected
+                  <CircleCheck size={15} /> Approve selected
                 </button>
                 <button type="button" className="ui-btn-danger ui-btn--sm" onClick={() => openBulk('rejected')}>
-                  <X size={15} /> Reject selected
+                  <CircleX size={15} /> Reject selected
                 </button>
                 <button type="button" className="ui-btn-text ui-btn--sm" onClick={clearSelection}>Clear</button>
               </div>
@@ -569,14 +569,14 @@ export default function ValidationQueue() {
                       onClick={() => handleView(r.id)}
                     />
                     <IconButton
-                      icon={Check}
+                      icon={CircleCheck}
                       label={`Approve record ${r.id}`}
                       variant="success"
                       onClick={() => handleQuickReview(r.id, 'approved')}
                       disabled={r.status !== 'pending'}
                     />
                     <IconButton
-                      icon={X}
+                      icon={CircleX}
                       label={`Reject record ${r.id}`}
                       variant="danger"
                       onClick={() => handleQuickReview(r.id, 'rejected')}
@@ -665,8 +665,8 @@ export default function ValidationQueue() {
 
               {detail.status === 'pending' && !reviewAction && (
                 <div className="d-flex gap-2 mt-3">
-                  <button type="button" className="ui-btn-primary ui-btn--sm" onClick={() => openReview('approved')}><Check size={16} /> Approve</button>
-                  <button type="button" className="ui-btn-danger ui-btn--sm" onClick={() => openReview('rejected')}><X size={16} /> Reject</button>
+                  <button type="button" className="ui-btn-primary ui-btn--sm" onClick={() => openReview('approved')}><CircleCheck size={16} /> Approve</button>
+                  <button type="button" className="ui-btn-danger ui-btn--sm" onClick={() => openReview('rejected')}><CircleX size={16} /> Reject</button>
                 </div>
               )}
 

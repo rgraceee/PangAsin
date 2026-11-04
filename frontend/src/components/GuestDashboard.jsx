@@ -3,8 +3,8 @@
 //      loadPublicDashboardData, para hindi kailangan ng account para makita.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Alert } from 'react-bootstrap';
-import { Boxes, Factory, Scale, Ship, ShieldCheck } from 'lucide-react';
+import { Alert, Container } from 'react-bootstrap';
+import { Boxes, Factory, Mail, MapPin, Scale, Ship, ShieldCheck } from 'lucide-react';
 import PageHeader from './admin/PageHeader';
 import Reveal from './Reveal';
 import MunicipalityMapSection from './MunicipalityMapSection';
@@ -176,14 +176,97 @@ export default function GuestDashboard() {
         </>
       )}
 
-      <footer className="public-footer">
-        <div className="public-footer-inner">
-          <p className="public-footer-copy">© 2026 ASIN Center, Pangasinan State University</p>
-          <nav className="public-footer-links" aria-label="Support and access">
-            <Link to="/privacy">Privacy Policy</Link>
-            <Link to="/login">Sign in</Link>
-          </nav>
-        </div>
+      <footer className="login-footer public-dashboard-footer">
+        <Container>
+          <div className="login-footer-grid">
+            <div className="login-footer-brand">
+              <div className="login-footer-brand-row" aria-hidden="true">
+                <img
+                  src="/static/brand/PangAsin_Logo.png"
+                  alt=""
+                  className="login-footer-brand-logo"
+                />
+                <span className="login-footer-brand-name">PangAsin</span>
+              </div>
+              <p className="login-footer-brand-desc">
+                Salt production monitoring, forecasting, and decision support.
+              </p>
+              <p className="login-footer-brand-support">
+                Supported by the DOST NICER Program
+              </p>
+            </div>
+
+            <div className="login-footer-block">
+              <div className="login-footer-eyebrow">Contact</div>
+              <ul className="login-footer-details">
+                <li>
+                  <Mail size={18} aria-hidden="true" className="login-footer-icon" />
+                  <a
+                    href="mailto:pang.asin26@gmail.com"
+                    className="login-footer-contact-link"
+                  >
+                    pang.asin26@gmail.com
+                  </a>
+                </li>
+                <li>
+                  <MapPin size={18} aria-hidden="true" className="login-footer-icon" />
+                  <span>ASIN Center, PSU Binmaley, Pangasinan</span>
+                </li>
+                <li>
+                  <MapPin size={18} aria-hidden="true" className="login-footer-icon" />
+                  <a
+                    href="https://asincenter.psu.edu.ph/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="login-footer-contact-link"
+                  >
+                    ASIN Center website
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="login-footer-block">
+              <div className="login-footer-eyebrow">Developed by</div>
+              <p className="login-footer-credits">
+                <span className="login-footer-dev-name">PangAsin Development Team</span>
+                <br />
+                BS Information Technology, Major in Data Analytics,
+                Pangasinan State University
+              </p>
+              <p className="login-footer-meta">
+                Built for the{' '}
+                <a
+                  href="https://asincenter.psu.edu.ph/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="login-footer-contact-link"
+                >
+                  ASIN Center
+                </a>
+              </p>
+            </div>
+          </div>
+
+          <div className="login-footer-bottom">
+            <div className="login-footer-bottom-row">
+              <span className="login-footer-copyright">
+                © 2026 ASIN Center, Pangasinan State University
+              </span>
+              <nav className="login-footer-policy" aria-label="Legal and account links">
+                <Link to="/privacy" className="login-footer-contact-link">
+                  Privacy Policy
+                </Link>
+                {' · '}
+                <Link to="/login" className="login-footer-signin">
+                  Sign in
+                </Link>
+                {' · '}
+                RA 11985
+              </nav>
+            </div>
+          </div>
+        </Container>
       </footer>
     </div>
   );

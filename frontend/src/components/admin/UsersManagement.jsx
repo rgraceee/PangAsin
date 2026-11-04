@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Card, Table, Modal, Form } from 'react-bootstrap';
 import {
   getAdminUsers, getAdminPasswordResetStats,
-  getAdminMunicipalities, updateAdminUser, resetSuperAdminPassword,
+  getAdminMunicipalities, updateAdminUser, resetAdminUserPassword,
+  deactivateAdminUser, reactivateAdminUser,
 } from '../../services/dataService';
 import { confirmAction } from '../../services/feedback';
 import { useToast } from '../Toast';
@@ -11,7 +12,9 @@ import PageHeader from './PageHeader';
 import TablePagination from '../ui/TablePagination';
 import MunicipalityMapArt from '../encoder/MunicipalityMapArt';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
-import { Pencil, Key, User, Mail, Building2, Clock } from 'lucide-react';
+import {
+  Pencil, Key, User, Mail, Building2, Clock, UserRoundCheck, UserRoundX,
+} from 'lucide-react';
 
 const PER_PAGE = 25;
 const REASON_MIN = 10;
@@ -95,15 +98,14 @@ export default function UsersManagement() {
   const handleEdit = async (e) => {
     e.preventDefault();
     setError(null);
-    const { name, municipality_id, status } = editForm;
+    const { name, municipality_id } = editForm;
     if (!name) { setError('Name is required.'); return; }
     if (!openEdit) return;
     setSubmitting(true);
     try {
       await updateAdminUser(openEdit.id, {
         name,
-        status,
-        municipality_id: municipality_id || null,
+        municipality_id: municipality_id ? Number(municipality_id) : null,
       });
       setOpenEdit(null);
       toastSuccess('The user account has been updated.', 'User saved');
@@ -123,16 +125,25 @@ export default function UsersManagement() {
   const runAction = async () => {
     const { kind, targetUser, reason } = actionForm;
     if (!reason || reason.length < REASON_MIN) { setError(`Reason must be at least ${REASON_MIN} characters.`); return; }
+    setError(null);
     setSubmitting(true);
     try {
       if (kind === 'reset') {
-        const resetResult = await resetSuperAdminPassword(targetUser.id, reason);
+        const resetResult = await resetAdminUserPassword(targetUser.id, reason);
         setOpenAction(false);
         if (resetResult && resetResult.temporary_password) {
           setTempPassword(resetResult.temporary_password);
           setOpenTemp(true);
         }
         toastSuccess(`Temporary password generated for ${targetUser.name}. Show it once — they must change it on next login.`, 'Password reset');
+      } else if (kind === 'deactivate' || kind === 'reactivate') {
+        const updateStatus = kind === 'deactivate' ? deactivateAdminUser : reactivateAdminUser;
+        await updateStatus(targetUser.id, reason);
+        setOpenAction(false);
+        toastSuccess(
+          `${targetUser.name} has been ${kind}d.`,
+          kind === 'deactivate' ? 'Account deactivated' : 'Account reactivated',
+        );
       }
       load();
     } catch (err) {
@@ -149,6 +160,10 @@ export default function UsersManagement() {
     });
     if (!confirmed) return;
     openReasonAction('reset', user);
+  };
+
+  const handleAccountStatus = (user) => {
+    openReasonAction(user.status === 'active' ? 'deactivate' : 'reactivate', user);
   };
 
   const copyPassword = async () => {
@@ -187,7 +202,6 @@ export default function UsersManagement() {
             <label className="admin-page-hero-field" htmlFor="au-role">Role</label>
             <select id="au-role" className="form-select admin-page-hero-select" name="role" value={filters.role} onChange={handleFilter}>
               <option value="">All roles</option>
-              <option value="admin">Admin</option>
               <option value="encoder">Encoder</option>
             </select>
           </div>
@@ -312,6 +326,17 @@ export default function UsersManagement() {
                         >
                           <Key size={12} strokeWidth={2} aria-hidden="true" />
                         </button>
+                        <button
+                          type="button"
+                          className={`muni-action-btn muni-action-btn--${u.status === 'active' ? 'deactivate' : 'activate'}`}
+                          onClick={() => handleAccountStatus(u)}
+                          title={`${u.status === 'active' ? 'Deactivate' : 'Reactivate'} ${u.name}`}
+                          aria-label={`${u.status === 'active' ? 'Deactivate' : 'Reactivate'} ${u.name}`}
+                        >
+                          {u.status === 'active'
+                            ? <UserRoundX size={12} strokeWidth={2} aria-hidden="true" />
+                            : <UserRoundCheck size={12} strokeWidth={2} aria-hidden="true" />}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -342,7 +367,13 @@ export default function UsersManagement() {
             {error && <Alert variant="danger">{error}</Alert>}
             <Form.Group className="mb-3"><Form.Label>Name <span className="muni-required">*</span></Form.Label><Form.Control value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></Form.Group>
             <Form.Group className="mb-3"><Form.Label>Municipality {editForm.role === 'encoder' && <span className="muni-required">*</span>}</Form.Label><Form.Select value={editForm.municipality_id} onChange={(e) => setEditForm({ ...editForm, municipality_id: e.target.value })} required={editForm.role === 'encoder'}><option value="">Select municipality…</option>{munis.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Form.Select></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Status</Form.Label><Form.Select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}><option value="active">Active</option><option value="inactive">Inactive</option></Form.Select></Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Status</Form.Label>
+              <div>{statusBadge(openEdit?.status)}</div>
+              <Form.Text className="text-muted">
+                Use the account action in the table to deactivate or reactivate with an audit reason.
+              </Form.Text>
+            </Form.Group>
           </Modal.Body>
           <Modal.Footer className="muni-modal__footer-actions">
             <button type="button" className="ui-btn-outline" onClick={() => setOpenEdit(null)}>Cancel</button>
@@ -352,17 +383,36 @@ export default function UsersManagement() {
       </Modal>
 
       <Modal show={openAction} onHide={() => setOpenAction(false)} centered dialogClassName="muni-modal" aria-labelledby="au-action-title">
-        <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header"><Modal.Title id="au-action-title" className="muni-modal__title">Reset password</Modal.Title></Modal.Header>
+        <Modal.Header closeButton closeLabel="Close dialog" className="muni-modal__header"><Modal.Title id="au-action-title" className="muni-modal__title">
+          {actionForm.kind === 'deactivate'
+            ? 'Deactivate user'
+            : actionForm.kind === 'reactivate'
+              ? 'Reactivate user'
+              : 'Reset password'}
+        </Modal.Title></Modal.Header>
         <Form onSubmit={(e) => { e.preventDefault(); runAction(); }} className="muni-modal-form">
           <Modal.Body>
             {error && <Alert variant="danger">{error}</Alert>}
-            <p className="text-muted">Reason is required and will be recorded in the audit log.</p>
+            <p className="text-muted">
+              {actionForm.kind === 'deactivate'
+                ? `Deactivate ${actionForm.targetUser?.name}'s account? They will no longer be able to sign in.`
+                : actionForm.kind === 'reactivate'
+                  ? `Restore sign-in access for ${actionForm.targetUser?.name}?`
+                  : 'Reason is required and will be recorded in the audit log.'}
+            </p>
+            {actionForm.kind !== 'reset' && (
+              <p className="text-muted small">The reason is recorded in the audit log.</p>
+            )}
             <Form.Group className="mb-3"><Form.Label>Reason <span className="muni-required">*</span></Form.Label><Form.Control as="textarea" id="au-reason" rows={3} value={actionForm.reason} onChange={(e) => setActionForm({ ...actionForm, reason: e.target.value })} required /></Form.Group>
-            <Form.Text className="text-muted">Generated passwords are shown once and cannot be recovered.</Form.Text>
+            {actionForm.kind === 'reset' && (
+              <Form.Text className="text-muted">Generated passwords are shown once and cannot be recovered.</Form.Text>
+            )}
           </Modal.Body>
           <Modal.Footer className="muni-modal__footer-actions">
             <button type="button" className="ui-btn-outline" onClick={() => setOpenAction(false)}>Cancel</button>
-            <button type="submit" className="ui-btn-primary" disabled={submitting}>{submitting ? 'Processing…' : 'Confirm'}</button>
+            <button type="submit" className="ui-btn-primary" disabled={submitting}>
+              {submitting ? 'Processing…' : actionForm.kind === 'deactivate' ? 'Deactivate account' : actionForm.kind === 'reactivate' ? 'Reactivate account' : 'Confirm'}
+            </button>
           </Modal.Footer>
         </Form>
       </Modal>

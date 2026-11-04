@@ -1,0 +1,93 @@
+PangAsin Admin Quality Check
+Date: 2026-11-05
+Verdict: NOT READY FOR FULL SIGN-OFF
+
+Scope and safety
+----------------
+The browser checks used a local Flask/Vite instance backed by an isolated
+temporary SQLite database. Only test accounts and sample records were used.
+No live database or production accounts were modified.
+
+Checks completed
+----------------
+1. Automated validation
+   - Frontend tests: 44 passed.
+   - TypeScript runtime validation plan: all 3 checks passed (production
+     build, local dev-server HTTP probe, and frontend tests).
+   - Backend suite: 105 passed, 13 failed (118 total). See outstanding
+     findings below; failures were not silently treated as passing.
+
+2. Authenticated admin UI smoke test
+   Opened Dashboard, Validation Queue, Data Integrity, Analytics, Generate
+   Reports, Salt Farmer Master List, Municipality Management, Demand Benchmark
+   Settings, User Management, Target Evaluation, and Settings. Each route
+   rendered its expected page title/content; no application 5xx responses or
+   visible error alerts were observed.
+
+3. Focused UI interactions
+   - Validation Queue showed the seeded pending QA production record. Opening
+     its review detail displayed its municipality, barangay, date, producer
+     counts, volume, submitter, and status. No record was approved or rejected.
+   - Salt Farmer Master List showed one search field and a Sex filter with
+     All/Male/Female only. Searching for the seeded farmer found the record;
+     selecting Male excluded the Female sample, and selecting Female showed it.
+   - Generate Reports exposed PDF, Word, and Excel options. Expanding Generated
+     Reports showed the empty state as expected. There were no generated
+     history rows in the test database, so history searching could not be
+     exercised in this browser session; all-column/month search is covered by
+     frontend tests.
+   - User Management displayed the seeded encoder and its edit, reset-password,
+     and deactivate actions. No account mutation was performed.
+
+4. Admin API permission check from the authenticated browser session
+   - GET /api/admin/me: 200
+   - GET /api/admin/users: 200
+   - GET /api/admin/reports: 200
+   - GET /api/superadmin/users: 404 (expected hidden-route behavior for a
+     non-SuperAdmin account)
+
+Outstanding findings and limitations
+-------------------------------------
+1. Backend test suite is not green: 13 failures remain.
+   - tests/test_iteration3.py includes audit-log retrieval and user-status
+     update assertions that do not match the current API behavior. The user
+     status operation now uses dedicated deactivate/reactivate actions rather
+     than the tested generic status PATCH. The audit-log test receives a
+     non-JSON response at its expected path. Confirm whether the route or the
+     test contract is outdated before sign-off.
+   - tests/test_superadmin_stage_a.py and
+     tests/test_superadmin_stage_b.py include access expectations of 403 where
+     the application intentionally hides SuperAdmin routes with 404, as well
+     as mutation/content assertions returning 400 or differing on a supplied
+     date. The 400/date cases have not been independently reconciled against
+     product requirements and remain unresolved.
+   - No backend behavior was changed as part of this QA pass.
+
+2. Non-admin browser verification is incomplete.
+   - The browser session verified Admin access and the Admin-to-SuperAdmin
+     route boundary. User Management showed the seeded encoder account.
+   - A separate encoder login and browser walkthrough were not completed, so
+     encoder-visible navigation and Admin-only denial behavior need a final
+     browser check. Do not treat the Admin-side API check as proof of the
+     encoder boundary.
+
+3. The exact reported pending Bolinao record was not present in the isolated
+   QA dataset. A seeded pending record from the QA municipality was used to
+   verify that review details open. Bolinao-specific verification remains
+   outstanding.
+
+4. Non-blocking diagnostics appeared during QA: React Bootstrap warnings that
+   FormLabel/FormControl controlId props are ignored when explicit htmlFor/id
+   values are supplied; mocked Leaflet/Recharts warnings in frontend tests;
+   and an external ArcGIS tile request failure in the local browser. None
+   resulted in an observed application 5xx response.
+
+Recommended sign-off criteria
+-----------------------------
+- Resolve or explicitly update the 13 failing backend assertions/contracts.
+- Complete a browser login and read-only workflow as an encoder, including
+  checks that Admin-only pages and endpoints are denied.
+- Seed or reproduce the Bolinao pending record in an isolated dataset and
+  verify its review details.
+- Re-run the backend suite and record a passing result or approved, documented
+  exceptions.

@@ -36,22 +36,6 @@ QUALITY_FIELDS = list(QUALITY_WEIGHTS.keys())
 #      catches unit mistakes (e.g. encoding kg with the value in MT) and typos.
 MAX_MONTHLY_VOLUME_MT = 2000
 
-# National-level sector demand breakdown (reference data, MT). Not stored in the
-# demand_benchmarks table (which holds annual supply/demand figures); served as a
-# labeled reference constant for the sector breakdown visualisation.
-# DEFAULT ASSUMPTION: hardcoded reference values, not derived from production_records.
-SECTOR_DEMAND = {
-    "household": 320000.0,
-    "foodProcessing": 180000.0,
-    "industry": 120000.0,
-    "agriculture": 63608.0,
-}
-
-SECTOR_DEMAND_NOTE = (
-    "Reference national sector breakdown by end use. Not derived from "
-    "production_records; shown for context only."
-)
-
 # WHAT: Application version, shown on the health page.
 # WHY: So SuperAdmin can confirm which build is deployed.
 APP_VERSION = "1.0.0"

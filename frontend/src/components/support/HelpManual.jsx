@@ -105,7 +105,7 @@ function AdminSteps() {
         <li>On the Executive Dashboard, set the year, month, or date range and select <strong>Apply</strong>.</li>
         <li>Hover or tap a chart to see exact values.</li>
         <li>Use the municipality filter to compare one area against the province.</li>
-        <li>Open <strong>Data Quality</strong> to find gaps before publishing figures.</li>
+        <li>Open <strong>Data Integrity</strong> to find gaps before publishing figures.</li>
       </ol>
       <figure className="support-figure">
         <img
@@ -142,8 +142,8 @@ function AdminSteps() {
       <ol className="support-steps">
         <li>Open <strong>Forecasting</strong> to see the production trajectory and municipality outlook.</li>
         <li>Change the historical period or horizon to update the projection.</li>
-        <li>Open <strong>Target Evaluation</strong> to compare recorded production with the target.</li>
-        <li>Use the notes under each chart when explaining results to stakeholders.</li>
+        <li>Open <strong>Target Evaluation</strong>, enter the annual demand target, and choose a forecast horizon.</li>
+        <li>Compare current approved production plus predicted supply against demand; the cumulative chart shows when the target is reached or the remaining gap at the horizon.</li>
       </ol>
       <figure className="support-figure">
         <img

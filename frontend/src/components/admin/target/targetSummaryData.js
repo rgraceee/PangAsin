@@ -55,3 +55,32 @@ export function buildSummary({ rows, annualTarget, target }) {
     })(),
   };
 }
+
+/* Headline numbers for current approved supply plus the selected horizon. */
+export function buildProjectionSummary({ rows, annualTarget }) {
+  const recordedTotal = rows.find((row) => row.isRecorded)?.cumTotal ?? 0;
+  const forecastRows = rows.filter((row) => row.isForecast);
+  const forecastTotal = forecastRows.reduce((sum, row) => sum + (row.forecast || 0), 0);
+  const projected = recordedTotal + forecastTotal;
+  const target = Number(annualTarget) || 0;
+  const pct = target > 0 ? (projected / target) * 100 : null;
+  const lowerRows = forecastRows.filter((row) => row.lower !== null && row.lower !== undefined);
+  const upperRows = forecastRows.filter((row) => row.upper !== null && row.upper !== undefined);
+
+  return {
+    annualTarget: target,
+    recordedTotal,
+    forecastTotal,
+    projected,
+    pct,
+    gap: projected - target,
+    status: statusFor(pct),
+    rangeLow: lowerRows.length
+      ? recordedTotal + lowerRows.reduce((sum, row) => sum + row.lower, 0)
+      : null,
+    rangeHigh: upperRows.length
+      ? recordedTotal + upperRows.reduce((sum, row) => sum + row.upper, 0)
+      : null,
+    reachedMonth: rows.find((row) => row.cumTotal >= target && target > 0)?.label ?? null,
+  };
+}

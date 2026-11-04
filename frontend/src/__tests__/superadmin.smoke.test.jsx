@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { ToastProvider } from '../components/Toast';
 import RequireSuperAdmin from '../components/admin/RequireSuperAdmin';
@@ -35,6 +35,8 @@ import {
   getAdminUsers,
   resetSuperAdminPassword,
   getAdminMunicipalities,
+  getAdminRecords,
+  getAdminRecord,
   getDataQuality,
   createReport,
   getReports,
@@ -169,6 +171,7 @@ vi.mock('../services/dataService', async (importOriginal) => {
     getLoginEvents: vi.fn(() => Promise.resolve({ entries: [], total: 0 })),
     getAdminMunicipalities: vi.fn(() => Promise.resolve({ municipalities: [] })),
     getAdminRecords: vi.fn(() => Promise.resolve({ records: [], total: 0 })),
+    getAdminRecord: vi.fn(() => Promise.resolve({})),
     getSuperAdminContent: vi.fn(() => Promise.resolve({})),
     getSuperAdminSettings: vi.fn(() => Promise.resolve({})),
     getPublicContent: vi.fn(() => Promise.resolve({})),
@@ -232,6 +235,8 @@ beforeEach(() => {
   getAdminUsers.mockReset().mockImplementation(() => Promise.resolve({ users: [], total: 0 }));
   resetSuperAdminPassword.mockReset().mockImplementation(() => Promise.resolve({}));
   getAdminMunicipalities.mockReset().mockImplementation(() => Promise.resolve({ municipalities: [] }));
+  getAdminRecords.mockReset().mockImplementation(() => Promise.resolve({ records: [], total: 0 }));
+  getAdminRecord.mockReset().mockImplementation(() => Promise.resolve({}));
   getAdminSupplyDemand.mockReset().mockImplementation(() => Promise.resolve(null));
   getPublicMunicipalities.mockReset().mockImplementation(() => Promise.resolve({ municipalities: [] }));
   getAdminDescriptive.mockReset().mockImplementation(() => Promise.resolve({}));
@@ -297,6 +302,39 @@ describe('Admin routes render without crashing or going blank', () => {
     let container = renderRoute('/admin/data-quality', <DataQualityDashboard />, AdminGuard);
     await waitFor(() => expect(container.textContent.trim().length).toBeGreaterThan(30), { timeout: 15000 });
     expect(container.textContent.trim().length).toBeGreaterThan(30);
+    expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
+  });
+
+  it('opens a pending Bolinao report and renders its review actions', async () => {
+    getAdminRecords.mockResolvedValue({
+      records: [{
+        id: 101,
+        municipality_name: 'Bolinao',
+        barangay: 'Goyoden',
+        record_date: '2026-10-01',
+        production_volume_mt: 125,
+        status: 'pending',
+      }],
+      total: 1,
+      pages: 1,
+    });
+    getAdminRecord.mockResolvedValue({
+      id: 101,
+      municipality_name: 'Bolinao',
+      barangay: 'Goyoden',
+      record_date: '2026-10-01',
+      production_method: 'solar',
+      production_volume_mt: 125,
+      status: 'pending',
+    });
+
+    renderRoute('/admin/validation', <ValidationQueue />, AdminGuard);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Review record 101' }));
+
+    expect(await screen.findByText('Production Method')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
     expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
   });
 });

@@ -14,7 +14,12 @@ const TABS = [
   { key: 'gender', label: 'Gender distribution' },
 ];
 
-export default function MuniProfileChart({ profile, registeredRows, registeredTotal }) {
+export default function MuniProfileChart({
+  profile,
+  registeredRows,
+  registeredTotal,
+  entityLabel = 'municipality',
+}) {
   const [tab, setTab] = useState('registered');
   const [tabChanged, setTabChanged] = useState(false);
   const { total, age, sex } = profile || { total: 0, age: [], sex: [] };
@@ -34,7 +39,7 @@ export default function MuniProfileChart({ profile, registeredRows, registeredTo
     <MuniCard
       icon={UserRound}
       title="Salt Farmers"
-      sub="Registered salt farmers by municipality, age, and gender"
+      sub={`Registered salt farmers by ${entityLabel}, age, and gender`}
       chips={(
         <>
           <MuniChip label={`${fmtInt(total)} salt farmers`} meta />
@@ -61,6 +66,7 @@ export default function MuniProfileChart({ profile, registeredRows, registeredTo
           <MuniRegisteredChart
             rows={registeredRows || []}
             total={registeredTotal || 0}
+            entityLabel={entityLabel}
             bare
             animate={animate}
           />

@@ -50,7 +50,7 @@ export const SUPPLY_COLORS = {
   'Domestic Supply': FC_TOKENS.ocean,
   'Imported Salt': FC_TOKENS.brown,
   'Pangasinan Supply': FC_TOKENS.ocean,
-  'Demand Benchmark': FC_TOKENS.gold,
+  'Pangasinan Demand Benchmark': FC_TOKENS.gold,
 };
 
 /* WHAT: Format ng volume (MT) na walang extra decimals.
