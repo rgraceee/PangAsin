@@ -4,6 +4,7 @@
   "regions": ["hnd1"],
   "functions": {
     "index.py": {
+      "includeFiles": "app/*",
       "maxDuration": 300
     }
   }
