@@ -89,7 +89,7 @@ export default function DataQualityDashboard() {
 
   if (!data) return null;
 
-  const { kpis, fields, municipalities } = data;
+  const { kpis, municipalities } = data;
   const behind = municipalities.filter((municipality) => municipality.reporting_pct < 100);
   /* WHY: The supporting line has to stand on its own - it names who is behind
      when there is nothing to review, and says what a review would unlock. */
@@ -181,24 +181,14 @@ export default function DataQualityDashboard() {
             info="Share of municipality-months in the selected window that have at least one approved record."
           />
           <KpiCard
-            icon={AlertTriangle}
-            title="Municipalities behind"
-            description="Municipalities with at least one month without an approved report."
-            value={kpis.behind_count}
-            unit={`of ${kpis.municipality_count}`}
+            icon={BadgeCheck}
+            title="Review ready"
+            description="Municipalities with waiting records that can move forward once validated."
+            value={kpis.review_clearable_count}
+            unit="municipalities"
             caption="Selected window"
             supporting={reviewNote}
-            info="Municipalities with at least one month without an approved report in this period."
-          />
-          <KpiCard
-            icon={BadgeCheck}
-            title="Fields filled in"
-            description="Share of required fields filled in on approved records."
-            value={kpis.field_pct}
-            unit="%"
-            caption="Approved records"
-            supporting={`Across all ${fields.length} required fields`}
-            info="Share of the required fields that are filled in on approved records. A value of 0 is a valid answer; an empty field is not."
+            info="Municipalities that have pending validation but can be cleared once the waiting records are reviewed."
           />
         </KpiGrid>
 
