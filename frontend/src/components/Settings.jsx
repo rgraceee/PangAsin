@@ -31,16 +31,16 @@ const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 // WHAT: Mga section ng Settings page sa order na ipakita.
 // WHY: Isa lamang ang listahan para consistent ang sidebar sub-items at content panels.
 const SECTIONS = [
-  { id: 'account', label: 'Account', Icon: User, subtitle: 'Your profile details' },
-  { id: 'security', label: 'Security', Icon: ShieldCheck, subtitle: 'Update your password' },
-  { id: 'legal', label: 'Legal', Icon: Archive, subtitle: 'Privacy and terms' },
-  { id: 'help', label: 'Help & Support', Icon: HelpCircle, subtitle: 'Quick answers to common tasks.' },
-  { id: 'about', label: 'About', Icon: SettingsIcon, subtitle: 'About PangAsin' },
+  { id: 'account', label: 'Account', Icon: User },
+  { id: 'security', label: 'Security', Icon: ShieldCheck },
+  { id: 'legal', label: 'Legal', Icon: Archive },
+  { id: 'help', label: 'Help & Support', Icon: HelpCircle },
+  { id: 'about', label: 'About', Icon: SettingsIcon },
 ];
 
-// WHAT: Section head card (icon tile + title + subtitle) na katulad ng Forecasting page.
+// WHAT: Section head card (icon tile + title) na katulad ng Forecasting page.
 // WHY: pare-pareho ang hitsura ng section header sa lahat ng pages.
-function SectionHead({ icon: Icon, title, subtitle }) {
+function SectionHead({ icon: Icon, title }) {
   return (
     <div className="settings-section-head">
       <span className="settings-section-chip" aria-hidden="true">
@@ -48,7 +48,6 @@ function SectionHead({ icon: Icon, title, subtitle }) {
       </span>
       <div>
         <h2 className="settings-section-title">{title}</h2>
-        {subtitle && <p className="settings-section-sub">{subtitle}</p>}
       </div>
     </div>
   );
@@ -172,7 +171,7 @@ const isEncoder = role === 'encoder';
         {/* Account */}
         {section === 'account' && (
           <>
-            <SectionHead icon={User} title="Account" subtitle="Your profile details" />
+            <SectionHead icon={User} title="Account" />
             <Card className="settings-card">
               <Card.Body className="settings-card-body">
                 <div className="settings-account-grid">
@@ -267,7 +266,7 @@ const isEncoder = role === 'encoder';
         {/* Security */}
         {section === 'security' && (
           <>
-            <SectionHead icon={ShieldCheck} title="Security" subtitle="Update your password" />
+            <SectionHead icon={ShieldCheck} title="Security" />
             <Card className="settings-card">
               <Card.Body className="settings-card-body">
                 {error && <div className="settings-error">{error}</div>}
@@ -357,7 +356,7 @@ const isEncoder = role === 'encoder';
         {/* Help & Support */}
         {section === 'help' && (
           <>
-            <SectionHead icon={HelpCircle} title="Help &amp; Support" subtitle="Guides, FAQ and contact" />
+            <SectionHead icon={HelpCircle} title="Help &amp; Support" />
             {isSuperAdmin && (
               <div className="settings-faq-picker mb-3">
                 <label className="settings-faq-label">Edit FAQ</label>
@@ -395,7 +394,7 @@ const isEncoder = role === 'encoder';
         {/* Legal */}
         {location.pathname === legalBase ? (
           <>
-            <SectionHead icon={Archive} title="Legal" subtitle="Privacy and terms" />
+            <SectionHead icon={Archive} title="Legal" />
             <Card className="settings-card">
               <Card.Body className="settings-card-body">
                 <ul className="settings-legal-list">
@@ -462,7 +461,7 @@ const isEncoder = role === 'encoder';
         {section === 'about' && (
           <>
             <div className="d-flex justify-content-between align-items-start mb-2">
-              <SectionHead icon={SettingsIcon} title="About" subtitle="About PangAsin" />
+              <SectionHead icon={SettingsIcon} title="About" />
               {isSuperAdmin && (
                 <button
                   type="button"

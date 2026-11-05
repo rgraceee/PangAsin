@@ -387,9 +387,6 @@ export default function AuditLogs() {
           >
             Clear
           </button>
-          <p className="audit-filters__hint">
-            Action and entity filters match exactly; actor email matches partially. Newest entries appear first.
-          </p>
         </Form>
       </PageHeader>
 
@@ -545,10 +542,6 @@ export default function AuditLogs() {
             />
           )}
 
-          <p className="audit-footnote">
-            <Lock size={13} aria-hidden="true" />
-            Audit entries are immutable and cannot be edited or deleted from this page.
-          </p>
         </Card.Body>
       </Card>
     </>

@@ -92,9 +92,6 @@ export default function HelpCenter() {
           Help Center
         </span>
         <h1 className="help-title">Help Center</h1>
-        <p className="help-sub">
-          Answers about the PangAsin salt production dashboard.
-        </p>
       </div>
 
       {/* ---------- FAQ accordions grouped by category ---------- */}

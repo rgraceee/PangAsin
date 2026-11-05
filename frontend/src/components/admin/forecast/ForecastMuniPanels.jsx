@@ -9,8 +9,8 @@ import ForecastMuniPanel from './ForecastMuniPanel';
 import { MUNI_COLORS, MUNI_EDGES, MUNI_LABELS } from './forecastColors';
 
 const METRICS = [
-  { key: 'change', label: 'Forecast vs recent average', title: 'Forecast change by municipality', sub: 'Each bar is one municipality; bars to the right show a stronger forecast change.', unit: 'Forecast vs recent average (%)', source: 'Source: expected_change_pct of each municipality\'s latest forecast run.' },
-  { key: 'yoy', label: 'Year-over-year', title: 'Recorded change by municipality', sub: 'Each bar is one municipality; bars to the right show stronger 12-month growth.', unit: 'Recorded year-over-year change (%)', source: 'Source: municipality production data, two complete 12-month calendar blocks.' },
+  { key: 'change', label: 'Forecast vs recent average', title: 'Forecast change by municipality', unit: 'Forecast vs recent average (%)' },
+  { key: 'yoy', label: 'Year-over-year', title: 'Recorded change by municipality', unit: 'Recorded year-over-year change (%)' },
 ];
 
 export default function ForecastMuniPanels({ rows, height = 320 }) {
@@ -48,7 +48,6 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
                 </button>
               ))}
             </div>
-            <p className="fc-card-sub">{m.sub}</p>
           </div>
         </div>
         <div className="fc-card-head-right">
@@ -61,15 +60,9 @@ export default function ForecastMuniPanels({ rows, height = 320 }) {
           valueKey={valueKey}
           statusKey={statusKey}
           title={m.title}
-          subTitle={m.sub}
           unitLabel={m.unit}
-          sourceNote={m.source}
           height={height}
         />
-        <p className="fc-chart-caption">
-          A municipality is marked as incomplete when a month inside the 12-month block has no source row, so no
-          percentage is shown for it.
-        </p>
       </Card.Body>
     </Card>
   );

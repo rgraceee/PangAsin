@@ -6,7 +6,7 @@ import {
   CartesianGrid, ReferenceArea,
 } from 'recharts';
 import { ChartNoAxesColumnIncreasing } from 'lucide-react';
-import { fmtMT, fmtAxis } from './targetData';
+import { fmtAxis } from './targetData';
 import { PaceTooltip } from './targetTooltips';
 import PaceMarkers from './targetPaceMarkers';
 import TargetCard from './TargetCard';
@@ -14,7 +14,7 @@ import TargetCard from './TargetCard';
 const NAVY = 'var(--te-navy)';
 const GOLD = 'var(--te-gold)';
 
-export default function TargetPaceChart({ rows, annualTarget, reachedMonth, horizonGap }) {
+export default function TargetPaceChart({ rows, reachedMonth, horizonGap }) {
   const [width, setWidth] = useState(0);
   const narrow = width > 0 && width < 560;
   const firstForecast = rows.find((r) => r.isForecast);
@@ -24,19 +24,10 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, hori
     bandLower: r.cumLower ?? null,
     bandUpper: r.cumUpper ?? null,
   }));
-  const gapNote = !rows.length
-    ? 'No production or forecast data is available for this target.'
-    : horizonGap == null
-      ? 'No projected supply gap is available for this target.'
-      : horizonGap >= 0
-        ? `Projected supply after the selected horizon is ${fmtMT(horizonGap)} Metric Tons (MT) above the ${fmtMT(annualTarget)} Metric Tons (MT) demand target.`
-        : `Projected supply after the selected horizon is ${fmtMT(Math.abs(horizonGap))} Metric Tons (MT) below the ${fmtMT(annualTarget)} Metric Tons (MT) demand target.`;
-
   return (
     <TargetCard
       icon={ChartNoAxesColumnIncreasing}
       title="Projected cumulative supply vs demand"
-      sub="Approved supply to date plus monthly forecasts, compared with the full demand target."
       chips={(
         <>
           <span className="te-chip"><span className="te-chip-swatch" style={{ background: NAVY }} />Cumulative supply</span>
@@ -44,7 +35,6 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, hori
           <span className="te-chip"><span className="te-chip-swatch te-chip-swatch--soft" style={{ background: 'var(--te-gold-soft)' }} />Forecast range</span>
         </>
       )}
-      caption={`Current supply is the sum of approved production records from January through the latest reported month (${fmtMT(rows[0]?.cumTotal ?? 0)} Metric Tons (MT)). Each forecast month is added to that starting supply; the dashed line is the full ${fmtMT(annualTarget)} Metric Tons (MT) demand target.`}
     >
       <div className="te-chart" style={{ height: 320 }}>
           <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>
@@ -107,7 +97,6 @@ export default function TargetPaceChart({ rows, annualTarget, reachedMonth, hori
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        <div className="te-note">{gapNote}</div>
     </TargetCard>
   );
 }

@@ -79,12 +79,7 @@ export default function PublicIntro({ municipalities = [], production = {} }) {
           Why Salt Matters for Pangasinan
         </h2>
         <p className="public-intro-body">
-          Salt is essential to food production, industry, aquaculture, and agriculture. In the
-          Philippines, salt-making is both an economic activity and a cultural tradition, especially in
-          coastal provinces like Pangasinan. Although Pangasinan is among the country&rsquo;s leading
-          producers, local supply still falls short of national demand. Salt is made by evaporating
-          seawater, either through solar evaporation or by cooking brine, and the methods used vary from
-          one coastal community to another.
+          Salt is essential to food production, industry, aquaculture, and agriculture. In the Philippines, salt-making is both an economic activity and a cultural tradition, especially in coastal provinces like Pangasinan. Although Pangasinan is among the country’s leading producers, local supply still falls short of national demand. Salt is made by evaporating seawater, either through solar evaporation or by cooking brine, and the methods used vary from one coastal community to another.
         </p>
       </div>
 

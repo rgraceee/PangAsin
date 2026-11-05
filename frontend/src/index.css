@@ -4504,10 +4504,31 @@ body {
 
 .skeleton-page-block { margin-top: 0.5rem; }
 
-.auth-skeleton-wrap {
-  padding: 2.5rem 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
+.auth-loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  background: #fff;
+}
+
+.auth-loading-screen img {
+  width: min(180px, 32vw);
+  height: min(180px, 32vw);
+  object-fit: contain;
+  animation: auth-logo-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes auth-logo-breathe {
+  0%, 100% { transform: scale(0.94); }
+  50% { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-loading-screen img {
+    animation: none;
+  }
 }
 
 .skeleton-dashboard {

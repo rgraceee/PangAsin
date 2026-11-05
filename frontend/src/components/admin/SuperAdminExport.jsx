@@ -10,28 +10,24 @@ const EXPORT_CARDS = [
     value: 'records',
     label: 'Production Records',
     icon: FileText,
-    desc: 'All production records (approved, pending, rejected, soft-deleted). Filter by municipality, date range, and status.',
     filters: ['municipality_id', 'start', 'end', 'status'],
   },
   {
     value: 'salt-farmers',
     label: 'Salt Farmers',
     icon: FileText,
-    desc: 'Registered salt-farmer master list. Filter by municipality.',
     filters: ['municipality_id'],
   },
   {
     value: 'audit-log',
     label: 'Audit Log',
     icon: FileText,
-    desc: 'SuperAdmin actions: who changed what, when, and why.',
     filters: [],
   },
   {
     value: 'login-history',
     label: 'Login History',
     icon: FileText,
-    desc: 'Successful and failed sign-ins per account, with IP and timestamp.',
     filters: [],
   },
 ];
@@ -129,7 +125,6 @@ export default function SuperAdminExport() {
                 <Download size={16} strokeWidth={2} aria-hidden="true" />
                 <h5 className="card-title mb-0">Data Exports</h5>
               </div>
-              <div className="text-muted small">Download CSV exports of system records. Each file includes column headers and is safe to open in spreadsheet applications.</div>
             </div>
           </div>
           <div className="row g-3">
@@ -143,7 +138,6 @@ export default function SuperAdminExport() {
                         <CardIcon size={16} strokeWidth={2} aria-hidden="true" />
                         <span className="fw-medium">{card.label}</span>
                       </div>
-                      <p className="text-muted small flex-grow-1">{card.desc}</p>
                       {card.filters.length > 0 && (
                         <div className="export-filters mb-3">
                           {card.filters.map((f) => {

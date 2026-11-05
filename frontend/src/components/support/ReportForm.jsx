@@ -72,11 +72,6 @@ export default function ReportForm() {
         <div className="report-card">
           <span className="report-eyebrow">Report submitted</span>
           <h1 className="report-title">Thank you</h1>
-          <p className="report-sub">
-            Your report has been prepared for sending. Your email app should open
-            with the message pre-filled. If it doesn&apos;t, copy the message below and
-            paste it into your email.
-          </p>
           <div className="report-message-box">
             <p className="report-message-label">Message:</p>
             <textarea
@@ -100,10 +95,6 @@ export default function ReportForm() {
         <div className="report-card">
           <span className="report-eyebrow">Report a problem</span>
           <h1 className="report-title">Report a Problem</h1>
-          <p className="report-sub">
-            Tell us about a data error, login issue, or bug. We will get back to you
-            as soon as possible.
-          </p>
           <form onSubmit={handleSubmit} className="report-form">
             <div className="report-field">
               <label className="report-field-label">Report type <span className="required">*</span></label>
@@ -167,12 +158,6 @@ export default function ReportForm() {
               <Mail size={14} strokeWidth={2} aria-hidden="true" />
               Send report by email
             </button>
-              <p className="report-hint">
-              <AlertTriangle size={14} strokeWidth={2} aria-hidden="true" />
-              This opens your default email app with the report pre-filled. If your
-              browser doesn&apos;t support mailto, use &quot;Copy message&quot; and paste into your
-              email.
-            </p>
           </form>
         </div>
       )}

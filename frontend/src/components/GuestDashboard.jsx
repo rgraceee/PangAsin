@@ -122,7 +122,6 @@ export default function GuestDashboard() {
               value={kpis.nationalDemand}
               unit="Metric Tons (MT)"
               supporting="Philippines demand benchmark"
-              info="The total amount of salt the country needs in a year. A higher number means greater national demand."
             />
             <KpiCard
               icon={Factory}
@@ -130,7 +129,6 @@ export default function GuestDashboard() {
               value={kpis.coverage}
               unit="%"
               supporting="Share of demand from local production"
-              info="The share of national salt demand met by locally produced salt. A higher percentage means less reliance on imports."
             />
             <KpiCard
               icon={Ship}
@@ -138,7 +136,6 @@ export default function GuestDashboard() {
               value={kpis.importDependence}
               unit="%"
               supporting="Share of demand covered by imports"
-              info="The share of national salt demand covered by imported salt. A higher percentage means more reliance on foreign supply."
             />
             <KpiCard
               icon={Boxes}
@@ -146,7 +143,6 @@ export default function GuestDashboard() {
               value={kpis.totalMT == null ? null : Math.round(kpis.totalMT * 100) / 100}
               unit="Metric Tons (MT)"
               supporting="Workbook-derived production data · Pangasinan"
-              info="Total salt production recorded across Pangasinan municipalities for the latest period. Each municipality’s figure is shown on the map and charts below."
             />
           </KpiGrid>
         </Reveal>
@@ -182,15 +178,12 @@ export default function GuestDashboard() {
             <div className="login-footer-brand">
               <div className="login-footer-brand-row" aria-hidden="true">
                 <img
-                  src="/static/brand/PangAsin_Logo.png"
+                  src="/static/brand/asin_center_logo.png"
                   alt=""
                   className="login-footer-brand-logo"
                 />
                 <span className="login-footer-brand-name">PangAsin</span>
               </div>
-              <p className="login-footer-brand-desc">
-                Salt production monitoring, forecasting, and decision support.
-              </p>
               <p className="login-footer-brand-support">
                 Supported by the DOST NICER Program
               </p>

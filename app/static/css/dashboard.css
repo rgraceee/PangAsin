@@ -375,16 +375,13 @@ body {
   width: 180px;
   height: 180px;
   object-fit: contain;
-  animation: logo-rotate 3s ease-in-out infinite;
+  animation: logo-breathe 2.4s ease-in-out infinite;
   filter: drop-shadow(0 10px 25px rgba(13, 110, 253, 0.25));
 }
 
-@keyframes logo-rotate {
-  0% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(2deg) scale(1.03); }
-  50% { transform: rotate(0deg) scale(1); }
-  75% { transform: rotate(-2deg) scale(1.03); }
-  100% { transform: rotate(0deg) scale(1); }
+@keyframes logo-breathe {
+  0%, 100% { transform: scale(0.94); }
+  50% { transform: scale(1.06); }
 }
 
 @media (max-width: 767.98px) {
@@ -397,5 +394,11 @@ body {
   .landing-logo-img {
     width: 140px;
     height: 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-logo-img {
+    animation: none;
   }
 }

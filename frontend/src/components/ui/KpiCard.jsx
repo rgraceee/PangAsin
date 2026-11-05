@@ -1,17 +1,11 @@
-import React, { useId, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Info } from 'lucide-react';
+import React from 'react';
 
-// WHAT: I-format ang raw value para sa display at para sa aria-label.
-// WHY: numbers dapat may thousands separator, blangko/zero dapat "—" o "0".
 function renderValue(value) {
   if (value === null || value === undefined || value === '') return '\u2014';
   if (typeof value === 'number') return value.toLocaleString();
   return value;
 }
 
-// WHAT: Ambag ng trend arrow + kulay base sa meaning.
-// WHY: berde kapag "good" ang direksyon, pula kapag "bad", abo kapag neutral.
 function trendClass(direction, goodWhen) {
   if (goodWhen === 'neutral') return 'ui-kpi__trend--neutral';
   const good = (direction === 'up') === (goodWhen === 'up');
@@ -23,40 +17,14 @@ export default function KpiCard({
   title,
   value,
   unit,
-  supporting,
   tone = 'default',
-  info,
   trend,
   badge,
   loading = false,
   className = '',
 }) {
-  const [open, setOpen] = useState(false);
-  const [tip, setTip] = useState(null);
-  const buttonRef = useRef(null);
-  const tooltipId = useId();
-  /* WHAT: Ipukot ang tooltip sa document.body para hindi maputol ng card
-     grid o ngang overflow:hidden na magulang. I-fixed ang position sa
-     viewport gamit ang bounding rect ng info button.
-     WHY: Ang ui-kpi__tooltip ay naka-position: absolute loob ng card;
-          kapag nasa gilid ang card, ang tooltip ay naililabas ng grid
-          container at nabububot. Ang portal sa body ay lumalabas sa
-          lahat ng stacking context. */
-  const showTip = () => {
-    if (!info || !buttonRef.current) return;
-    const r = buttonRef.current.getBoundingClientRect();
-    setTip({ top: r.top - 10, left: r.left + r.width / 2 });
-    setOpen(true);
-  };
-  const hideTip = () => {
-    setTip(null);
-    setOpen(false);
-  };
-
   const classes = ['ui-kpi', tone !== 'default' ? `ui-kpi--${tone}` : '', className].filter(Boolean).join(' ');
 
-  /* WHAT: Skeleton state na pareho ang sukat sa totoong card.
-     WHY: hindi tumatalon ang layout habang naglo-load. */
   if (loading) {
     return (
       <div className={`ui-kpi ui-kpi--skeleton ${className}`} aria-hidden="true">
@@ -67,15 +35,12 @@ export default function KpiCard({
           </div>
         </div>
         <div className="ui-kpi__skeleton-block" style={{ width: '70%', height: 30 }} />
-        <div className="ui-kpi__skeleton-block" style={{ width: '85%', height: 12 }} />
       </div>
     );
   }
 
   const display = renderValue(value);
   const ariaValue = unit ? `${display} ${unit}` : `${display}`;
-  // WHAT: Badge ay maaaring string lang o {text, tone}.
-  // WHY: tinitipid ang call site — string default good (green), object para sa warn/bad.
   const badgeText = typeof badge === 'string' ? badge : (badge && badge.text) || null;
   const badgeTone = typeof badge === 'object' && badge && badge.tone ? badge.tone : 'good';
   const trendText = trend
@@ -93,29 +58,6 @@ export default function KpiCard({
           )}
           <span className="ui-kpi__label">{title}</span>
         </div>
-        {info && (
-          <button
-            ref={buttonRef}
-            type="button"
-            className="ui-kpi__info"
-            aria-label={`About ${title}`}
-            aria-expanded={open}
-            aria-describedby={open ? tooltipId : undefined}
-            onMouseEnter={showTip}
-            onMouseLeave={hideTip}
-            onFocus={showTip}
-            onBlur={hideTip}
-            onClick={() => setOpen((o) => !o)}
-            onKeyDown={(e) => { if (e.key === 'Escape') hideTip(); }}
-          >
-            <Info size={14} strokeWidth={2} />
-            {open && tip && createPortal(
-              <span className="ui-kpi__tooltip" role="tooltip" id={tooltipId}
-                    style={{ top: tip.top, left: tip.left }}>{info}</span>,
-              document.body,
-            )}
-          </button>
-        )}
       </div>
 
       <div className="ui-kpi__value-row">
@@ -133,8 +75,6 @@ export default function KpiCard({
           <span className="ui-kpi__trend-label">{trend.label || 'vs. last month'}</span>
         </div>
       )}
-
-      {supporting && <div className="ui-kpi__supporting">{supporting}</div>}
     </div>
   );
 }

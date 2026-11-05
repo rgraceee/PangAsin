@@ -22,10 +22,8 @@ export function ChartChip({ label, color, dashed = false, meta = false }) {
 export default function ForecastChartCard({
   icon: Icon,
   title,
-  subtitle,
   chips,
   children,
-  caption,
   height = 320,
   className = '',
 }) {
@@ -40,7 +38,6 @@ export default function ForecastChartCard({
           )}
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">{title}</h5>
-            {subtitle && <p className="fc-card-sub">{subtitle}</p>}
           </div>
         </div>
         {chips ? <div className="fc-card-head-right">{chips}</div> : null}
@@ -49,7 +46,6 @@ export default function ForecastChartCard({
         <div className="fc-chart" style={{ height }}>
           {children}
         </div>
-        {caption && <p className="fc-chart-caption">{caption}</p>}
       </Card.Body>
     </Card>
   );

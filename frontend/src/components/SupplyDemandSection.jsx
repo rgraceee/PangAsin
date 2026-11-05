@@ -9,7 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, LabelList, ResponsiveContainer, Cell,
   CartesianGrid, ReferenceLine,
 } from 'recharts';
-import { Globe, MapPin, BarChart3, PieChart, Info } from 'lucide-react';
+import { Globe, MapPin, BarChart3, PieChart } from 'lucide-react';
 import { getSupplyDemand, getSectorDemand } from '../services/dataService';
 import {
   CATEGORY_RAMP, FC_TOKENS, SUPPLY_COLORS, fmtMT, fmtNumber, fmtPct,
@@ -33,7 +33,6 @@ function SupplyTooltip({ active, payload }) {
           <span>Share of demand</span><b>{fmtPct(point.percentage)}</b>
         </div>
       ) : null}
-      {point.note ? <div className="fc-tooltip-source">{point.note}</div> : null}
     </div>
   );
 }
@@ -134,7 +133,7 @@ export default function SupplyDemandSection() {
 
   /* WHAT: Rows ng bar chart + ang mga Derived na sukat (share, gap).
      WHY: Isang beses lang ang kalkula — hindi kalkulado sa render ng chart. */
-  const { rows, max, legend, balance, caption, benchmark } = useMemo(() => {
+  const { rows, max, legend, balance, benchmark } = useMemo(() => {
     const [a, b, c] = data.values;
     const source = isPhilippines
       ? { demand: a, supply: b, imports: c }
@@ -153,15 +152,6 @@ export default function SupplyDemandSection() {
         value,
         color: SUPPLY_COLORS[label] || FC_TOKENS.ocean,
         percentage: share,
-        note: isPhilippines
-          ? (label === 'National Demand'
-            ? 'Total salt demand benchmark for the Philippines'
-            : (label === 'Domestic Supply'
-              ? 'Salt produced by local salt farmers'
-              : 'Salt sourced from imports'))
-          : (label === 'Pangasinan Demand Benchmark'
-            ? 'Annual salt demand benchmark for Pangasinan'
-            : (label === 'Pangasinan Supply' ? 'Salt produced in Pangasinan' : data.note)),
       };
     });
 
@@ -171,7 +161,6 @@ export default function SupplyDemandSection() {
     const legendItems = built.map((r) => ({ label: r.name, color: r.color }));
 
     let chips = [];
-    let captionText = '';
     let benchmarkLine = null;
     if (isPhilippines) {
       const domesticShare = pctOf(supply, demand);
@@ -183,15 +172,7 @@ export default function SupplyDemandSection() {
         { label: 'Imports', value: importShare == null ? '—' : fmtPct(importShare) },
         { label: unmet > 0 ? 'Unmet demand' : 'Demand met', value: unmet > 0 ? fmtPct(unmetShare) : '100%' },
       ];
-      captionText = demand > 0
-        ? `Recorded national demand of ${fmtMT(demand)} is met by ${fmtMT(supply)} of domestic supply and `
-          + `${fmtMT(imports)} of imports`
-          + (unmet > 0
-            ? `, leaving ${fmtMT(unmet)} unmet.`
-            : ', fully covered by domestic supply and imports.')
-        : 'No national salt demand benchmark is available yet.';
     } else {
-      const coverage = pctOf(supply, demand);
       const gap = supply - demand;
       chips = [
         { label: 'Local supply (Pangasinan)', value: fmtMT(supply) },
@@ -201,11 +182,6 @@ export default function SupplyDemandSection() {
           value: fmtMT(Math.abs(gap)),
         },
       ];
-      captionText =
-        `Pangasinan local supply${data.period ? ` (${data.period.start} to ${data.period.end})` : ''} `
-        + `of ${fmtMT(supply)} is ${coverage == null ? '—' : fmtPct(coverage)} of the annual local demand benchmark `
-        + `of ${fmtMT(demand)}`
-        + (gap >= 0 ? ' — a surplus against the benchmark.' : ' — a shortfall against the benchmark.');
       if (demand > 0) {
         benchmarkLine = { value: demand };
         /* WHAT: Dashed chip sa legend para malinaw kung ano ang guhit na linya.
@@ -224,7 +200,6 @@ export default function SupplyDemandSection() {
       max: axisMax,
       legend: legendItems,
       balance: chips,
-      caption: captionText,
       benchmark: benchmarkLine,
     };
   }, [data, isPhilippines]);
@@ -242,12 +217,6 @@ export default function SupplyDemandSection() {
   }, [sectorData]);
 
   const sectorMax = niceCeil(sectorRows.reduce((mx, s) => Math.max(mx, s.value), 0) * 1.05);
-
-  const sectorCaption = useMemo(() => {
-    if (sectorRows.length === 0) return 'No sector demand benchmark available yet.';
-    const top = sectorRows[0];
-    return `${top.sector} is ${fmtPct(top.percentage)} of the current ${isPhilippines ? 'Philippines' : 'Pangasinan'} demand target (${fmtMT(top.value)}). Sector amounts update with the admin-set demand benchmark.`;
-  }, [sectorRows, isPhilippines]);
 
   // WHAT: Plain-text na buod para sa screen readers.
   const supplyAria = rows.map((r) => `${r.name}: ${fmtMT(r.value)}`).join('; ');
@@ -267,7 +236,6 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Supply and Demand</h5>
-                  <p className="fc-card-sub">Each bar compares national demand with domestic supply and imports in Metric Tons (MT).</p>
                 </div>
               </div>
               {/* WHAT: Segmented scope switcher (Philippines / Pangasinan).
@@ -359,7 +327,6 @@ export default function SupplyDemandSection() {
                 ))}
               </div>
 
-              <p className="fc-chart-caption">{caption}</p>
             </Card.Body>
           </Card>
         </Col>
@@ -373,15 +340,9 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Demand by Sector</h5>
-                  <p className="fc-card-sub">
-                    Sector shares are configured by the admin and calculated from the current {isPhilippines ? 'Philippines' : 'Pangasinan'} demand target.
-                  </p>
                 </div>
               </div>
               <div className="fc-card-head-right">
-                <span className="reference-tag">
-                  <Info size={12} strokeWidth={2} /> Admin-configured shares
-                </span>
               </div>
             </Card.Header>
             <Card.Body className="fc-card-body">
@@ -442,7 +403,6 @@ export default function SupplyDemandSection() {
                       percentage: row.percentage,
                     }))}
                   />
-                  <p className="fc-chart-caption">{sectorCaption}</p>
                 </>
               )}
             </Card.Body>

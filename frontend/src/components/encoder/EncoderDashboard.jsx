@@ -289,11 +289,7 @@ export default function EncoderDashboard() {
           <MuniCard
             icon={Activity}
             title={selectedName ? `Production Trend · ${selectedName}` : 'Production by Barangay'}
-            sub={selectedName
-              ? 'Each point is one month; the line shows how volume moves over time.'
-              : 'Each line is one barangay; higher points mean more volume that month.'}
             chips={<MuniChip label="Metric Tons (MT)" meta />}
-            caption="Approved production records in the selected period and barangay."
           >
             {lineData.length === 0 ? (
               <div className="muni-empty">
@@ -357,11 +353,7 @@ export default function EncoderDashboard() {
           <MuniCard
             icon={PieGlyph}
             title={selectedName ? `Share of Municipality · ${selectedName}` : 'Barangay Total Summary'}
-            sub={selectedName
-              ? 'The selected barangay against the rest of the municipality.'
-              : 'Each slice is one barangay\u2019s share of total production.'}
             chips={<MuniChip label={`${fmtMT(pieTotal, 1)} MT`} meta />}
-            caption="Approved production records in the selected period."
           >
             {pieRows.length === 0 ? (
               <div className="muni-empty">

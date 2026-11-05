@@ -473,9 +473,6 @@ export default function DashboardFilters({
         <p className="dashboard-filter-note" role="alert">{rangeError}</p>
       )}
 
-      {mode === 'range' && !rangeApplied && !rangeError && (
-        <p className="dashboard-filter-note" role="status">Choose a start and end date, then Apply.</p>
-      )}
     </div>
   );
 }

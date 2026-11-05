@@ -143,7 +143,6 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
     <MuniCard
       icon={Activity}
       title="Monthly Production Trend"
-      sub={`${scopeLabel} · ${displayYear || 'Yearly view'}`}
       chips={(
         <label className="muni-year-filter">
           <span>Year</span>
@@ -159,7 +158,6 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
           </select>
         </label>
       )}
-      caption="Each point is a month in the municipality production dataset. Month-over-month compares with the previous month in view."
     >
       <div className="admin-prod-view" role="group" aria-label="Production trend range">
         <div className={`te-segmented te-segmented--three te-segmented--${range}`}>

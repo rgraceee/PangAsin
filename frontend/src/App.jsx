@@ -39,7 +39,7 @@ import SuperAdminAbout from './components/admin/SuperAdminAbout';
 import SuperAdminHelp from './components/admin/SuperAdminHelp';
 import RequireSuperAdmin from './components/admin/RequireSuperAdmin';
 import { getMe } from './services/dataService';
-import { SkeletonPage } from './components/Skeleton';
+import { AuthLoadingScreen } from './components/Skeleton';
 import { ToastProvider } from './components/Toast';
 import usePageTitle from './hooks/usePageTitle';
 
@@ -101,7 +101,7 @@ function TitleSetter() {
 
 function RequireAuth({ user, isLoading, children }) {
   if (isLoading) {
-    return <div className="auth-skeleton-wrap"><SkeletonPage /></div>;
+    return <AuthLoadingScreen />;
   }
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -114,7 +114,7 @@ function RequireAuth({ user, isLoading, children }) {
 
 function RequirePasswordChange({ user, isLoading, children }) {
   if (isLoading) {
-    return <div className="auth-skeleton-wrap"><SkeletonPage /></div>;
+    return <AuthLoadingScreen />;
   }
   if (!user) {
     return <Navigate to="/login" replace />;

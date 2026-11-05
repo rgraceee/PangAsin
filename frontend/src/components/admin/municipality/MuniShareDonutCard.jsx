@@ -24,13 +24,8 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
   }, [rows]);
 
   const topRow = list[0];
-  const topShare = total > 0 ? (topRow.volumeMT / total) * 100 : 0;
   const hasData = list.length > 0 && total > 0;
   const entityLabel = selectedMuni ? 'barangay' : 'municipality';
-
-  const note = topRow
-    ? `Top ${entityLabel}: ${topRow.name} · ${topShare.toFixed(1)}% of ${selectedMuni ? `${selectedMuni} approved production` : 'provincial production'}.`
-    : null;
 
   return (
     <Card className="encoder-card h-100 admin-share-card">
@@ -43,9 +38,6 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
             <h5 className="admin-card-head-title">
               Share of {selectedMuni ? 'Barangay' : 'Provincial'} Production
             </h5>
-            <p className="admin-card-head-sub">
-              Each slice is a {entityLabel}&apos;s share of the {selectedMuni ? 'selected municipality' : 'provincial'} total.
-            </p>
           </div>
         </div>
       </Card.Header>
@@ -70,7 +62,6 @@ export default function MuniShareDonutCard({ rows = [], selectedMuni = '' }) {
               scopeLabel={selectedMuni || 'province'}
               entityLabel={entityLabel}
             />
-            {note && <p className="admin-prod-note">{note}</p>}
           </>
         )}
       </Card.Body>

@@ -17,14 +17,18 @@ _LANDING_HTML = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PangAsin - Loading</title>
+  <title>PangAsin</title>
+  <link rel="icon" type="image/png" href="/static/brand/asin_center_logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { min-height: 100vh; margin: 0; }
+    .brand-logo { width: min(180px, 32vw); height: min(180px, 32vw); object-fit: contain; animation: logo-breathe 2.4s ease-in-out infinite; }
+    @keyframes logo-breathe { 0%, 100% { transform: scale(0.94); } 50% { transform: scale(1.06); } }
+    @media (prefers-reduced-motion: reduce) { .brand-logo { animation: none; } }
+  </style>
 </head>
 <body class="text-center d-flex flex-column justify-content-center align-items-center" style="min-height:100vh;">
-  <div class="mb-4">
-    <div class="display-4 fw-bold">PangAsin</div>
-  </div>
-  <p class="lead text-muted">Loading application...</p>
+  <img class="brand-logo" src="/static/brand/asin_center_logo.png" alt="ASIN Center logo">
   <script>
     setTimeout(function(){ window.location.href = "/public-dashboard"; }, 3000);
   </script>

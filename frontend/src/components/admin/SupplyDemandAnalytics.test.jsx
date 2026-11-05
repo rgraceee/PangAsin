@@ -46,7 +46,7 @@ describe('SupplyDemandAnalytics', () => {
       name: /Salt Needed to Meet Demand: 34,192\.05 Metric Tons \(MT\)/,
     });
 
-    expect(shortfallKpi).toHaveTextContent('Still needed to meet the Pangasinan demand target');
+    expect(shortfallKpi).not.toHaveTextContent('Still needed to meet the Pangasinan demand target');
     expect(screen.queryByText('Sufficiency')).not.toBeInTheDocument();
     expect(shortfallKpi).not.toHaveTextContent(/shortage/i);
     await waitFor(() => expect(getAdminSupplyDemand).toHaveBeenCalledOnce());

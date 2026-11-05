@@ -103,11 +103,6 @@ export default function MuniProfileChart({
         )}
       </div>
 
-      {tab === 'registered' && (
-        <p className="muni-caption">
-          The master list holds the registered salt farmers. Production reports log the same people again each month, so they are not counted here.
-        </p>
-      )}
     </MuniCard>
   );
 }

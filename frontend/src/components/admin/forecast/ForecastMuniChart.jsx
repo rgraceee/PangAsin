@@ -8,7 +8,7 @@ import { fmtPctSigned } from './forecastData';
 import { MUNI_COLORS, MUNI_EDGES, colorKeyFor } from './forecastColors';
 import { PlaceholderShape, PanelTooltip, MunicipalityTick } from './ForecastMunicipalityTooltip';
 
-export default function ForecastMuniChart({ data, scale, unitLabel, sourceNote }) {
+export default function ForecastMuniChart({ data, scale, unitLabel }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 62, bottom: 4, left: 0 }} barCategoryGap="24%">
@@ -32,7 +32,7 @@ export default function ForecastMuniChart({ data, scale, unitLabel, sourceNote }
           interval={0}
         />
         <Tooltip
-          content={<PanelTooltip unitLabel={unitLabel} sourceNote={sourceNote} />}
+          content={<PanelTooltip unitLabel={unitLabel} />}
           cursor={{ fill: 'var(--fc-hover)' }}
         />
         {/* Clear zero line: the axis every bar grows from. */}

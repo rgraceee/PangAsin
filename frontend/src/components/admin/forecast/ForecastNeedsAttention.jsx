@@ -19,7 +19,6 @@ export default function ForecastNeedsAttention({ items, total = 0 }) {
           <span className="fc-card-head-icon"><Flag size={16} strokeWidth={1.75} /></span>
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">Needs attention</h5>
-            <p className="fc-card-sub">Each tile names the reason a municipality needs a decision, worst first.</p>
           </div>
         </div>
         <div className="fc-card-head-right">

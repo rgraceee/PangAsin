@@ -109,7 +109,6 @@ export default function MuniProductionCard({
                 ? 'Production by Method'
                 : `Production by ${entityLabel.charAt(0).toUpperCase()}${entityLabel.slice(1)}`}
             </h5>
-            <p className="admin-card-head-sub">{sub}</p>
           </div>
         </div>
         <div className="admin-prod-view" role="group" aria-label="Chart view" style={{ minWidth: 0 }}>
@@ -223,7 +222,6 @@ export default function MuniProductionCard({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            {note && <p className="admin-prod-note">{note}</p>}
           </>
         ) : (
           <div className="admin-prod-method" style={{ height: CHART_HEIGHT, display: 'flex', flexDirection: 'column' }}>
@@ -248,7 +246,6 @@ export default function MuniProductionCard({
                 ))}
               </ul>
             </div>
-            {note && <p className="admin-prod-note">{note}</p>}
           </div>
         )}
       </Card.Body>

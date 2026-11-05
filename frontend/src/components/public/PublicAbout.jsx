@@ -13,25 +13,21 @@ const MANDATE = [
     icon: FlaskConical,
     tone: 'green',
     title: 'Research and Development',
-    body: 'Studies and develops better methods for salt production.',
   },
   {
     icon: Microscope,
     tone: 'ocean',
     title: 'Analytic Services and Testing',
-    body: 'Provides laboratory testing and analysis to support salt quality and innovation.',
   },
   {
     icon: BarChart3,
     tone: 'gold',
     title: 'Data Analytics and Information Technology',
-    body: 'Supports data-driven work and digital tools for the salt sector.',
   },
   {
     icon: Handshake,
     tone: 'navy',
     title: 'Administration, Finance, and Linkages',
-    body: 'Manages operations and partnerships with universities, agencies, and industry.',
   },
 ];
 
@@ -44,12 +40,7 @@ export default function PublicAbout() {
           Accelerating the Philippine Salt Industry
         </h2>
         <p className="public-about-body">
-          The Accelerating Salt Research and Innovation (ASIN) Center is a salt research and innovation
-          hub at Pangasinan State University, based at the PSU Binmaley Campus. Supported by the
-          Department of Science and Technology through its NICER Program, it works to modernize
-          traditional cooked and solar salt production so that it becomes more efficient, sustainable,
-          and scalable. The Center aims to equip local salt producers with practical tools and to help
-          the country move toward salt self-sufficiency while strengthening the local economy.
+          The Accelerating Salt Research and Innovation (ASIN) Center is a salt research and innovation hub at Pangasinan State University, based at the PSU Binmaley Campus. Supported by the Department of Science and Technology through its NICER Program, it works to modernize traditional cooked and solar salt production so that it becomes more efficient, sustainable, and scalable. The Center aims to equip local salt producers with practical tools and to help the country move toward salt self-sufficiency while strengthening the local economy.
         </p>
       </div>
 
@@ -65,7 +56,6 @@ export default function PublicAbout() {
                 </span>
                 <div className="public-mandate-text">
                   <h3 className="public-mandate-title">{item.title}</h3>
-                  <p className="public-mandate-body">{item.body}</p>
                 </div>
               </li>
             );

@@ -52,7 +52,7 @@ export function PlaceholderShape({ x, y, width, height, payload }) {
   );
 }
 
-export function PanelTooltip({ active, payload, unitLabel, sourceNote }) {
+export function PanelTooltip({ active, payload, unitLabel }) {
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload;
   const hasValue = d.value !== null && d.value !== undefined;
@@ -79,7 +79,6 @@ export function PanelTooltip({ active, payload, unitLabel, sourceNote }) {
           <b>{d.status === 'incomplete' ? 'Incomplete data' : 'No data'}</b>
         </div>
       )}
-      <div className="fc-tooltip-source">{sourceNote}</div>
     </div>
   );
 }

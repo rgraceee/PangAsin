@@ -64,6 +64,6 @@ describe('barangay details', () => {
     const table = screen.getByRole('table');
     expect(within(table).getByRole('columnheader', { name: /Barangay/ })).toBeTruthy();
     expect(within(table).getByRole('row', { name: /Poblacion/ })).toBeTruthy();
-    expect(screen.getByText('Approved production metrics by barangay; distinct farmer counts from the master list')).toBeTruthy();
+    expect(screen.queryByText('Approved production metrics by barangay; distinct farmer counts from the master list')).not.toBeInTheDocument();
   });
 });

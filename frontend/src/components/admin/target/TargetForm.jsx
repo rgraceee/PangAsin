@@ -91,14 +91,6 @@ export default function TargetForm({
       </button>
       </div>
 
-      <p className="te-form-foot">
-        <span>Runs on the fly - nothing is saved.</span>
-        <span>
-          {splitMethod === 'seasonal'
-            ? 'Seasonal split: each month carries its share of past production, so wet months are judged fairly.'
-            : 'Even split: the annual target is divided into twelve equal monthly shares.'}
-        </span>
-      </p>
     </>
   );
 }

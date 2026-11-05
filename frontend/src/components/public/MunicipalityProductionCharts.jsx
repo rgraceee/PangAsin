@@ -117,7 +117,6 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Production by Municipality</h5>
-                  <p className="fc-card-sub">Each bar is one municipality over the latest 12 months, ranked by volume in Metric Tons (MT).</p>
                 </div>
               </div>
               <div className="fc-card-head-right">
@@ -214,10 +213,6 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                     </span>
                   </div>
 
-                  <p className="fc-chart-caption">
-                    Ranked by total production volume for the latest 12 months. Share compares each
-                    municipality with the provincial total.
-                  </p>
                 </>
               )}
             </Card.Body>
@@ -233,7 +228,6 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Share of Provincial Production</h5>
-                  <p className="fc-card-sub">Each slice is a municipality’s share of total provincial production in the latest 12 months.</p>
                 </div>
               </div>
             </Card.Header>
@@ -255,10 +249,6 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                     colorMap={MUNICIPALITY_COLORS}
                   />
 
-                  <p className="fc-chart-caption">
-                    Percentages are each municipality&apos;s share of the {fmtNumber(total)} MT recorded
-                    across the province in the latest 12 months.
-                  </p>
                 </>
               )}
             </Card.Body>

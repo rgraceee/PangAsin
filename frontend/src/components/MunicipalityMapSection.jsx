@@ -196,7 +196,6 @@ export default function MunicipalityMapSection() {
             </span>
             <div className="fc-card-head-text">
               <h5 className="fc-card-title">Salt Production Across Pangasinan</h5>
-              <p className="fc-card-sub">Darker municipalities produce more salt; hover a municipality for details.</p>
             </div>
           </div>
         </Card.Header>
@@ -226,13 +225,9 @@ export default function MunicipalityMapSection() {
               <span>{mid.toLocaleString()}</span>
               <span>{max.toLocaleString()}</span>
             </div>
-            <p className="map-range-note">
-              {min.toLocaleString()} Metric Tons (MT) → {max.toLocaleString()} Metric Tons (MT) across the {sorted.length} producing municipalities
-            </p>
           </div>
           <p className="text-muted small mb-0 mt-2">
-            Select a municipality on the map to view its detailed summary. Shaded gray municipalities have no
-            source data. Municipal boundaries referenced from NAMRIA / PSA administrative data.
+            Municipal boundaries referenced from NAMRIA / PSA administrative data.
             &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
           </p>
         </Card.Body>

@@ -30,17 +30,10 @@ export default function TargetMunicipalityChart({ rows }) {
   const above = rows.filter((r) => r.hasForecast && r.above).length;
   const below = rows.filter((r) => r.hasForecast && !r.above).length;
   const missing = rows.filter((r) => !r.hasForecast).length;
-  const muniNote = !rows.length
-    ? 'No municipality data is available for this target.'
-    : (above + below) === 0
-      ? 'No municipality has a forecast for this target yet.'
-      : `${above} of ${rows.length} municipalities are at or above their target share${missing > 0 ? `; ${missing} have no forecast.` : '.'}`;
-
   return (
     <TargetCard
       icon={Building2}
       title="Municipality Contribution"
-      sub="Each municipality's forecast against its share of the annual target, by past output"
       chips={(
         <>
           <span className="te-chip"><span className="te-chip-swatch" style={{ background: ABOVE, borderColor: ABOVE_EDGE }} />At or above share</span>
@@ -48,7 +41,6 @@ export default function TargetMunicipalityChart({ rows }) {
           <span className="te-chip"><span className="te-chip-swatch" style={{ background: TARGET }} />Target share</span>
         </>
       )}
-      caption="The gold marker is each municipality's target share, based on what it delivered in past complete years. A municipality whose newest forecast covers fewer than 12 months is compared only against the share for those same months."
     >
       <div className="te-muni-summary" role="list">
         <span className="te-muni-summary__item te-muni-summary__item--above" role="listitem">
@@ -128,7 +120,6 @@ export default function TargetMunicipalityChart({ rows }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="te-note">{muniNote}</div>
         <div className="te-muni-legend">
           {rows.filter((r) => r.hasForecast && r.monthsLabel && r.monthsLabel !== '12 of 12 months').map((r) => (
             <span key={r.id} className="te-chip te-chip--muted">{r.name}: {r.monthsLabel} forecast</span>

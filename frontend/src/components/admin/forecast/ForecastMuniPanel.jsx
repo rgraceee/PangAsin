@@ -6,7 +6,7 @@ import { niceScale, directionFromPct } from './forecastData';
 import ForecastMuniChart from './ForecastMuniChart';
 
 export default function ForecastMuniPanel({
-  rows, valueKey, statusKey, title, subTitle, unitLabel, sourceNote, height = 320,
+  rows, valueKey, statusKey, title, unitLabel, height = 320,
 }) {
   const values = rows.map((r) => r[valueKey]).filter((v) => v !== null && v !== undefined);
   const scale = niceScale(Math.min(...values, 0), Math.max(...values, 0), 4);
@@ -27,9 +27,8 @@ export default function ForecastMuniPanel({
   return (
     <div className="fc-muni-panel">
       <h6 className="fc-muni-panel-title">{title}</h6>
-      <p className="fc-muni-panel-sub">{subTitle}</p>
       <div className="fc-chart" style={{ height }}>
-        <ForecastMuniChart data={data} scale={scale} unitLabel={unitLabel} sourceNote={sourceNote} />
+        <ForecastMuniChart data={data} scale={scale} unitLabel={unitLabel} />
       </div>
     </div>
   );

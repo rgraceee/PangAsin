@@ -178,8 +178,6 @@ export default function AdminDashboard({ user }) {
     ? `Pangasinan-wide comparison, unaffected by dashboard filters. Supply uses Adjusted_Estimates.xlsx from ${supplyPeriod.start} to ${supplyPeriod.end}; demand is the ${demandYear} annual benchmark.`
     : 'Municipality production data is not available for the supply comparison.';
 
-  const scopeName = selectedMuni || 'Pangasinan';
-  const subtitle = `Record, review, and manage salt production data for ${scopeName}.`;
   const showSkeleton = loading && !stats;
 
   return (
@@ -193,7 +191,6 @@ export default function AdminDashboard({ user }) {
         variant="clean"
         className="ui-pageheader--admin"
         title="Dashboard"
-        subtitle={subtitle}
         art={(
           <HeroMapErrorBoundary>
             <MunicipalityMapArt mode="province" selectedName={selectedMuni} activeNames={activeNames} />
@@ -519,9 +516,6 @@ function MunicipalityMap({ muniData, selectedName }) {
           <span className="admin-card-head-icon admin-card-head-icon--soft"><MapPin size={16} strokeWidth={2} /></span>
           <div>
             <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
-            <span className="admin-card-head-sub">
-              Darker municipalities produce more salt; hover for a summary or click for full details.
-            </span>
           </div>
         </div>
       </Card.Header>
@@ -542,16 +536,10 @@ function MunicipalityMap({ muniData, selectedName }) {
             style={{ backgroundImage: `linear-gradient(90deg, ${GREEN_LIGHT} 0%, ${GREEN_DARK} 100%)` }}
           ></div>
 
-          <p className="map-range-note">
-            {fmtMT(min)} Metric Tons (MT) → {fmtMT(max)} Metric Tons (MT) across the {muniData.length}{' '}
-            {muniData.length === 1 ? 'municipality' : 'municipalities'}
-          </p>
         </div>
 
         <p className="text-muted small mb-0 mt-2">
-          Production shading uses municipality dataset volume for the selected year and month; area, beds, and
-          producer details use approved operational records. 2026 workbook estimates are not independent observations.
-          Shaded gray municipalities have no dataset production in this period. Municipal boundaries referenced from NAMRIA / PSA administrative data.
+          Municipal boundaries referenced from NAMRIA / PSA administrative data.
           &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
         </p>
       </Card.Body>

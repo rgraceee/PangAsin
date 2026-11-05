@@ -12,7 +12,8 @@ import Reveal from './Reveal';
 import { loadPublicDashboardData, loginAPI, getMunicipalityProduction } from '../services/dataService';
 import { formatMT } from '../utils/volumeFormat';
 import { useToast } from './Toast';
-
+
+
 
 /* WHAT: Logo file ng bawat salt-producing municipality.
    WHY: isang beses lang ideklara ang filename/extensions (may .jpeg ang Dasol);
@@ -145,16 +146,11 @@ export default function Login({ onLogin }) {
         <div className="login-hero-veil" />
         <div className="login-hero-content">
           <img
-            src="/static/brand/PangAsin_Logo.png"
-            alt="PangAsin"
+            src="/static/brand/asin_center_logo.png"
+            alt="ASIN Center"
             className="login-hero-logo"
           />
           <h1 className="login-hero-title">PangAsin</h1>
-          <p className="login-hero-tagline">
-            The Accelerating Salt Research and Innovation (ASIN) Center at Pangasinan State
-            University supports the Philippine salt industry through research,
-            innovation, and data-driven planning under RA 11985.
-          </p>
           <a className="login-hero-scroll-hint" href="#login-about">
             <span>Scroll to explore</span>
             <svg
@@ -179,9 +175,6 @@ export default function Login({ onLogin }) {
     Back to public dashboard
   </Link>
   <h2 className="encoder-login-title">Welcome back</h2>
-            <p className="encoder-login-sub">
-              Sign in with your encoder or admin account to continue.
-            </p>
 
             {resetSuccess && (
               <Alert variant="success" className="login-form-success">
@@ -292,13 +285,6 @@ export default function Login({ onLogin }) {
             <h2 id="login-about-title" className="login-about-title">
               Accelerating the Philippine Salt Industry
             </h2>
-            <p className="login-about-description">
-              The Accelerating Salt Research and Innovation (ASIN) Center at Pangasinan State
-              University supports the Philippine salt industry through research,
-              innovation, and data-driven planning under RA 11985. This dashboard presents
-              source-labeled municipality production data and demand benchmarks for the
-              salt-producing municipalities of Pangasinan.
-            </p>
           </div>
 
           <div ref={statsRef} className="login-muni-grid-wrap">
@@ -378,15 +364,12 @@ export default function Login({ onLogin }) {
             <div className="login-footer-brand">
               <div className="login-footer-brand-row" aria-hidden="true">
                 <img
-                  src="/static/brand/PangAsin_Logo.png"
+                  src="/static/brand/asin_center_logo.png"
                   alt=""
                   className="login-footer-brand-logo"
                 />
                 <span className="login-footer-brand-name">PangAsin</span>
               </div>
-              <p className="login-footer-brand-desc">
-                Salt production monitoring, forecasting, and decision support.
-              </p>
               <p className="login-footer-brand-support">
                 Supported by the DOST NICER Program
               </p>

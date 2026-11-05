@@ -189,23 +189,23 @@ function Tip({ label, disabled, children }) {
 }
 
 export function SidebarLogo({ homePath = '/' }) {
-  /* WHAT: Totoong PangAsin logo (full kapag expanded, mark kapag collapsed).
+  /* WHAT: ASIN Center logo (full kapag expanded, mark kapag collapsed).
      WHY: gamitin ang orihinal na file, hindi redrawn icon, at maging home link. */
   return (
     <Link to={homePath} className="p-logo" aria-label="PangAsin home">
       <img
         className="p-logo-img p-logo-full"
-        src="/static/brand/Logo_with_PangAsin.png"
-        alt="PangAsin"
-        width={705}
-        height={217}
+        src="/static/brand/asin_center_logo.png"
+        alt="ASIN Center"
+        width={512}
+        height={512}
       />
       <img
         className="p-logo-img p-logo-markonly"
-        src="/static/brand/PangAsin_Logo.png"
-        alt="PangAsin"
-        width={230}
-        height={186}
+        src="/static/brand/asin_center_logo.png"
+        alt="ASIN Center"
+        width={512}
+        height={512}
       />
     </Link>
   );

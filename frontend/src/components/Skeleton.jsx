@@ -105,6 +105,14 @@ export function SkeletonPage() {
   );
 }
 
+export function AuthLoadingScreen() {
+  return (
+    <div className="auth-loading-screen" role="status" aria-label="Loading ASIN Center">
+      <img src="/static/brand/asin_center_logo.png" alt="ASIN Center" />
+    </div>
+  );
+}
+
 export function SkeletonPageHeader() {
   return (
     <div className="skeleton-page-header">

@@ -432,11 +432,6 @@ export default function DemandBenchmarkSettings() {
       <Card className="encoder-card mt-4">
         <Card.Header as="h5">Sector Demand Breakdown Settings</Card.Header>
         <Card.Body>
-          <p className="text-muted small">
-            Set each sector’s share of demand. Sector demand, total supply, and produced amounts are calculated
-            from the current target benchmark and the selected scope’s supply data. Entered sector shares may total up to 100%;
-            any unallocated share is automatically shown under Others as free space.
-          </p>
           <div className="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Sector settings scope">
             {SCOPES.map(({ key, name }) => (
               <button

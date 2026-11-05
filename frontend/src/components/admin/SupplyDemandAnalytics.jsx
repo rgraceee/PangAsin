@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { Row, Col, Card, Alert } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
 import { Boxes, Target, Info, Scale } from 'lucide-react';
@@ -34,32 +33,11 @@ function bulletTooltip({ active, payload }) {
   );
 }
 
-function bulletCaption(localSupply, demandBenchmark) {
-  if (localSupply <= 0 && demandBenchmark <= 0) return null;
-  const pct = demandBenchmark > 0 ? Math.round((localSupply / demandBenchmark) * 1000) / 10 : 0;
-  const difference = Math.round(demandBenchmark - localSupply);
-  const amount = Math.abs(difference).toLocaleString();
-  return (
-    <div className="chart-caption">
-      Local supply covers <b>{pct}%</b> of the {demandBenchmark.toLocaleString()} Metric Tons (MT) benchmark
-      {' '}&mdash; {difference > 0
-        ? <span className="chart-caption-bad">{amount} Metric Tons (MT) still needed to meet demand</span>
-        : <span className="chart-caption-good">demand met{difference < 0 ? ` with ${amount} Metric Tons (MT) above target` : ''}</span>}.
-    </div>
-  );
-}
-
 export default function SupplyDemandAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sectorScope, setSectorScope] = useState('national');
-
-  /* WHAT: Rinig kung may naka-filter na munisipalidad sa dashboard.
-     WHY: ang supply & demand ay province-wide benchmark; dapat itong ipaalam
-          kapag may naka-select na muni para hindi ito misleading. */
-  const [searchParams] = useSearchParams();
-  const hasMuniFilter = Boolean(searchParams.get('muni'));
 
   useEffect(() => {
     getAdminSupplyDemand()
@@ -82,7 +60,6 @@ export default function SupplyDemandAnalytics() {
       .map((sector, i) => ({
         name: sector.name,
         value: sector.demand_mt,
-        percentage: sector.percentage,
         fill: GRADIENT[i % GRADIENT.length],
       }))
       .sort((a, b) => b.value - a.value);
@@ -109,8 +86,6 @@ export default function SupplyDemandAnalytics() {
   if (!pangasinan) {
     return <Alert variant="info">No supply/demand benchmark data available yet.</Alert>;
   }
-
-  const topSector = sectorData.length > 0 ? sectorData[0] : null;
 
   return (
     <div>
@@ -156,12 +131,6 @@ export default function SupplyDemandAnalytics() {
         <Alert variant="info">
           No Pangasinan demand benchmark is available yet. Add one from Demand Benchmarks in the admin sidebar.
         </Alert>
-      )}
-
-      {hasMuniFilter && (
-        <p className="text-muted small mb-3">
-          Province-wide benchmark &mdash; not affected by the municipality filter.
-        </p>
       )}
 
       <KpiGrid columns={3}>
@@ -223,7 +192,6 @@ export default function SupplyDemandAnalytics() {
                       </BarChart>
                   </ResponsiveContainer>
                 </div>
-                {bulletCaption(localSupply, demandBenchmark)}
               </div>
             </Card.Body>
           </Card>
@@ -298,21 +266,12 @@ export default function SupplyDemandAnalytics() {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="chart-caption">
-                    {topSector
-                      ? <><b>{topSector.name}</b> is allocated <b>{topSector.percentage}%</b> of the selected {sectorScope === 'national' ? 'Philippines' : 'Pangasinan'} demand target ({topSector.value.toLocaleString()} Metric Tons (MT)).</>
-                      : <><b>No sector demand data</b> available yet.</>}
-                  </div>
                 </div>
               )}
             </Card.Body>
           </Card>
         </Col>
       </Row>
-      {data?.sector_demand_note && (
-        <p className="text-muted small mt-3 mb-0">{data?.sector_demand_note}</p>
-      )}
-
     </div>
   );
 }

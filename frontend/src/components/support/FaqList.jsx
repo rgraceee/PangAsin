@@ -38,9 +38,6 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
       {showHero && (
         <div className="faq-hero">
           <h2 className="faq-hero-title">Help Center</h2>
-          <p className="faq-hero-sub">
-            Answers about the PangAsin salt production dashboard.
-          </p>
         </div>
       )}
 
@@ -61,9 +58,6 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
       {query.length > 0 && !hasResults && (
         <div className="faq-no-results">
           <p>No results for “{query}”.</p>
-          <p className="faq-no-results-hint">
-            Still need help? Use the contact card below to email the ASIN Center.
-          </p>
         </div>
       )}
 

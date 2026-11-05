@@ -673,10 +673,6 @@ export default function GenerateReports() {
             </Alert>
           )}
 
-          <p className="report-filter-hint">
-            <Info size={14} strokeWidth={2} aria-hidden="true" />
-            <span>Reports are built from approved records and can be downloaded as PDF, Word, or Excel.</span>
-          </p>
 
           <p className="visually-hidden" role="status" aria-live="polite">
             {creating ? 'Generating report\u2026' : generateStatus}
@@ -784,7 +780,6 @@ export default function GenerateReports() {
                   <span className="badge text-bg-light rounded-pill">{reports.length}</span>
                 )}
               </div>
-              <p className="admin-card-head-sub">Browse, download, or delete previously generated reports.</p>
             </div>
           </div>
           <button
@@ -810,7 +805,6 @@ export default function GenerateReports() {
             <div className="report-empty-state">
               <span className="report-empty-icon" aria-hidden="true"><EyeOff size={22} strokeWidth={1.8} /></span>
               <strong>Reports are hidden</strong>
-              <p className="mb-0">Use &ldquo;View Reports&rdquo; to browse, download, or delete generated reports.</p>
             </div>
           ) : loading ? (
             <div className="text-center py-3"><SkeletonList rows={5} cols={6} /></div>
@@ -818,7 +812,6 @@ export default function GenerateReports() {
             <div className="report-empty-state">
               <span className="report-empty-icon" aria-hidden="true"><FileText size={22} strokeWidth={1.8} /></span>
               <strong>No reports yet</strong>
-              <p className="mb-0">Generate your first report above and it will appear here.</p>
             </div>
           ) : (
             <>
@@ -857,7 +850,6 @@ export default function GenerateReports() {
                 <div className="report-empty-state">
                   <span className="report-empty-icon" aria-hidden="true"><SearchX size={22} strokeWidth={1.8} /></span>
                   <strong>No reports match your filters</strong>
-                  <p className="mb-0">Try a different search term or format.</p>
                   <button type="button" className="ui-btn-outline report-clear-btn" onClick={clearReportFilters}>
                     Clear filters
                   </button>

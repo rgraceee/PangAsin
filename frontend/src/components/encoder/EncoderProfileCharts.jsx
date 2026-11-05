@@ -68,7 +68,6 @@ export default function EncoderProfileCharts({
       <MuniCard
         icon={UserRound}
         title="Gender Distribution"
-        sub={`Each slice is a gender group\u2019s share of registered farmers in ${scopeLabel}.`}
         chips={chips}
       >
         {loading ? (
@@ -104,17 +103,11 @@ export default function EncoderProfileCharts({
           )
         )}
 
-        <p className="muni-caption">
-          Master list snapshot — not period-filtered. Counts distinct registered salt farmers in
-          {' '}{scopeLabel}, so it differs from the dashboard KPI, which counts farmer-months from
-          production reports.
-        </p>
       </MuniCard>
 
       <MuniCard
         icon={Users}
         title="Age Distribution"
-        sub={`Each bar counts how many registered farmers fall in that age band in ${scopeLabel}.`}
         chips={chips}
       >
         {loading ? (
@@ -130,12 +123,6 @@ export default function EncoderProfileCharts({
           )
         )}
 
-        <p className="muni-caption">
-          Master list snapshot — not period-filtered. Age bands cover farmers with a recorded age
-          {missingAge > 0
-            ? `; ${fmtInt(missingAge)} of ${fmtInt(total)} have no age on file and appear only in the total.`
-            : '; every farmer on the master list has an age.'}
-        </p>
       </MuniCard>
     </div>
   );

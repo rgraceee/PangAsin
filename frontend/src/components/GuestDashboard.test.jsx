@@ -21,7 +21,7 @@ describe('public dashboard footer', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Salt production monitoring, forecasting, and decision support.')).toBeInTheDocument();
+    expect(screen.queryByText('Salt production monitoring, forecasting, and decision support.')).not.toBeInTheDocument();
     expect(screen.getByText('Supported by the DOST NICER Program')).toBeInTheDocument();
     expect(screen.getByText('PangAsin Development Team')).toBeInTheDocument();
 

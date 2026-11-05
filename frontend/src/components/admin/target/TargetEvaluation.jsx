@@ -63,14 +63,13 @@ export default function TargetEvaluation() {
 
           <TargetPaceChart
             rows={t.projection}
-            annualTarget={t.results.annual_target}
             reachedMonth={t.summary.reachedMonth}
             horizonGap={t.summary.gap}
           />
 
           <div className="te-gap" />
 
-          <TargetMonthlyChart rows={t.paced} paceNote={t.paceNote} />
+          <TargetMonthlyChart rows={t.paced} />
 
           {t.selectedMuni === 'all' && (
             <>

@@ -205,11 +205,6 @@ export default function MunicipalityAnalytics() {
         </Col>
       </Row>
 
-      <p className="muni-footnote">
-        {view.tableRows.length > 0
-          ? `${view.scopeLabel}: ${fmtInt(view.tableRows.reduce((s, r) => s + r.records, 0))} approved production records in scope.`
-          : 'No approved production records in this scope.'}
-      </p>
     </div>
   );
 }

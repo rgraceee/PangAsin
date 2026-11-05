@@ -58,7 +58,6 @@ export default function ForecastSeasonalityChart({ series, reportingMonth, heigh
     <ForecastChartCard
       icon={CalendarDays}
       title="Seasonal pattern"
-      subtitle="Each point is a month averaged over complete years; shaded areas are the dry and wet seasons."
       height={height}
       chips={(
         <>
@@ -68,7 +67,6 @@ export default function ForecastSeasonalityChart({ series, reportingMonth, heigh
           {lowest && <ChartChip label={`Lowest: ${lowest.label} at ${fmtMT(lowest.value)} Metric Tons (MT)`} meta />}
         </>
       )}
-      caption="Production concentrates in the dry season (amihan, Nov–May) and falls through the wet season (habagat, Jun–Oct). Averages use municipality production data."
       className="fc-season-card"
     >
       <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>

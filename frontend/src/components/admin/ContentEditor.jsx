@@ -223,7 +223,6 @@ export default function ContentEditor({ contentKey, defaultContent, open, onClos
             <Modal.Title id="content-editor-title" className="content-modal__title">
               Edit {LABELS[contentKey]}
             </Modal.Title>
-            <div className="content-modal__subtitle">Sections, paragraphs, and bullets are saved to the database and audited.</div>
           </div>
         </div>
       </Modal.Header>
@@ -420,7 +419,6 @@ function AboutEditor({ content, setField }) {
     <div className="content-about-editor">
       <div className="content-doc-intro">
         <FileText size={20} strokeWidth={2} className="text-muted mb-2" aria-hidden="true" />
-        <p className="text-muted small">Edit the metadata shown in Settings &gt; About and on public pages.</p>
       </div>
       {fields.map((f) => (
         <Form.Group key={f.key} className="mb-3">

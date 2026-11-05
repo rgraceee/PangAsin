@@ -20,7 +20,7 @@ const BELOW_EDGE = 'var(--te-red-edge)';
 const TARGET = 'var(--te-gold)';
 const PACE = 'var(--te-pace)';
 
-export default function TargetMonthlyChart({ rows, paceNote }) {
+export default function TargetMonthlyChart({ rows }) {
   const [width, setWidth] = useState(0);
   const narrow = width > 0 && width < 560;
   const values = rows.map((r) => r.value || 0);
@@ -36,7 +36,6 @@ export default function TargetMonthlyChart({ rows, paceNote }) {
     <TargetCard
       icon={ChartColumnBig}
       title="Monthly target vs forecast"
-      sub="Each bar is one month against its target; the line marks the required pace."
       chips={(
         <>
           <span className="te-chip"><span className="te-chip-swatch" style={{ background: ABOVE, borderColor: ABOVE_EDGE }} />At or above target</span>
@@ -47,7 +46,6 @@ export default function TargetMonthlyChart({ rows, paceNote }) {
           )}
         </>
       )}
-      caption="Calendar-year detail: solid outline = approved records, dashed outline = forecast. Bars are zero-based so a short bar really is short; the cumulative chart above includes the full selected forecast horizon."
     >
       <div className="te-chart" style={{ height: 300 }}>
           <ResponsiveContainer width="100%" height="100%" onResize={(w) => setWidth(w)}>
@@ -135,8 +133,6 @@ export default function TargetMonthlyChart({ rows, paceNote }) {
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        {paceNote && <div className="te-note"><strong>Required pace:</strong> {paceNote}</div>}
-        {!paceNote && <div className="te-note">No forecast months are available to compare with the monthly target.</div>}
     </TargetCard>
   );
 }

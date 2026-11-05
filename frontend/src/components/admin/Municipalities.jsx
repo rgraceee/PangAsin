@@ -1077,7 +1077,6 @@ export default function Municipalities() {
         variant="clean"
         className="ui-pageheader--admin"
         title="Municipality Management"
-        subtitle="Add a municipality and its encoder account, maintain barangays, and control which municipalities appear in the dashboard."
         art={(
           <MunicipalityMapArt
             mode="province"
@@ -1316,7 +1315,6 @@ export default function Municipalities() {
         <MuniModalHeader
           titleId="muni-create-title"
           title="Add Municipality"
-          subtitle="Create the municipality record and its encoder account. Required fields are marked with an asterisk."
         />
         <Form onSubmit={handleCreate} noValidate className="muni-modal-form">
           <Modal.Body>
@@ -1579,7 +1577,6 @@ export default function Municipalities() {
         <MuniModalHeader
           titleId="muni-edit-title"
           title={`Edit ${editing?.name || 'municipality'}`}
-          subtitle="Update identity, location, and barangays. Every change is recorded in the audit log."
         />
         <Form onSubmit={handleEdit} noValidate className="muni-modal-form">
           <Modal.Body>

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 
 export default function PageHeader({
-  id, title, subtitle, children, action, actions, variant = 'main', eyebrow,
+  id, title, children, action, actions, variant = 'main', eyebrow,
   art, filter, compact = false, status, stat, className = '', icon: Icon,
 }) {
   const rawId = useId();
@@ -25,7 +25,6 @@ export default function PageHeader({
           ) : null}
           <div className="ui-section-copy">
             <h2 className="ui-section-title">{title}</h2>
-            {subtitle ? <p className="ui-section-sub">{subtitle}</p> : null}
           </div>
         </div>
       </header>
@@ -64,7 +63,6 @@ export default function PageHeader({
         <div className="ui-pageheader-main">
           <div className="ui-pageheader-left">
             <h1 className="ui-pageheader-title">{title}</h1>
-            {subtitle ? <p className="ui-pageheader-sub">{subtitle}</p> : null}
             {status ? <div className="ui-pageheader-status">{status}</div> : null}
           </div>
           {(actions || action) ? <div className="ui-pageheader-actions">{actions || action}</div> : null}
@@ -89,7 +87,6 @@ export default function PageHeader({
         <div>
           {eyebrow ? <div className="admin-page-hero-eyebrow">{eyebrow}</div> : null}
           <h1 className="admin-page-hero-title">{title}</h1>
-          {subtitle ? <p className="admin-page-hero-sub">{subtitle}</p> : null}
         </div>
         {action ? <div className="admin-page-hero-action">{action}</div> : null}
       </div>

@@ -65,6 +65,6 @@ describe('public supply and demand section', () => {
         name: /Others: 300 Metric Tons \(MT\), 60\.0%; Household: 200 Metric Tons \(MT\), 40\.0%/,
       })).toBeInTheDocument();
     });
-    expect(screen.getAllByText(/current Pangasinan demand target/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/current Pangasinan demand target/)).not.toBeInTheDocument();
   });
 });

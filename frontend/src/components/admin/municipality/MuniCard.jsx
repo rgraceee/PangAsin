@@ -4,7 +4,7 @@
 //      rule and one muted caption line - the same language the Forecast and
 //      Target Evaluation pages use.
 
-export default function MuniCard({ icon: Icon, title, sub, chips, children, caption, className = '' }) {
+export default function MuniCard({ icon: Icon, title, chips, children, className = '' }) {
   return (
     <div className={`muni-card ${className}`}>
       <div className="muni-card-head">
@@ -16,14 +16,12 @@ export default function MuniCard({ icon: Icon, title, sub, chips, children, capt
           )}
           <div className="muni-card-head-text">
             <h5 className="muni-card-title">{title}</h5>
-            {sub && <p className="muni-card-sub">{sub}</p>}
           </div>
         </div>
         {chips ? <div className="muni-card-head-right">{chips}</div> : null}
       </div>
       <div className="muni-card-body">
         {children}
-        {caption && <p className="muni-caption">{caption}</p>}
       </div>
     </div>
   );

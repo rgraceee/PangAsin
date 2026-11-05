@@ -3,7 +3,7 @@
 //      municipality outlook, in that order, reading the same numbers.
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-bootstrap';
-import { TrendingUp, Info } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import ErrorBoundary from '../ErrorBoundary';
 import { SkeletonBlock, SkeletonCards, SkeletonChart } from '../Skeleton';
 import PageHeader from './PageHeader';
@@ -16,12 +16,11 @@ import ForecastTrendChart from './forecast/ForecastTrendChart';
 import ForecastMuniPanels from './forecast/ForecastMuniPanels';
 import ForecastNeedsAttention from './forecast/ForecastNeedsAttention';
 import ForecastSeasonalityChart from './forecast/ForecastSeasonalityChart';
-import ForecastDataNotice from './forecast/ForecastDataNotice';
 import {
-  buildMunicipalityRows, buildNeedsAttention, buildSeasonalSeries, buildDataNotice,
+  buildMunicipalityRows, buildNeedsAttention, buildSeasonalSeries,
 } from './forecast/forecastSelectors';
 import {
-  fmtMT, monthLong, monthNumber,
+  monthLong, monthNumber,
 } from './forecast/forecastData';
 import { scopeAllLabel } from '../../constants/labels';
 import useMunicipalityDirectory from '../../hooks/useMunicipalityDirectory';
@@ -33,13 +32,12 @@ const DEFAULT_FILTERS = {
   province: 'pangasinan',
 };
 
-function SectionHead({ icon: Icon, title, subtitle }) {
+function SectionHead({ icon: Icon, title }) {
   return (
     <div className="fc-section-head">
       <span className="fc-section-chip"><Icon size={16} strokeWidth={1.75} /></span>
       <div>
         <h2 className="fc-section-title">{title}</h2>
-        {subtitle && <p className="fc-section-sub">{subtitle}</p>}
       </div>
     </div>
   );
@@ -57,7 +55,7 @@ function InnerForecastDashboard() {
   } = useForecastData(filters);
   /* Keeps the page current: refresh when the admin comes back to the tab and
      once a week as a safety net, plus the manual button in the filter bar. */
-  const { lastUpdated } = useAutoRefresh(reload);
+  useAutoRefresh(reload);
 
   const scopeName = useMemo(() => {
     if (filters.selectedMuni === 'all') {
@@ -81,27 +79,11 @@ function InnerForecastDashboard() {
     () => buildSeasonalSeries(descriptive?.seasonal_pattern),
     [descriptive],
   );
-  const notice = useMemo(
-    () => buildDataNotice(trends, filters.selectedMuni, outlook),
-    [trends, filters.selectedMuni, outlook],
-  );
-
   const latestRecordMonth = descriptive?.kpis?.latest_record_month || null;
   const runMonth = selectedRun?.created_at ? monthLong(String(selectedRun.created_at).slice(0, 7)) : null;
   const windowLabel = filters.recordedWindow === 'all'
     ? 'all available months'
     : `the last ${filters.recordedWindow} months`;
-
-  const filterSummary = useMemo(() => {
-    if (!selectedRun) {
-      return `No forecast run is available for ${scopeName} yet. Production history shown is ${windowLabel}.`;
-    }
-    return `Showing ${windowLabel} of municipality production data and the next ${horizon} month${horizon === 1 ? '' : 's'} of forecast for ${scopeName}.`;
-  }, [selectedRun, scopeName, windowLabel, horizon]);
-
-  const headline = selectedRun && forecastTotal !== null
-    ? `Forecast production for the next ${horizon} month${horizon === 1 ? '' : 's'} is ${fmtMT(forecastTotal)} Metric Tons (MT).`
-    : 'No forecast run is available for this selection yet.';
 
   /* WHAT: Ang header ay laging naka-render, kahit naglo-load pa o may error.
      WHY: hindi na "kumakalog" ang pahina (skeleton lang ang nagpapalit) at
@@ -125,8 +107,6 @@ function InnerForecastDashboard() {
         municipalityCount={activeNames.length || municipalityOptions.length}
         onSelectedMuni={set('selectedMuni')}
         onReset={() => setFilters(DEFAULT_FILTERS)}
-        lastUpdated={lastUpdated}
-        summary={filterSummary}
       />
     </PageHeader>
   );
@@ -159,13 +139,10 @@ function InnerForecastDashboard() {
     <div className="admin-single-page forecast-page">
       {header}
 
-      <ForecastDataNotice notice={notice} scopeKey={filters.selectedMuni} />
-
       <section className="fc-section" id="fc-overview">
         <SectionHead
           icon={TrendingUp}
           title="Overview"
-          subtitle={headline}
         />
         <ForecastKpis
           recordedMT={recordedTotal}
@@ -202,10 +179,6 @@ function InnerForecastDashboard() {
         <ForecastNeedsAttention items={attentionItems} total={muniRows.length} />
       </section>
 
-      <footer className="fc-footer-note">
-        <Info size={13} strokeWidth={1.75} aria-hidden="true" />
-        <span>Forecasting is a decision-support feature, not a guarantee of future production.</span>
-      </footer>
     </div>
   );
 }
