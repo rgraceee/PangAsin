@@ -92,20 +92,37 @@
   outline-offset: 2px;
 }
 
-/* WHAT: Totoong logo image (full expanded, mark collapsed). WHY: walang green square.
-   WHY: 100% width para sagad sa available sidebar space ang expanded wordmark. */
+/* WHAT: Totoong logo image (full expanded, mark collapsed). WHY: walang green square. */
 .p-logo-img {
   display: block;
   width: 100%;
   height: auto;
 }
 
-/* WHAT: Kalahati lang ng sidebar width ang expanded wordmark. */
+/* WHAT: Standard logo size — not too big, not too small. */
 .p-logo-full {
-  width: 50%;
+  width: 36px;
+  height: auto;
 }
 
 .p-logo-markonly {
+  display: none;
+}
+
+/* WHAT: Label beside the logo image (admin: "Asin Center", encoder: municipality name).
+   WHY: show text only when sidebar is expanded; hide when collapsed. */
+.p-logo-text {
+  margin-left: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ui-text);
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 160px;
+  text-overflow: ellipsis;
+}
+
+.p-shell[data-collapsed="true"] .p-logo-text {
   display: none;
 }
 

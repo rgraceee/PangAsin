@@ -1,4 +1,5 @@
 import React from 'react';
+import { Info } from 'lucide-react';
 
 function renderValue(value) {
   if (value === null || value === undefined || value === '') return '\u2014';
@@ -17,6 +18,9 @@ export default function KpiCard({
   title,
   value,
   unit,
+  caption,
+  description,
+  info,
   tone = 'default',
   trend,
   badge,
@@ -57,14 +61,23 @@ export default function KpiCard({
             </span>
           )}
           <span className="ui-kpi__label">{title}</span>
+          {(description || info) && (
+            <button
+              type="button"
+              className="ui-kpi__info"
+              title={description || info}
+              aria-label="More info"
+            >
+              <Info size={14} strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="ui-kpi__value-row">
-        <span className="ui-kpi__value">{display}</span>
-        {unit && <span className="ui-kpi__unit">{unit}</span>}
-        {badgeText && <span className={`ui-kpi__badge ui-kpi__badge--${badgeTone}`}>{badgeText}</span>}
-      </div>
+      <div className="ui-kpi__value">{display}</div>
+      {unit && <div className="ui-kpi__unit">{unit}</div>}
+      {caption && <div className="ui-kpi__caption">{caption}</div>}
+      {badgeText && <span className={`ui-kpi__badge ui-kpi__badge--${badgeTone}`}>{badgeText}</span>}
 
       {trend && (
         <div className={`ui-kpi__trend ${trendClass(trend.direction, trend.goodWhen || 'up')}`} aria-label={trendText}>

@@ -107,7 +107,7 @@ function DataTable({ title, rows }) {
   return (
     <div className="mt-4">
       <h6 className="fw-bold">{title}</h6>
-      <Table responsive bordered size="sm" className="mb-0 report-preview-table">
+      <Table responsive bordered hover size="sm" className="mb-0 report-preview-table">
         <thead>
           <tr>
             {headers.map((h) => (

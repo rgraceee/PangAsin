@@ -62,7 +62,7 @@ export default function SystemActivity() {
           )}
 
           {!loading && rows.length > 0 && activeTab === 'audit' && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table">
               <thead>
                 <tr>
                   <th>Time</th>
@@ -87,7 +87,7 @@ export default function SystemActivity() {
           )}
 
           {!loading && rows.length > 0 && activeTab === 'login' && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table">
               <thead>
                 <tr>
                   <th>Time</th>

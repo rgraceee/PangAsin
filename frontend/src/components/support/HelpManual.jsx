@@ -105,7 +105,7 @@ function AdminSteps() {
         <li>On the Executive Dashboard, set the year, month, or date range and select <strong>Apply</strong>.</li>
         <li>Hover or tap a chart to see exact values.</li>
         <li>Use the municipality filter to compare one area against the province.</li>
-        <li>Open <strong>Data Integrity</strong> to find gaps before publishing figures.</li>
+        <li>Open <strong>Data Completeness</strong> to find gaps before publishing figures.</li>
       </ol>
       <figure className="support-figure">
         <img

@@ -118,7 +118,7 @@ export const adminFaq = [
     items: [
       {
         q: 'How do I check data quality?',
-        a: 'Open Data Integrity from the sidebar to find gaps in records before publishing figures. Check the selected year and month range first if totals look stale.',
+        a: 'Open Data Completeness from the sidebar to find gaps in records before publishing figures. Check the selected year and month range first if totals look stale.',
       },
     ],
   },

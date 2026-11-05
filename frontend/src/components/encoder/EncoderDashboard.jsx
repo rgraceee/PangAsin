@@ -266,20 +266,28 @@ export default function EncoderDashboard() {
         <KpiCard
           icon={Boxes}
           title="Total Production"
+          description="Sum of production volume across all your records for the selected period."
           value={formatMT(stats.total_volume_mt)}
           unit="Metric Tons (MT)"
+          caption="Selected period"
           info="Sum of production volume across all your records for the selected period."
         />
         <KpiCard
           icon={LayoutGrid}
           title="Total Salt Beds"
+          description="Total salt beds counted across your records for the selected period."
           value={stats.total_salt_beds}
+          unit="beds"
+          caption="All records"
           info="Total salt beds counted across your records for the selected period."
         />
         <KpiCard
           icon={Users}
           title="Registered Salt Farmers"
+          description="Total registered salt farmers counted across your records for the selected period."
           value={stats.total_registered_producers}
+          unit="farmers"
+          caption="All records"
           info="Total registered salt farmers counted across your records for the selected period."
         />
       </KpiGrid>
@@ -289,6 +297,7 @@ export default function EncoderDashboard() {
           <MuniCard
             icon={Activity}
             title={selectedName ? `Production Trend · ${selectedName}` : 'Production by Barangay'}
+            sub={selectedName ? `Monthly production trend for ${selectedName}.` : 'Monthly production trend across all barangays.'}
             chips={<MuniChip label="Metric Tons (MT)" meta />}
           >
             {lineData.length === 0 ? (
@@ -353,6 +362,7 @@ export default function EncoderDashboard() {
           <MuniCard
             icon={PieGlyph}
             title={selectedName ? `Share of Municipality · ${selectedName}` : 'Barangay Total Summary'}
+            sub={selectedName ? `Share of production by barangay for ${selectedName}.` : 'Share of total production by barangay.'}
             chips={<MuniChip label={`${fmtMT(pieTotal, 1)} MT`} meta />}
           >
             {pieRows.length === 0 ? (

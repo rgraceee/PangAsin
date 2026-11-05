@@ -26,6 +26,7 @@ export default function ForecastChartCard({
   children,
   height = 320,
   className = '',
+  caption,
 }) {
   return (
     <Card className={`fc-card ${className}`}>
@@ -38,6 +39,7 @@ export default function ForecastChartCard({
           )}
           <div className="fc-card-head-text">
             <h5 className="fc-card-title">{title}</h5>
+            {caption ? <p className="fc-card-caption">{caption}</p> : null}
           </div>
         </div>
         {chips ? <div className="fc-card-head-right">{chips}</div> : null}

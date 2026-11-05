@@ -70,6 +70,25 @@
   border-radius: 10px;
   background: #F3F5F9;
 }
+
+/* Chart card caption (subtitle below title) */
+.fc-card-caption {
+  margin: 4px 0 0 0;
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--fc-text-2);
+  max-width: 100%;
+}
+
+/* Municipality card caption (subtitle below title) */
+.muni-card-sub {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ui-text-muted);
+  max-width: 100%;
+}
 .ac-skeleton::after {
   content: "";
   position: absolute;

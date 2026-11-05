@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { Alert, Badge, Card, OverlayTrigger, Spinner, Table, Tooltip } from 'react-bootstrap';
-import { CalendarDays, Clock, Pencil, Plus, Search, Trash2, Users, ContactRound, X } from 'lucide-react';
+import { CalendarDays, Clock, Pencil, Plus, Trash2, Users, ContactRound, X } from 'lucide-react';
 import { createProducer, deleteProducer, getEncoderProducerReports, getProducers, updateProducer } from '../services/dataService';
 import { confirmDelete } from '../services/feedback';
 import { useToast } from './Toast';
@@ -281,9 +281,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           <div className="admin-page-hero-control master-search-control">
             <label className="admin-page-hero-field" htmlFor="master-search">Search</label>
             <form className="master-search-form" role="search" onSubmit={submitAdminSearch}>
-              <div className="ui-search">
-                <Search size={16} className="ui-search-icon" aria-hidden="true" />
-                <input
+              <input
                   id="master-search"
                   type="search"
                   className="form-control admin-page-hero-input master-search-input"
@@ -292,7 +290,6 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
                   onChange={(event) => setAdminSearch(event.target.value)}
                   placeholder="Search salt farmers"
                 />
-              </div>
               {(adminSearch || appliedSearch) && (
                 <button
                   type="button"
@@ -328,7 +325,7 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
             <div className="admin-page-hero-control">
               <label className="admin-page-hero-field" htmlFor="master-sex">Sex</label>
               <select id="master-sex" className="form-select admin-page-hero-select" name="sex" value={filters.sex} onChange={updateFilter}>
-                <option value="">All sexes</option>
+                <option value="">All</option>
                 {SEX_OPTIONS.map((sex) => <option key={sex} value={sex}>{sex}</option>)}
               </select>
             </div>
@@ -350,21 +347,30 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
         <KpiCard
           icon={Users}
           title="Registered Salt Farmers"
+          description="Total registered salt farmers across all municipalities."
           value={statistics.total}
+          unit="farmers"
+          caption="Selected municipality"
           supporting={adminView ? 'Across all municipalities' : 'In your municipality'}
           info="Total registered salt farmers in your municipality."
         />
         <KpiCard
           icon={ContactRound}
           title="Gender Distribution"
+          description="Breakdown of registered salt farmers by sex."
           value={`${statistics.male.toLocaleString()} / ${statistics.female.toLocaleString()}`}
+          unit="male / female"
+          caption="Selected municipality"
           supporting="Male / Female"
           info="Registered salt farmers by sex — male / female."
         />
         <KpiCard
           icon={CalendarDays}
           title="Average Age"
+          description="Average age of registered salt farmers in your municipality."
           value={statistics.average_age == null ? '—' : statistics.average_age}
+          unit="years"
+          caption="Selected municipality"
           supporting="Years"
           info="Average age of registered salt farmers in your municipality."
         />
@@ -372,7 +378,10 @@ export default function ProducerMasterList({ user, isAdmin = false }) {
           <KpiCard
             icon={Clock}
             title="Pending Review"
+            description="Salt farmers awaiting admin approval."
             value={pendingEntries.length}
+            unit="pending items"
+            caption="Your submissions"
             supporting="Salt farmers awaiting approval"
             info="Salt farmers you submitted that are still waiting for admin approval."
           />

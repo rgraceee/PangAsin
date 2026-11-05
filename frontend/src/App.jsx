@@ -65,7 +65,7 @@ const ROUTE_TITLES = {
   '/encoder/production-records': 'Production Records',
   '/encoder/environment-records': 'Environment Records',
   '/admin/validation': 'Validation Queue',
-  '/admin/data-quality': 'Data Integrity (Completeness)',
+  '/admin/data-quality': 'Data Completeness',
   '/admin/forecast': 'Forecasting',
   '/admin/forecast/target': 'Target Evaluation',
   '/admin/reports': 'Generate Reports',
@@ -172,7 +172,7 @@ export default function App() {
       <ScrollToTop />
       <TitleSetter />
       <Routes>
-        <Route path="/" element={<GuestDashboard />} />
+        <Route path="/" element={<ErrorBoundary><GuestDashboard /></ErrorBoundary>} />
         <Route path="/login" element={(
           <ErrorBoundary>
             <ToastProvider>
@@ -234,19 +234,19 @@ export default function App() {
           <Route path="master-list" element={<ProducerMasterList />} />
           <Route path="settings/*" element={
             <RequireAuth user={user} isLoading={loading}>
-              <Settings user={user} />
+              <Settings user={user} setUser={setUser} />
             </RequireAuth>
           }>
             <Route index element={<Navigate to="account" replace />} />
-            <Route path="account" element={<Settings user={user} />} />
-            <Route path="security" element={<Settings user={user} />} />
-            <Route path="help" element={<Settings user={user} />} />
-            <Route path="legal" element={<Settings user={user} />} />
-            <Route path="legal/*" element={<Settings user={user} />}>
+            <Route path="account" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="security" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="help" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="legal" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="legal/*" element={<Settings user={user} setUser={setUser} />}>
               <Route path="privacy" element={<LegalDoc docType="privacy" user={user} />} />
               <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
             </Route>
-            <Route path="about" element={<Settings user={user} />} />
+            <Route path="about" element={<Settings user={user} setUser={setUser} />} />
           </Route>
         </Route>
         <Route
@@ -309,19 +309,19 @@ export default function App() {
           } />
           <Route path="settings/*" element={
             <RequireAdmin user={user} isLoading={loading} setUser={setUser}>
-              <Settings user={user} />
+              <Settings user={user} setUser={setUser} />
             </RequireAdmin>
           }>
             <Route index element={<Navigate to="account" replace />} />
-            <Route path="account" element={<Settings user={user} />} />
-            <Route path="security" element={<Settings user={user} />} />
-            <Route path="help" element={<Settings user={user} />} />
-            <Route path="legal" element={<Settings user={user} />} />
-            <Route path="legal/*" element={<Settings user={user} />}>
+            <Route path="account" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="security" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="help" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="legal" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="legal/*" element={<Settings user={user} setUser={setUser} />}>
               <Route path="privacy" element={<LegalDoc docType="privacy" user={user} />} />
               <Route path="terms" element={<LegalDoc docType="terms" user={user} />} />
             </Route>
-            <Route path="about" element={<Settings user={user} />} />
+            <Route path="about" element={<Settings user={user} setUser={setUser} />} />
           </Route>
 
           {/* WHAT: Old /admin/system/* and /admin/settings/system/* routes now
@@ -450,17 +450,17 @@ export default function App() {
           <Route path="settings/*" element={
             <ErrorBoundary>
               <RequireSuperAdmin user={user} isLoading={loading} setUser={setUser}>
-                <Settings user={user} />
+                <Settings user={user} setUser={setUser} />
               </RequireSuperAdmin>
             </ErrorBoundary>
           }>
             <Route index element={<Navigate to="account" replace />} />
-            <Route path="account" element={<Settings user={user} />} />
-            <Route path="security" element={<Settings user={user} />} />
-            <Route path="help" element={<Settings user={user} />} />
-            <Route path="legal" element={<Settings user={user} />} />
-            <Route path="legal/*" element={<Settings user={user} />} />
-            <Route path="about" element={<Settings user={user} />} />
+            <Route path="account" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="security" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="help" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="legal" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="legal/*" element={<Settings user={user} setUser={setUser} />} />
+            <Route path="about" element={<Settings user={user} setUser={setUser} />} />
           </Route>
           <Route path="*" element={<Navigate to="/superadmin" replace />} />
         </Route>

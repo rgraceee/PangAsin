@@ -351,7 +351,6 @@
          hanggang 992px (5 filters ang encoder, 0-6 lang ang admin).
    ============================================================ */
 .ui-pageheader--admin {
-  min-height: 200px;
   padding: 24px 28px;
 }
 
@@ -422,9 +421,9 @@
 }
 
 .ui-pageheader--admin .ui-pageheader-controls .master-search-control {
-  flex: 1 1 300px;
-  min-width: min(100%, 260px);
-  max-width: 360px;
+  flex: 0 0 auto;
+  min-width: min(100%, 220px);
+  max-width: 260px;
 }
 
 .ui-pageheader--admin .ui-pageheader-controls .admin-page-hero-select,
@@ -519,7 +518,8 @@
   }
 
   .ui-pageheader--admin .ui-pageheader-controls .master-search-control {
-    flex-basis: 100%;
+    flex-basis: auto;
+    max-width: 260px;
   }
 }
 

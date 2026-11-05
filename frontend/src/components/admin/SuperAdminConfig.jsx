@@ -146,7 +146,7 @@ export default function SuperAdminConfig() {
           {loading && <div className="text-center py-3">Loading settings…</div>}
           {!loading && (
             <div className="table-responsive">
-              <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table config-table">
+              <Table responsive hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table config-table">
                 <thead>
                   <tr>
                     <th style={{ width: '22%' }}>Setting</th>
@@ -246,7 +246,7 @@ export default function SuperAdminConfig() {
           </div>
           {smtpLoading && <div className="text-muted small">Testing SMTP…</div>}
           {!smtpLoading && smtp && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table">
               <tbody>
                 <tr><td className="fw-medium" style={{ width: '35%' }}>Mail server</td><td>{smtp.mail_server || '—'}</td></tr>
                 <tr><td className="fw-medium">Mail port</td><td>{smtp.mail_port ?? '—'}</td></tr>

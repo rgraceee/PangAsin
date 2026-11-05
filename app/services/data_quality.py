@@ -9,6 +9,8 @@ from sqlalchemy import func
 from app.extensions import db
 from app.models.municipality import Municipality
 from app.models.production_record import ProductionRecord
+from app.models.environment_report import EnvironmentReport
+from app.models.producer_report import ProducerReport
 
 # WHAT: The month data gathering started, so no month before this is "expected".
 # WHY: The ASIN Center only started collecting records in January 2023; earlier
@@ -314,7 +316,11 @@ def build_data_quality(range_months=12, year=None) -> dict:
 
     behind = [row for row in results if row["reporting_pct"] < 100]
     reviewable = [row for row in behind if row["pending_count"] > 0]
-    pending_total = sum(row["pending_count"] for row in results)
+    pending_total = (
+        ProductionRecord.active().filter_by(status="pending").count()
+        + EnvironmentReport.query.filter_by(status="pending").count()
+        + ProducerReport.query.filter_by(status="pending").count()
+    )
     oldest_pending = min(
         (row["oldest_pending_at"] for row in results if row["oldest_pending_at"]),
         default=None,
@@ -339,6 +345,11 @@ def build_data_quality(range_months=12, year=None) -> dict:
             "pending_total": pending_total,
             "oldest_pending_days": oldest_pending_days,
             "review_clearable_count": len(reviewable),
+            "total_submitted_count": (
+                ProductionRecord.active().count()
+                + EnvironmentReport.query.count()
+                + ProducerReport.query.count()
+            ),
         },
         "fields": province_fields,
         "municipalities": results,

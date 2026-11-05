@@ -321,6 +321,12 @@ export function uploadAdminMunicipalityGeojson(id, file) {
   return apiUpload(`/admin/municipalities/${id}/geojson`, formData);
 }
 
+export function uploadUserAvatar(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiUpload(`/api/auth/me/avatar`, formData);
+}
+
 export function deleteAdminMunicipalityGeojson(id) {
   return api(`/admin/municipalities/${id}/geojson`, { method: 'DELETE' });
 }

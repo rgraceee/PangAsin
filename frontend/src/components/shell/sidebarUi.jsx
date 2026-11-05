@@ -109,6 +109,7 @@ export function municipalityLogoUrl(name) {
    initials fallback. */
 export function getUserLogoUrl(user) {
   if (!user) return null;
+  if (user.avatar_url) return user.avatar_url;
   const role = String(user.role || '').toLowerCase();
   if (role === 'admin') return '/static/brand/asin_center_logo.png';
   if (role === 'encoder') return municipalityLogoUrl(user.municipality_name);
@@ -188,24 +189,25 @@ function Tip({ label, disabled, children }) {
   );
 }
 
-export function SidebarLogo({ homePath = '/' }) {
+export function SidebarLogo({ homePath = '/', label = 'Asin Center' }) {
   /* WHAT: ASIN Center logo (full kapag expanded, mark kapag collapsed).
      WHY: gamitin ang orihinal na file, hindi redrawn icon, at maging home link. */
   return (
-    <Link to={homePath} className="p-logo" aria-label="PangAsin home">
+    <Link to={homePath} className="p-logo" aria-label={label}>
       <img
         className="p-logo-img p-logo-full"
         src="/static/brand/asin_center_logo.png"
-        alt="ASIN Center"
-        width={512}
-        height={512}
+        alt={label}
+        width={48}
+        height={48}
       />
+      <span className="p-logo-text">{label}</span>
       <img
         className="p-logo-img p-logo-markonly"
         src="/static/brand/asin_center_logo.png"
-        alt="ASIN Center"
-        width={512}
-        height={512}
+        alt={label}
+        width={32}
+        height={32}
       />
     </Link>
   );

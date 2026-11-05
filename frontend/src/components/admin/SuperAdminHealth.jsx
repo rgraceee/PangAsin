@@ -9,8 +9,8 @@ import ErrorBoundary from '../ErrorBoundary';
 import KpiCard from '../ui/KpiCard';
 import KpiGrid from '../ui/KpiGrid';
 
-const KPI = ({ icon: Icon, title, value, unit, tone = 'default', badge }) => (
-  <KpiCard icon={Icon} title={title} value={value} unit={unit} tone={tone} badge={badge} />
+const KPI = ({ icon: Icon, title, value, unit, caption, tone = 'default', badge, description }) => (
+  <KpiCard icon={Icon} title={title} value={value} unit={unit} caption={caption} tone={tone} badge={badge} description={description} />
 );
 
 export default function SuperAdminHealth() {
@@ -60,18 +60,18 @@ export default function SuperAdminHealth() {
       <Card className="encoder-card admin-card">
         <Card.Body>
           <KpiGrid columns={5}>
-            <KPI icon={Activity} title="Last forecast run" value={stats.last_forecast_run || '—'} tone="default" />
-            <KPI icon={Clock} title="Last approved data update" value={stats.last_approved_update || '—'} tone="default" />
-            <KPI icon={AlertCircle} title="Pending validations" value={stats.pending_validations ?? 0} tone={stats.pending_validations ? 'bad' : 'default'} badge={stats.pending_validations ?? 0} />
-            <KPI icon={Users} title="Users (all roles)" value={totalUsers} tone="default" />
-            <KPI icon={AlertCircle} title="Failed logins (24h)" value={stats.failed_logins_24h ?? 0} tone={stats.failed_logins_24h ? 'bad' : 'default'} badge={stats.failed_logins_24h ?? 0} />
+            <KPI icon={Activity} title="Last forecast run" value={stats.last_forecast_run || '—'} unit="run" caption="Most recent" tone="default" description="Timestamp of the most recent forecast run." />
+            <KPI icon={Clock} title="Last approved data update" value={stats.last_approved_update || '—'} unit="update" caption="Most recent" tone="default" description="Timestamp when production data was last approved." />
+            <KPI icon={AlertCircle} title="Pending validations" value={stats.pending_validations ?? 0} unit="pending items" caption="Selected period" tone={stats.pending_validations ? 'bad' : 'default'} badge={stats.pending_validations ?? 0} description="Records awaiting admin validation." />
+            <KPI icon={Users} title="Users (all roles)" value={totalUsers} unit="users" caption="All time" tone="default" description="Total registered users across all roles." />
+            <KPI icon={AlertCircle} title="Failed logins (24h)" value={stats.failed_logins_24h ?? 0} unit="attempts" caption="Last 24 hours" tone={stats.failed_logins_24h ? 'bad' : 'default'} badge={stats.failed_logins_24h ?? 0} description="Failed login attempts in the last 24 hours." />
           </KpiGrid>
           <div className="row g-3 mb-3">
             <div className="col-md-4">
-              <KPI icon={Database} title="Database size" value={stats.db_size || '—'} tone="default" />
+              <KPI icon={Database} title="Database size" value={stats.db_size || '—'} unit="MB" caption="Current" tone="default" />
             </div>
             <div className="col-md-4">
-              <KPI icon={Activity} title="App version" value={stats.app_version || '—'} tone="default" />
+              <KPI icon={Activity} title="App version" value={stats.app_version || '—'} unit="version" caption="Current" tone="default" />
             </div>
             <div className="col-md-4">
               <div className="d-grid">
@@ -96,7 +96,7 @@ export default function SuperAdminHealth() {
           </div>
           <div className="row g-3">
             <div className="col-md-4">
-              <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+              <Table responsive hover size="sm" className="mb-0 encoder-table admin-table">
                 <tbody>
                   <tr><td className="fw-medium">Database type</td><td>{stats.db_type || '—'}</td></tr>
                 </tbody>

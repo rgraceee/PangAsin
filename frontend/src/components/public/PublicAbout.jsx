@@ -13,21 +13,25 @@ const MANDATE = [
     icon: FlaskConical,
     tone: 'green',
     title: 'Research and Development',
+    description: 'Modernizing cooked and solar salt production through applied research, pilot trials, and technology transfer to local producers.',
   },
   {
     icon: Microscope,
     tone: 'ocean',
     title: 'Analytic Services and Testing',
+    description: 'Laboratory analysis of salt quality, iodine content, and purity standards to support producer certification and market compliance.',
   },
   {
     icon: BarChart3,
     tone: 'gold',
     title: 'Data Analytics and Information Technology',
+    description: 'Provincial salt production dashboard, forecasting, and data systems that inform policy, investment, and industry planning.',
   },
   {
     icon: Handshake,
     tone: 'navy',
     title: 'Administration, Finance, and Linkages',
+    description: 'Program management, funding coordination, and partnerships with DOST, LGUs, and salt producer cooperatives across Pangasinan.',
   },
 ];
 
@@ -40,7 +44,10 @@ export default function PublicAbout() {
           Accelerating the Philippine Salt Industry
         </h2>
         <p className="public-about-body">
-          The Accelerating Salt Research and Innovation (ASIN) Center is a salt research and innovation hub at Pangasinan State University, based at the PSU Binmaley Campus. Supported by the Department of Science and Technology through its NICER Program, it works to modernize traditional cooked and solar salt production so that it becomes more efficient, sustainable, and scalable. The Center aims to equip local salt producers with practical tools and to help the country move toward salt self-sufficiency while strengthening the local economy.
+          The Accelerating Salt Research and Innovation (ASIN) Center is a salt research and innovation hub at Pangasinan State University, based at the PSU Binmaley Campus. Supported by the Department of Science and Technology through its NICER Program, it works to modernize traditional cooked and solar salt production so that it becomes more efficient, sustainable, and scalable.
+        </p>
+        <p className="public-about-body">
+          The Center aims to equip local salt producers with practical tools and to help the country move toward salt self-sufficiency while strengthening the local economy.
         </p>
       </div>
 
@@ -56,6 +63,9 @@ export default function PublicAbout() {
                 </span>
                 <div className="public-mandate-text">
                   <h3 className="public-mandate-title">{item.title}</h3>
+                  {item.description ? (
+                    <p className="public-mandate-body">{item.description}</p>
+                  ) : null}
                 </div>
               </li>
             );

@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 
-export default function usePageTitle(title, { prefix = 'PangAsin — ' } = {}) {
+export default function usePageTitle(title) {
   useEffect(() => {
-    document.title = title ? `${prefix}${title}` : 'PangAsin';
-  }, [title, prefix]);
+    if (!title) {
+      document.title = 'PangAsin';
+      return;
+    }
+    document.title = `${title} | PangAsin`;
+  }, [title]);
 }

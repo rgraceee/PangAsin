@@ -189,7 +189,7 @@ export default function SuperAdminRecords() {
             </div>
           )}
           {!loading && total > 0 && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table">
               <thead>
                 <tr>
                   <th className="muni-col-secondary text-nowrap">Date</th>

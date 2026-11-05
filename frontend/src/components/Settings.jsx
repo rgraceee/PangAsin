@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Card } from 'react-bootstrap';
 import {
@@ -10,8 +10,9 @@ import {
   Eye,
   EyeOff,
   X,
+  Camera,
 } from 'lucide-react';
-import { changePassword, requestEmailChange } from '../services/dataService';
+import { changePassword, requestEmailChange, uploadUserAvatar } from '../services/dataService';
 import ContentEditor from './admin/ContentEditor';
 import CONTENT_DEFAULTS from './admin/contentDefaults';
 import { useToast } from './Toast';
@@ -40,7 +41,7 @@ const SECTIONS = [
 
 // WHAT: Section head card (icon tile + title) na katulad ng Forecasting page.
 // WHY: pare-pareho ang hitsura ng section header sa lahat ng pages.
-function SectionHead({ icon: Icon, title }) {
+function SectionHead({ icon: Icon, title, description }) {
   return (
     <div className="settings-section-head">
       <span className="settings-section-chip" aria-hidden="true">
@@ -48,6 +49,7 @@ function SectionHead({ icon: Icon, title }) {
       </span>
       <div>
         <h2 className="settings-section-title">{title}</h2>
+        {description ? <p className="settings-section-desc">{description}</p> : null}
       </div>
     </div>
   );
@@ -72,6 +74,8 @@ export default function Settings({ user }) {
   const [emailChangeMessage, setEmailChangeMessage] = useState('');
   const [emailChangeError, setEmailChangeError] = useState('');
   const [emailChangeSaving, setEmailChangeSaving] = useState(false);
+const [avatarUploading, setAvatarUploading] = useState(false);
+const avatarFileInput = useRef(null);
 
   // WHAT: Derive ang active section mula sa URL pathname
   //       (/admin/settings/account -> account).
@@ -163,6 +167,34 @@ const isEncoder = role === 'encoder';
     }
   };
 
+  const handleAvatarChange = async (event) => {
+    event.preventDefault();
+    setError(null);
+    const file = avatarFileInput.current?.files?.[0];
+    if (!file) return;
+    if (file.type !== 'image/png') {
+      setError('Only PNG images are allowed.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('File too large. Maximum 2 MB.');
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const updated = await uploadUserAvatar(file);
+      setUser?.({ ...user, avatar_url: updated.avatar_url });
+      toastSuccess('Profile picture updated.', 'Avatar changed');
+    } catch (err) {
+      const message = err.message || 'Could not update the profile picture.';
+      setError(message);
+      toastError(message);
+    } finally {
+      setAvatarUploading(false);
+      avatarFileInput.current.value = '';
+    }
+  };
+
   return (
     <div className="settings-page">
       {/* ===== Section panels ===== */}
@@ -171,12 +203,35 @@ const isEncoder = role === 'encoder';
         {/* Account */}
         {section === 'account' && (
           <>
-            <SectionHead icon={User} title="Account" />
+            <SectionHead icon={User} title="Account" description="Update your name and email address." />
             <Card className="settings-card">
               <Card.Body className="settings-card-body">
                 <div className="settings-account-grid">
                   <div className="settings-account-avatar">
-                    <UserAvatar user={user} size={56} />
+                    <div className="avatar-edit-wrap">
+                      <UserAvatar user={user} size={56} />
+                      <input
+                        ref={avatarFileInput}
+                        type="file"
+                        accept="image/png"
+                        style={{ display: 'none' }}
+                        onChange={handleAvatarChange}
+                      />
+                      <button
+                        type="button"
+                        className={`avatar-edit-btn${avatarUploading ? ' avatar-edit-btn--loading' : ''}`}
+                        title="Change profile picture"
+                        aria-label="Change profile picture"
+                        onClick={() => avatarFileInput.current?.click()}
+                        disabled={avatarUploading}
+                      >
+                        {avatarUploading ? (
+                          <span className="avatar-edit-spinner" aria-hidden="true" />
+                        ) : (
+                          <Camera size={14} strokeWidth={2} aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div className="settings-account-meta">
                     <div className="settings-account-name">{user?.name || '—'}</div>
@@ -266,7 +321,7 @@ const isEncoder = role === 'encoder';
         {/* Security */}
         {section === 'security' && (
           <>
-            <SectionHead icon={ShieldCheck} title="Security" />
+            <SectionHead icon={ShieldCheck} title="Security" description="Change your password to keep your account secure." />
             <Card className="settings-card">
               <Card.Body className="settings-card-body">
                 {error && <div className="settings-error">{error}</div>}
@@ -356,7 +411,7 @@ const isEncoder = role === 'encoder';
         {/* Help & Support */}
         {section === 'help' && (
           <>
-            <SectionHead icon={HelpCircle} title="Help &amp; Support" />
+            <SectionHead icon={HelpCircle} title="Help &amp; Support" description="Browse FAQs and get help with PangAsin." />
             {isSuperAdmin && (
               <div className="settings-faq-picker mb-3">
                 <label className="settings-faq-label">Edit FAQ</label>
@@ -394,7 +449,7 @@ const isEncoder = role === 'encoder';
         {/* Legal */}
         {location.pathname === legalBase ? (
           <>
-            <SectionHead icon={Archive} title="Legal" />
+            <SectionHead icon={Archive} title="Legal" description="View the privacy policy and terms of service." />
             <Card className="settings-card">
               <Card.Body className="settings-card-body">
                 <ul className="settings-legal-list">
@@ -461,7 +516,7 @@ const isEncoder = role === 'encoder';
         {section === 'about' && (
           <>
             <div className="d-flex justify-content-between align-items-start mb-2">
-              <SectionHead icon={SettingsIcon} title="About" />
+              <SectionHead icon={SettingsIcon} title="About" description="View app version and build information." />
               {isSuperAdmin && (
                 <button
                   type="button"

@@ -59,6 +59,7 @@ export default function ForecastSeasonalityChart({ series, reportingMonth, heigh
       icon={CalendarDays}
       title="Seasonal pattern"
       height={height}
+      caption="Average monthly salt output by calendar month, shaded into dry season (amihan, Nov–May) and wet season (habagat, Jun–Oct). Months with no source row show as gaps in the curve."
       chips={(
         <>
           <ChartChip label={`Dry season (${SEASONS.dry.label})`} color={DRY} />

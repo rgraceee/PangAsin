@@ -29,6 +29,22 @@
   white-space: nowrap;
 }
 
+/* ===== Filter fields: label above control ===== */
+
+.dq-filter-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dq-year-select {
+  width: 140px;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
 /* ===== Calm note (one quiet line, no action) ===== */
 
 .dq-calm {

@@ -68,6 +68,7 @@ export default function EncoderProfileCharts({
       <MuniCard
         icon={UserRound}
         title="Gender Distribution"
+        sub="Male / female distribution of salt farmers registered in the master list."
         chips={chips}
       >
         {loading ? (
@@ -108,6 +109,7 @@ export default function EncoderProfileCharts({
       <MuniCard
         icon={Users}
         title="Age Distribution"
+        sub="Age group breakdown of registered salt farmers."
         chips={chips}
       >
         {loading ? (

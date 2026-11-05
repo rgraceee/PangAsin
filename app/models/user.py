@@ -29,6 +29,7 @@ class User(db.Model, UserMixin):
     #      existing sessions ng account nang hindi kailangan ng server-side store.
     session_version = db.Column(db.Integer, default=0, server_default="0", nullable=False)
     last_login = db.Column(db.DateTime, nullable=True)
+    avatar_url = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -36,7 +37,19 @@ class User(db.Model, UserMixin):
         db.Index("uq_users_email_lower", db.func.lower(email), unique=True),
     )
 
-    production_records = db.relationship("ProductionRecord", foreign_keys="ProductionRecord.submitted_by", backref="submitter", lazy=True)
+    production_records = db.relationship(
+        "ProductionRecord",
+        foreign_keys="ProductionRecord.submitted_by",
+        backref="submitter",
+        lazy=True,
+    )
+    email_change_tokens = db.relationship(
+        "EmailChangeToken",
+        cascade="all, delete-orphan",
+        back_populates="user",
+        lazy=True,
+        passive_deletes=True,
+    )
 
     def set_password(self, password):
         from werkzeug.security import generate_password_hash

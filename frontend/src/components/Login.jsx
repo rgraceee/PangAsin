@@ -151,6 +151,8 @@ export default function Login({ onLogin }) {
             className="login-hero-logo"
           />
           <h1 className="login-hero-title">PangAsin</h1>
+          <h2 className="login-hero-tagline">Salt production forecasting and decision support</h2>
+          <p className="login-hero-support">Track production, validate records, and plan ahead across Pangasinan's salt-producing municipalities.</p>
           <a className="login-hero-scroll-hint" href="#login-about">
             <span>Scroll to explore</span>
             <svg

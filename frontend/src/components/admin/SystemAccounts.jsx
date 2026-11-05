@@ -255,7 +255,7 @@ export default function SystemAccounts() {
             <Alert variant="info">No users match the current filters.</Alert>
           )}
           {!loading && visibleUsers.length > 0 && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table">
               <thead>
                 <tr>
                   <th>Name</th>

@@ -24,6 +24,7 @@ from app.models.producer_report import ProducerReport, ProducerReportEntry
 from app.models.production_record import ProductionRecord
 from app.models.report import Report
 from app.models.user import User
+from app.models.email_change_token import EmailChangeToken
 from app.services.audit import log_action
 
 ENCODER_EMAIL_DOMAIN = "pangasin.gov.ph"
@@ -663,6 +664,9 @@ def _remove_or_detach_encoders(municipality_id):
             encoder.status = "inactive"
             detached += 1
         else:
+            EmailChangeToken.query.filter_by(user_id=encoder.id).delete(
+                synchronize_session=False
+            )
             db.session.delete(encoder)
             deleted += 1
     return deleted, detached
@@ -834,6 +838,18 @@ def delete_municipality(municipality, *, force=False):
         municipality_id
     )
     _delete_municipality_rows(municipality_id, barangay_ids, forecast_run_ids)
+
+    # Defensive cleanup: remove email change tokens for encoders of this municipality
+    encoder_ids = [
+        row[0]
+        for row in db.session.query(User.id).filter_by(
+            municipality_id=municipality_id, role="encoder"
+        ).all()
+    ]
+    if encoder_ids:
+        EmailChangeToken.query.filter(EmailChangeToken.user_id.in_(encoder_ids)).delete(
+            synchronize_session=False
+        )
 
     deleted_encoders, detached_encoders = _remove_or_detach_encoders(municipality_id)
     counts["deleted_encoders"] = deleted_encoders

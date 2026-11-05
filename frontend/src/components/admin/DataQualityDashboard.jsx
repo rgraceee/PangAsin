@@ -1,4 +1,4 @@
-// WHAT: The admin Data Integrity page - what is complete, what is missing, and
+// WHAT: The admin Data Completeness page - what is complete, what is missing, and
 //       what the admin should do next.
 // WHY: Reporting percentages and month counts should make the actual report
 //      coverage easy to scan.
@@ -108,34 +108,41 @@ export default function DataQualityDashboard() {
         id="admin-data-quality"
         variant="clean"
         className="ui-pageheader--admin"
-        title="Data Integrity (Completeness)"
+        title="Data Completeness"
         subtitle="How complete the records are, and which months still have no report."
         art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       >
-        <div className="dq-range-pills d-flex flex-row gap-2 flex-wrap align-items-center">
-          <label className="visually-hidden" htmlFor="dq-year">Year</label>
-          <select
-            id="dq-year"
-            className="form-select"
-            aria-label="Year"
-            style={{ width: 120 }}
-            value={year}
-            onChange={(event) => setYear(Number(event.target.value))}
-          >
-            {years.map((optionYear) => (
-              <option key={optionYear} value={optionYear}>{optionYear}</option>
-            ))}
-          </select>
-          {RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`ui-btn-${String(range) === String(option.value) ? 'primary' : 'outline'} dq-range-pill`}
-              onClick={() => setRange(option.value === 'all' ? 'all' : Number(option.value))}
+        <div className="dq-range-pills d-flex flex-column gap-2">
+          <div className="dq-filter-field d-flex flex-column gap-1">
+            <label className="admin-page-hero-field" htmlFor="dq-year">Year</label>
+            <select
+              id="dq-year"
+              className="form-select dq-year-select"
+              aria-label="Year"
+              style={{ width: 120 }}
+              value={year}
+              onChange={(event) => setYear(Number(event.target.value))}
             >
-              {option.label}
-            </button>
-          ))}
+              {years.map((optionYear) => (
+                <option key={optionYear} value={optionYear}>{optionYear}</option>
+              ))}
+            </select>
+          </div>
+          <div className="dq-filter-field d-flex flex-column gap-1">
+            <label className="admin-page-hero-field">Months</label>
+            <div className="d-flex flex-row gap-2 align-items-end">
+              {RANGE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`ui-btn-${String(range) === String(option.value) ? 'primary' : 'outline'} dq-range-pill`}
+                  onClick={() => setRange(option.value === 'all' ? 'all' : Number(option.value))}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </PageHeader>
 
@@ -143,34 +150,53 @@ export default function DataQualityDashboard() {
         <KpiGrid columns={4}>
           <KpiCard
             icon={ClipboardCheck}
-            title="Waiting for review"
+            title="Waiting for validation"
+            description="Records awaiting admin review across production, salt farmer, and environment reports."
             value={kpis.pending_total}
+            unit="pending items"
+            caption="Selected period"
             supporting={kpis.pending_total > 0
               ? `The oldest has been waiting ${kpis.oldest_pending_days} day${kpis.oldest_pending_days === 1 ? '' : 's'}.`
               : 'Nothing is waiting for review.'}
-            info="Records submitted by the encoders that no admin has reviewed yet. A month with a waiting record is not the same as a month with no record at all."
+            info="Pending production records, salt farmer submissions, and environment reports awaiting admin validation."
+          />
+          <KpiCard
+            icon={ClipboardList}
+            title="Total records submitted"
+            description="All records submitted by municipalities across production, salt farmer, and environment reports."
+            value={kpis.total_submitted_count}
+            unit="records"
+            caption="All time"
+            supporting="Combined total across all three submission types."
+            info="Total number of records submitted by municipalities — production records, salt farmer submissions, and environment reports."
           />
           <KpiCard
             icon={CalendarRange}
             title="Months reported"
+            description="Share of municipality-months with at least one approved record."
             value={kpis.reporting_pct}
             unit="%"
+            caption="Selected window"
             supporting={`${kpis.municipality_count} municipalities · ${data.expected_months} months in this period`}
             info="Share of municipality-months in the selected window that have at least one approved record."
           />
           <KpiCard
             icon={AlertTriangle}
             title="Municipalities behind"
+            description="Municipalities with at least one month without an approved report."
             value={kpis.behind_count}
             unit={`of ${kpis.municipality_count}`}
+            caption="Selected window"
             supporting={reviewNote}
             info="Municipalities with at least one month without an approved report in this period."
           />
           <KpiCard
             icon={BadgeCheck}
             title="Fields filled in"
+            description="Share of required fields filled in on approved records."
             value={kpis.field_pct}
             unit="%"
+            caption="Approved records"
             supporting={`Across all ${fields.length} required fields`}
             info="Share of the required fields that are filled in on approved records. A value of 0 is a valid answer; an empty field is not."
           />

@@ -117,6 +117,7 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Production by Municipality</h5>
+                  <p className="fc-card-caption">Ranked salt production by municipality (metric tons) for the latest 12 months.</p>
                 </div>
               </div>
               <div className="fc-card-head-right">
@@ -228,6 +229,7 @@ export default function MunicipalityProductionCharts({ municipalities = [] }) {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Share of Provincial Production</h5>
+                  <p className="fc-card-caption">Each municipality's share of total provincial salt production as a percentage. Hover a bar or donut slice to cross-highlight both charts.</p>
                 </div>
               </div>
             </Card.Header>

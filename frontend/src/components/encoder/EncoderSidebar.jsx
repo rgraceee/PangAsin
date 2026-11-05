@@ -51,7 +51,7 @@ export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, cl
   };
 
   const muni = user?.municipality_name;
-  usePageTitle(muni || 'Encoder Dashboard', muni ? { prefix: '' } : undefined);
+  usePageTitle(muni || 'Encoder Dashboard');
 
   const handleItem = useCallback((item) => {
     if (closeMobile) closeMobile();
@@ -61,7 +61,7 @@ export default function EncoderSidebar({ user, collapsed, onToggle, onLogout, cl
   return (
     <aside className="p-sidebar" aria-label="Encoder navigation">
       <div className="p-sidebar-inner">
-        <SidebarLogo collapsed={collapsed} homePath="/encoder" />
+        <SidebarLogo collapsed={collapsed} homePath="/encoder" label={muni || 'Asin Center'} />
 
         <nav className="p-nav" aria-label="Main">
           <div className="p-navlist">

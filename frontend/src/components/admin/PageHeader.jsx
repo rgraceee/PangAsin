@@ -3,6 +3,7 @@ import { useId } from 'react';
 export default function PageHeader({
   id, title, children, action, actions, variant = 'main', eyebrow,
   art, filter, compact = false, status, stat, className = '', icon: Icon,
+  subtitle,
 }) {
   const rawId = useId();
   const dotId = `ph-dots-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -25,6 +26,7 @@ export default function PageHeader({
           ) : null}
           <div className="ui-section-copy">
             <h2 className="ui-section-title">{title}</h2>
+            {subtitle ? <p className="ui-pageheader-sub">{subtitle}</p> : null}
           </div>
         </div>
       </header>
@@ -63,6 +65,7 @@ export default function PageHeader({
         <div className="ui-pageheader-main">
           <div className="ui-pageheader-left">
             <h1 className="ui-pageheader-title">{title}</h1>
+            {subtitle ? <p className="ui-pageheader-sub">{subtitle}</p> : null}
             {status ? <div className="ui-pageheader-status">{status}</div> : null}
           </div>
           {(actions || action) ? <div className="ui-pageheader-actions">{actions || action}</div> : null}

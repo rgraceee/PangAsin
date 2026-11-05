@@ -139,6 +139,7 @@ export default function SupplyDemandAnalytics() {
           title="Local Supply (Pangasinan)"
           value={Math.round(localSupply * 100) / 100}
           unit="Metric Tons (MT)"
+          caption="Selected year"
           supporting={`Pangasinan production (${pangasinan.year})`}
         />
         <KpiCard
@@ -146,6 +147,7 @@ export default function SupplyDemandAnalytics() {
           title="Local Demand (Pangasinan)"
           value={Math.round(demandBenchmark * 100) / 100}
           unit="Metric Tons (MT)"
+          caption="Selected year"
           supporting={`Target demand (${pangasinan.year})`}
         />
         <KpiCard
@@ -153,6 +155,7 @@ export default function SupplyDemandAnalytics() {
           title="Salt Needed to Meet Demand"
           value={demandBenchmark > 0 ? Math.round(demandShortfall * 100) / 100 : null}
           unit={demandBenchmark > 0 ? 'Metric Tons (MT)' : undefined}
+          caption={demandBenchmark <= 0 ? 'No benchmark' : 'Selected year'}
           supporting={demandBenchmark <= 0
             ? 'No Pangasinan demand benchmark available'
             : demandShortfall > 0

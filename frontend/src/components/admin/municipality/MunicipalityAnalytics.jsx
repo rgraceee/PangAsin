@@ -142,15 +142,20 @@ export default function MunicipalityAnalytics() {
         <KpiCard
           icon={Boxes}
           title="Total Production"
+          description="Production volume from Adjusted_Estimates.xlsx for the selected municipality and period."
           value={fmtMT(view.totalProduction)}
           unit="Metric Tons (MT)"
+          caption="Selected period"
           supporting="for the selected period"
           info="Production volume from Adjusted_Estimates.xlsx for the selected municipality and period."
         />
         <KpiCard
           icon={Users}
           title="Registered Salt Farmers"
+          description="Distinct salt farmers registered in the master list."
           value={view.registeredTotal}
+          unit="farmers"
+          caption="Selected municipality"
           supporting={topProducer
             ? `${topProducer.name} has the most (${fmtInt(topProducer.count)})`
             : 'From the master list'}
@@ -159,8 +164,10 @@ export default function MunicipalityAnalytics() {
         <KpiCard
           icon={ContactRound}
           title="Gender Distribution"
+          description="Registered salt farmers by sex — male / female."
           value={`${fmtInt(gender.male || 0)} / ${fmtInt(gender.female || 0)}`}
           unit="Male / Female"
+          caption="Selected municipality"
           info="Registered salt farmers by sex — male / female."
         />
       </KpiGrid>

@@ -509,7 +509,7 @@ export default function ValidationQueue() {
         )}
         {!loading && records.length > 0 && (
           <>
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table">
               <thead>
               {reportType === 'production' ? <tr>
                 {selectAllCell}
@@ -653,7 +653,7 @@ export default function ValidationQueue() {
               </Table>
 
               {reportType === 'producer' && (
-                <Table responsive bordered size="sm" className="mt-3 mb-0">
+                <Table responsive bordered hover size="sm" className="mt-3 mb-0">
                   <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th></tr></thead>
                   <tbody>{(detail.entries || []).map((entry) => (
                     <tr key={entry.id}>

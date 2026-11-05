@@ -119,29 +119,37 @@ export default function GuestDashboard() {
             <KpiCard
               icon={Scale}
               title="National Salt Demand"
+              description="Philippines-wide demand benchmark for salt."
               value={kpis.nationalDemand}
               unit="Metric Tons (MT)"
+              caption="Latest benchmark"
               supporting="Philippines demand benchmark"
             />
             <KpiCard
               icon={Factory}
               title="National Supply Coverage"
+              description="Share of demand covered by local salt production."
               value={kpis.coverage}
-              unit="%"
+              unit="of national demand"
+              caption="Selected period"
               supporting="Share of demand from local production"
             />
             <KpiCard
               icon={Ship}
               title="Import Dependence"
+              description="Share of demand covered by imported salt."
               value={kpis.importDependence}
-              unit="%"
+              unit="of national demand"
+              caption="Selected period"
               supporting="Share of demand covered by imports"
             />
             <KpiCard
               icon={Boxes}
               title="Municipality Production"
+              description="Workbook-derived production data across Pangasinan municipalities."
               value={kpis.totalMT == null ? null : Math.round(kpis.totalMT * 100) / 100}
               unit="Metric Tons (MT)"
+              caption="All municipalities"
               supporting="Workbook-derived production data · Pangasinan"
             />
           </KpiGrid>

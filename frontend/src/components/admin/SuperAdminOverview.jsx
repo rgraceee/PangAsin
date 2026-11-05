@@ -122,14 +122,14 @@ export default function SuperAdminOverview() {
       ) : (
         <>
           <KpiGrid columns={4}>
-            <KpiCard icon={AlertCircle} title="Pending validations" value={stats.pending_validations ?? 0} tone={stats.pending_validations ? 'bad' : 'default'} badge={stats.pending_validations ?? 0} />
-            <KpiCard icon={ShieldAlert} title="Failed logins (24h)" value={stats.failed_logins_24h ?? 0} tone={stats.failed_logins_24h ? 'bad' : 'default'} badge={stats.failed_logins_24h ?? 0} />
-            <KpiCard icon={Users} title="Users (all roles)" value={totalUsers} tone="default" />
-            <KpiCard icon={ShieldAlert} title="Locked accounts" value={lockedCount} tone={lockedCount ? 'bad' : 'default'} badge={lockedCount} />
-            <KpiCard icon={Activity} title="Last forecast run" value={formatDateTimeManila(stats.last_forecast_run)} tone={stats.last_forecast_run ? 'default' : 'bad'} />
-            <KpiCard icon={Clock} title="Last approved data update" value={formatDateTimeManila(stats.last_approved_update)} tone="default" />
-            <KpiCard icon={Database} title="Database size" value={stats.db_size || 'Never'} tone="default" />
-            <KpiCard icon={Mail} title="SMTP status" value={smtpConfigured ? 'Configured' : 'Not configured'} tone={smtpConfigured ? 'good' : 'bad'} badge={smtpConfigured ? 'OK' : 'OFF'} />
+            <KpiCard icon={AlertCircle} title="Pending validations" value={stats.pending_validations ?? 0} unit="pending items" caption="Selected period" tone={stats.pending_validations ? 'bad' : 'default'} badge={stats.pending_validations ?? 0} description="Records awaiting admin validation." />
+            <KpiCard icon={ShieldAlert} title="Failed logins (24h)" value={stats.failed_logins_24h ?? 0} unit="attempts" caption="Last 24 hours" tone={stats.failed_logins_24h ? 'bad' : 'default'} badge={stats.failed_logins_24h ?? 0} description="Failed login attempts in the last 24 hours." />
+            <KpiCard icon={Users} title="Users (all roles)" value={totalUsers} unit="users" caption="All time" tone="default" description="Total registered users across all roles." />
+            <KpiCard icon={ShieldAlert} title="Locked accounts" value={lockedCount} unit="accounts" caption="Current" tone={lockedCount ? 'bad' : 'default'} badge={lockedCount} description="Accounts currently locked due to failed login attempts." />
+            <KpiCard icon={Activity} title="Last forecast run" value={formatDateTimeManila(stats.last_forecast_run)} unit="run" caption="Most recent" tone={stats.last_forecast_run ? 'default' : 'bad'} description="Timestamp of the most recent forecast run." />
+            <KpiCard icon={Clock} title="Last approved data update" value={formatDateTimeManila(stats.last_approved_update)} unit="update" caption="Most recent" tone="default" description="Timestamp when production data was last approved." />
+            <KpiCard icon={Database} title="Database size" value={stats.db_size || 'Never'} unit="MB" caption="Current" tone="default" description="Current size of the application database." />
+            <KpiCard icon={Mail} title="SMTP status" value={smtpConfigured ? 'Configured' : 'Not configured'} unit="status" caption="Current" tone={smtpConfigured ? 'good' : 'bad'} badge={smtpConfigured ? 'OK' : 'OFF'} description="Whether outbound email is configured." />
           </KpiGrid>
 
           <div className="row g-3 mt-3">

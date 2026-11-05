@@ -196,6 +196,7 @@ export default function MunicipalityMapSection() {
             </span>
             <div className="fc-card-head-text">
               <h5 className="fc-card-title">Salt Production Across Pangasinan</h5>
+              <p className="fc-card-caption">Choropleth map of salt production per municipality; darker green indicates higher volume.</p>
             </div>
           </div>
         </Card.Header>

@@ -184,26 +184,37 @@ export default function ProductionRecordsPage() {
         <KpiCard
           icon={Boxes}
           title="Total Production"
+          description="Sum of production volume across matching records."
           value={formatMT(totals.volume)}
           unit="Metric Tons (MT)"
+          caption="Current filters"
           info="Sum of production volume across the records that match the current filters."
         />
         <KpiCard
           icon={ClipboardList}
           title="Records"
+          description="Number of production records matching the current filters."
           value={totals.count}
+          unit="records"
+          caption="Current filters"
           info="Number of production records that match the current filters."
         />
         <KpiCard
           icon={Clock}
           title="Pending Review"
+          description="Records waiting for admin approval."
           value={totals.pending}
+          unit="pending items"
+          caption="Current filters"
           info="Records waiting for admin approval in the current filter."
         />
         <KpiCard
           icon={CheckCircle}
           title="Approved"
+          description="Approved records matching the current filters."
           value={totals.approved}
+          unit="approved"
+          caption="Current filters"
           info="Approved records in the current filter."
         />
       </KpiGrid>

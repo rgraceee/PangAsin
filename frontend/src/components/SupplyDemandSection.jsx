@@ -236,6 +236,7 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Supply and Demand</h5>
+                  <p className="fc-card-caption">Local and national supply compared with demand.</p>
                 </div>
               </div>
               {/* WHAT: Segmented scope switcher (Philippines / Pangasinan).
@@ -340,6 +341,7 @@ export default function SupplyDemandSection() {
                 </span>
                 <div className="fc-card-head-text">
                   <h5 className="fc-card-title">Salt Demand by Sector</h5>
+                  <p className="fc-card-caption">Share of salt demand by end-use sector.</p>
                 </div>
               </div>
               <div className="fc-card-head-right">

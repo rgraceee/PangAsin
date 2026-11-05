@@ -191,6 +191,7 @@ export default function AdminDashboard({ user }) {
         variant="clean"
         className="ui-pageheader--admin"
         title="Dashboard"
+        subtitle="Overview of salt production, demand benchmarks, and municipality performance across Pangasinan."
         art={(
           <HeroMapErrorBoundary>
             <MunicipalityMapArt mode="province" selectedName={selectedMuni} activeNames={activeNames} />
@@ -222,10 +223,12 @@ export default function AdminDashboard({ user }) {
             <KpiCard
               icon={Scale}
               title="Salt Needed to Meet Demand"
+              description="How much more salt is needed to reach the provincial demand target."
               value={supplyDemandShortfall == null ? null : Math.round(supplyDemandShortfall * 100) / 100}
               unit={supplyDemandShortfall == null
                 ? undefined
                 : `Metric Tons (MT) · ${shortfallPercentage}%`}
+              caption={supplyDemandShortfall == null ? 'No benchmark' : 'Selected period'}
               supporting={supplyDemandShortfall == null
                 ? 'No Pangasinan demand benchmark available'
                 : supplyDemandShortfall > 0
@@ -236,16 +239,29 @@ export default function AdminDashboard({ user }) {
             <KpiCard
               icon={Boxes}
               title="Total Production"
+              description="Total salt production across all municipalities in metric tons."
               value={totalVolumeMT}
               unit={`Metric Tons (MT)${productionPercentage == null ? '' : ` · ${productionPercentage}%`}`}
+              caption="Selected period"
               supporting={`${fmtMT(totalVolumeMT)} Metric Tons (MT) recorded`}
               info="Source: Adjusted_Estimates.xlsx."
             />
-            <KpiCard icon={Boxes} title="Total Salt Beds" value={muniData.reduce((s, m) => s + (m.beds || 0), 0)} unit="beds" supporting="Combined salt beds across municipalities" />
+            <KpiCard
+              icon={Boxes}
+              title="Total Salt Beds"
+              description="Combined count of all salt beds registered across municipalities."
+              value={muniData.reduce((s, m) => s + (m.beds || 0), 0)}
+              unit="beds"
+              caption="All municipalities"
+              supporting="Combined salt beds across municipalities"
+            />
             <KpiCard
               icon={Building2}
               title="Municipalities"
+              description="Number of municipalities with at least one month of production data."
               value={municipalityCount}
+              unit="municipalities"
+              caption="Active"
               supporting="with municipality production data"
               info="Municipalities in scope with at least one month in the municipality production dataset."
             />
@@ -516,6 +532,7 @@ function MunicipalityMap({ muniData, selectedName }) {
           <span className="admin-card-head-icon admin-card-head-icon--soft"><MapPin size={16} strokeWidth={2} /></span>
           <div>
             <h5 className="admin-card-head-title">Salt Production Across Pangasinan</h5>
+            <p className="admin-card-head-desc">Choropleth map of salt production per municipality; darker green indicates higher volume.</p>
           </div>
         </div>
       </Card.Header>

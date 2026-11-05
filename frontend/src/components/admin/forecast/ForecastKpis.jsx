@@ -19,8 +19,10 @@ export default function ForecastKpis({
       <KpiCard
         icon={ChartLine}
         title="Municipality Production"
+        description="Total municipality production data recorded in metric tons."
         value={recordedMT === null ? null : fmtMT(recordedMT)}
         unit="Metric Tons (MT)"
+        caption="Selected period"
         supporting={`Municipality production data, ${recordedPeriodLabel}${recordedThrough ? ` through ${recordedThrough}` : ''}.`}
         info={definition('recordedMt')}
         loading={loading}
@@ -29,8 +31,10 @@ export default function ForecastKpis({
       <KpiCard
         icon={Target}
         title="Forecasted Total Production"
+        description="Total projected production for the forecast horizon."
         value={forecastMT === null ? null : fmtMT(forecastMT)}
         unit="Metric Tons (MT)"
+        caption={`Next ${horizon} month${horizon === 1 ? '' : 's'}`}
         badge={hasForecast
           ? { text: `${horizon} month${horizon === 1 ? '' : 's'}`, tone: 'neutral' }
           : { text: 'No forecast', tone: 'neutral' }}
@@ -44,7 +48,10 @@ export default function ForecastKpis({
       <KpiCard
         icon={TrendingUp}
         title="Expected Change"
+        description="Expected change percentage versus recent average production."
         value={expectedChangePct === null || expectedChangePct === undefined ? null : fmtPctSigned(expectedChangePct)}
+        unit="%"
+        caption="Forecast vs recent average"
         badge={expectedChangePct === null || expectedChangePct === undefined
           ? { text: 'No data', tone: 'neutral' }
           : { text: TREND_LABELS[direction] || 'Stable', tone: direction === 'increasing' ? 'good' : direction === 'declining' ? 'bad' : 'neutral' }}

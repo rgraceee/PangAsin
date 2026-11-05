@@ -113,6 +113,13 @@
   line-height: 1.3;
 }
 
+.admin-card-head-desc {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ui-text-muted);
+  margin: 4px 0 0;
+}
+
 /* ============================================================
    Municipality selector — segmented chips, scrollable
    ============================================================ */
@@ -1693,7 +1700,7 @@
   white-space: nowrap;
 }
 
-/* Table rows: comfortable padding, subtle borders, zebra via bootstrap striped. */
+/* Table rows: comfortable padding, subtle borders. */
 .muni-admin-table tbody td {
   padding: 10px 8px;
   border-bottom: 1px solid #f1f5f9;

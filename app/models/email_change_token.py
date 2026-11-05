@@ -24,7 +24,7 @@ class EmailChangeToken(db.Model):
 
     user = db.relationship(
         "User",
-        backref=db.backref("email_change_tokens", lazy=True),
+        back_populates="email_change_tokens",
     )
 
     def is_expired(self, now=None):

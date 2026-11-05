@@ -995,26 +995,13 @@ export default function Municipalities() {
       : 'No encoder account is linked.';
     const confirmed = await confirmAction({
       title: `Delete ${municipality.name}?`,
-      text: `Are you sure you want to delete this? ${encoderCopy}`,
-      confirmText: 'Yes',
-      cancelText: 'No',
+      text: `Are you sure you want to delete ${municipality.name}? ${encoderCopy} This action cannot be undone.`,
+      confirmText: 'Delete municipality',
+      cancelText: 'Cancel',
       danger: true,
       icon: 'trash',
     });
     if (!confirmed) return;
-
-    const typed = await promptText({
-      title: `Delete ${municipality.name}?`,
-      text: `${encoderCopy} This action cannot be undone.`,
-      inputPlaceholder: municipality.name,
-      confirmText: 'Delete municipality',
-      danger: true,
-    });
-    if (!typed) return;
-    if (typed.toLowerCase() !== municipality.name.toLowerCase()) {
-      toastError('The name did not match. Deletion cancelled.');
-      return;
-    }
 
     const finishDelete = async () => {
       await load();
@@ -1025,7 +1012,7 @@ export default function Municipalities() {
     setRowBusy({ id: municipality.id, action: 'delete' });
     try {
       try {
-        await deleteAdminMunicipality(municipality.id, { confirm_name: typed });
+        await deleteAdminMunicipality(municipality.id, { confirm_name: municipality.name });
         await finishDelete();
         return;
       } catch (err) {
@@ -1040,7 +1027,7 @@ export default function Municipalities() {
         });
         if (!force) return;
 
-        await deleteAdminMunicipality(municipality.id, { confirm_name: typed, force: true });
+        await deleteAdminMunicipality(municipality.id, { confirm_name: municipality.name, force: true });
         await finishDelete();
       }
     } catch (err) {
@@ -1077,6 +1064,7 @@ export default function Municipalities() {
         variant="clean"
         className="ui-pageheader--admin"
         title="Municipality Management"
+        subtitle="Manage municipalities, barangays, boundaries, and encoder accounts for salt production."
         art={(
           <MunicipalityMapArt
             mode="province"
@@ -1182,7 +1170,7 @@ export default function Municipalities() {
             </div>
           )}
           {!loading && visible.length > 0 && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table">
               <thead>
                 <tr>
                   <th>Municipality</th>

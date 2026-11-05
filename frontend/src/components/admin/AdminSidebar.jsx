@@ -12,7 +12,7 @@ import {
 const MAIN_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
   { id: 'validation', label: 'Validation Queue', icon: ClipboardCheck, path: '/admin/validation' },
-  { id: 'data-quality', label: 'Data Integrity', icon: DatabaseCheck, path: '/admin/data-quality' },
+  { id: 'data-quality', label: 'Data Completeness', icon: DatabaseCheck, path: '/admin/data-quality' },
 ];
 
 const FORECAST_GROUP = {
@@ -26,10 +26,10 @@ const FORECAST_GROUP = {
 };
 
 const MANAGE_ITEMS = [
-  { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
   { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/admin/master-list' },
-  { id: 'municipalities', label: 'Municipalities', icon: Map, path: '/admin/municipalities' },
   { id: 'demand-benchmarks', label: 'Demand Benchmarks', icon: Scale, path: '/admin/demand-benchmarks' },
+  { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
+  { id: 'municipalities', label: 'Municipalities', icon: Map, path: '/admin/municipalities' },
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
 
@@ -183,7 +183,7 @@ export default function AdminSidebar({ user, collapsed, onToggle, onLogout, clos
   return (
     <aside className="p-sidebar" aria-label="Admin navigation">
       <div className="p-sidebar-inner">
-        <SidebarLogo collapsed={collapsed} homePath={user?.role === 'superadmin' ? '/superadmin/health' : '/admin'} />
+        <SidebarLogo collapsed={collapsed} homePath={user?.role === 'superadmin' ? '/superadmin/health' : '/admin'} label="Asin Center" />
 
         {/* WHAT: Pangunahing nav. WHY: aria-label="Main" para sa screen readers. */}
         <nav className="p-nav" aria-label="Main">

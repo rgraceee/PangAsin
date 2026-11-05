@@ -44,7 +44,7 @@ const dataQuality = {
   }],
 };
 
-describe('Data Integrity (Completeness)', () => {
+describe('Data Completeness', () => {
   beforeEach(() => {
     getDataQuality.mockReset().mockResolvedValue(dataQuality);
   });
@@ -52,7 +52,7 @@ describe('Data Integrity (Completeness)', () => {
   it('filters by year and period, showing percentages and completed month counts without scores', async () => {
     render(<DataQualityDashboard />);
 
-    expect(await screen.findByRole('heading', { name: 'Data Integrity (Completeness)' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Data Completeness' })).toBeInTheDocument();
     expect(await screen.findByText('9/12 months')).toBeInTheDocument();
     expect(screen.getByText('75%')).toBeInTheDocument();
     expect(screen.getByText('Completed')).toBeInTheDocument();

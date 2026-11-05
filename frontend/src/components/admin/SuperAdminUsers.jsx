@@ -253,7 +253,7 @@ export default function SuperAdminUsers() {
             </div>
           )}
           {!loading && total > 0 && (
-            <Table responsive striped hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table superadmin-user-table">
+            <Table responsive hover size="sm" className="mb-0 encoder-table admin-table muni-admin-table superadmin-user-table">
               <thead>
                 <tr>
                   <th className="muni-col-secondary text-nowrap">Name</th>

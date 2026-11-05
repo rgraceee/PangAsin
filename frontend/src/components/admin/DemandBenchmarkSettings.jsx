@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Card, Col, Form, Row } from 'react-bootstrap';
-import { Plus, Scale, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   getAdminSupplyDemand,
   updateAdminDemandBenchmark,
@@ -9,6 +9,7 @@ import {
 import { useToast } from '../Toast';
 import { SkeletonBlock } from '../Skeleton';
 import PageHeader from './PageHeader';
+import './GenerateReports.css';
 import { fmtMT } from '../../utils/volumeFormat';
 
 const SCOPES = [
@@ -316,11 +317,11 @@ export default function DemandBenchmarkSettings() {
   }
 
   return (
-    <div className="admin-benchmark-settings">
+    <div className="rg-page admin-benchmark-settings">
       <PageHeader
         id="admin-demand-benchmarks"
-        variant="section"
-        icon={Scale}
+        variant="clean"
+        className="ui-pageheader--admin ui-pageheader--no-map"
         title="Demand Benchmark Settings"
         subtitle="Manage annual demand benchmarks for Pangasinan and the Philippines."
       />

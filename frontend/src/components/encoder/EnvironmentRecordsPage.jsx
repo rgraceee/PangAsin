@@ -220,26 +220,38 @@ export default function EnvironmentRecordsPage() {
         <KpiCard
           icon={Leaf}
           title="Environment Records"
+          description="Environment reports matching the current filters."
           value={totals.count}
+          unit="reports"
+          caption="Current filters"
           info="Environment reports that match the current filters."
         />
         <KpiCard
           icon={MapPin}
           title="Barangays Reported"
+          description="Distinct barangays covered by environment reports."
           value={totals.covered}
+          unit="barangays"
+          caption="Current filters"
           supporting={barangays.length ? `of ${barangays.length} barangay${barangays.length === 1 ? '' : 's'}` : undefined}
           info="Distinct barangays covered by the environment reports in the current filter."
         />
         <KpiCard
           icon={Layers}
           title="Salt Beds Covered"
+          description="Salt beds from the latest environment report of each barangay."
           value={totals.saltBeds.toLocaleString()}
+          unit="beds"
+          caption="Latest report per barangay"
           info="Salt beds from the latest environment report of each barangay, so re-reports are not double counted."
         />
         <KpiCard
           icon={Clock}
           title="Pending Review"
+          description="Environment reports waiting for admin approval."
           value={totals.pending}
+          unit="pending items"
+          caption="Current filters"
           info="Environment reports waiting for admin approval in the current filter."
         />
       </KpiGrid>

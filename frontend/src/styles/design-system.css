@@ -234,7 +234,7 @@
 
 .table-striped > tbody > tr:nth-of-type(odd) > * {
   --bs-table-accent-bg: transparent;
-  background-color: #fafbfc;
+  background-color: var(--ds-control-bg);
 }
 
 .table-bordered > :not(caption) > * > * {

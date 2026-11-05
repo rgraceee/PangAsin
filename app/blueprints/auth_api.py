@@ -1,13 +1,15 @@
 # WHAT: Authentication endpoints (login, logout, current user info).
 # WHY: Session-based login gamit ang flask_login; dito tinitingnan ang role ng user.
 import hashlib
+import os
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, request, jsonify, session, current_app, render_template
+from flask import Blueprint, request, jsonify, session, current_app, render_template, send_from_directory
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.exc import IntegrityError
+from werkzeug.utils import secure_filename
 from app.models.user import User
 from app.models.password_reset_token import PasswordResetToken
 from app.models.password_reset_request import PasswordResetRequest
@@ -655,5 +657,65 @@ def me():
         "municipality_id": current_user.municipality_id,
         "municipality_name": current_user.municipality.name if current_user.municipality else None,
         "must_change_password": current_user.must_change_password,
+        "avatar_url": current_user.avatar_url,
+        "max_monthly_volume_mt": MAX_MONTHLY_VOLUME_MT,
+    })
+
+
+@auth_api_bp.route("/me/avatar", methods=["PATCH"])
+@login_required
+def update_avatar():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided."}), 400
+
+    file = request.files["file"]
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected."}), 400
+
+    # Validate PNG magic bytes
+    file.seek(0)
+    header = file.read(8)
+    file.seek(0)
+    if header != b"\x89PNG\r\n\x1a\n":
+        return jsonify({"error": "Only PNG images are allowed."}), 400
+
+    # Validate size (max 2 MB)
+    file.seek(0, os.SEEK_END)
+    size = file.tell()
+    file.seek(0)
+    if size > 2 * 1024 * 1024:
+        return jsonify({"error": "File too large. Maximum 2 MB."}), 400
+
+    upload_dir = os.path.join(current_app.root_path, "static", "uploads", "avatars")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Delete old avatar
+    if current_user.avatar_url:
+        old_path = os.path.join(current_app.root_path, "static", current_user.avatar_url.lstrip("/"))
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
+
+    # Save new avatar with cache-busting filename
+    ext = ".png"
+    filename = f"user_{current_user.id}_{secrets.token_hex(8)}{ext}"
+    save_path = os.path.join(upload_dir, filename)
+    file.save(save_path)
+
+    avatar_url = f"/static/uploads/avatars/{filename}"
+    current_user.avatar_url = avatar_url
+    db.session.commit()
+
+    return jsonify({
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "municipality_id": current_user.municipality_id,
+        "municipality_name": current_user.municipality.name if current_user.municipality else None,
+        "must_change_password": current_user.must_change_password,
+        "avatar_url": current_user.avatar_url,
         "max_monthly_volume_mt": MAX_MONTHLY_VOLUME_MT,
     })

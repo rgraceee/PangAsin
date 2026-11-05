@@ -143,6 +143,7 @@ export default function MuniMonthlyTrendChart({ selectedMuni, municipalityId }) 
     <MuniCard
       icon={Activity}
       title="Monthly Production Trend"
+      sub="Monthly production trend with year and range selection."
       chips={(
         <label className="muni-year-filter">
           <span>Year</span>

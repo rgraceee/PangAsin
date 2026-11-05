@@ -46,6 +46,12 @@
   letter-spacing: -0.01em;
 }
 
+.settings-section-desc {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ui-text-2);
+}
+
 .settings-section-sub {
   margin: 2px 0 0;
   font-size: 13px;
@@ -129,6 +135,61 @@
   color: var(--ui-brown);
   background: var(--ui-brown-tint);
   border-radius: var(--ui-radius-pill);
+}
+
+/* WHAT: Avatar with edit overlay for changing profile picture. */
+.avatar-edit-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-edit-btn {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-edit-btn:hover {
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: var(--ui-accent);
+}
+
+.avatar-edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar-edit-btn--loading {
+  cursor: wait;
+}
+
+.avatar-edit-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: avatar-spin 0.8s linear infinite;
+}
+
+@keyframes avatar-spin {
+  to { transform: rotate(360deg); }
 }
 
 .settings-account-meta {
@@ -309,9 +370,11 @@
 .settings-save-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 10px 20px;
-  font-size: 14px;
+  width: 100%;
+  padding: 15px 24px;
+  font-size: 15px;
   font-weight: 600;
   color: #fff;
   background: var(--ui-accent);
@@ -319,7 +382,6 @@
   border-radius: var(--ui-radius-row);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-  align-self: flex-start;
 }
 
 .settings-save-btn:hover:not(:disabled) {
