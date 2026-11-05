@@ -24,6 +24,7 @@ export default function KpiCard({
   tone = 'default',
   trend,
   badge,
+  inlineIndicators = false,
   loading = false,
   className = '',
 }) {
@@ -74,19 +75,40 @@ export default function KpiCard({
         </div>
       </div>
 
-      <div className="ui-kpi__value">{display}</div>
-      {unit && <div className="ui-kpi__unit">{unit}</div>}
-      {caption && <div className="ui-kpi__caption">{caption}</div>}
-      {badgeText && <span className={`ui-kpi__badge ui-kpi__badge--${badgeTone}`}>{badgeText}</span>}
-
-      {trend && (
-        <div className={`ui-kpi__trend ${trendClass(trend.direction, trend.goodWhen || 'up')}`} aria-label={trendText}>
-          <span className="ui-kpi__trend-main">
-            <span aria-hidden="true">{trend.direction === 'up' ? '\u25B2' : '\u25BC'}</span>
-            {Math.abs(trend.value)}%
-          </span>
-          <span className="ui-kpi__trend-label">{trend.label || 'vs. last month'}</span>
+      {inlineIndicators ? (
+        <div className="ui-kpi__value-stack">
+          <div className="ui-kpi__value">{display}</div>
+          {(badgeText || trend) && (
+            <div className="ui-kpi__indicators">
+              {badgeText && <span className={`ui-kpi__badge ui-kpi__badge--${badgeTone}`}>{badgeText}</span>}
+              {trend && (
+                <div className={`ui-kpi__trend ui-kpi__trend--inline ${trendClass(trend.direction, trend.goodWhen || 'up')}`} aria-label={trendText}>
+                  <span className="ui-kpi__trend-main">
+                    <span aria-hidden="true">{trend.direction === 'up' ? '\u25B2' : '\u25BC'}</span>
+                    {Math.abs(trend.value)}%
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+      ) : (
+        <>
+          <div className="ui-kpi__value">{display}</div>
+          {unit && <div className="ui-kpi__unit">{unit}</div>}
+          {caption && <div className="ui-kpi__caption">{caption}</div>}
+          {badgeText && <span className={`ui-kpi__badge ui-kpi__badge--${badgeTone}`}>{badgeText}</span>}
+
+          {trend && (
+            <div className={`ui-kpi__trend ${trendClass(trend.direction, trend.goodWhen || 'up')}`} aria-label={trendText}>
+              <span className="ui-kpi__trend-main">
+                <span aria-hidden="true">{trend.direction === 'up' ? '\u25B2' : '\u25BC'}</span>
+                {Math.abs(trend.value)}%
+              </span>
+              <span className="ui-kpi__trend-label">{trend.label || 'vs. last month'}</span>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

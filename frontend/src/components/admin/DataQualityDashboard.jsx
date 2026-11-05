@@ -112,7 +112,7 @@ export default function DataQualityDashboard() {
         subtitle="How complete the records are, and which months still have no report."
         art={<MunicipalityMapArt mode="province" activeNames={activeNames} />}
       >
-        <div className="dq-range-pills d-flex flex-column gap-2">
+        <div className="dq-range-pills d-flex flex-row flex-wrap align-items-end gap-3">
           <div className="dq-filter-field d-flex flex-column gap-1">
             <label className="admin-page-hero-field" htmlFor="dq-year">Year</label>
             <select

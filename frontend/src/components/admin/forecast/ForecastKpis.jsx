@@ -35,9 +35,6 @@ export default function ForecastKpis({
         value={forecastMT === null ? null : fmtMT(forecastMT)}
         unit="Metric Tons (MT)"
         caption={`Next ${horizon} month${horizon === 1 ? '' : 's'}`}
-        badge={hasForecast
-          ? { text: `${horizon} month${horizon === 1 ? '' : 's'}`, tone: 'neutral' }
-          : { text: 'No forecast', tone: 'neutral' }}
         supporting={hasForecast
           ? `Total projected production for the next ${horizon} month${horizon === 1 ? '' : 's'}.`
           : 'No forecast run is available for this selection.'}
@@ -50,15 +47,13 @@ export default function ForecastKpis({
         title="Expected Change"
         description="Expected change percentage versus recent average production."
         value={expectedChangePct === null || expectedChangePct === undefined ? null : fmtPctSigned(expectedChangePct)}
-        unit="%"
-        caption="Forecast vs recent average"
+        inlineIndicators
         badge={expectedChangePct === null || expectedChangePct === undefined
           ? { text: 'No data', tone: 'neutral' }
           : { text: TREND_LABELS[direction] || 'Stable', tone: direction === 'increasing' ? 'good' : direction === 'declining' ? 'bad' : 'neutral' }}
         trend={expectedChangePct === null || expectedChangePct === undefined ? null : {
           direction: direction === 'declining' ? 'down' : 'up',
           value: Math.round(Math.abs(Number(expectedChangePct) || 0) * 10) / 10,
-          label: 'Forecast vs recent average',
           goodWhen: 'up',
         }}
         supporting={runMonth ? `Latest forecast run, generated ${runMonth}.` : 'Latest forecast run.'}

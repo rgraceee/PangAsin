@@ -130,12 +130,17 @@
 
 .fc-kpis {
   margin-bottom: 0;
+  gap: 12px;
 }
 
-/* KPI cards: keep the five labels on the same number of lines so the values
-   line up, and keep the big number on one line. */
+/* Keep forecast overview cards compact while keeping their values legible. */
+.forecast-page .fc-kpis .ui-kpi {
+  gap: 7px;
+  padding: 16px;
+}
+
 .forecast-page .ui-kpi__label {
-  min-height: 36px;
+  min-height: 28px;
   display: flex;
   align-items: center;
   font-size: 13px;
@@ -149,6 +154,28 @@
 .forecast-page .ui-kpi__icon {
   width: 34px;
   height: 34px;
+}
+
+.forecast-page .ui-kpi__value-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.forecast-page .ui-kpi__value-stack .ui-kpi__value {
+  margin: 0;
+}
+
+.forecast-page .ui-kpi__indicators {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.forecast-page .ui-kpi__trend--inline .ui-kpi__trend-main {
+  font-size: 12px;
 }
 
 /* ===== Cards & charts ===== */
