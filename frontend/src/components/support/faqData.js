@@ -91,7 +91,7 @@ export const adminFaq = [
     items: [
       {
         q: 'How do I generate and download a report?',
-        a: 'Open Generate Reports from the sidebar, choose the content sections, set the scope (province or municipality) and time period, select PDF or Word, then select Generate. Preview the report before downloading.',
+        a: 'Open Generate Reports from the sidebar, choose the content sections, set the scope and time period, then generate a PDF or Excel report. You can also build a bar, line, or pie chart and save it as a PDF.',
       },
     ],
   },

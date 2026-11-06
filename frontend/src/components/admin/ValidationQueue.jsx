@@ -654,10 +654,18 @@ export default function ValidationQueue() {
 
               {reportType === 'producer' && (
                 <Table responsive bordered hover size="sm" className="mt-3 mb-0">
-                  <thead><tr><th>Name</th><th>Barangay</th><th>Age</th><th>Sex</th></tr></thead>
+                  <thead><tr><th>First Name</th><th>Last Name</th><th>Barangay</th><th>Age</th><th>Sex</th><th>Name of Salt Farm/Owner</th><th>Designation</th><th>Business Classification</th><th>Contact No.</th></tr></thead>
                   <tbody>{(detail.entries || []).map((entry) => (
                     <tr key={entry.id}>
-                      <td>{entry.name}</td><td>{entry.barangay}</td><td>{entry.age ?? entry.age_bracket ?? '—'}</td><td>{entry.sex}</td>
+                      <td>{entry.first_name || '—'}</td>
+                      <td>{entry.last_name || '—'}</td>
+                      <td>{entry.barangay}</td>
+                      <td>{entry.age ?? entry.age_bracket ?? '—'}</td>
+                      <td>{entry.sex || '—'}</td>
+                      <td>{entry.salt_farm_owner || '—'}</td>
+                      <td>{entry.designation || '—'}</td>
+                      <td>{entry.business_classification || '—'}</td>
+                      <td>{entry.contact_number || '—'}</td>
                     </tr>
                   ))}</tbody>
                 </Table>

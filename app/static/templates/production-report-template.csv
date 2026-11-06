@@ -1,1 +1,1 @@
-barangay,record_date,production_volume_mt,num_salt_beds,area_per_salt_bed,production_method
+barangay,record_date,production_volume_mt,num_salt_beds,area_per_salt_bed,production_method,male_workers,female_workers,workers_18_30,workers_31_40,workers_41_50,workers_51_60,workers_61_plus

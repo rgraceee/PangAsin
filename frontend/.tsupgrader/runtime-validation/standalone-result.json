@@ -1,0 +1,100 @@
+{
+  "planHash": "21594e3966c82070f46e980b73f5e4c69e1ea941a9a49875dbaf4e80d94a9368",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-11-06T09:47:13.3620281Z",
+  "retryCount": 2,
+  "resetBaseline": false,
+  "complete": true,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 0,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "frontend-build",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "npm notice run pangasin-public-dashboard@0.0.0 build\r\nnpm notice run vite build\r\n\u001B[36mvite v5.4.21 \u001B[32mbuilding for production...\u001B[36m\u001B[39m\r\ntransforming...\r\n\r\n/static/brand/salt_bg.jpg referenced in /static/brand/salt_bg.jpg didn\u0027t resolve at build time, it will remain unchanged to be resolved at runtime\r\n\u001B[32m\u2713\u001B[39m 3378 modules transformed.\r\nrendering chunks...\r\ncomputing gzip size...\r\n\u001B[2m../app/static/react/\u001B[22m\u001B[32mindex.html                             \u001B[39m\u001B[1m\u001B[2m    0.59 kB\u001B[22m\u001B[1m\u001B[22m\u001B[2m \u2502 gzip:   0.37 kB\u001B[22m\r\n\u001B[2m../app/static/react/\u001B[22m\u001B[32massets/bootstrap-icons-DJdhg9lH.woff2  \u001B[39m\u001B[1m\u001B[2m  134.01 kB\u001B[22m\u001B[1m\u001B[22m\r\n\u001B[2m../app/static/react/\u001B[22m\u001B[32massets/bootstrap-icons-BHUGvtHM.woff   \u001B[39m\u001B[1m\u001B[2m  180.29 kB\u001B[22m\u001B[1m\u001B[22m\r\n\u001B[2m../app/static/react/\u001B[22m\u001B[35massets/index-DzSNPBKq.css              \u001B[39m\u001B[1m\u001B[2m  555.44 kB\u001B[22m\u001B[1m\u001B[22m\u001B[2m \u2502 gzip:  92.48 kB\u001B[22m\r\n\u001B[2m../app/static/react/\u001B[22m\u001B[36massets/index-B1tlaV_S.js               \u001B[39m\u001B[1m\u001B[2m   65.68 kB\u001B[22m\u001B[1m\u001B[22m\u001B[2m \u2502 gzip:  19.43 kB\u001B[22m\r\n\u001B[2m../app/static/react/\u001B[22m\u001B[36massets/index-BjvlXp4O.js               \u001B[39m\u001B[1m\u001B[33m1,824.94 kB\u001B[39m\u001B[22m\u001B[2m \u2502 gzip: 501.16 kB\u001B[22m\r\n\u001B[33m\r\n(!) Some chunks are larger than 500 kB after minification. Consider:\r\n- Using dynamic import() to code-split the application\r\n- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks\r\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\u001B[39m\r\n\u001B[32m\u2713 built in 23.69s\u001B[39m\r\n",
+        "durationMs": 26777
+      },
+      {
+        "name": "dev-server-serves-home",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n\u003C!DOCTYPE html\u003E\n\u003Chtml lang=\u0022en\u0022\u003E\n  \u003Chead\u003E\n    \u003Cscript type=\u0022module\u0022\u003Eimport { injectIntoGlobalHook } from \u0022/@react-refresh\u0022;\ninjectIntoGlobalHook(window);\nwindow.$RefreshReg$ = () =\u003E {};\nwindow.$RefreshSig$ = () =\u003E (type) =\u003E type;\u003C/script\u003E\n\n    \u003Cscript type=\u0022module\u0022 src=\u0022/@vite/client\u0022\u003E\u003C/script\u003E\n\n    \u003Cmeta charset=\u0022UTF-8\u0022 /\u003E\n    \u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1.0\u0022 /\u003E\n    \u003Ctitle\u003EPangAsin\u003C/title\u003E\n    \u003Clink rel=\u0022icon\u0022 type=\u0022image/png\u0022 href=\u0022/static/brand/asin_center_logo.png\u0022 /\u003E\n    \u003Clink href=\u0022https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css\u0022 rel=\u0022stylesheet\u0022 /\u003E\n  \u003C/head\u003E\n  \u003Cbody\u003E\n    \u003Cdiv id=\u0022root\u0022\u003E\u003C/div\u003E\n    \u003Cscript type=\u0022module\u0022 src=\u0022/src/main.jsx\u0022\u003E\u003C/script\u003E\n  \u003C/body\u003E\n\u003C/html\u003E\n",
+        "durationMs": 60
+      },
+      {
+        "name": "tests-pass",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": false,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 1,
+        "outputSample": "npm notice run pangasin-public-dashboard@0.0.0 test\r\nnpm notice run vitest run\r\n\r\n\u001B[7m\u001B[1m\u001B[36m RUN \u001B[39m\u001B[22m\u001B[27m \u001B[36mv1.6.0\u001B[39m \u001B[90mC:/Users/cuadr/OneDrive/Desktop/PangAsin/Pangasin/Pangasin/Pangasin/frontend\u001B[39m\r\n\r\n \u001B[32m\u2713\u001B[39m src/components/encoder/reportImportUtils.test.js \u001B[2m (\u001B[22m\u001B[2m4 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[90m 21\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/components/admin/target/targetData.test.js \u001B[2m (\u001B[22m\u001B[2m3 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[90m 17\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/components/admin/municipality/MuniMonthlyTrendChart.test.jsx \u001B[2m (\u001B[22m\u001B[2m1 test\u001B[22m\u001B[2m)\u001B[22m\u001B[33m 1051\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[33m\u276F\u001B[39m src/components/admin/municipality/municipalityData.test.jsx \u001B[2m (\u001B[22m\u001B[2m2 tests\u001B[22m \u001B[2m|\u001B[22m \u001B[31m1 failed\u001B[39m\u001B[2m)\u001B[22m\u001B[33m 1303\u001B[2mms\u001B[22m\u001B[39m\r\n\u001B[31m   \u001B[33m\u276F\u001B[31m src/components/admin/municipality/municipalityData.test.jsx\u001B[2m \u003E \u001B[22mbarangay details\u001B[2m \u003E \u001B[22muses barangay-specific table headings when a municipality is selected\u001B[39m\r\n\u001B[31m     \u2192 \u001B[2mexpect(\u001B[22m\u001B[31melement\u001B[31m\u001B[2m).not.toBeInTheDocument()\u001B[22m\r\n\r\n\u001B[31mexpected document not to contain element, found \u003Cp\r\n  class=\u0022muni-card-sub\u0022\r\n\u003E\r\n  Approved production metrics by barangay; distinct farmer counts from the master list\r\n\u003C/p\u003E instead\u001B[31m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/components/admin/DemandBenchmarkSettings.test.jsx \u001B[2m (\u001B[22m\u001B[2m4 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[33m 2438\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/components/admin/DataQualityDashboard.test.jsx \u001B[2m (\u001B[22m\u001B[2m1 test\u001B[22m\u001B[2m)\u001B[22m\u001B[33m 1508\u001B[2mms\u001B[22m\u001B[39m\r\n\u001B[90mstderr\u001B[2m | src/components/SupplyDemandSection.test.jsx\u001B[2m \u003E \u001B[22m\u001B[2mpublic supply and demand section\u001B[2m \u003E \u001B[22m\u001B[2mrenders sector allocations for both public scope choices\u001B[22m\u001B[39m\r\nThe width(0) and height(0) of chart should be greater than 0,\r\n       please check the style of container, or the props width(100%) and height(100%),\r\n       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the\r\n       height and width.\r\nThe width(0) and height(0) of chart should be greater than 0,\r\n       please check the style of container, or the props width(100%) and height(100%),\r\n       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the\r\n       height and width.\r\n\r\n\u001B[90mstderr\u001B[2m | src/components/SupplyDemandSection.test.jsx\u001B[2m \u003E \u001B[22m\u001B[2mpublic supply and demand section\u001B[2m \u003E \u001B[22m\u001B[2mrenders sector allocations for both public scope choices\u001B[22m\u001B[39m\r\nThe width(0) and height(0) of chart should be greater than 0,\r\n       please check the style of container, or the props width(100%) and height(100%),\r\n       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the\r\n       height and width.\r\nThe width(0) and height(0) of chart should be greater than 0,\r\n       please check the style of container, or the props width(100%) and height(100%),\r\n       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the\r\n       height and width.\r\n\r\n \u001B[32m\u2713\u001B[39m src/components/SupplyDemandSection.test.jsx \u001B[2m (\u001B[22m\u001B[2m1 test\u001B[22m\u001B[2m)\u001B[22m\u001B[33m 829\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/components/GuestDashboard.test.jsx \u001B[2m (\u001B[22m\u001B[2m1 test\u001B[22m\u001B[2m)\u001B[22m\u001B[33m 896\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/components/admin/GenerateReports.test.jsx \u001B[2m (\u001B[22m\u001B[2m6 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[33m 4704\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/components/ProducerMasterList.test.jsx \u001B[2m (\u001B[22m\u001B[2m6 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[33m 5044\u001B[2mms\u001B[22m\u001B[39m\r\n \u001B[32m\u2713\u001B[39m src/utils/demandKpiPercentages.test.js \u001B[2m (\u001B[22m\u001B[2m3 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[90m 8\u001B[2mms\u001B[22m\u001B[39m\r\n\u001B[90mstderr\u001B[2m | src/__tests__/superadmin.smoke.test.jsx\u001B[2m \u003E \u001B[22m\u001B[2mAdmin routes render without crashing or going blank\u001B[2m \u003E \u001B[22m\u001B[2m/admin renders non-empty content with no ErrorBoundary\u001B[22m\u001B[39m\r\nTypeError: provinceBounds.getCenter is not a function\r\n    at C:\\Users\\cuadr\\OneDrive\\Desktop\\PangAsin\\Pangasin\\Pangasin\\Pangasin\\frontend\\src\\components\\admin\\AdminDashboard.jsx:357:31\r\n    at commitHookEffectListMount (C:\\Users\\cuadr\\OneDrive\\Desktop\\PangAsin\\Pangasin\\Pangasin\\Pangasin\\frontend\\node_modules\n\u2026[truncated]",
+        "durationMs": 31791,
+        "testResults": {
+          "testFramework": "vitest",
+          "runnerDetectedFrom": "package_json",
+          "testsTotal": 58,
+          "testsPassed": 57,
+          "testsFailed": 1,
+          "testsSkipped": 0,
+          "parseFailed": false
+        }
+      }
+    ],
+    "executions": [
+      {
+        "source": "frontend-build",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "build"
+        ],
+        "cwd": "C:\\Users\\cuadr\\OneDrive\\Desktop\\PangAsin\\Pangasin\\Pangasin\\Pangasin\\frontend",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "dev-server-serves-home",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "dev",
+          "--",
+          "--host",
+          "127.0.0.1"
+        ],
+        "cwd": "C:\\Users\\cuadr\\OneDrive\\Desktop\\PangAsin\\Pangasin\\Pangasin\\Pangasin\\frontend",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "tests-pass",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "test"
+        ],
+        "cwd": "C:\\Users\\cuadr\\OneDrive\\Desktop\\PangAsin\\Pangasin\\Pangasin\\Pangasin\\frontend",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      }
+    ]
+  }
+}

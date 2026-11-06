@@ -27,6 +27,24 @@ export function cleanSpreadsheetDate(value) {
 }
 
 export const PRODUCTION_METHOD_VALUES = ['solar', 'cooked', 'hybrid'];
+export const PRODUCTION_COUNT_FIELDS = [
+  'male_producers',
+  'female_producers',
+  'producers_18_30',
+  'producers_31_40',
+  'producers_41_50',
+  'producers_51_60',
+  'producers_61_plus',
+];
+const WORKER_COUNT_HEADERS = {
+  male_producers: 'male_workers',
+  female_producers: 'female_workers',
+  producers_18_30: 'workers_18_30',
+  producers_31_40: 'workers_31_40',
+  producers_41_50: 'workers_41_50',
+  producers_51_60: 'workers_51_60',
+  producers_61_plus: 'workers_61_plus',
+};
 
 // WHAT: Isang beses lang dito gawin ang row validation para pareho ang
 //       preview at actual import (single source of truth).
@@ -42,6 +60,24 @@ export function prepareProductionRows(rows, barangays, volumeCapMt) {
     const numSaltBeds = numberValue(row.num_salt_beds);
     const areaPerSaltBed = row.area_per_salt_bed === '' ? null : numberValue(row.area_per_salt_bed);
     const productionMethod = String(row.production_method || '').trim().toLowerCase();
+    const producerCounts = Object.fromEntries(PRODUCTION_COUNT_FIELDS.map((field) => {
+      const rawValue = row[field] ?? row[WORKER_COUNT_HEADERS[field]];
+      const value = rawValue == null || String(rawValue).trim() === '' ? 0 : numberValue(rawValue);
+      if (!Number.isInteger(value) || value < 0) {
+        errors.push(rowError(row, `${field} must be a non-negative whole number.`));
+      }
+      return [field, value];
+    }));
+    const registeredWorkers = producerCounts.male_producers + producerCounts.female_producers;
+    const ageBracketTotal = PRODUCTION_COUNT_FIELDS
+      .slice(2)
+      .reduce((total, field) => total + producerCounts[field], 0);
+    if (ageBracketTotal > registeredWorkers) {
+      errors.push(rowError(
+        row,
+        `age-bracket worker counts (${ageBracketTotal}) cannot exceed registered workers (${registeredWorkers}).`,
+      ));
+    }
     if (!barangay) errors.push(rowError(row, 'barangay must match a barangay in your municipality.'));
     if (!/^\d{4}-\d{2}-\d{2}$/.test(recordDate)) errors.push(rowError(row, 'record_date must use YYYY-MM-DD.'));
     if (!Number.isFinite(productionVolumeMt) || productionVolumeMt < 0) errors.push(rowError(row, 'production_volume_mt must be zero or greater.'));
@@ -60,6 +96,7 @@ export function prepareProductionRows(rows, barangays, volumeCapMt) {
       num_salt_beds: numSaltBeds,
       area_per_salt_bed: areaPerSaltBed,
       production_method: productionMethod,
+      ...producerCounts,
       rowNumber: row._row_number,
     };
   });

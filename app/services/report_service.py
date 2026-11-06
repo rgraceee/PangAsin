@@ -1,9 +1,10 @@
-# WHAT: Report generation (build data per report type + write Excel/PDF/DOCX).
+# WHAT: Report generation (build data per report type + write Excel or PDF).
 # WHY: Inilalayo ang file-format logic sa API para ma-reuse at madaling basahin.
 import os
+from collections import defaultdict
 from datetime import datetime, timedelta
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -22,6 +23,57 @@ from app.services.production_aggregates import _monthly_aggregates
 
 def _volume_mt(value):
     return round(float(value or 0), 3)
+
+
+PRODUCTION_NUMERIC_FILTERS = {
+    "production_volume_mt": ("min_production_volume_mt", "max_production_volume_mt"),
+    "num_salt_beds": ("min_num_salt_beds", "max_num_salt_beds"),
+    "area_per_salt_bed": ("min_area_per_salt_bed", "max_area_per_salt_bed"),
+    "registered_producers": ("min_registered_producers", "max_registered_producers"),
+    "male_producers": ("min_male_producers", "max_male_producers"),
+    "female_producers": ("min_female_producers", "max_female_producers"),
+    "producers_18_30": ("min_producers_18_30", "max_producers_18_30"),
+    "producers_31_40": ("min_producers_31_40", "max_producers_31_40"),
+    "producers_41_50": ("min_producers_41_50", "max_producers_41_50"),
+    "producers_51_60": ("min_producers_51_60", "max_producers_51_60"),
+    "producers_61_plus": ("min_producers_61_plus", "max_producers_61_plus"),
+}
+
+
+def _apply_production_filters(query, filters):
+    filters = filters or {}
+    if filters.get("production_method"):
+        query = query.filter(ProductionRecord.production_method == filters["production_method"])
+    for field, (minimum, maximum) in PRODUCTION_NUMERIC_FILTERS.items():
+        column = getattr(ProductionRecord, field)
+        if filters.get(minimum) is not None:
+            query = query.filter(column >= filters[minimum])
+        if filters.get(maximum) is not None:
+            query = query.filter(column <= filters[maximum])
+    return query
+
+
+def _filtered_monthly_trend(municipality_id, barangay_id, start, end, filters):
+    query = db.session.query(
+        ProductionRecord.record_date,
+        ProductionRecord.production_volume_mt,
+    ).filter(ProductionRecord.status == "approved")
+    if municipality_id is not None:
+        query = query.filter(ProductionRecord.municipality_id == municipality_id)
+    if barangay_id is not None:
+        query = query.filter(ProductionRecord.barangay_id == barangay_id)
+    if start:
+        query = query.filter(ProductionRecord.record_date >= start)
+    if end:
+        query = query.filter(ProductionRecord.record_date <= end)
+    rows = _apply_production_filters(query, filters).all()
+    totals = defaultdict(float)
+    for record_date, volume in rows:
+        totals[record_date.strftime("%Y-%m")] += float(volume or 0)
+    return [
+        {"month": month, "production_mt": round(totals[month], 3)}
+        for month in sorted(totals)
+    ]
 
 
 def build_provincial_data(start, end):
@@ -104,8 +156,9 @@ def build_municipality_data(municipality_id, start, end):
     }
 
 
-def build_production_data(municipality_id, barangay_id, start, end):
+def build_production_data(municipality_id, barangay_id, start, end, filters=None):
     """Production-focused report across province, municipality, or barangay scope."""
+    filters = filters or {}
     if barangay_id is not None:
         barangay = db.session.get(Barangay, barangay_id)
         prefix = barangay.name if barangay else f"Barangay #{barangay_id}"
@@ -123,6 +176,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
             q = q.filter(ProductionRecord.record_date >= start)
         if end:
             q = q.filter(ProductionRecord.record_date <= end)
+        q = _apply_production_filters(q, filters)
         rows = q.group_by(Barangay.name).all()
 
         total_volume = sum(float(r.total_volume or 0) for r in rows)
@@ -158,6 +212,7 @@ def build_production_data(municipality_id, barangay_id, start, end):
             q = q.filter(ProductionRecord.record_date >= start)
         if end:
             q = q.filter(ProductionRecord.record_date <= end)
+        q = _apply_production_filters(q, filters)
         rows = q.group_by(Barangay.name).all()
 
         total_volume = sum(float(r.total_volume or 0) for r in rows)
@@ -190,10 +245,20 @@ def build_production_data(municipality_id, barangay_id, start, end):
         q = q.filter(ProductionRecord.record_date >= start)
     if end:
         q = q.filter(ProductionRecord.record_date <= end)
+    q = _apply_production_filters(q, filters)
     rows = q.group_by(Municipality.id, Municipality.name).all()
 
     total_volume = sum(float(r.total_volume or 0) for r in rows)
-    labels, values, _ = _monthly_aggregates(None, start, end) if start and end else ([], [], [])
+    monthly_trend = []
+    if start and end:
+        if filters:
+            monthly_trend = _filtered_monthly_trend(None, None, start, end, filters)
+        else:
+            labels, values, _ = _monthly_aggregates(None, start, end)
+            monthly_trend = [
+                {"month": labels[i], "production_mt": round(values[i], 3)}
+                for i in range(len(labels))
+            ]
 
     return {
         "report_title": "Provincial Production Summary",
@@ -207,16 +272,14 @@ def build_production_data(municipality_id, barangay_id, start, end):
             }
             for r in rows
         ],
-        "monthly_trend": [
-            {"month": labels[i], "production_mt": round(values[i], 3)}
-            for i in range(len(labels))
-        ],
+        "monthly_trend": monthly_trend,
         "total_production_mt": _volume_mt(total_volume),
     }
 
 
-def build_producers_data(municipality_id, barangay_id, start, end):
+def build_producers_data(municipality_id, barangay_id, start, end, filters=None):
     """Build a salt-farmer-only report from the current master list."""
+    filters = filters or {}
     query = (
         db.session.query(
             Producer,
@@ -234,17 +297,80 @@ def build_producers_data(municipality_id, barangay_id, start, end):
         query = query.filter(Producer.created_at >= datetime.combine(start, datetime.min.time()))
     if end:
         query = query.filter(Producer.created_at < datetime.combine(end + timedelta(days=1), datetime.min.time()))
+    sex = filters.get("sex")
+    if sex == "Unknown":
+        query = query.filter(or_(Producer.sex.is_(None), Producer.sex == "Unknown"))
+    elif sex:
+        query = query.filter(Producer.sex == sex)
+    for field in (
+        "first_name",
+        "last_name",
+        "salt_farm_owner",
+        "designation",
+        "business_classification",
+        "contact_number",
+        "address",
+    ):
+        value = filters.get(field)
+        if value:
+            column = getattr(Producer, field)
+            name_pattern = f"{value}% " if field == "first_name" else f"% {value}%"
+            query = query.filter(or_(
+                column.ilike(f"%{value}%"),
+                Producer.name.ilike(name_pattern),
+            ))
+    min_age = filters.get("min_age")
+    max_age = filters.get("max_age")
+    if min_age is not None:
+        query = query.filter(Producer.age >= min_age)
+    if max_age is not None:
+        query = query.filter(Producer.age <= max_age)
+    production_method = filters.get("production_method")
+    if production_method:
+        query = query.filter(Producer.production_method == production_method)
+    search = filters.get("q")
+    if search:
+        pattern = f"%{search}%"
+        query = query.filter(or_(
+            Producer.name.ilike(pattern),
+            Producer.first_name.ilike(pattern),
+            Producer.last_name.ilike(pattern),
+            Producer.address.ilike(pattern),
+            Producer.salt_farm_owner.ilike(pattern),
+            Producer.designation.ilike(pattern),
+            Producer.business_classification.ilike(pattern),
+            Producer.contact_number.ilike(pattern),
+            Producer.production_method.ilike(pattern),
+        ))
 
     rows = query.order_by(Municipality.name, Barangay.name, Producer.name).all()
+    age_group = filters.get("age_group")
+    if age_group:
+        def matches_age_group(age):
+            return age is not None and (
+                (age_group == "under30" and age < 30)
+                or (age_group == "30to44" and 30 <= age <= 44)
+                or (age_group == "45to59" and 45 <= age <= 59)
+                or (age_group == "60plus" and age >= 60)
+            )
+        rows = [row for row in rows if matches_age_group(row[0].age)]
+
     producers = [
         {
             "municipality": municipality,
             "barangay": barangay,
             "name": producer.name,
+            "first_name": producer.first_name or (producer.name.split(maxsplit=1)[0] if producer.name else None),
+            "last_name": producer.last_name or (producer.name.split(maxsplit=1)[1] if len(producer.name.split(maxsplit=1)) > 1 else None),
             "age": producer.age,
             "age_bracket": producer.age_bracket,
             "sex": producer.sex,
             "address": producer.address,
+            "salt_farm_owner": producer.salt_farm_owner,
+            "designation": producer.designation,
+            "business_classification": producer.business_classification,
+            "contact_number": producer.contact_number,
+            "production_method": producer.production_method,
         }
         for producer, barangay, municipality in rows
     ]
@@ -257,15 +383,59 @@ def build_producers_data(municipality_id, barangay_id, start, end):
             "male_producers": 0,
             "female_producers": 0,
             "other_producers": 0,
+            "unknown_sex_producers": 0,
         })
         aggregate["registered_producers"] += 1
-        sex_key = {"Male": "male_producers", "Female": "female_producers"}.get(producer["sex"], "other_producers")
-        aggregate[sex_key] += 1
+        sex = producer["sex"]
+        if sex in ("Male", "Female", "Other"):
+            aggregate[{"Male": "male_producers", "Female": "female_producers", "Other": "other_producers"}[sex]] += 1
+        elif sex in (None, "Unknown"):
+            aggregate["unknown_sex_producers"] += 1
+        else:
+            aggregate["other_producers"] += 1
 
     prefix = "Provincial" if municipality_id is None else (db.session.get(Municipality, municipality_id).name if db.session.get(Municipality, municipality_id) else f"Municipality #{municipality_id}")
     if barangay_id is not None:
         barangay = db.session.get(Barangay, barangay_id)
         prefix = barangay.name if barangay else f"Barangay #{barangay_id}"
+    view = filters.get("view")
+    if view == "farmers":
+        return {
+            "report_title": f"{prefix} Salt Farmer Master List",
+            "report_view": "farmers",
+            "producers": [
+                {
+                    "first_name": producer["first_name"],
+                    "last_name": producer["last_name"],
+                    "age": producer["age"] if producer["age"] is not None else producer["age_bracket"],
+                    "sex": producer["sex"],
+                    "municipality": producer["municipality"],
+                    "barangay": producer["barangay"],
+                    "salt_farm_owner": producer["salt_farm_owner"],
+                    "designation": producer["designation"],
+                    "business_classification": producer["business_classification"],
+                    "contact_number": producer["contact_number"],
+                    "production_method": producer["production_method"],
+                    "address": producer["address"],
+                }
+                for producer in producers
+            ],
+        }
+    if view == "by_barangay":
+        visible_by_barangay = {}
+        for producer in producers:
+            key = (producer["municipality"], producer["barangay"])
+            aggregate = visible_by_barangay.setdefault(key, {
+                "municipality": producer["municipality"],
+                "barangay": producer["barangay"],
+                "total": 0,
+            })
+            aggregate["total"] += 1
+        return {
+            "report_title": f"{prefix} Salt Farmers by Barangay",
+            "report_view": "by_barangay",
+            "by_barangay": list(visible_by_barangay.values()),
+        }
     return {
         "report_title": f"{prefix} Salt Farmer Report",
         "producers": producers,
@@ -274,11 +444,13 @@ def build_producers_data(municipality_id, barangay_id, start, end):
         "total_male_producers": sum(producer["sex"] == "Male" for producer in producers),
         "total_female_producers": sum(producer["sex"] == "Female" for producer in producers),
         "total_other_producers": sum(producer["sex"] == "Other" for producer in producers),
+        "total_unknown_sex_producers": sum(producer["sex"] is None for producer in producers),
     }
 
 
-def build_environment_data(municipality_id, barangay_id, start, end):
+def build_environment_data(municipality_id, barangay_id, start, end, filters=None):
     """Build an environment-only report from approved environment submissions."""
+    filters = filters or {}
     query = (
         db.session.query(EnvironmentReport, Barangay.name.label("barangay"), Municipality.name.label("municipality"))
         .join(Barangay, Barangay.id == EnvironmentReport.barangay_id)
@@ -295,6 +467,20 @@ def build_environment_data(municipality_id, barangay_id, start, end):
         query = query.filter(EnvironmentReport.submitted_at < datetime.combine(end + timedelta(days=1), datetime.min.time()))
 
     rows = query.order_by(Municipality.name, Barangay.name, EnvironmentReport.submitted_at.desc()).all()
+    production_method = filters.get("production_method")
+    numeric_filters = {
+        "num_salt_beds": ("min_num_salt_beds", "max_num_salt_beds"),
+        "area_per_salt_bed": ("min_area_per_salt_bed", "max_area_per_salt_bed"),
+        "production_area_size": ("min_production_area_size", "max_production_area_size"),
+    }
+    if production_method:
+        rows = [row for row in rows if production_method in (row[0].production_methods or [])]
+    for model_field, (minimum, maximum) in numeric_filters.items():
+        if filters.get(minimum) is not None:
+            rows = [row for row in rows if float(getattr(row[0], model_field)) >= filters[minimum]]
+        if filters.get(maximum) is not None:
+            rows = [row for row in rows if float(getattr(row[0], model_field)) <= filters[maximum]]
+
     reports = [
         {
             "municipality": municipality,
@@ -521,7 +707,7 @@ BUILDERS = {
 }
 
 
-def build_report_data(report_type, municipality_id=None, barangay_id=None, start=None, end=None):
+def build_report_data(report_type, municipality_id=None, barangay_id=None, start=None, end=None, filters=None):
     # WHAT: Piliin ang tamang data-builder base sa report_type.
     # WHY: Isang entry point para sa lahat ng report types, iwas if/elif sa API.
     fn = BUILDERS.get(report_type)
@@ -532,6 +718,10 @@ def build_report_data(report_type, municipality_id=None, barangay_id=None, start
     if report_type == "provincial":
         return fn(start, end)
     if report_type in ("production", "producers", "environment"):
+        if report_type == "producers":
+            return fn(municipality_id, barangay_id, start, end, filters=filters)
+        if report_type in ("production", "environment"):
+            return fn(municipality_id, barangay_id, start, end, filters=filters)
         return fn(municipality_id, barangay_id, start, end)
     return fn()
 
@@ -566,6 +756,8 @@ DISPLAY_HEADERS = {
     "total_female_producers": "Total Female Salt Farmers",
     "other_producers": "Other Salt Farmers",
     "total_other_producers": "Total Other Salt Farmers",
+    "unknown_sex_producers": "Salt Farmers With No Recorded Sex",
+    "total_unknown_sex_producers": "Total Salt Farmers With No Recorded Sex",
     "month": "Month",
     "name": "Name",
     "age": "Age",
@@ -673,7 +865,8 @@ def write_excel(data, filepath):
 
     ws = wb.active
     ws.title = "Summary"
-    ws.append([data.get("report_title", "Report")])
+    title_cell = ws.cell(row=1, column=1, value=str(data.get("report_title", "Report")))
+    title_cell.data_type = "s"
     ws.append(["Generated", datetime.utcnow().isoformat() + "Z"])
     ws.append([])
 
@@ -735,6 +928,11 @@ def write_excel(data, filepath):
         for k, v in data["philippines"].items():
             ws.append([_display_header(k), v])
 
+    if data.get("report_view") == "farmers" and "Salt Farmer Entries" in wb.sheetnames:
+        wb.active = wb.sheetnames.index("Salt Farmer Entries")
+    elif data.get("report_view") == "by_barangay" and "By Barangay" in wb.sheetnames:
+        wb.active = wb.sheetnames.index("By Barangay")
+
     wb.save(filepath)
 
 
@@ -752,7 +950,7 @@ def write_pdf(data, filepath):
     small_style = ParagraphStyle(name="SmallX", parent=styles["BodyText"], fontSize=7)
 
     doc = SimpleDocTemplate(filepath, pagesize=landscape(A4))
-    story = [Paragraph(data.get("report_title", "Report"), title_style)]
+    story = [Paragraph(escape(str(data.get("report_title", "Report"))), title_style)]
     story.append(Paragraph(f"Generated: {datetime.utcnow().isoformat()}Z", styles["BodyText"]))
     story.append(Spacer(1, 10))
 
@@ -812,111 +1010,34 @@ def write_pdf(data, filepath):
     doc.build(story)
 
 
-def write_docx(data, filepath):
-    from docx import Document
-    from docx.shared import Pt, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.table import WD_TABLE_ALIGNMENT
-    from docx.oxml.ns import qn
-    from docx.oxml import OxmlElement
-
-    doc = Document()
-
-    title = doc.add_heading(data.get("report_title", "Report"), level=0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-    generated = doc.add_paragraph()
-    run = generated.add_run(f"Generated: {datetime.utcnow().isoformat()}Z")
-    run.font.size = Pt(9)
-    run.font.color.rgb = RGBColor(0x6B, 0x72, 0x80)
-    generated.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_paragraph()
-
-    def set_cell_shading(cell, hex_color):
-        tcPr = cell._tc.get_or_add_tcPr()
-        shd = OxmlElement("w:shd")
-        shd.set(qn("w:val"), "clear")
-        shd.set(qn("w:color"), "auto")
-        shd.set(qn("w:fill"), hex_color)
-        tcPr.append(shd)
-
-    def add_table(title, rows):
-        if not rows:
-            return
-        doc.add_heading(title, level=1)
-        headers = list(rows[0].keys())
-        table = doc.add_table(rows=1 + len(rows), cols=len(headers))
-        table.style = "Table Grid"
-        table.alignment = WD_TABLE_ALIGNMENT.CENTER
-
-        for j, h in enumerate(headers):
-            cell = table.cell(0, j)
-            cell.text = _display_header(h)
-            set_cell_shading(cell, "1565C8")
-            for p in cell.paragraphs:
-                for r in p.runs:
-                    r.font.size = Pt(9)
-                    r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-                    r.bold = True
-
-        for i, row in enumerate(rows, start=1):
-            for j, h in enumerate(headers):
-                cell = table.cell(i, j)
-                cell.text = str(_cell_value(row.get(h, "")))
-                for p in cell.paragraphs:
-                    for r in p.runs:
-                        r.font.size = Pt(9)
-
-        doc.add_paragraph()
-
-    table_sections = [
-        ("Municipalities", "municipalities"),
-        ("By Municipality", "by_municipality"),
-        ("By Barangay", "by_barangay"),
-        ("Monthly Trend", "monthly_trend"),
-        ("Forecast Runs", "runs"),
-        ("Municipality Outlook", "outlook"),
-        ("Supply and Demand by Scope", "supply_demand_scope"),
-        ("Sector Demand Breakdown", "sector_demand_by_scope"),
-        ("Salt Farmer Entries", "producers"),
-        ("Environment Reports", "environment_reports"),
-    ]
-    for title, key in table_sections:
-        rows = data.get(key)
-        if key == "supply_demand_scope":
-            rows = _supply_demand_scope_rows(data)
-        elif key == "sector_demand_by_scope":
-            rows = _sector_demand_rows(data)
-        if not rows:
-            continue
-        add_table(title, _flatten_rows(rows))
-
-    if "overall_quality_score" in data:
-        doc.add_paragraph(f"Overall Quality Score: {data['overall_quality_score']}%")
-    if "total_production_mt" in data:
-        doc.add_paragraph(f"Total Production: {data['total_production_mt']} Metric Tons (MT)")
-    if "total_registered_producers" in data:
-        doc.add_paragraph(f"Total Registered Salt Farmers: {data['total_registered_producers']}")
-        doc.add_paragraph(
-            f"Male: {data['total_male_producers']} · Female: {data['total_female_producers']}"
-        )
-
-    doc.save(filepath)
-
-
-def generate_report_file(report_type, fmt, municipality_id=None, barangay_id=None, start=None, end=None, reports_dir=None):
-    # WHAT: Buuin ang report data at isulat sa file (excel/pdf/docx).
+def generate_report_file(
+    report_type,
+    fmt,
+    municipality_id=None,
+    barangay_id=None,
+    start=None,
+    end=None,
+    reports_dir=None,
+    filters=None,
+    data_snapshot=None,
+    title=None,
+):
+    # WHAT: Build the report data and write the requested PDF or Excel file.
     # WHY: Ang API ay nagko-call dito; ito ang nagde-decide ng extension at writer.
-    data = build_report_data(report_type, municipality_id, barangay_id, start, end)
     if fmt == "excel":
         ext = "xlsx"
         writer = write_excel
-    elif fmt == "docx":
-        ext = "docx"
-        writer = write_docx
-    else:
+    elif fmt == "pdf":
         ext = "pdf"
         writer = write_pdf
+    else:
+        raise ValueError(f"Unsupported report format: {fmt}")
+
+    data = data_snapshot if data_snapshot is not None else build_report_data(
+        report_type, municipality_id, barangay_id, start, end, filters=filters
+    )
+    if title:
+        data["report_title"] = title
     filename = f"{report_type}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{ext}"
     filepath = os.path.join(reports_dir or "", filename)
     writer(data, filepath)

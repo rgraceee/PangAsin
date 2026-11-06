@@ -6,8 +6,10 @@ from app.models.production_record import ProductionRecord, PRODUCTION_METHODS
 from app.models.barangay import Barangay
 from app.models.environment_report import EnvironmentReport, ENVIRONMENT_METHODS
 from app.models.producer_report import ProducerReport, ProducerReportEntry
+from app.models.production_record import PRODUCTION_METHODS
 from app.extensions import db
 from datetime import datetime, date, timedelta
+import math
 from sqlalchemy import func, case
 from sqlalchemy.exc import IntegrityError
 from app.constants import AGE_BUCKET_FIELDS, MAX_MONTHLY_VOLUME_MT
@@ -18,6 +20,7 @@ encoder_api_bp = Blueprint("encoder_api", __name__, url_prefix="/api/encoder")
 
 PRODUCER_COUNT_FIELDS = ("male_producers", "female_producers")
 ENCODER_READ_ONLY_STATUS = "approved"
+PRODUCER_AGE_BRACKETS = {"18-30", "31-40", "41-50", "51-60", "61+"}
 
 
 def _barangay_name(record):
@@ -156,23 +159,29 @@ def _validate_salt_beds(data, partial, existing_record, errors):
 
 
 def _validate_required_count(field, value, errors):
-    # WHAT: A producer count is required and must be a non-negative integer.
+    # WHAT: A worker count is required and must be a non-negative integer.
     # WHY: The dashboard totals these counts, so a bad value breaks every panel.
     if value in (None, ""):
         errors.append(f"{field} is required.")
         return
     try:
-        if int(value) < 0:
+        numeric_value = float(value)
+        if isinstance(value, bool) or not math.isfinite(numeric_value) or not numeric_value.is_integer():
+            errors.append(f"{field} must be an integer.")
+        elif numeric_value < 0:
             errors.append(f"{field} must be non-negative.")
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         errors.append(f"{field} must be an integer.")
 
 
 def _validate_optional_count(field, value, errors):
     try:
-        if int(value) < 0:
+        numeric_value = float(value)
+        if isinstance(value, bool) or not math.isfinite(numeric_value) or not numeric_value.is_integer():
+            errors.append(f"{field} must be an integer.")
+        elif numeric_value < 0:
             errors.append(f"{field} must be non-negative.")
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         errors.append(f"{field} must be an integer.")
 
 
@@ -214,8 +223,33 @@ def validate_production_record(data, partial=False, existing_record=None):
             _validate_required_count(field, data.get(field), errors)
 
     for field in AGE_BUCKET_FIELDS:
-        if field in data and data[field] not in (None, ""):
+        if field in data:
             _validate_optional_count(field, data[field], errors)
+
+    count_fields = set(PRODUCER_COUNT_FIELDS + AGE_BUCKET_FIELDS)
+    if not partial or count_fields.intersection(data):
+        counts = {
+            field: data.get(field, getattr(existing_record, field, 0) if existing_record else 0)
+            for field in count_fields
+        }
+        try:
+            if any(
+                isinstance(value, bool)
+                or not math.isfinite(float(value))
+                or not float(value).is_integer()
+                or float(value) < 0
+                for value in counts.values()
+            ):
+                raise ValueError
+            registered_workers = int(counts["male_producers"]) + int(counts["female_producers"])
+            age_bracket_total = sum(int(counts[field]) for field in AGE_BUCKET_FIELDS)
+            if age_bracket_total > registered_workers:
+                errors.append(
+                    f"Age-bracket worker counts ({age_bracket_total}) cannot exceed "
+                    f"registered workers ({registered_workers})."
+                )
+        except (TypeError, ValueError, OverflowError):
+            pass
 
     _validate_area_per_bed(data, errors)
     _validate_method(data, partial, errors)
@@ -332,9 +366,17 @@ def _serialize_producer_report(report):
                 "barangay_id": entry.barangay_id,
                 "barangay": entry.barangay.name if entry.barangay else None,
                 "name": entry.name,
+                "first_name": entry.first_name or (entry.name.split(maxsplit=1)[0] if entry.name else None),
+                "last_name": entry.last_name or (entry.name.split(maxsplit=1)[1] if len(entry.name.split(maxsplit=1)) > 1 else None),
                 "age": entry.age,
                 "age_bracket": entry.age_bracket,
                 "sex": entry.sex,
+                "address": entry.address,
+                "salt_farm_owner": entry.salt_farm_owner,
+                "designation": entry.designation,
+                "business_classification": entry.business_classification,
+                "contact_number": entry.contact_number,
+                "production_method": entry.production_method,
             }
             for entry in report.entries
         ],
@@ -474,27 +516,75 @@ def create_producer_report():
         if not barangay or barangay.municipality_id != current_user.municipality_id:
             errors.append(f"Salt Farmer {index} must have a barangay in your municipality.")
 
-        name = (entry.get("name") or "").strip()
+        first_name = (entry.get("first_name") or "").strip()
+        last_name = (entry.get("last_name") or "").strip()
+        name = (entry.get("name") or "").strip() or " ".join(
+            part for part in (first_name, last_name) if part
+        )
+        if not first_name or not last_name:
+            name_parts = name.split(maxsplit=1)
+            first_name = first_name or (name_parts[0] if name_parts else "")
+            last_name = last_name or (name_parts[1] if len(name_parts) > 1 else "")
+        profile_fields = {}
+        for field, max_length, label in (
+            ("first_name", 100, "first name"),
+            ("last_name", 100, "last name"),
+            ("address", 255, "address"),
+            ("salt_farm_owner", 255, "name of salt farm/owner"),
+            ("designation", 100, "designation"),
+            ("business_classification", 100, "business classification"),
+            ("contact_number", 32, "contact number"),
+        ):
+            value = entry.get(field)
+            if value in (None, ""):
+                profile_fields[field] = None
+            elif not isinstance(value, str) or len(value.strip()) > max_length:
+                errors.append(f"Salt Farmer {index} {label} must be {max_length} characters or fewer.")
+            else:
+                profile_fields[field] = value.strip() or None
+        profile_fields["first_name"] = first_name or None
+        profile_fields["last_name"] = last_name or None
+        production_method = entry.get("production_method")
+        if production_method in (None, ""):
+            production_method = None
+        elif not isinstance(production_method, str) or production_method not in PRODUCTION_METHODS:
+            errors.append(f"Salt Farmer {index} production method must be solar, cooked, or hybrid.")
+            production_method = None
+
         raw_age = entry.get("age")
-        try:
-            if isinstance(raw_age, bool) or isinstance(raw_age, float) and not raw_age.is_integer():
-                raise ValueError
-            age = int(raw_age)
-            if age < 0 or age > 120:
-                errors.append(f"Salt Farmer {index} age must be between 0 and 120.")
-        except (TypeError, ValueError):
+        if raw_age in (None, ""):
             age = None
-            errors.append(f"Salt Farmer {index} age must be a whole number.")
+        else:
+            try:
+                if isinstance(raw_age, bool) or isinstance(raw_age, float) and not raw_age.is_integer():
+                    raise ValueError
+                age = int(raw_age)
+                if age < 0 or age > 120:
+                    errors.append(f"Salt Farmer {index} age must be between 0 and 120.")
+            except (TypeError, ValueError):
+                age = None
+                errors.append(f"Salt Farmer {index} age must be a whole number.")
         sex = entry.get("sex")
         if not name or len(name) > 150:
             errors.append(f"Salt Farmer {index} name is required and must be 150 characters or fewer.")
-        if sex not in sexes:
+        if sex not in (None, "") and sex not in sexes:
             errors.append(f"Salt Farmer {index} sex is invalid.")
+        age_bracket = entry.get("age_bracket")
+        if age_bracket in (None, ""):
+            age_bracket = None
+        elif not isinstance(age_bracket, str) or age_bracket not in PRODUCER_AGE_BRACKETS:
+            errors.append(f"Salt Farmer {index} age bracket must be one of: {', '.join(sorted(PRODUCER_AGE_BRACKETS))}.")
+            age_bracket = None
         normalized.append({
             "barangay": barangay,
             "name": name,
+            "first_name": first_name or None,
+            "last_name": last_name or None,
+            **profile_fields,
             "age": age,
-            "sex": sex,
+            "age_bracket": age_bracket,
+            "sex": sex or None,
+            "production_method": production_method,
         })
 
     if errors:
@@ -510,8 +600,17 @@ def create_producer_report():
         ProducerReportEntry(
             barangay=entry["barangay"],
             name=entry["name"],
+            first_name=entry["first_name"],
+            last_name=entry["last_name"],
             age=entry["age"],
+            age_bracket=entry["age_bracket"],
             sex=entry["sex"],
+            address=entry["address"],
+            salt_farm_owner=entry["salt_farm_owner"],
+            designation=entry["designation"],
+            business_classification=entry["business_classification"],
+            contact_number=entry["contact_number"],
+            production_method=entry["production_method"],
         )
         for entry in normalized
     ]

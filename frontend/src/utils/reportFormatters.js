@@ -63,7 +63,7 @@ export function reportScopeLabel(report) {
 
 export function formatLabel(format) {
   if (!format) return '\u2014';
-  if (format === 'docx') return 'DOCX';
+  if (format === 'docx') return 'Legacy';
   if (format === 'pdf') return 'PDF';
   if (format === 'excel') return 'Excel';
   return String(format).toUpperCase();
@@ -71,7 +71,6 @@ export function formatLabel(format) {
 
 export function formatBadgeClass(format) {
   if (format === 'pdf') return 'report-format-badge--pdf';
-  if (format === 'docx') return 'report-format-badge--docx';
   if (format === 'excel') return 'report-format-badge--excel';
   return 'report-format-badge--other';
 }
@@ -95,4 +94,9 @@ export function dataHasRows(data) {
 export function reportTypeLabel(report, typeLabels = {}) {
   if (!report) return '';
   return typeLabels[report.report_type] || report.report_type || '\u2014';
+}
+
+export function reportDisplayTitle(report, typeLabels = {}) {
+  if (!report) return '';
+  return report.title || reportTypeLabel(report, typeLabels);
 }

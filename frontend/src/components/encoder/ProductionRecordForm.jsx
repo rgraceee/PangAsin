@@ -6,7 +6,7 @@ import { SkeletonForm } from '../Skeleton';
 import ReportModal from './ReportModal';
 import { ReportSection, ReportField, ReportSummary } from './ReportFormParts';
 import ReportImportActions from './ReportImportActions';
-import { prepareProductionRows, rowError } from './reportImportUtils';
+import { prepareProductionRows, PRODUCTION_COUNT_FIELDS, rowError } from './reportImportUtils';
 import { formatMT } from '../../utils/volumeFormat';
 
 const PRODUCTION_METHODS = [
@@ -44,6 +44,13 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
     num_salt_beds: '',
     area_per_salt_bed: '',
     production_method: '',
+    male_producers: '0',
+    female_producers: '0',
+    producers_18_30: '0',
+    producers_31_40: '0',
+    producers_41_50: '0',
+    producers_51_60: '0',
+    producers_61_plus: '0',
   });
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -70,6 +77,13 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
             num_salt_beds: r.num_salt_beds ?? '',
             area_per_salt_bed: r.area_per_salt_bed ?? '',
             production_method: r.production_method ?? '',
+            male_producers: r.male_producers ?? '0',
+            female_producers: r.female_producers ?? '0',
+            producers_18_30: r.producers_18_30 ?? '0',
+            producers_31_40: r.producers_31_40 ?? '0',
+            producers_41_50: r.producers_41_50 ?? '0',
+            producers_51_60: r.producers_51_60 ?? '0',
+            producers_61_plus: r.producers_61_plus ?? '0',
           });
           setApproved(r.status === 'approved');
           setLoading(false);
@@ -83,6 +97,11 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
   );
   const selectedBarangay = barangays.find((b) => String(b.id) === String(form.barangay_id));
   const historicalMaxMt = Number(selectedBarangay?.historical_max_volume_mt) || 0;
+  const registeredWorkers = Number(form.male_producers || 0) + Number(form.female_producers || 0);
+  const ageBracketTotal = PRODUCTION_COUNT_FIELDS
+    .slice(2)
+    .reduce((total, field) => total + (Number(form[field]) || 0), 0);
+  const ageBracketOverflow = ageBracketTotal > registeredWorkers;
   const volumeSoftWarning = (
     form.production_volume_mt !== ''
     && historicalMaxMt > 0
@@ -131,9 +150,13 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
       form.num_salt_beds !== '' &&
       Number(form.num_salt_beds) > 0 &&
       (!selectedEnvironmentReport || Number(form.num_salt_beds) <= selectedEnvironmentReport.num_salt_beds) &&
-      form.production_method
+      form.production_method &&
+      PRODUCTION_COUNT_FIELDS.every((field) => (
+        form[field] !== '' && Number.isInteger(Number(form[field])) && Number(form[field]) >= 0
+      )) &&
+      ageBracketTotal <= registeredWorkers
     );
-  }, [form, selectedEnvironmentReport]);
+  }, [form, selectedEnvironmentReport, ageBracketTotal, registeredWorkers]);
 
   const handleNext = () => {
     if (step === 0 && canProceedFromStep1) setStep(1);
@@ -160,6 +183,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
         num_salt_beds: Number(form.num_salt_beds),
         area_per_salt_bed: form.area_per_salt_bed === '' ? '' : Number(form.area_per_salt_bed),
         production_method: form.production_method,
+        ...Object.fromEntries(PRODUCTION_COUNT_FIELDS.map((field) => [field, Number(form[field])])),
       };
       if (isEdit) {
         record = await updateRecord(editingId, productionPayload);
@@ -219,6 +243,7 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
   const renderStep = () => {
     if (step === 0) {
       return (
+        <>
         <ReportSection title="Production Details">
           <div className="ui-form-grid">
             {/* WHAT: Read-only municipality na may lock icon. WHY: fixed sa assigned LGU. */}
@@ -340,6 +365,75 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
             </div>
           )}
         </ReportSection>
+
+        <ReportSection title="Worker Counts">
+          <div className="ui-form-grid ui-form-grid--3">
+            <ReportField label="Male Workers" required htmlFor="production-male-producers">
+              <Form.Control
+                id="production-male-producers"
+                type="number"
+                min="0"
+                step="1"
+                name="male_producers"
+                value={form.male_producers}
+                onChange={handleChange}
+                required
+                disabled={approved}
+              />
+            </ReportField>
+            <ReportField label="Female Workers" required htmlFor="production-female-producers">
+              <Form.Control
+                id="production-female-producers"
+                type="number"
+                min="0"
+                step="1"
+                name="female_producers"
+                value={form.female_producers}
+                onChange={handleChange}
+                required
+                disabled={approved}
+              />
+            </ReportField>
+            <ReportField label="Registered Workers" htmlFor="production-registered-producers">
+              <Form.Control
+                id="production-registered-producers"
+                aria-label="Registered workers total"
+                value={registeredWorkers}
+                readOnly
+              />
+            </ReportField>
+          </div>
+          <div className="ui-form-grid ui-form-grid--3">
+            {[
+              ['producers_18_30', 'Workers Ages 18–30'],
+              ['producers_31_40', 'Workers Ages 31–40'],
+              ['producers_41_50', 'Workers Ages 41–50'],
+              ['producers_51_60', 'Workers Ages 51–60'],
+              ['producers_61_plus', 'Workers Ages 61+'],
+            ].map(([field, label]) => (
+              <ReportField key={field} label={label} required htmlFor={`production-${field}`}>
+                <Form.Control
+                  id={`production-${field}`}
+                  type="number"
+                  min="0"
+                  max={Math.max(0, registeredWorkers - ageBracketTotal + (Number(form[field]) || 0))}
+                  step="1"
+                  name={field}
+                  value={form[field]}
+                  onChange={handleChange}
+                  required
+                  disabled={approved}
+                />
+              </ReportField>
+            ))}
+          </div>
+          {ageBracketOverflow && (
+            <div className="ui-import-panel ui-import-panel--warning" role="alert">
+              Age-bracket worker counts total {ageBracketTotal}, which exceeds the {registeredWorkers} registered workers. Reduce the age counts or update the male and female worker counts.
+            </div>
+          )}
+        </ReportSection>
+        </>
       );
     }
 
@@ -359,6 +453,14 @@ export default function ProductionRecordForm({ editingId = null, user, onClose, 
                 ['Beds Used', form.num_salt_beds !== '' ? form.num_salt_beds : '—'],
                 ['Area per Bed', form.area_per_salt_bed !== '' ? `${form.area_per_salt_bed} m²` : '—'],
                 ['Method', methodLabel || '—'],
+                ['Male Workers', form.male_producers],
+                ['Female Workers', form.female_producers],
+                ['Registered Workers', registeredWorkers],
+                ['Workers Ages 18–30', form.producers_18_30],
+                ['Workers Ages 31–40', form.producers_31_40],
+                ['Workers Ages 41–50', form.producers_41_50],
+                ['Workers Ages 51–60', form.producers_51_60],
+                ['Workers Ages 61+', form.producers_61_plus],
               ],
             },
           ]}

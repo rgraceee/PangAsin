@@ -4,73 +4,76 @@ import { ToastProvider } from '../Toast';
 import GenerateReports from './GenerateReports';
 import {
   createReport,
-  deleteReport,
   getAdminMonths,
   getAdminMunicipalities,
   getAdminStats,
-  getReport,
-  getReportDownloadUrl,
+  getEncoderReportOptions,
+  getReportFilterSuggestions,
   getReports,
+  previewReport,
 } from '../../services/dataService';
 
 vi.mock('../../services/dataService', () => ({
   createReport: vi.fn(),
   deleteReport: vi.fn(),
+  getReport: vi.fn(),
   getAdminMonths: vi.fn(),
   getAdminMunicipalities: vi.fn(),
   getAdminStats: vi.fn(),
-  getReport: vi.fn(),
-  getReportDownloadUrl: vi.fn(),
+  getEncoderReportOptions: vi.fn(),
+  getReportDownloadUrl: vi.fn((id, format) => `/api/admin/reports/${id}/download?format=${format}`),
+  getReportFilterSuggestions: vi.fn(),
   getReports: vi.fn(),
+  previewReport: vi.fn(),
 }));
 
-vi.mock('../../services/feedback', () => ({
-  confirmDelete: vi.fn(async ({ onConfirm }) => onConfirm()),
+vi.mock('recharts', () => ({
+  Bar: () => null,
+  BarChart: ({ children }) => <div data-testid="bar-chart">{children}</div>,
+  CartesianGrid: () => null,
+  Cell: () => null,
+  Legend: () => null,
+  Line: () => null,
+  LineChart: ({ children }) => <div data-testid="line-chart">{children}</div>,
+  Pie: () => null,
+  PieChart: ({ children }) => <div data-testid="pie-chart">{children}</div>,
+  ResponsiveContainer: ({ children }) => <div>{children}</div>,
+  Tooltip: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
 }));
 
-const generatedReport = {
-  id: 7,
-  report_type: 'production',
-  format: 'excel',
-  status: 'generated',
-  municipality_id: null,
-  municipality_name: null,
-  barangay_id: null,
-  barangay_name: null,
-  date_range_start: '2026-01-01',
-  date_range_end: '2026-12-31',
-  requester_name: 'Admin',
-  created_at: '2026-11-05T05:00:00Z',
-};
-
-const generatedData = {
+const reportData = {
   report_title: 'Production Report',
-  total_production_mt: 125,
-  monthly_trend: [{ month: '2026-01', production_mt: 125 }],
-  outlook: [{ municipality: 'Bolinao', readiness: 'Sufficient' }],
-  pangasinan: { year: 2026, demand_volume_mt: 500, local_production_mt: 125 },
-  philippines: { year: 2026, demand_volume_mt: 1000 },
-  sector_demand_by_scope: {
-    national: [{ id: 1, name: 'Household', percentage: 40, demand_mt: 400 }],
-    provincial: [{ id: 2, name: 'Household', percentage: 40, demand_mt: 200 }],
-  },
+  total_production_mt: 20,
+  by_municipality: [
+    { municipality: 'Bolinao', production_mt: 12, record_count: 2, total_salt_beds: 4 },
+    { municipality: 'Dagupan', production_mt: 8, record_count: 1, total_salt_beds: 3 },
+  ],
+  monthly_trend: [
+    { month: '2026-01', production_mt: 12 },
+    { month: '2026-02', production_mt: 8 },
+  ],
 };
 
-function renderPage() {
+function renderPage({ encoder = false } = {}) {
   return render(
     <ToastProvider>
-      <GenerateReports />
+      <GenerateReports
+        encoderMode={encoder}
+        user={encoder ? { municipality_id: 1, municipality_name: 'Bolinao' } : null}
+      />
     </ToastProvider>,
   );
 }
 
-describe('admin Generate Reports', () => {
+describe('Generate Reports chart builder', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     Object.defineProperty(globalThis.Element.prototype, 'scrollIntoView', {
       configurable: true,
       value: vi.fn(),
     });
-    vi.clearAllMocks();
     getAdminMunicipalities.mockResolvedValue({
       municipalities: [{ id: 1, name: 'Bolinao' }],
     });
@@ -81,117 +84,168 @@ describe('admin Generate Reports', () => {
       }],
     });
     getAdminMonths.mockResolvedValue({ months: ['2026-01', '2025-12'] });
+    getEncoderReportOptions.mockResolvedValue({
+      municipality: { id: 1, name: 'Bolinao' },
+      barangays: [{ id: 10, name: 'Poblacion' }],
+      months: ['2026-01', '2025-12'],
+    });
     getReports.mockResolvedValue({ reports: [] });
-    createReport.mockResolvedValue({ report: generatedReport, data: generatedData });
-    getReport.mockResolvedValue({ report: generatedReport, data: generatedData });
-    getReportDownloadUrl.mockImplementation((id, format) => `/api/admin/reports/${id}/download?format=${format}`);
-    deleteReport.mockResolvedValue({ ok: true });
+    getReportFilterSuggestions.mockResolvedValue({ suggestions: ['Ana', 'Anabel'] });
+    previewReport.mockResolvedValue({ data: reportData });
+    createReport.mockResolvedValue({
+      report: {
+        id: 4,
+        report_type: 'production',
+        title: 'Production Report',
+        format: 'pdf',
+        status: 'generated',
+        created_at: '2026-02-01T10:00:00Z',
+      },
+      data: reportData,
+    });
   });
 
   afterEach(() => {
     delete globalThis.Element.prototype.scrollIntoView;
   });
 
-  it('supports all report filters and generates a preview with PDF, Word, and Excel downloads', async () => {
+  it('lets admins choose a chart type and graph multiple numeric columns', async () => {
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
     renderPage();
 
     expect(await screen.findByRole('heading', { name: 'Generate Reports' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'barangay' } });
-    fireEvent.change(screen.getByLabelText('Municipality'), { target: { value: '1' } });
-    expect(await screen.findByRole('option', { name: 'Poblacion' })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Barangay'), { target: { value: '10' } });
-    fireEvent.change(screen.getByLabelText('Time'), { target: { value: 'year' } });
-    expect(screen.getByLabelText('Year')).toHaveValue('2026');
+    fireEvent.click(screen.getByRole('button', { name: 'Build chart' }));
+    expect(await screen.findByRole('heading', { name: 'Report Preview' })).toBeInTheDocument();
+    expect(previewReport).toHaveBeenCalledWith({
+      report_type: 'production',
+      date_range_start: null,
+      date_range_end: null,
+      filters: {},
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Excel' }));
+    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+    expect(screen.getByLabelText('Rows')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Records')).toHaveLength(1);
+    fireEvent.click(screen.getByLabelText('Production (Metric Tons (MT))'));
+    fireEvent.click(screen.getByLabelText('Total Salt Beds'));
+    expect(screen.getByLabelText('Production (Metric Tons (MT))')).toBeChecked();
+    expect(screen.getByLabelText('Total Salt Beds')).toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Line' }));
+    expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Pie' }));
+    expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Production (Metric Tons (MT))' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save chart as PDF' }));
+    expect(printSpy).toHaveBeenCalledOnce();
+    printSpy.mockRestore();
+    expect(screen.getByRole('heading', { name: 'Generated Reports' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate report' })).toBeInTheDocument();
+    expect(screen.queryByText('Word')).not.toBeInTheDocument();
+  });
+
+  it('saves reports in PDF or Excel and keeps both downloads in report history', async () => {
+    const savedReport = {
+      id: 8,
+      report_type: 'production',
+      title: 'Production Report',
+      format: 'excel',
+      status: 'generated',
+      created_at: '2026-02-01T10:00:00Z',
+      municipality_name: 'Bolinao',
+    };
+    getReports
+      .mockResolvedValueOnce({ reports: [] })
+      .mockResolvedValueOnce({ reports: [savedReport] });
+    createReport.mockResolvedValueOnce({ report: savedReport, data: reportData });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Excel', exact: true }));
     fireEvent.click(screen.getByRole('button', { name: 'Generate report' }));
 
-    expect(await screen.findByRole('heading', { name: 'Report Preview' })).toBeInTheDocument();
-    expect(createReport).toHaveBeenCalledWith({
-      report_type: 'production',
-      format: 'excel',
-      date_range_start: '2026-01-01',
-      date_range_end: '2026-12-31',
-      barangay_id: 10,
+    await waitFor(() => {
+      expect(createReport).toHaveBeenCalledWith({
+        report_type: 'production',
+        date_range_start: null,
+        date_range_end: null,
+        filters: {},
+        format: 'excel',
+        title: 'Production Report',
+      });
     });
-    expect(screen.getByRole('link', { name: 'Download Excel (.xlsx) file' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: /Download PDF/ })).toHaveAttribute(
       'href',
-      '/api/admin/reports/7/download?format=excel',
+      '/api/admin/reports/8/download?format=pdf',
     );
-    expect(screen.getByRole('link', { name: 'Download PDF file' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Download Word (.docx) file' })).toBeInTheDocument();
-    expect(screen.getByText('Municipality Outlook')).toBeInTheDocument();
-    expect(screen.getByText('Sector Demand Breakdown')).toBeInTheDocument();
-    expect(screen.getByText(/Pangasinan demand:/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Download Excel/ })).toHaveAttribute(
+      'href',
+      '/api/admin/reports/8/download?format=excel',
+    );
+    expect(screen.queryByRole('button', { name: /Word/ })).not.toBeInTheDocument();
   });
 
-  it('searches every report column and filters report history, including Excel downloads', async () => {
-    getReports.mockResolvedValue({
-      reports: [
-        generatedReport,
-        {
-          ...generatedReport,
-          id: 8,
-          report_type: 'environment',
-          format: 'pdf',
-          status: 'failed',
-          municipality_name: 'Bolinao',
-          municipality_id: 1,
-          requester_name: 'Encoder User',
-          date_range_start: null,
-          date_range_end: null,
-          created_at: '2026-10-04T05:00:00Z',
-        },
-      ],
+  it('keeps older Word-format records readable without offering Word exports', async () => {
+    getReports.mockResolvedValueOnce({
+      reports: [{
+        id: 9,
+        report_type: 'production',
+        title: 'Archived Production Report',
+        format: 'docx',
+        status: 'generated',
+        created_at: '2025-01-01T10:00:00Z',
+      }],
     });
     renderPage();
-
     fireEvent.click(await screen.findByRole('button', { name: 'View Reports' }));
-    expect(await screen.findByText('2 of 2 reports')).toBeInTheDocument();
 
-    const search = screen.getByLabelText('Search reports');
-    for (const [term, reportName] of [
-      ['Environment', 'Environment'],
-      ['Bolinao', 'Environment'],
-      ['All records', 'Environment'],
-      ['PDF', 'Environment'],
-      ['Encoder User', 'Environment'],
-      ['failed', 'Environment'],
-      ['October', 'Environment'],
-      ['Oct', 'Environment'],
-      ['November', 'Production'],
-      ['Nov', 'Production'],
-    ]) {
-      fireEvent.change(search, { target: { value: term } });
-      await waitFor(() => expect(screen.getByText('1 of 2 reports')).toBeInTheDocument());
-      expect(screen.getByRole('button', { name: reportName })).toBeInTheDocument();
-    }
-
-    fireEvent.change(search, { target: { value: '2026-12-31' } });
-    await waitFor(() => expect(screen.getByText('1 of 2 reports')).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Production' })).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText('Filter by format'), { target: { value: 'excel' } });
-    fireEvent.change(search, { target: { value: 'excel' } });
-
-    await waitFor(() => expect(screen.getByText('1 of 2 reports')).toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Download Excel for Production report' })).toHaveAttribute(
-      'href',
-      '/api/admin/reports/7/download?format=excel',
-    );
-    expect(screen.queryByRole('link', { name: 'Download PDF for Environment report' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Legacy')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Word/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Download PDF/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Download Excel/ })).toBeInTheDocument();
   });
 
-  it('surfaces failures loading report history and allows retrying', async () => {
-    getReports.mockRejectedValueOnce(new Error('Network unavailable')).mockResolvedValueOnce({ reports: [] });
+  it('keeps encoder charts scoped to the assigned municipality and barangay', async () => {
+    renderPage({ encoder: true });
+
+    expect(await screen.findByLabelText('Municipality')).toHaveValue('Bolinao');
+    expect(screen.queryByRole('option', { name: 'Province-wide' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Scope'), { target: { value: 'barangay' } });
+    fireEvent.change(await screen.findByLabelText('Barangay'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Build chart' }));
+
+    await waitFor(() => {
+      expect(previewReport).toHaveBeenCalledWith(expect.objectContaining({
+        report_type: 'production',
+        municipality_id: 1,
+        barangay_id: 10,
+      }));
+    });
+  });
+
+  it('preserves searchable content filters for report data', async () => {
+    renderPage();
+    fireEvent.change(await screen.findByLabelText('Content'), { target: { value: 'producers' } });
+    fireEvent.click(screen.getByText('More filters'));
+    fireEvent.click(screen.getByText('Profile details'));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'An' } });
+
+    await waitFor(() => {
+      expect(getReportFilterSuggestions).toHaveBeenCalledWith(expect.objectContaining({
+        report_type: 'producers',
+        field: 'first_name',
+        q: 'An',
+      }));
+      expect(screen.getByRole('option', { name: 'Ana' })).toBeVisible();
+    });
+  });
+
+  it('does not enable PDF output when filters return no data', async () => {
+    previewReport.mockResolvedValueOnce({ data: { report_title: 'Empty production report', by_municipality: [] } });
     renderPage();
 
-    expect(await screen.findByText('Network unavailable')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-
-    await waitFor(() => expect(screen.queryByText('Network unavailable')).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'View Reports' }));
-    await waitFor(() => expect(screen.getByText('No reports yet')).toBeInTheDocument());
-    expect(getReports).toHaveBeenCalledTimes(2);
+    fireEvent.click(await screen.findByRole('button', { name: 'Build chart' }));
+    expect(await screen.findByText('No matching records found')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save chart as PDF' })).not.toBeInTheDocument();
   });
 });

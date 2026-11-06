@@ -64,6 +64,7 @@ const ROUTE_TITLES = {
   '/encoder/master-list': 'Salt Farmer Master List',
   '/encoder/production-records': 'Production Records',
   '/encoder/environment-records': 'Environment Records',
+  '/encoder/reports': 'Generate Reports',
   '/admin/validation': 'Validation Queue',
   '/admin/data-quality': 'Data Completeness',
   '/admin/forecast': 'Forecasting',
@@ -232,6 +233,11 @@ export default function App() {
           <Route path="production-records" element={<ProductionRecordsPage />} />
           <Route path="environment-records" element={<EnvironmentRecordsPage />} />
           <Route path="master-list" element={<ProducerMasterList />} />
+          <Route path="reports" element={
+            <ErrorBoundary>
+              <GenerateReports encoderMode user={user} />
+            </ErrorBoundary>
+          } />
           <Route path="settings/*" element={
             <RequireAuth user={user} isLoading={loading}>
               <Settings user={user} setUser={setUser} />

@@ -114,6 +114,10 @@ Admins add and maintain municipalities from **Admin → Municipalities**. The da
 - **Audit log:** every municipality, barangay, account, boundary, and sign-in change is recorded under **Admin → Audit Log**. The trail stores the actor, action, entity, summary, IP address, and timestamp.
 - **Supply and demand benchmarks:** admins can edit annual national and Pangasinan benchmark values from **Supply & Demand Analytics**. Demand, local-supply benchmark, imports, source, and year are saved with an audit entry; the live Pangasinan supply chart remains based on production records.
 - **Encoder account access:** admins can deactivate and reactivate encoder accounts from **User Management**. The action requires an audit reason, invalidates the encoder's existing session, and requires the municipality to be active before reactivation.
+- **Salt farmer profiles:** the master list stores first and last names, age, sex, municipality, barangay, salt farm/owner, designation, business classification, contact number, production method, and address. Profile details may be blank; contact numbers are stored as text so leading zeroes are preserved. Production method accepts Solar, Cooked, or Hybrid. Existing farmers remain unclassified until their method is updated or imported.
+- **Filtered salt farmer reports:** admins can create an Excel or PDF report from either master-list table. Reports use the active municipality, barangay, sex, production method, profile-field, and search filters; the filter set and generated rows are saved so previews and later downloads remain consistent in **Generate Reports**.
+- **Generate Reports preview:** admins can preview filtered Production, Salt Farmers, and Environment reports before saving them. Each content type exposes relevant filters with column-specific type-ahead suggestions from matching records; suggestions follow the selected municipality/barangay and date range where applicable. Changing a filter clears the preview, and the final saved report uses the same filters and date/scope selection. The preview displays up to 25 rows per table while the generated report includes every matching row.
+- **Report titles:** every report creation flow prompts for a required custom title (up to 100 characters). The title is saved with the report, shown in report history and preview, and used as the document heading in Excel, PDF, and Word exports.
 - **Municipality deletion:** a Yes/No confirmation asks “Are you sure you want to delete this?” before the existing name-entry and dependent-data confirmations.
 - **Rate limiting:** sign-in attempts are limited per IP + email and admin write requests per user. Exceeding a limit returns `429` with a `Retry-After` header. Limits are configurable with `LOGIN_RATE_LIMIT`, `LOGIN_RATE_WINDOW`, `ADMIN_WRITE_RATE_LIMIT`, and `ADMIN_WRITE_RATE_WINDOW`; set `RATE_LIMIT_ENABLED=0` to disable the limiter.
 
@@ -121,6 +125,13 @@ Apply the migration before using the page:
 
 ```bash
 flask db upgrade
+```
+
+The producer profile migration adds nullable columns to both the registered producer table and pending producer-report entries. The CSV registry can be reviewed with the dry-run importer; review its output before using `--commit`:
+
+```bash
+python scripts/import_masterlist.py producers.csv
+python scripts/import_masterlist.py producers.csv --commit
 ```
 
 ## Project Structure

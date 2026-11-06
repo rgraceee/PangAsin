@@ -3,6 +3,8 @@ import json
 import os
 from datetime import date
 
+import pytest
+
 from app.extensions import db
 from app.models.audit_log import AuditLog
 from app.models.barangay import Barangay
@@ -69,6 +71,7 @@ def test_create_report_rejects_unknown_municipality(admin_client):
         json={
             "report_type": "municipality",
             "format": "pdf",
+            "title": "Invalid municipality report",
             "municipality_id": 999999,
         },
     )
@@ -87,6 +90,7 @@ def test_create_report_rejects_mismatched_barangay(admin_client):
         json={
             "report_type": "municipality",
             "format": "pdf",
+            "title": "Mismatched barangay report",
             "municipality_id": first["id"],
             "barangay_id": barangay_id,
         },
@@ -130,13 +134,16 @@ def test_forecast_report_file_generates_in_every_format(app, tmp_path):
         )
         db.session.commit()
 
-        for fmt, extension in (("excel", "xlsx"), ("pdf", "pdf"), ("docx", "docx")):
+        for fmt, extension in (("excel", "xlsx"), ("pdf", "pdf")):
             filename, filepath, data = generate_report_file(
                 "forecast", fmt, reports_dir=str(tmp_path)
             )
             assert filename.endswith(f".{extension}")
             assert os.path.isfile(filepath)
             assert [row["municipality"] for row in data["outlook"]] == ["San Fabian"]
+
+        with pytest.raises(ValueError, match="Unsupported report format"):
+            generate_report_file("forecast", "docx", reports_dir=str(tmp_path))
 
 
 def test_root_route_is_registered_once(app, client):

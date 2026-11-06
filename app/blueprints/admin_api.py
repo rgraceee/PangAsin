@@ -834,9 +834,16 @@ def _serialize_producer_submission(report):
                 "barangay_id": entry.barangay_id,
                 "barangay": entry.barangay.name if entry.barangay else None,
                 "name": entry.name,
+                "first_name": entry.first_name or (entry.name.split(maxsplit=1)[0] if entry.name else None),
+                "last_name": entry.last_name or (entry.name.split(maxsplit=1)[1] if len(entry.name.split(maxsplit=1)) > 1 else None),
                 "age": entry.age,
                 "age_bracket": entry.age_bracket,
                 "sex": entry.sex,
+                "salt_farm_owner": entry.salt_farm_owner,
+                "designation": entry.designation,
+                "business_classification": entry.business_classification,
+                "contact_number": entry.contact_number,
+                "production_method": entry.production_method,
             }
             for entry in report.entries
         ],
@@ -1012,16 +1019,37 @@ def review_producer_submission(report_id):
                 func.lower(Producer.name) == entry.name.strip().lower(),
             ).first()
             if existing:
-                existing.age = entry.age
-                existing.age_bracket = entry.age_bracket
-                existing.sex = entry.sex
+                if entry.age is not None:
+                    existing.age = entry.age
+                    existing.age_bracket = entry.age_bracket
+                if entry.sex is not None:
+                    existing.sex = entry.sex
+                for field in (
+                    "first_name",
+                    "last_name",
+                    "salt_farm_owner",
+                    "designation",
+                    "business_classification",
+                    "contact_number",
+                    "production_method",
+                ):
+                    value = getattr(entry, field)
+                    if value:
+                        setattr(existing, field, value)
             else:
                 db.session.add(Producer(
                     barangay_id=entry.barangay_id,
                     name=entry.name.strip(),
+                    first_name=entry.first_name,
+                    last_name=entry.last_name,
                     age=entry.age,
                     age_bracket=entry.age_bracket,
                     sex=entry.sex,
+                    salt_farm_owner=entry.salt_farm_owner,
+                    designation=entry.designation,
+                    business_classification=entry.business_classification,
+                    contact_number=entry.contact_number,
+                    production_method=entry.production_method,
                 ))
     try:
         db.session.commit()
@@ -1136,7 +1164,10 @@ def _producer_master_list(municipality_id, municipality_names):
         bucket["producers"] += 1
         if age is not None:
             bucket["age_bands"][_age_band_for(age)] += 1
-        bucket["sex"][{"Male": "male", "Female": "female"}.get(sex, "other")] += 1
+        if sex in ("Male", "Female", "Other"):
+            bucket["sex"][{"Male": "male", "Female": "female", "Other": "other"}[sex]] += 1
+        elif sex not in (None, "Unknown"):
+            bucket["sex"]["other"] += 1
 
     return [
         {
@@ -1180,7 +1211,10 @@ def _producer_master_list_by_barangay(municipality_id):
         bucket["producers"] += 1
         if age is not None:
             bucket["age_bands"][_age_band_for(age)] += 1
-        bucket["sex"][{"Male": "male", "Female": "female"}.get(sex, "other")] += 1
+        if sex in ("Male", "Female", "Other"):
+            bucket["sex"][{"Male": "male", "Female": "female", "Other": "other"}[sex]] += 1
+        elif sex not in (None, "Unknown"):
+            bucket["sex"]["other"] += 1
 
     return sorted(
         master_by_barangay.values(),

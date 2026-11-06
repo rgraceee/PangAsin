@@ -123,7 +123,7 @@ function AdminSteps() {
       <ol className="support-steps">
         <li>Open <strong>Generate Reports</strong> and choose the content sections.</li>
         <li>Set the scope (province or municipality) and the time period.</li>
-        <li>Select <strong>PDF</strong> or <strong>Word</strong>, then <strong>Generate</strong>.</li>
+        <li>Select <strong>PDF</strong> or <strong>Excel</strong>, then <strong>Generate</strong>.</li>
         <li>Preview the report, then download it. Saved reports can be reopened or deleted.</li>
       </ol>
       <figure className="support-figure">

@@ -1,4 +1,4 @@
-# WHAT: Report table — history ng mga binuong admin report (Excel/PDF/DOCX).
+# WHAT: Report table — history ng mga binuong admin report (Excel/PDF).
 # WHY: Itinatago ang request + generated file URL para ma-download ulit ang report.
 from app.extensions import db
 from datetime import datetime
@@ -16,9 +16,9 @@ REPORT_TYPES = (
     "environment",
 )
 
-# Keeps the legacy 'excel' value so older rows stay readable/writable. New
-# reports are stored as 'pdf' (the UI exports via the download endpoint).
+# Keep legacy values in the database enum so existing report rows remain readable.
 REPORT_FORMATS = ("pdf", "excel", "docx")
+REPORT_OUTPUT_FORMATS = ("pdf", "excel")
 REPORT_STATUSES = ("pending", "generated", "failed")
 
 
@@ -47,6 +47,9 @@ class Report(db.Model):
     )
     date_range_start = db.Column(db.Date, nullable=True)
     date_range_end = db.Column(db.Date, nullable=True)
+    title = db.Column(db.String(100), nullable=True)
+    filters = db.Column(db.JSON, nullable=True)
+    data_snapshot = db.Column(db.JSON, nullable=True)
     format = db.Column(
         db.Enum(*REPORT_FORMATS, name="report_format_enum"),
         nullable=False,
@@ -82,6 +85,8 @@ class Report(db.Model):
             "barangay_name": self.barangay.name if self.barangay else None,
             "date_range_start": self.date_range_start.isoformat() if self.date_range_start else None,
             "date_range_end": self.date_range_end.isoformat() if self.date_range_end else None,
+            "title": self.title,
+            "filters": self.filters,
             "format": self.format,
             "status": self.status,
             "file_url": self.file_url,

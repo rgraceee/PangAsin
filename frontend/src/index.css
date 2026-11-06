@@ -3518,7 +3518,7 @@ body {
   grid-column: 4 / 6;
 }
 
-/* WHAT: PDF/Word/Excel format options beside the Generate button. */
+/* WHAT: PDF/Excel format options beside the Generate button. */
 .report-generate-group {
   display: flex;
   align-items: flex-end;
@@ -3614,6 +3614,211 @@ body {
   margin: 16px 0 0;
 }
 
+.report-content-filters {
+  margin-top: 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: none;
+}
+
+.report-content-filters .card-header {
+  background: transparent;
+  border-bottom-color: var(--ui-border);
+}
+
+.report-content-filters .form-control,
+.report-content-filters .form-select {
+  min-height: 38px;
+  font-size: 13px;
+}
+
+.report-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.report-filter-item--search {
+  grid-column: span 2;
+}
+
+.report-filter-item-label {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.report-filter-range-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.report-filter-range-inputs .form-control {
+  min-width: 0;
+}
+
+.report-filter-suggestion-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.report-filter-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface, #fff);
+  box-shadow: 0 8px 20px rgb(15 23 42 / 14%);
+}
+
+.report-filter-suggestion {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ui-text);
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.report-filter-suggestion:hover,
+.report-filter-suggestion:focus-visible {
+  outline: none;
+  background: var(--ui-surface-muted, #f1f5f9);
+}
+
+.report-filter-suggestions-message {
+  padding: 8px 10px;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+
+.report-filter-advanced {
+  margin-top: 16px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.report-filter-advanced summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 14px 0 2px;
+  color: var(--ui-accent-dark);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.report-filter-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-filter-advanced summary::before {
+  content: '+';
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.report-filter-advanced[open] summary::before {
+  content: '−';
+}
+
+.report-filter-advanced summary:focus-visible {
+  outline: 2px solid var(--ui-accent-dark);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.report-filter-count {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--ui-hover-bg);
+  color: var(--ui-text-2);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.report-filter-grid--advanced {
+  padding-top: 14px;
+}
+
+.report-filter-group {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+}
+
+.report-filter-group summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  color: var(--ui-text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.report-filter-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-filter-group summary::before {
+  content: '+';
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.report-filter-group[open] summary::before {
+  content: '−';
+}
+
+.report-filter-group summary:focus-visible {
+  outline: 2px solid var(--ui-accent-dark);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.report-filter-grid--group {
+  padding: 4px 12px 12px;
+}
+
 /* Municipality / barangay follow-up fields (same 48px control language). */
 .report-scope-fields {
   display: grid;
@@ -3646,6 +3851,10 @@ body {
     flex: 1 1 auto;
     width: auto;
   }
+
+  .report-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* WHAT: Sa mobile, isang column at full-width ang format + button. */
@@ -3677,6 +3886,14 @@ body {
   .report-scope-fields {
     grid-template-columns: minmax(0, 1fr);
     max-width: none;
+  }
+
+  .report-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-filter-item--search {
+    grid-column: auto;
   }
 }
 
@@ -3830,6 +4047,23 @@ body {
 
 .report-list-table thead th {
   white-space: nowrap;
+}
+
+.report-column-filters th {
+  min-width: 115px;
+  padding: 8px;
+  background: var(--ui-surface);
+  vertical-align: top;
+}
+
+.report-column-filters .form-control,
+.report-column-filters .form-select {
+  min-width: 105px;
+  font-size: 12px;
+}
+
+.report-column-filters th:last-child {
+  min-width: 0;
 }
 
 .report-sort-btn {

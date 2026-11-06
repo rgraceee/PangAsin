@@ -455,6 +455,21 @@ export function createReport(payload) {
   return api('/admin/reports', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export function getEncoderReportOptions() {
+  return api('/admin/reports/encoder-options');
+}
+
+export function previewReport(payload) {
+  return api('/admin/reports/preview', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function getReportFilterSuggestions(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+  ).toString();
+  return api(`/admin/reports/suggestions${qs ? `?${qs}` : ''}`);
+}
+
 export function getReports(params = {}) {
   const qs = new URLSearchParams(params).toString();
   return api(`/admin/reports${qs ? `?${qs}` : ''}`);
