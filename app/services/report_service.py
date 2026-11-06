@@ -159,6 +159,62 @@ def build_municipality_data(municipality_id, start, end):
 def build_production_data(municipality_id, barangay_id, start, end, filters=None):
     """Production-focused report across province, municipality, or barangay scope."""
     filters = filters or {}
+
+    def production_records():
+        q = db.session.query(
+            ProductionRecord,
+            Municipality.name.label("municipality"),
+            Barangay.name.label("barangay"),
+        ).join(Municipality, Municipality.id == ProductionRecord.municipality_id
+        ).join(Barangay, Barangay.id == ProductionRecord.barangay_id
+        ).filter(
+            ProductionRecord.status == "approved",
+            ProductionRecord.deleted_at.is_(None),
+        )
+        if barangay_id is not None:
+            q = q.filter(ProductionRecord.barangay_id == barangay_id)
+        elif municipality_id is not None:
+            q = q.filter(ProductionRecord.municipality_id == municipality_id)
+        if start:
+            q = q.filter(ProductionRecord.record_date >= start)
+        if end:
+            q = q.filter(ProductionRecord.record_date <= end)
+        q = _apply_production_filters(q, filters)
+        return [
+            {
+                "id": record.id,
+                "municipality_id": record.municipality_id,
+                "municipality": municipality,
+                "barangay_id": record.barangay_id,
+                "barangay": barangay,
+                "record_date": record.record_date.isoformat() if record.record_date else None,
+                "production_volume_mt": _volume_mt(record.production_volume_mt),
+                "num_salt_beds": record.num_salt_beds,
+                "area_per_salt_bed": round(float(record.area_per_salt_bed), 2) if record.area_per_salt_bed is not None else None,
+                "registered_producers": record.registered_producers,
+                "male_producers": record.male_producers,
+                "female_producers": record.female_producers,
+                "producers_18_30": record.producers_18_30,
+                "producers_31_40": record.producers_31_40,
+                "producers_41_50": record.producers_41_50,
+                "producers_51_60": record.producers_51_60,
+                "producers_61_plus": record.producers_61_plus,
+                "production_method": record.production_method,
+                "status": record.status,
+                "reviewer_comment": record.reviewer_comment,
+                "submitted_by": record.submitted_by,
+                "reviewed_by": record.reviewed_by,
+                "submitted_at": record.submitted_at.isoformat() if record.submitted_at else None,
+                "reviewed_at": record.reviewed_at.isoformat() if record.reviewed_at else None,
+                "created_at": record.created_at.isoformat() if record.created_at else None,
+                "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+                "deleted_at": record.deleted_at.isoformat() if record.deleted_at else None,
+                "deleted_by": record.deleted_by,
+            }
+            for record, municipality, barangay in q.order_by(Municipality.name, Barangay.name, ProductionRecord.record_date).all()
+        ]
+
+    raw_records = production_records()
     if barangay_id is not None:
         barangay = db.session.get(Barangay, barangay_id)
         prefix = barangay.name if barangay else f"Barangay #{barangay_id}"
@@ -183,6 +239,7 @@ def build_production_data(municipality_id, barangay_id, start, end, filters=None
         return {
             "report_title": f"{prefix} Production Summary",
             "municipality_name": muni_name,
+            "production_records": raw_records,
             "by_barangay": [
                 {
                     "barangay": r.barangay,
@@ -219,6 +276,7 @@ def build_production_data(municipality_id, barangay_id, start, end, filters=None
         return {
             "report_title": f"{prefix} Production Summary",
             "municipality_name": muni.name if muni else None,
+            "production_records": raw_records,
             "by_barangay": [
                 {
                     "barangay": r.barangay,
@@ -262,6 +320,7 @@ def build_production_data(municipality_id, barangay_id, start, end, filters=None
 
     return {
         "report_title": "Provincial Production Summary",
+        "production_records": raw_records,
         "by_municipality": [
             {
                 "municipality": r.name,
@@ -852,23 +911,57 @@ def _flatten_rows(rows):
 
 def write_excel(data, filepath):
     from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
     wb = Workbook()
 
     def sheet_from_rows(ws, rows):
         if not rows:
             ws.append(["No data"])
             return
-        headers = list(rows[0].keys())
+        headers = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            for key in row.keys():
+                if key not in headers:
+                    headers.append(key)
         ws.append([_display_header(h) for h in headers])
         for row in rows:
             ws.append([_cell_value(row.get(h, "")) for h in headers])
+
+        header_fill = PatternFill("solid", fgColor="1565C8")
+        thin_gray = Side(style="thin", color="B7C3D0")
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = Border(bottom=thin_gray)
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+                cell.border = Border(bottom=thin_gray)
+
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+        ws.sheet_view.showGridLines = False
+        ws.row_dimensions[1].height = 32
+        for index, header in enumerate(headers, start=1):
+            values = [str(_cell_value(row.get(header, ""))) for row in rows]
+            longest = max([len(_display_header(header)), *(len(value) for value in values)], default=12)
+            ws.column_dimensions[get_column_letter(index)].width = min(max(longest + 2, 12), 42)
 
     ws = wb.active
     ws.title = "Summary"
     title_cell = ws.cell(row=1, column=1, value=str(data.get("report_title", "Report")))
     title_cell.data_type = "s"
-    ws.append(["Generated", datetime.utcnow().isoformat() + "Z"])
-    ws.append([])
+    ws["A1"].font = Font(size=16, bold=True, color="1565C8")
+    ws["A2"] = "Generated"
+    ws["B2"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    ws["A3"] = "Report"
+    ws["B3"] = str(data.get("report_title", "Report"))
+    ws.row_dimensions[1].height = 28
+    ws.row_dimensions[2].height = 22
 
     if "municipalities" in data and isinstance(data["municipalities"], list):
         sheet = wb.create_sheet("Municipalities")
@@ -885,6 +978,9 @@ def write_excel(data, filepath):
     if "by_barangay" in data and isinstance(data["by_barangay"], list):
         sheet = wb.create_sheet("By Barangay")
         sheet_from_rows(sheet, data["by_barangay"])
+    if "production_records" in data and isinstance(data["production_records"], list):
+        sheet = wb.create_sheet("Production Records")
+        sheet_from_rows(sheet, data["production_records"])
     if "monthly_trend" in data and isinstance(data["monthly_trend"], list):
         sheet = wb.create_sheet("Monthly Trend")
         sheet_from_rows(sheet, data["monthly_trend"])
@@ -928,7 +1024,21 @@ def write_excel(data, filepath):
         for k, v in data["philippines"].items():
             ws.append([_display_header(k), v])
 
-    if data.get("report_view") == "farmers" and "Salt Farmer Entries" in wb.sheetnames:
+    ws.column_dimensions["A"].width = 34
+    ws.column_dimensions["B"].width = 24
+    ws.sheet_view.showGridLines = False
+    for cell in ws["A"]:
+        if cell.value not in (None, ""):
+            if cell.row == 1:
+                continue
+            cell.font = Font(bold=True)
+    ws.freeze_panes = "A3"
+
+    if "Production Records" in wb.sheetnames:
+        wb.remove(ws)
+    if "Production Records" in wb.sheetnames:
+        wb.active = wb.sheetnames.index("Production Records")
+    elif data.get("report_view") == "farmers" and "Salt Farmer Entries" in wb.sheetnames:
         wb.active = wb.sheetnames.index("Salt Farmer Entries")
     elif data.get("report_view") == "by_barangay" and "By Barangay" in wb.sheetnames:
         wb.active = wb.sheetnames.index("By Barangay")
@@ -939,7 +1049,7 @@ def write_excel(data, filepath):
 def write_pdf(data, filepath):
     from xml.sax.saxutils import escape
 
-    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.pagesizes import A3, landscape
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -947,9 +1057,32 @@ def write_pdf(data, filepath):
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("TitleX", parent=styles["Title"], fontSize=16, spaceAfter=12)
     h_style = ParagraphStyle("HeadX", parent=styles["Heading2"], fontSize=11, spaceBefore=8, spaceAfter=4)
-    small_style = ParagraphStyle(name="SmallX", parent=styles["BodyText"], fontSize=7)
+    small_style = ParagraphStyle(
+        name="SmallX",
+        parent=styles["BodyText"],
+        fontSize=5.5,
+        leading=6.5,
+        alignment=1,
+        spaceAfter=0,
+    )
+    header_style = ParagraphStyle(
+        name="PdfHeaderX",
+        parent=small_style,
+        fontSize=5.5,
+        leading=6.5,
+        alignment=1,
+        textColor=colors.white,
+    )
 
-    doc = SimpleDocTemplate(filepath, pagesize=landscape(A4))
+    page_size = landscape(A3)
+    doc = SimpleDocTemplate(
+        filepath,
+        pagesize=page_size,
+        leftMargin=22,
+        rightMargin=22,
+        topMargin=20,
+        bottomMargin=20,
+    )
     story = [Paragraph(escape(str(data.get("report_title", "Report"))), title_style)]
     story.append(Paragraph(f"Generated: {datetime.utcnow().isoformat()}Z", styles["BodyText"]))
     story.append(Spacer(1, 10))
@@ -958,6 +1091,7 @@ def write_pdf(data, filepath):
         ("Municipalities", "municipalities"),
         ("By Municipality", "by_municipality"),
         ("By Barangay", "by_barangay"),
+        ("Production Records", "production_records"),
         ("Monthly Trend", "monthly_trend"),
         ("Forecast Runs", "runs"),
         ("Municipality Outlook", "outlook"),
@@ -978,20 +1112,46 @@ def write_pdf(data, filepath):
         flat = _flatten_rows(rows)
         if not flat:
             continue
-        headers = list(flat[0].keys())
+        headers = []
+        for row in flat:
+            for key in row.keys():
+                if key not in headers:
+                    headers.append(key)
         body = [
             [Paragraph(escape(str(_cell_value(row.get(h, "")))), small_style) for h in headers]
             for row in flat
         ]
+        available_width = page_size[0] - doc.leftMargin - doc.rightMargin
+        header_labels = [_display_header(h) for h in headers]
+        weights = []
+        for header, column in zip(header_labels, headers):
+            values = [str(_cell_value(row.get(column, ""))) for row in flat[:20]]
+            longest = max([len(header), *[len(value) for value in values]])
+            if column.lower().endswith(("_at", "_date")) or "date" in column.lower():
+                longest = min(longest, 16)
+            weights.append(max(7, min(longest, 20)))
+        weight_total = sum(weights)
+        column_widths = [
+            max(24, min(available_width * weight / weight_total, 105))
+            for weight in weights
+        ]
+        width_total = sum(column_widths)
+        if width_total > available_width:
+            column_widths = [width * available_width / width_total for width in column_widths]
         tbl = Table([
-            [Paragraph(escape(_display_header(h)), small_style) for h in headers]
-        ] + body, repeatRows=1)
+            [Paragraph(escape(label), header_style) for label in header_labels]
+        ] + body, repeatRows=1, splitByRow=1, colWidths=column_widths, hAlign="LEFT")
         tbl.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1565C8")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
             ("FONTSIZE", (0, 0), (-1, -1), 7),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#eef3fb")]),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
         story.append(tbl)
         story.append(Spacer(1, 8))

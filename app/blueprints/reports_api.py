@@ -640,8 +640,7 @@ def create_report():
         )
         report.title = title or data.get("report_title") or REPORT_TYPE_NAMES.get(report_type, report_type)
         data["report_title"] = report.title
-        if content_filters is not None:
-            report.data_snapshot = data
+        report.data_snapshot = data
         # Deterministic name per report+format so the download endpoint can
         # always find/regenerate it and delete_report can clean it up.
         extension = os.path.splitext(filename)[1].lstrip(".")

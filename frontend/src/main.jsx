@@ -23,6 +23,7 @@ import './components/admin/forecast/forecast.css';
 import './components/admin/target/target.css';
 import './components/admin/charts/chartTheme.css';
 import './components/admin/GenerateReports.css';
+import './components/admin/GenerateGraphs.css';
 import './components/admin/municipality/municipality.css';
 import './styles/design-system.css';
 

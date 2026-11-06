@@ -8,6 +8,8 @@
 import React, { useState } from 'react';
 import { BookOpen, AlertTriangle, Mail } from 'lucide-react';
 
+const ASIN_CENTER_URL = 'https://asincenter.psu.edu.ph/';
+
 function stepsToList(answer) {
   // Detect numbered steps like "1. Do this" or "Step 1: Do this"
   const stepRegex = /^(?:\d+\.?\s|Step\s+\d+:?\s)/im;
@@ -161,13 +163,13 @@ export default function FaqList({ faqs, contactEmail, manualUrl = '/help/manual'
               </div>
               <span className="faq-card-arrow" aria-hidden="true">›</span>
             </a>
-            <a href={`mailto:${contactEmail}`} className="faq-help-card">
+            <a href={ASIN_CENTER_URL} target="_blank" rel="noopener noreferrer" className="faq-help-card">
               <span className="faq-card-icon" aria-hidden="true">
                 <Mail size={20} strokeWidth={2} />
               </span>
               <div>
                 <div className="faq-card-title">Contact ASIN Center</div>
-                <div className="faq-card-desc">{contactEmail}</div>
+                <div className="faq-card-desc">asincenter.psu.edu.ph</div>
               </div>
               <span className="faq-card-arrow" aria-hidden="true">›</span>
             </a>

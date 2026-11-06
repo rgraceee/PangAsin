@@ -2,8 +2,8 @@
 // WHY: /help/report lets anyone report a data error, login issue, or bug
 //      without logging in. Submitting opens a mailto to the ASIN Center.
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Mail, ArrowLeft } from 'lucide-react';
 
 const CONTACT_EMAIL = 'pang.asin26@gmail.com';
 
@@ -14,7 +14,8 @@ const REPORT_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-export default function ReportForm() {
+export default function ReportForm({ user }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     type: '',
     municipality: '',
@@ -22,6 +23,14 @@ export default function ReportForm() {
   });
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+
+  const handleBack = () => {
+    if (document.referrer && document.referrer.startsWith(window.location.origin)) {
+      navigate(-1);
+      return;
+    }
+    navigate('/help', { replace: true });
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -41,7 +50,10 @@ export default function ReportForm() {
     const body = encodeURIComponent(
       `Type: ${form.type}\n` +
       `Page/Municipality: ${form.municipality || '(not specified)'}\n` +
-      `Description: ${form.description}\n`
+      `Description: ${form.description}\n` +
+      `Reporter: ${user?.full_name || user?.name || '(not signed in)'}\n` +
+      `Email: ${user?.email || '(not signed in)'}\n` +
+      `Role: ${user?.role || 'Public'}`
     );
     window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
     setSubmitted(true);
@@ -51,22 +63,28 @@ export default function ReportForm() {
     const text =
       `Type: ${form.type}\n` +
       `Page/Municipality: ${form.municipality || '(not specified)'}\n` +
-      `Description: ${form.description}`;
+      `Description: ${form.description}\n` +
+      `Reporter: ${user?.full_name || user?.name || '(not signed in)'}\n` +
+      `Email: ${user?.email || '(not signed in)'}\n` +
+      `Role: ${user?.role || 'Public'}`;
     navigator.clipboard.writeText(text);
   };
 
   const messageBody =
     `Type: ${form.type}\n` +
     `Page/Municipality: ${form.municipality || '(not specified)'}\n` +
-    `Description: ${form.description}`;
+    `Description: ${form.description}\n` +
+    `Reporter: ${user?.full_name || user?.name || '(not signed in)'}\n` +
+    `Email: ${user?.email || '(not signed in)'}\n` +
+    `Role: ${user?.role || 'Public'}`;
 
   return (
     <div className="report-form-page">
       <div className="report-header">
-        <Link to="/help" className="report-back">
+        <button type="button" className="report-back" onClick={handleBack}>
           <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" />
-          Back to Help Center
-        </Link>
+          Back
+        </button>
       </div>
       {submitted ? (
         <div className="report-card">
@@ -139,15 +157,15 @@ export default function ReportForm() {
               <label className="report-field-label">Your details (read-only)</label>
               <div className="report-readonly-row">
                 <span className="report-readonly-label">Name:</span>
-                <span className="report-readonly-value">Not signed in</span>
+                <span className="report-readonly-value">{user?.full_name || user?.name || 'Not signed in'}</span>
               </div>
               <div className="report-readonly-row">
                 <span className="report-readonly-label">Email:</span>
-                <span className="report-readonly-value">Not signed in</span>
+                <span className="report-readonly-value">{user?.email || 'Not signed in'}</span>
               </div>
               <div className="report-readonly-row">
                 <span className="report-readonly-label">Role:</span>
-                <span className="report-readonly-value">Public</span>
+                <span className="report-readonly-value">{user?.role || 'Public'}</span>
               </div>
             </div>
             <button

@@ -27,7 +27,7 @@ _LANDING_HTML = """<!doctype html>
     @media (prefers-reduced-motion: reduce) { .brand-logo { animation: none; } }
   </style>
 </head>
-<body class="text-center d-flex flex-column justify-content-center align-items-center" style="min-height:100vh;">
+<body class="landing-splash text-center d-flex flex-column justify-content-center align-items-center" style="min-height:100vh;">
   <img class="brand-logo" src="/static/brand/asin_center_logo.png" alt="ASIN Center logo">
   <script>
     setTimeout(function(){ window.location.href = "/public-dashboard"; }, 3000);

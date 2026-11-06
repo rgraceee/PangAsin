@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, ContactRound, Users, Map,
+  LayoutDashboard, ClipboardCheck, DatabaseCheck, Zap, FileDown, BarChart3, ContactRound, Users, Map,
   ScrollText, Settings, Sliders, FileText, Scale,
 } from 'lucide-react';
 import { getAdminStats } from '../../services/dataService';
@@ -29,6 +29,7 @@ const MANAGE_ITEMS = [
   { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/admin/master-list' },
   { id: 'demand-benchmarks', label: 'Demand Benchmarks', icon: Scale, path: '/admin/demand-benchmarks' },
   { id: 'reports', label: 'Generate Reports', icon: FileDown, path: '/admin/reports' },
+  { id: 'graphs', label: 'Generate Graphs', icon: BarChart3, path: '/admin/graphs' },
   { id: 'municipalities', label: 'Municipalities', icon: Map, path: '/admin/municipalities' },
   { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
 ];
@@ -43,6 +44,7 @@ export const HIDDEN_FROM_SUPERADMIN_ROUTES = [
   '/admin/data-quality',
   '/admin/validation',
   '/admin/reports',
+  '/admin/graphs',
   '/admin/master-list',
   '/admin/municipalities',
   '/admin/demand-benchmarks',
@@ -140,6 +142,7 @@ function activeIdFromPath(pathname) {
   if (pathname === '/admin/forecast/target') return 'forecast-target';
   if (pathname === '/admin/forecast') return 'forecast';
   if (pathname === '/admin/reports') return 'reports';
+  if (pathname === '/admin/graphs') return 'graphs';
   if (pathname === '/admin/master-list') return 'master-list';
   if (pathname === '/admin/municipalities') return 'municipalities';
   if (pathname === '/admin/demand-benchmarks') return 'demand-benchmarks';

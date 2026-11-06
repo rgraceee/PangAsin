@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Download, Mail } from 'lucide-react';
 
 const CONTACT_EMAIL = 'pang.asin26@gmail.com';
@@ -170,16 +170,25 @@ function AdminSteps() {
 }
 
 export default function HelpManual({ user }) {
-  const role = user?.role === 'admin' ? 'admin' : 'encoder';
-  const homePath = role === 'admin' ? '/admin' : '/encoder';
+  const navigate = useNavigate();
+  const normalizedRole = String(user?.role || '').toLowerCase();
+  const role = normalizedRole === 'encoder' ? 'encoder' : normalizedRole === 'superadmin' ? 'superadmin' : 'admin';
+  const homePath = role === 'encoder' ? '/encoder' : role === 'superadmin' ? '/superadmin' : '/admin';
+  const handleBack = () => {
+    if (document.referrer && document.referrer.startsWith(window.location.origin)) {
+      navigate(-1);
+      return;
+    }
+    navigate(homePath, { replace: true });
+  };
 
   return (
     <div className="support-page">
       <div className="support-topbar">
-        <Link to={homePath} className="ui-btn-outline ui-btn--sm">
+        <button type="button" className="ui-btn-outline ui-btn--sm" onClick={handleBack}>
           <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" />
-          Back to dashboard
-        </Link>
+          Back
+        </button>
         <PrintButton />
       </div>
 
@@ -190,7 +199,7 @@ export default function HelpManual({ user }) {
         </span>
         <h1 className="support-title">PangAsin User Manual</h1>
         <p className="support-updated">
-          For {role === 'admin' ? 'administrators' : 'encoders'} · Last updated: 30 October 2026
+          For {role === 'encoder' ? 'encoders' : 'administrators'} · Last updated: 30 October 2026
         </p>
 
         <p className="support-lead">

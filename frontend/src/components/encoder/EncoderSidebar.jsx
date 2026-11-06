@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ContactRound, ClipboardList, FileText, LayoutDashboard, Leaf, Settings } from 'lucide-react';
+import { ContactRound, ClipboardList, FileText, BarChart3, LayoutDashboard, Leaf, Settings } from 'lucide-react';
 import usePageTitle from '../../hooks/usePageTitle';
 import {
   CollapseControl, Divider, NavGroup, NavItem, SectionLabel, SidebarLogo, UserBlock,
@@ -18,6 +18,7 @@ const MANAGE_ITEMS = [
   { id: 'master-list', label: 'Salt Farmer Master List', icon: ContactRound, path: '/encoder/master-list' },
   { id: 'environment-records', label: 'Environment Records', icon: Leaf, path: '/encoder/environment-records' },
   { id: 'generate-report', label: 'Generate Report', icon: FileText, path: '/encoder/reports' },
+  { id: 'generate-graphs', label: 'Generate Graphs', icon: BarChart3, path: '/encoder/graphs' },
 ];
 
 const SETTINGS_GROUP = {

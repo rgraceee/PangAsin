@@ -4,7 +4,7 @@ import { Mail, ArrowLeft, LogIn, Search } from 'lucide-react';
 import { getHelpFaqs } from '../../services/dataService';
 import { SkeletonPageHeader } from '../Skeleton';
 
-const CONTACT_EMAIL = 'pang.asin26@gmail.com';
+const ASIN_CENTER_URL = 'https://asincenter.psu.edu.ph/';
 
 // WHAT: Public Help Center page — fetches active FAQ items from
 //       /api/help-faqs?public=1, falling back to bundled defaults if the
@@ -135,8 +135,8 @@ export default function HelpCenter() {
             </div>
           </div>
         </div>
-        <a href={`mailto:${CONTACT_EMAIL}`} className="help-contact-mailto">
-          {CONTACT_EMAIL}
+        <a href={ASIN_CENTER_URL} target="_blank" rel="noopener noreferrer" className="help-contact-mailto">
+          asincenter.psu.edu.ph
         </a>
       </div>
     </div>

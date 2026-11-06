@@ -4422,6 +4422,41 @@ body {
   background: #eef4fb;
 }
 
+.report-table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  font-size: 12px;
+}
+
+.report-table-pagination-size,
+.report-table-pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.report-table-pagination-size .form-select {
+  width: 78px;
+  min-height: 34px;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.report-table-pagination-pages .ui-btn-outline {
+  min-height: 34px;
+  padding: 0.25rem 0.65rem;
+}
+
+@media (max-width: 640px) {
+  .report-table-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .report-preview-meta {
   display: flex;
   flex-wrap: wrap;
@@ -5227,4 +5262,23 @@ body {
 
 .master-search-control .master-search-input {
   padding-right: 38px;
+}
+/* Report chart axis and range controls */
+.report-chart-date-range {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(120px, auto) minmax(140px, 180px) auto minmax(140px, 180px);
+  margin-top: 12px;
+}
+
+.report-chart-date-range span:first-child {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .report-chart-date-range {
+    grid-template-columns: 1fr;
+  }
 }

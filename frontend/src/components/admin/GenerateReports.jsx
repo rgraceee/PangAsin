@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Card, Form, Table, Alert, Spinner } from 'react-bootstrap';
+import { Card, Form, Table, Alert, Modal, Spinner } from 'react-bootstrap';
 import {
   createReport,
   deleteReport,
@@ -18,34 +18,17 @@ import { useToast } from '../Toast';
 import { SkeletonChart, SkeletonList } from '../Skeleton';
 import {
   ChevronDown,
-  BarChart3,
   ClipboardList,
   Download,
   Eye,
   EyeOff,
   FileDown,
   FileText,
-  LineChart as LineChartIcon,
-  PieChart as PieChartIcon,
   Search,
   SearchX,
+  Save,
   Trash2,
 } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import PageHeader from './PageHeader';
 import { displayHeader } from '../../constants/labels';
 import {
@@ -228,8 +211,6 @@ const TIME_MODES = [
 
 const PREVIEW_ROW_LIMIT = 25;
 const REPORT_PAGE_SIZE = 8;
-const CHART_COLORS = ['#16803c', '#2878b8', '#e58a23', '#8956b3', '#d04f58', '#16a6a1', '#6c757d'];
-const RECORD_COUNT_KEY = '__record_count';
 
 function reportDateSearchValues(value) {
   if (!value) return [];
@@ -254,37 +235,11 @@ function SortableReportHeader({ label, column, activeKey, direction, onSort }) {
   );
 }
 
-function chartFieldLabel(key) {
-  return key === RECORD_COUNT_KEY ? 'Rows' : displayHeader(key);
-}
-
-function chartCategoryValue(value) {
-  if (Array.isArray(value)) return value.length ? value.join(', ') : 'Not specified';
-  return value === null || value === undefined || value === '' ? 'Not specified' : String(value);
-}
-
-function buildChartData(rows, categoryKey, seriesKeys) {
-  const grouped = new Map();
-  rows.forEach((row) => {
-    const category = chartCategoryValue(row[categoryKey]);
-    const bucket = grouped.get(category) || { [categoryKey]: category, __rows: 0 };
-    bucket.__rows += 1;
-    seriesKeys.forEach((key) => {
-      if (key === RECORD_COUNT_KEY) {
-        bucket[key] = bucket.__rows;
-      } else if (typeof row[key] === 'number' && Number.isFinite(row[key])) {
-        bucket[key] = (bucket[key] || 0) + row[key];
-      }
-    });
-    grouped.set(category, bucket);
-  });
-  return [...grouped.values()].map(({ __rows, ...row }) => row);
-}
-
 const DATA_SECTIONS = [
   ['municipalities', 'Municipalities'],
   ['by_municipality', 'By Municipality'],
   ['by_barangay', 'By Barangay'],
+  ['production_records', 'Production Records'],
   ['monthly_trend', 'Monthly Trend'],
   ['runs', 'Forecast Runs'],
   ['outlook', 'Municipality Outlook'],
@@ -310,15 +265,20 @@ const SUMMARY_LINES = [
 function DataTable({ title, rows }) {
   if (!rows || rows.length === 0) return null;
   const headers = Object.keys(rows[0]);
-  const previewRows = rows.slice(0, PREVIEW_ROW_LIMIT);
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(PREVIEW_ROW_LIMIT);
+  const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const currentPage = Math.min(page, pageCount);
+  const firstRow = (currentPage - 1) * rowsPerPage;
+  const previewRows = rows.slice(firstRow, firstRow + rowsPerPage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rows, rowsPerPage]);
+
   return (
     <div className="mt-4">
       <h6 className="fw-bold">{title}</h6>
-      {rows.length > PREVIEW_ROW_LIMIT && (
-        <p className="small text-muted mb-2">
-          Showing the first {PREVIEW_ROW_LIMIT} of {rows.length.toLocaleString()} matching rows. The generated report will include all matching rows.
-        </p>
-      )}
       <Table responsive bordered hover size="sm" className="mb-0 report-preview-table">
         <thead>
           <tr>
@@ -337,6 +297,39 @@ function DataTable({ title, rows }) {
           ))}
         </tbody>
       </Table>
+      <div className="report-table-pagination">
+        <div className="report-table-pagination-size">
+          <span>Rows per page</span>
+          <Form.Select
+            aria-label={`Rows per page for ${title}`}
+            value={rowsPerPage}
+            onChange={(event) => setRowsPerPage(Number(event.target.value))}
+          >
+            {[10, 25, 50, 100].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </Form.Select>
+        </div>
+        <div className="report-table-pagination-pages">
+          <button
+            type="button"
+            className="ui-btn-outline"
+            disabled={currentPage === 1}
+            onClick={() => setPage(currentPage - 1)}
+          >
+            Previous
+          </button>
+          <span>{currentPage} of {pageCount}</span>
+          <button
+            type="button"
+            className="ui-btn-outline"
+            disabled={currentPage === pageCount}
+            onClick={() => setPage(currentPage + 1)}
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -368,15 +361,15 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
   const [reportPage, setReportPage] = useState(1);
   const [configurationError, setConfigurationError] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [saveNameModal, setSaveNameModal] = useState(false);
+  const [saveName, setSaveName] = useState('');
   const [error, setError] = useState(null);
   const [previewError, setPreviewError] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [currentReport, setCurrentReport] = useState(null);
   const [previewData, setPreviewData] = useState(null);
-  const [chartType, setChartType] = useState('bar');
-  const [chartTableKey, setChartTableKey] = useState('');
-  const [chartCategory, setChartCategory] = useState('');
-  const [chartSeries, setChartSeries] = useState([]);
+  const [previewKind, setPreviewKind] = useState('table');
+  const [unsavedPreview, setUnsavedPreview] = useState(false);
   const [contentFilterValues, setContentFilterValues] = useState({});
   const [activeSuggestionField, setActiveSuggestionField] = useState(null);
   const [contentFilterSuggestions, setContentFilterSuggestions] = useState({});
@@ -723,9 +716,7 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
   const invalidateDraftPreview = () => {
     setCurrentReport(null);
     setPreviewData(null);
-    setChartTableKey('');
-    setChartCategory('');
-    setChartSeries([]);
+    setUnsavedPreview(false);
   };
 
   const updateFormValue = (setter, value) => {
@@ -798,56 +789,52 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
   const showReportPreview = (report, data) => {
     setCurrentReport(report);
     setPreviewData(data);
-    setChartTableKey('');
-    setChartCategory('');
-    setChartSeries([]);
     scrollToPreview();
-  };
-
-  const handlePreview = async () => {
-    const payload = buildReportPayload();
-    if (!payload) return;
-    setCreating(true);
-    setPreviewLoading(true);
-    setPreviewData(null);
-    setCurrentReport(null);
-    previewReport(payload)
-      .then((res) => {
-        showReportPreview({
-          report_type: content,
-          municipality_id: payload.municipality_id || null,
-          municipality_name: municipalities.find((item) => Number(item.id) === Number(payload.municipality_id))?.name || user?.municipality_name || null,
-          barangay_id: payload.barangay_id || null,
-          barangay_name: (barangaysByMuni[Number(municipalityId)] || [])
-            .find((item) => String(item.barangay_id) === String(payload.barangay_id))?.barangay || null,
-          date_range_start: payload.date_range_start,
-          date_range_end: payload.date_range_end,
-        }, res.data);
-      })
-      .catch((err) => {
-        const message = err.message || 'Could not prepare the report preview. Please try again.';
-        setPreviewError(message);
-        toastError(message);
-      })
-      .finally(() => {
-        setCreating(false);
-        setPreviewLoading(false);
-      });
   };
 
   const handleGenerateReport = async () => {
     const payload = buildReportPayload();
     if (!payload) return;
+    setPreviewKind('table');
     setCreating(true);
     setPreviewLoading(true);
     setPreviewData(null);
     setCurrentReport(null);
     try {
+      const response = await previewReport(payload);
+      setUnsavedPreview(true);
+      showReportPreview({
+        report_type: content,
+        municipality_id: payload.municipality_id || null,
+        municipality_name: municipalities.find((item) => Number(item.id) === Number(payload.municipality_id))?.name || user?.municipality_name || null,
+        barangay_id: payload.barangay_id || null,
+        barangay_name: (barangaysByMuni[Number(municipalityId)] || [])
+          .find((item) => String(item.barangay_id) === String(payload.barangay_id))?.barangay || null,
+        date_range_start: payload.date_range_start,
+        date_range_end: payload.date_range_end,
+      }, response.data);
+    } catch (err) {
+      const message = err.message || 'Could not prepare the report preview. Please try again.';
+      setPreviewError(message);
+      toastError(message);
+    } finally {
+      setCreating(false);
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleSaveReport = async () => {
+    const payload = buildReportPayload();
+    if (!payload) return;
+    setCreating(true);
+    try {
       const response = await createReport({
         ...payload,
         format,
-        title: `${TYPE_LABEL[content] || content} Report`,
+        title: saveName.trim() || `${TYPE_LABEL[content] || content} Report`,
       });
+      setSaveNameModal(false);
+      setUnsavedPreview(false);
       showReportPreview(response.report, response.data);
       setShowReports(true);
       await loadReports();
@@ -865,6 +852,8 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
   const openPreview = async (report) => {
     setPreviewError(null);
     setPreviewLoading(true);
+    setPreviewKind('table');
+    setUnsavedPreview(false);
     setCurrentReport(report);
     setPreviewData(null);
     try {
@@ -917,53 +906,6 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
       return previewData[key]?.length ? [{ key, label, rows: previewData[key] }] : [];
     });
   }, [previewData]);
-
-  const selectedChartTable = previewTables.find((table) => table.key === chartTableKey) || previewTables[0];
-  const chartFields = selectedChartTable?.rows?.[0] ? Object.keys(selectedChartTable.rows[0]) : [];
-  const chartCategories = chartFields.filter((key) => (
-    selectedChartTable.rows.some((row) => {
-      const value = row[key];
-      return typeof value === 'string' || Array.isArray(value);
-    })
-  ));
-  const chartMeasures = [
-    { key: RECORD_COUNT_KEY, label: 'Rows' },
-    ...chartFields
-      .filter((key) => selectedChartTable?.rows?.some((row) => typeof row[key] === 'number' && Number.isFinite(row[key])))
-      .map((key) => ({ key, label: chartFieldLabel(key) })),
-  ];
-
-  useEffect(() => {
-    if (!selectedChartTable) {
-      if (chartTableKey) setChartTableKey('');
-      if (chartCategory) setChartCategory('');
-      if (chartSeries.length) setChartSeries([]);
-      return;
-    }
-    if (chartTableKey !== selectedChartTable.key) setChartTableKey(selectedChartTable.key);
-    if (!chartCategories.includes(chartCategory)) {
-      setChartCategory(chartCategories[0] || '');
-    }
-    const measureKeys = chartMeasures.map((measure) => measure.key);
-    const validSeries = chartSeries.filter((key) => measureKeys.includes(key));
-    if (!validSeries.length && measureKeys.length) {
-      setChartSeries([chartMeasures.find((measure) => measure.key !== RECORD_COUNT_KEY)?.key || RECORD_COUNT_KEY]);
-    } else if (validSeries.length !== chartSeries.length) {
-      setChartSeries(validSeries);
-    }
-  }, [selectedChartTable, chartTableKey, chartCategories, chartCategory, chartMeasures, chartSeries]);
-
-  useEffect(() => {
-    if (chartType === 'pie' && chartSeries.length > 1) {
-      setChartSeries([chartSeries[0]]);
-    }
-  }, [chartType, chartSeries]);
-
-  const chartData = useMemo(() => (
-    selectedChartTable && chartCategory && chartSeries.length
-      ? buildChartData(selectedChartTable.rows, chartCategory, chartType === 'pie' ? chartSeries.slice(0, 1) : chartSeries)
-      : []
-  ), [selectedChartTable, chartCategory, chartSeries, chartType]);
 
   const summaryLines = useMemo(() => {
     if (!previewData) return [];
@@ -1074,8 +1016,8 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
         className="ui-pageheader--admin ui-pageheader--no-map"
         title="Generate Reports"
         subtitle={encoderMode
-          ? `Filter and visualize production, salt farmer, and environment data for ${user?.municipality_name || 'your municipality'}, or save PDF and Excel reports.`
-          : 'Filter report data, build charts, and save reports as PDF or Excel.'}
+          ? `Filter production, salt farmer, and environment data for ${user?.municipality_name || 'your municipality'}, or save PDF and Excel reports.`
+          : 'Filter report data and save reports as PDF or Excel.'}
       >
         <div className="rg-hero-row">
             <div className="report-filter-field admin-page-hero-control">
@@ -1183,41 +1125,6 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
             )}
 
             <div className="report-generate-group">
-              <div className="report-chart-type-options" role="group" aria-label="Chart type">
-                {[
-                  { id: 'bar', label: 'Bar', icon: BarChart3 },
-                  { id: 'line', label: 'Line', icon: LineChartIcon },
-                  { id: 'pie', label: 'Pie', icon: PieChartIcon },
-                ].map((option) => {
-                  const Icon = option.icon;
-                  return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={`report-chart-type-option${chartType === option.id ? ' is-active' : ''}`}
-                    aria-pressed={chartType === option.id}
-                    disabled={creating}
-                    onClick={() => setChartType(option.id)}
-                  >
-                    <Icon size={16} aria-hidden="true" />
-                    {option.label}
-                  </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                className="ui-btn-outline report-generate-btn"
-                onClick={handlePreview}
-                disabled={creating}
-                aria-busy={creating}
-              >
-                  {creating ? (
-                    <><Spinner as="span" animation="border" size="sm" aria-hidden="true" />Loading data&hellip;</>
-                  ) : (
-                    <><Eye size={16} strokeWidth={2} aria-hidden="true" />Build chart</>
-                  )}
-              </button>
               <div className="report-format-options" role="group" aria-label="Report export format">
                 {[
                   { id: 'pdf', label: 'PDF' },
@@ -1245,7 +1152,7 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
                 {creating ? (
                   <><Spinner as="span" animation="border" size="sm" aria-hidden="true" />Generating&hellip;</>
                 ) : (
-                  <><FileDown size={16} strokeWidth={2} aria-hidden="true" />Generate report</>
+                  <><Eye size={16} strokeWidth={2} aria-hidden="true" />Preview report</>
                 )}
               </button>
             </div>
@@ -1387,6 +1294,20 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
               <div className="d-flex align-items-center gap-2 flex-wrap">
                 <h5 className="admin-card-head-title">Report Preview</h5>
               </div>
+              {unsavedPreview && !previewLoading && (
+                <button
+                  type="button"
+                  className="ui-btn-primary ms-auto"
+                  onClick={() => {
+                    setSaveName(`${TYPE_LABEL[content] || content} Report`);
+                    setSaveNameModal(true);
+                  }}
+                  disabled={creating}
+                >
+                  <Save size={16} strokeWidth={2} aria-hidden="true" />
+                  {creating ? 'Saving...' : 'Save report'}
+                </button>
+              )}
             </div>
           </Card.Header>
           <Card.Body>
@@ -1413,151 +1334,9 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
 
                 {dataHasRows(previewData) ? (
                   <>
-                    <section className="report-chart-builder mt-4" aria-label="Chart builder">
-                      <div className="report-chart-controls">
-                        <div className="report-filter-field">
-                          <label className="admin-page-hero-field" htmlFor="report-chart-data">Chart data</label>
-                          <Form.Select
-                            id="report-chart-data"
-                            value={selectedChartTable?.key || ''}
-                            onChange={(event) => {
-                              setChartTableKey(event.target.value);
-                              setChartCategory('');
-                              setChartSeries([]);
-                            }}
-                          >
-                            {previewTables.map((table) => (
-                              <option key={table.key} value={table.key}>{table.label}</option>
-                            ))}
-                          </Form.Select>
-                        </div>
-                        <div className="report-filter-field">
-                          <label className="admin-page-hero-field" htmlFor="report-chart-category">Category</label>
-                          <Form.Select
-                            id="report-chart-category"
-                            value={chartCategory}
-                            onChange={(event) => setChartCategory(event.target.value)}
-                            disabled={!chartCategories.length}
-                          >
-                            {chartCategories.map((key) => (
-                              <option key={key} value={key}>{chartFieldLabel(key)}</option>
-                            ))}
-                          </Form.Select>
-                        </div>
-                      </div>
-
-                      <fieldset className="report-chart-series">
-                        <legend>{chartType === 'pie' ? 'Value column' : 'Data columns'}</legend>
-                        {chartMeasures.length ? chartMeasures.map((measure) => (
-                          <label className="report-chart-series-option" key={measure.key}>
-                            <input
-                              type={chartType === 'pie' ? 'radio' : 'checkbox'}
-                              name="report-chart-series"
-                              value={measure.key}
-                              checked={chartSeries.includes(measure.key)}
-                              onChange={(event) => {
-                                if (chartType === 'pie') {
-                                  setChartSeries([measure.key]);
-                                } else {
-                                  setChartSeries((current) => (
-                                    event.target.checked
-                                      ? [...current, measure.key]
-                                      : current.filter((key) => key !== measure.key)
-                                  ));
-                                }
-                              }}
-                            />
-                            {measure.label}
-                          </label>
-                        )) : (
-                          <span className="text-muted">No numeric columns are available for this data.</span>
-                        )}
-                      </fieldset>
-
-                      <div className="report-print-area">
-                        <div className="report-chart-heading">
-                          <h2>{previewData?.report_title || 'Report chart'}</h2>
-                          <p>{previewScopeLabel} · {formatDateRange(currentReport.date_range_start, currentReport.date_range_end)}</p>
-                          <h3>{selectedChartTable?.label} — {chartType.charAt(0).toUpperCase() + chartType.slice(1)} chart</h3>
-                        </div>
-                        {chartData.length && chartSeries.length && chartCategory ? (
-                          <div className="report-chart-visual" aria-label={`${chartType} chart`}>
-                            <ResponsiveContainer width="100%" height="100%">
-                              {chartType === 'pie' ? (
-                                <PieChart>
-                                  <Tooltip />
-                                  <Legend />
-                                  <Pie
-                                    data={chartData}
-                                    dataKey={chartSeries[0]}
-                                    nameKey={chartCategory}
-                                    outerRadius="72%"
-                                    label
-                                  >
-                                    {chartData.map((entry, index) => (
-                                      <Cell key={entry[chartCategory]} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                                    ))}
-                                  </Pie>
-                                </PieChart>
-                              ) : chartType === 'line' ? (
-                                <LineChart data={chartData} margin={{ top: 12, right: 24, bottom: 28, left: 8 }}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey={chartCategory} angle={-25} textAnchor="end" interval="preserveStartEnd" />
-                                  <YAxis />
-                                  <Tooltip />
-                                  <Legend />
-                                  {chartSeries.map((key, index) => (
-                                    <Line
-                                      key={key}
-                                      type="monotone"
-                                      dataKey={key}
-                                      name={chartFieldLabel(key)}
-                                      stroke={CHART_COLORS[index % CHART_COLORS.length]}
-                                      strokeWidth={2}
-                                      dot={false}
-                                    />
-                                  ))}
-                                </LineChart>
-                              ) : (
-                                <BarChart data={chartData} margin={{ top: 12, right: 24, bottom: 28, left: 8 }}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey={chartCategory} angle={-25} textAnchor="end" interval="preserveStartEnd" />
-                                  <YAxis />
-                                  <Tooltip />
-                                  <Legend />
-                                  {chartSeries.map((key, index) => (
-                                    <Bar
-                                      key={key}
-                                      dataKey={key}
-                                      name={chartFieldLabel(key)}
-                                      fill={CHART_COLORS[index % CHART_COLORS.length]}
-                                    />
-                                  ))}
-                                </BarChart>
-                              )}
-                            </ResponsiveContainer>
-                          </div>
-                        ) : (
-                          <div className="report-chart-empty" role="status">
-                            Choose a category and at least one numeric column to build a chart.
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="report-preview-footer report-chart-actions">
-                        <button
-                          type="button"
-                          className="ui-btn-primary report-generate-btn"
-                          onClick={() => window.print()}
-                          disabled={!chartData.length || !chartSeries.length || !chartCategory}
-                        >
-                          <FileDown size={16} strokeWidth={2} aria-hidden="true" />
-                          Save chart as PDF
-                        </button>
-                        <span className="small text-muted">Choose “Save as PDF” in the print dialog.</span>
-                      </div>
-                    </section>
-                    {previewTables.map((table) => <DataTable key={table.key} title={table.label} rows={table.rows} />)}
+                    {previewTables.map((table) => (
+                      <DataTable key={table.key} title={table.label} rows={table.rows} />
+                    ))}
                   </>
                 ) : (
                   <div className="report-preview-empty">
@@ -1799,6 +1578,32 @@ export default function GenerateReports({ encoderMode = false, user = null }) {
           )}
         </Card.Body>
       </Card>
+
+      <Modal show={saveNameModal} onHide={() => setSaveNameModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Name this report</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Label htmlFor="saved-report-name">Report name</Form.Label>
+          <Form.Control
+            id="saved-report-name"
+            value={saveName}
+            onChange={(event) => setSaveName(event.target.value)}
+            autoFocus
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <button type="button" className="ui-btn-outline" onClick={() => setSaveNameModal(false)}>Cancel</button>
+          <button
+            type="button"
+            className="ui-btn-primary"
+            disabled={!saveName.trim() || creating}
+            onClick={handleSaveReport}
+          >
+            Save report
+          </button>
+        </Modal.Footer>
+      </Modal>
 
     </div>
   );

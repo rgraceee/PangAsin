@@ -424,6 +424,29 @@ def _serialize_admin_user(u):
     }
 
 
+@admin_api_bp.route("/audit-logs", methods=["GET"])
+@login_required
+def list_admin_audit_logs():
+    if is_not_admin():
+        return jsonify({"error": "Admin access only."}), 403
+
+    page = max(1, request.args.get("page", 1, type=int))
+    per_page = min(100, max(1, request.args.get("per_page", 50, type=int)))
+    pagination = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False,
+    )
+    return jsonify({
+        "logs": [entry.serialize() for entry in pagination.items],
+        "entries": [entry.serialize() for entry in pagination.items],
+        "page": page,
+        "per_page": per_page,
+        "pages": pagination.pages,
+        "total": pagination.total,
+    })
+
+
 @admin_api_bp.route("/users", methods=["GET"])
 @login_required
 def list_users():
@@ -471,9 +494,12 @@ def update_admin_user(user_id):
     if not isinstance(data, dict):
         return jsonify({"errors": ["Request body must be a JSON object."]}), 400
     errors = []
+    target_status = None
     if "status" in data:
-        errors.append("Use the deactivate or reactivate action to change account status.")
-    if not any(field in data for field in ("name", "municipality_id")):
+        target_status = data.get("status")
+        if target_status not in ("active", "inactive"):
+            errors.append("status must be active or inactive.")
+    if not any(field in data for field in ("name", "municipality_id", "status")):
         errors.append("At least one editable field is required.")
 
     name = None
@@ -500,10 +526,13 @@ def update_admin_user(user_id):
 
     old_municipality_id = user.municipality_id
     old_name = user.name
+    old_status = user.status
     if name is not None:
         user.name = name
     if municipality is not None:
         user.municipality_id = municipality.id
+    if target_status is not None:
+        user.status = target_status
     db.session.commit()
 
     log_action(
@@ -517,9 +546,30 @@ def update_admin_user(user_id):
             "new_name": user.name,
             "old_municipality_id": old_municipality_id,
             "new_municipality_id": user.municipality_id,
+            "status": {
+                "from": old_status,
+                "to": user.status,
+            } if target_status != old_status else None,
         },
     )
     db.session.commit()
+    if target_status != old_status:
+        log_action(
+            "user.update",
+            "user",
+            user.id,
+            actor=current_user,
+            summary=f"{current_user.email} updated encoder {user.email}.",
+            details={
+                "changes": {
+                    "status": {
+                        "from": old_status,
+                        "to": user.status,
+                    }
+                }
+            },
+        )
+        db.session.commit()
     return jsonify(_serialize_admin_user(user))
 
 

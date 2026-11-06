@@ -4,6 +4,171 @@
   background: var(--p-sand, #fafaf7);
 }
 
+.report-form-page {
+  min-height: 100vh;
+  padding: 40px 16px 64px;
+  background: var(--p-sand, #fafaf7);
+  color: #17261d;
+}
+
+.report-header {
+  max-width: 860px;
+  margin: 0 auto 16px;
+}
+
+.report-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #25713b;
+  font-weight: 700;
+  text-decoration: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.report-card {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 36px clamp(20px, 5vw, 56px) 44px;
+  background: #fff;
+  border: 1px solid rgba(21, 35, 58, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 18px 44px -28px rgba(12, 35, 64, 0.35);
+}
+
+.report-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #25713b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.report-title {
+  margin: 0 0 28px;
+  color: #17261d;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.15;
+}
+
+.report-form {
+  display: grid;
+  gap: 20px;
+}
+
+.report-field {
+  display: grid;
+  gap: 8px;
+}
+
+.report-field-label {
+  color: #263b30;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.required {
+  color: #b42318;
+}
+
+.report-select,
+.report-input,
+.report-textarea,
+.report-message-text {
+  width: 100%;
+  border: 1px solid #d8e0db;
+  border-radius: 10px;
+  background: #fff;
+  color: #17261d;
+  font-size: 15px;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.report-select,
+.report-input {
+  height: 46px;
+  padding: 0 13px;
+}
+
+.report-textarea {
+  min-height: 150px;
+  resize: vertical;
+  padding: 12px 13px;
+}
+
+.report-select:focus,
+.report-input:focus,
+.report-textarea:focus {
+  border-color: #2f7d44;
+  box-shadow: 0 0 0 3px rgba(47, 125, 68, .12);
+}
+
+.report-field-error {
+  color: #b42318;
+  font-size: 13px;
+}
+
+.report-readonly {
+  padding: 16px;
+  border: 1px solid #e1e7e3;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.report-readonly-row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  margin-top: 8px;
+  color: #405247;
+  font-size: 14px;
+}
+
+.report-readonly-label {
+  font-weight: 700;
+}
+
+.report-submit-btn,
+.report-copy-btn {
+  width: fit-content;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: #16803c;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.report-submit-btn:disabled {
+  background: #aab8b0;
+  cursor: not-allowed;
+}
+
+.report-message-box {
+  margin-bottom: 20px;
+}
+
+.report-message-label {
+  font-weight: 700;
+}
+
+.report-message-text {
+  min-height: 180px;
+  padding: 13px;
+  resize: vertical;
+}
+
 .support-page--embedded {
   min-height: 0;
   padding: 24px 0 32px;

@@ -99,6 +99,46 @@ def test_salt_farmer_master_list_opens_on_filtered_entries(tmp_path):
     assert load_workbook(filepath, read_only=True, data_only=True)["Summary"]["A1"].value == "My Filtered Salt Farmer List"
 
 
+def test_production_export_opens_on_complete_production_records(tmp_path):
+    filepath = tmp_path / "production.xlsx"
+    write_excel(
+        {
+            "report_title": "Production Report",
+            "total_production_mt": 135863.457,
+            "by_municipality": [{
+                "municipality": "Alaminos City",
+                "production_mt": 1234.5,
+                "record_count": 12,
+            }],
+            "production_records": [{
+                "id": 245,
+                "municipality": "Alaminos City",
+                "barangay": "Baleyadaan",
+                "record_date": "2026-09-03",
+                "production_volume_mt": 250,
+                "num_salt_beds": 12,
+                "area_per_salt_bed": 250,
+            }],
+        },
+        str(filepath),
+    )
+
+    workbook = load_workbook(filepath, read_only=False, data_only=False)
+    assert workbook.active.title == "Production Records"
+    assert list(workbook["Production Records"].values)[0] == (
+        "ID",
+        "Municipality",
+        "Barangay",
+        "Record Date",
+        "Production Volume (Metric Tons (MT))",
+        "Salt Beds",
+        "Area per Salt Bed (m²)",
+    )
+    assert workbook["Production Records"]["A2"].value == 245
+
+    assert "Summary" not in workbook.sheetnames
+
+
 def test_custom_report_title_is_saved_and_used_for_preview_and_export(
     admin_client, monkeypatch, tmp_path
 ):

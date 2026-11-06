@@ -110,7 +110,6 @@ describe('Generate Reports chart builder', () => {
   });
 
   it('lets admins choose a chart type and graph multiple numeric columns', async () => {
-    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
     renderPage();
 
     expect(await screen.findByRole('heading', { name: 'Generate Reports' })).toBeInTheDocument();
@@ -124,24 +123,18 @@ describe('Generate Reports chart builder', () => {
     });
 
     expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
-    expect(screen.getByLabelText('Rows')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Records')).toHaveLength(1);
-    fireEvent.click(screen.getByLabelText('Production (Metric Tons (MT))'));
-    fireEvent.click(screen.getByLabelText('Total Salt Beds'));
-    expect(screen.getByLabelText('Production (Metric Tons (MT))')).toBeChecked();
-    expect(screen.getByLabelText('Total Salt Beds')).toBeChecked();
+    expect(screen.getByRole('combobox', { name: 'X axis' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Y axis' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Line' }));
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Pie' }));
     expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Production (Metric Tons (MT))' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save chart as PDF' }));
-    expect(printSpy).toHaveBeenCalledOnce();
-    printSpy.mockRestore();
+    expect(screen.queryByRole('button', { name: 'Save chart as PDF' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bar' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Generated Reports' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Generate report' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Preview report' })).toBeInTheDocument();
     expect(screen.queryByText('Word')).not.toBeInTheDocument();
   });
 
@@ -162,7 +155,10 @@ describe('Generate Reports chart builder', () => {
     renderPage();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Excel', exact: true }));
-    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }));
+    expect(await screen.findByRole('button', { name: 'Save report' })).toBeInTheDocument();
+    expect(createReport).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Save report' }));
 
     await waitFor(() => {
       expect(createReport).toHaveBeenCalledWith({
@@ -183,6 +179,27 @@ describe('Generate Reports chart builder', () => {
       '/api/admin/reports/8/download?format=excel',
     );
     expect(screen.queryByRole('button', { name: /Word/ })).not.toBeInTheDocument();
+  });
+
+  it('opens the chart preview without saving a table report for Graph PDF output', async () => {
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Graph (PDF)', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }));
+
+    expect(await screen.findByRole('heading', { name: 'Report Preview' })).toBeInTheDocument();
+    expect(previewReport).toHaveBeenCalledWith({
+      report_type: 'production',
+      date_range_start: null,
+      date_range_end: null,
+      filters: {},
+    });
+    expect(createReport).not.toHaveBeenCalled();
+    expect(printSpy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Save graph PDF' }));
+    await waitFor(() => expect(printSpy).toHaveBeenCalledOnce(), { timeout: 1500 });
+    printSpy.mockRestore();
   });
 
   it('keeps older Word-format records readable without offering Word exports', async () => {

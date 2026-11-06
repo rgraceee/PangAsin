@@ -19,11 +19,15 @@ import Municipalities from './components/admin/Municipalities';
 import ForecastDashboard from './components/admin/ForecastDashboard';
 import TargetEvaluation from './components/admin/target/TargetEvaluation';
 import GenerateReports from './components/admin/GenerateReports';
+import GenerateGraphs from './components/admin/GenerateGraphs';
 import ValidationQueue from './components/admin/ValidationQueue';
 import DataQualityDashboard from './components/admin/DataQualityDashboard';
 import ProducerMasterList from './components/ProducerMasterList';
 import PrivacyPolicy from './components/support/PrivacyPolicy';
 import LegalDoc from './components/support/LegalDoc';
+import HelpCenter from './components/support/HelpCenter';
+import HelpManual from './components/support/HelpManual';
+import ReportForm from './components/support/ReportForm';
 import Settings from './components/Settings';
 import ScrollToTop from './components/ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -70,6 +74,8 @@ const ROUTE_TITLES = {
   '/admin/forecast': 'Forecasting',
   '/admin/forecast/target': 'Target Evaluation',
   '/admin/reports': 'Generate Reports',
+  '/admin/graphs': 'Generate Graphs',
+  '/encoder/graphs': 'Generate Graphs',
   '/admin/settings': 'Settings',
   '/admin/settings/account': 'Account',
   '/admin/settings/security': 'Security',
@@ -193,6 +199,9 @@ export default function App() {
         />
         <Route path="/privacy" element={<ErrorBoundary><PrivacyPolicy /></ErrorBoundary>} />
         <Route path="/terms" element={<ErrorBoundary><LegalDoc docType="terms" /></ErrorBoundary>} />
+        <Route path="/help" element={<ErrorBoundary><HelpCenter /></ErrorBoundary>} />
+        <Route path="/help/manual" element={<ErrorBoundary><HelpManual user={user} /></ErrorBoundary>} />
+        <Route path="/help/report" element={<ErrorBoundary><ReportForm user={user} /></ErrorBoundary>} />
         <Route
           path="/change-password"
           element={(
@@ -236,6 +245,11 @@ export default function App() {
           <Route path="reports" element={
             <ErrorBoundary>
               <GenerateReports encoderMode user={user} />
+            </ErrorBoundary>
+          } />
+          <Route path="graphs" element={
+            <ErrorBoundary>
+              <GenerateGraphs encoderMode user={user} />
             </ErrorBoundary>
           } />
           <Route path="settings/*" element={
@@ -311,6 +325,11 @@ export default function App() {
           <Route path="reports" element={
             <ErrorBoundary>
               <GenerateReports />
+            </ErrorBoundary>
+          } />
+          <Route path="graphs" element={
+            <ErrorBoundary>
+              <GenerateGraphs />
             </ErrorBoundary>
           } />
           <Route path="settings/*" element={
